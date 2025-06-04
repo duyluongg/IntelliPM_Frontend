@@ -1,5 +1,6 @@
 import React from 'react';
 import { Menu, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Header() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -15,7 +16,7 @@ export default function Header() {
 
           <nav className="hidden md:flex space-x-6">
             <a href="#" className="text-gray-700 hover:text-blue-600">Home</a>
-            <a href="#" className="text-gray-700 hover:text-blue-600">Projects</a>
+            <Link to="/pm/meeting-room">Project</Link>
             <a href="#" className="text-gray-700 hover:text-blue-600">Docs</a>
             <a href="#" className="text-gray-700 hover:text-blue-600">About</a>
           </nav>
@@ -36,7 +37,7 @@ export default function Header() {
         <div className="md:hidden bg-white border-t border-gray-200">
           <nav className="flex flex-col space-y-2 px-4 py-4">
             <a href="#" className="text-gray-700 hover:text-blue-600">Home</a>
-            <a href="#" className="text-gray-700 hover:text-blue-600">Projects</a>
+            <a href="pm/meeting-room" className="text-gray-700 hover:text-blue-600">PM</a>
             <a href="#" className="text-gray-700 hover:text-blue-600">Docs</a>
             <a href="#" className="text-gray-700 hover:text-blue-600">About</a>
             <button className="mt-2 w-full bg-blue-600 text-white py-2 rounded-full hover:bg-blue-700 transition">

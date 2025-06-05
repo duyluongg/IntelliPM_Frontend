@@ -16,15 +16,18 @@ export default function Header() {
 
           <nav className="hidden md:flex space-x-6">
             <a href="#" className="text-gray-700 hover:text-blue-600">Home</a>
-            <Link to="/pm/meeting-room">Project</Link>
+            <a href="#" className="text-gray-700 hover:text-blue-600">Project</a>
             <a href="#" className="text-gray-700 hover:text-blue-600">Docs</a>
             <a href="#" className="text-gray-700 hover:text-blue-600">About</a>
           </nav>
 
           <div className="flex items-center space-x-4">
-            <button className="hidden md:inline-flex bg-blue-600 text-white px-4 py-1.5 rounded-full hover:bg-blue-700 transition">
-              Sign In
-            </button>
+          <Link
+  to="/login"
+  className="hidden md:inline-flex bg-blue-600 text-white px-4 py-1.5 rounded-full hover:bg-blue-700 transition"
+>
+  Sign In
+</Link>
             <button onClick={() => setIsOpen(!isOpen)} className="md:hidden">
               {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

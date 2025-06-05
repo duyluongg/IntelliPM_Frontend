@@ -7,6 +7,7 @@ import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
 import type { EventClickArg } from '@fullcalendar/core'
 import { Modal } from './Modal/Modal'
 import ModalDetailRoom from './Modal/MeetingDetailModal'
+import './MeetingRoom.css' // ✅ Import CSS tùy chỉnh
 
 interface MeetingEvent {
   id: string
@@ -69,8 +70,8 @@ const MeetingRoom: FC = () => {
   }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">📅 Tạo & Theo Dõi Lịch Họp</h1>
+    <div className="meeting-container">
+      <h1 className="meeting-title">📅 Tạo & Theo Dõi Lịch Họp</h1>
 
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

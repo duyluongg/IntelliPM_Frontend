@@ -1,5 +1,5 @@
 import type { FC } from "react"
-import { FaCalendarAlt, FaFileAlt, FaUsers, FaVideo, FaComments, FaCheckCircle } from "react-icons/fa"
+import { FaCalendarAlt } from "react-icons/fa"
 import { Link, useLocation } from "react-router-dom"
 import { useLogoutMutation } from "../../services/authApi";
 import { useNavigate } from "react-router-dom";

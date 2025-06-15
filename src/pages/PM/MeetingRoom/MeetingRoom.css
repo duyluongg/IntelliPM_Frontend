@@ -1,0 +1,86 @@
+/* MeetingRoom.css */
+
+/* Container padding and responsive layout */
+.meeting-container {
+    padding: 2rem;
+    background-color: #f9f9fb;
+    min-height: 100vh;
+  }
+  
+  /* Title style */
+  .meeting-title {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  /* FullCalendar customization */
+  .fc {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    padding: 1rem;
+  }
+  
+  /* Calendar header style */
+  .fc-toolbar-title {
+    font-size: 1.4rem;
+    color: #1a202c;
+  }
+  
+  /* Button styling */
+  .fc-button {
+    background-color: #4f46e5;
+    border: none;
+    color: #ffffff;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    transition: background-color 0.3s ease;
+    border-radius: 4px;
+  }
+  
+  .fc-button:hover {
+    background-color: #4338ca;
+  }
+  
+  .fc-button:disabled {
+    background-color: #a5b4fc;
+    cursor: not-allowed;
+  }
+  
+  /* Event hover effect */
+  .fc-event {
+    background-color: #10b981;
+    border: none;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: transform 0.2s ease;
+  }
+  
+  .fc-event:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+  }
+  
+  /* Modal custom transition (optional, if modals are basic divs) */
+  .modal-overlay {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
+import Sidebar from '../components/Sidebar/Sidebar';
 
 const ScrollToTop: React.FC = () => {
   const { pathname } = useLocation();
@@ -14,15 +15,17 @@ const ScrollToTop: React.FC = () => {
 };
 
 const RootLayout: React.FC = () => {
+  
   return (
     <>
       <ScrollToTop />
       <Header />
-      <main className='bg-slate-100 min-h-screen'>
-        <Outlet />
-        {/* Đây là nơi các component trang (như HomePage) sẽ được hiển thị */}
+      <main className='flex bg-slate-100 min-h-screen'>
+        <Sidebar />
+        <div className='flex-1 p-4 overflow-auto mt-10'>
+          <Outlet />
+        </div>
       </main>
-      {/* FOOTER */}
     </>
   );
 };

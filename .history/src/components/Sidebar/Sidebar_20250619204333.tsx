@@ -65,7 +65,7 @@ export default function Sidebar() {
         onClick={() => setShowProjects(!showProjects)}
       >
         {/* 🔁 Icon thay đổi tùy trạng thái */}
-        {hovered ? (
+        {hovered || showProjects ? (
           <ChevronRight
             className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${
               showProjects ? 'rotate-90' : 'rotate-0'

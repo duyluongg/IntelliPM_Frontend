@@ -33,27 +33,6 @@ const tabs = [
 
 const ProjectTabs = () => {
   return (
-    // <div className="px-4">
-    //   <h3 className="text-sm font-semibold text-gray-500 mb-1">Projects</h3>
-    //   <div className="flex items-center space-x-4 overflow-x-auto text-sm font-medium border-b border-gray-300">
-    //     {tabs.map((tab, idx) => (
-    //       <NavLink
-    //         key={idx}
-    //         to={tab.path}
-    //         className={({ isActive }) =>
-    //           `flex items-center gap-1 px-3 py-2 transition ${
-    //             isActive
-    //               ? 'text-blue-600 border-b-2 border-blue-600'
-    //               : 'text-gray-600 hover:text-blue-500'
-    //           }`
-    //         }
-    //       >
-    //         <span>{tab.icon}</span>
-    //         <span>{tab.label}</span>
-    //       </NavLink>
-    //     ))}
-    //   </div>
-    // </div>
     <div>
       <h3 className='text-sm font-semibold text-gray-500 mb-1'>Projects</h3>
       <div className='flex items-center space-x-4 overflow-x-auto text-sm font-medium border-b border-gray-300'>

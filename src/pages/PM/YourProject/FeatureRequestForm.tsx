@@ -1,10 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Lock, Share2, Expand, MoreHorizontal, Check, GripVertical, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../services/AuthContext';
+import type { DocumentType } from '../../../types/DocumentType';
+// import { useNavigate } from 'react-router-dom';
 
-const FeatureRequestForm = () => {
-  const navigate = useNavigate();
+type FeatureRequestFormProps = {
+  doc: DocumentType;
+  onBack: () => void;
+};
+
+const FeatureRequestForm = ({ doc, onBack }: FeatureRequestFormProps) => {
+  const isNewForm = !doc?.id;
+  const isEditMode = !!doc?.id;
+
   const [formData, setFormData] = useState({
     summary: '',
     description: '',
@@ -16,33 +25,63 @@ const FeatureRequestForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+  const { user } = useAuth();
 
   const handleSubmit = async () => {
-    try {
-      const payload = {
-        projectId: 1,
-        taskId: 1,
-        title: formData.summary,
-        type: 'FEATURE_REQUEST',
-        template: 'default',
-        content: formData.description,
-        fileUrl: '',
-        createdBy: 1,
-      };
+    if (!user) {
+      alert('Bạn chưa đăng nhập!');
+      return;
+    }
 
-      const response = await axios.post('https://localhost:7128/api/documents', payload);
-      alert('Document created successfully!');
-      console.log(response.data);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to create document.');
+    const payload = {
+      projectId: doc.projectId || 1,
+      taskId: doc.taskId || 1,
+      title: formData.summary,
+      type: 'FEATURE_REQUEST',
+      template: 'default',
+      content: formData.description,
+      fileUrl: '',
+      createdBy: user.id,
+      ...(isEditMode && { updatedBy: user.id }),
+    };
+
+    try {
+      if (isEditMode) {
+        // GỌI API SỬA
+        await axios.put(`https://localhost:7128/api/documents/${doc.id}`, payload, {
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`,
+          },
+        });
+        alert('Document updated successfully!');
+      } else {
+        // GỌI API TẠO MỚI
+        await axios.post('https://localhost:7128/api/documents', payload, {
+          headers: {
+            Authorization: `Bearer ${user.accessToken}`,
+          },
+        });
+        alert('Document created successfully!');
+      }
+    } catch (err) {
+      console.error('Error submitting document:', err);
+      alert('Something went wrong. Please try again.');
     }
   };
+
+  useEffect(() => {
+    if (doc) {
+      setFormData({
+        summary: doc.title || '',
+        description: doc.content || '',
+      });
+    }
+  }, [doc]);
 
   return (
     <div className='max-w-4xl mx-auto p-6 space-y-6'>
       <button
-        onClick={() => navigate(-1)}
+        onClick={onBack}
         className='inline-flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 transition'
       >
         <ArrowLeft size={16} /> Back
@@ -99,7 +138,9 @@ const FeatureRequestForm = () => {
                   className='text-sm text-gray-500 mb-2 cursor-pointer hover:bg-gray-200 transition-colors'
                   onClick={() => setEditingSummary(true)}
                 >
-                  Enter the name of the feature.
+                  {isNewForm
+                    ? 'Enter the name of the feature.'
+                    : formData.summary || 'No summary provided'}
                 </p>
               ) : (
                 <input
@@ -108,7 +149,7 @@ const FeatureRequestForm = () => {
                   value={formData.summary}
                   onChange={handleChange}
                   className='w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring focus:ring-blue-200 mb-2'
-                  placeholder='   Enter the name of the feature.'
+                  placeholder='Enter the name of the feature.'
                   onBlur={() => setEditingSummary(false)}
                   autoFocus
                 />
@@ -140,20 +181,23 @@ const FeatureRequestForm = () => {
                   className='text-sm text-gray-500 mb-2 cursor-pointer hover:bg-gray-200 transition-colors'
                   onClick={() => setEditingDescription(true)}
                 >
-                  Enter the description of the feature.
+                  {isNewForm
+                    ? 'Enter the description of the feature.'
+                    : formData.description || 'No description provided'}
                 </p>
               ) : (
-                <input
-                  type='text'
+                <textarea
                   name='description'
                   value={formData.description}
                   onChange={handleChange}
+                  rows={5}
                   className='w-full border rounded px-3 py-2 text-sm bg-gray-50 focus:outline-none focus:ring focus:ring-blue-200 mb-2'
-                  placeholder='   Enter the description of the feature.'
+                  placeholder='Enter the description of the feature.'
                   onBlur={() => setEditingDescription(false)}
                   autoFocus
                 />
               )}
+
               <textarea
                 name='description'
                 // value={formData.description}
@@ -172,7 +216,7 @@ const FeatureRequestForm = () => {
           onClick={handleSubmit}
           className='px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition'
         >
-          Submit
+          {isEditMode ? 'Update' : 'Submit'}
         </button>
       </div>
     </div>

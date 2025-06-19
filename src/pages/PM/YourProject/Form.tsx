@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import ProjectTabs from '../../../components/PM/ProjectTabs';
 import { FileText, Zap, Bug, AlertTriangle, Shuffle, SlidersHorizontal } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import FeatureRequestForm from './FeatureRequestForm';
+import RecentForm from './RecentForm';
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
-  { id: 'feature', label: 'Feature request', icon: <Zap size={16} />, path: 'feature' },
+  { id: 'feature', label: 'Feature request', icon: <Zap size={16} /> },
   { id: 'bug', label: 'Bug report', icon: <Bug size={16} /> },
   { id: 'incident', label: 'Incident report', icon: <AlertTriangle size={16} /> },
   { id: 'review', label: 'Technical review', icon: <SlidersHorizontal size={16} /> },
@@ -13,34 +14,51 @@ const templates = [
 ];
 
 export default function Form() {
-  const [selected, setSelected] = useState('blank');
-  return (
-    <div>
-      <ProjectTabs />
-      <div className='p-4 space-y-3'>
-        <div className='flex items-center justify-between'>
-          <h2 className='text-lg font-semibold text-gray-800'>Create a new form</h2>
-        </div>
+  const { formId } = useParams();
+  const navigate = useNavigate();
 
-        <div className='flex flex-wrap gap-6 p-4 border rounded-md bg-white'>
-          {templates.map((template) => (
-            <Link to={`/projects/form/${template.path || template.id}`} key={template.id}>
-            <button
-              key={template.id}
-              onClick={() => setSelected(template.id)}
-              className={`flex items-center gap-2 px-3 py-1 border rounded-md transition ${
-                selected === template.id
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
-              }`}
-            >
-              {template.icon}
-              <span className='text-sm'>{template.label}</span>
-            </button>
-            </Link>
-          ))}
+  const handleSelect = (templateId: string) => {
+    navigate(`/projects/form/${templateId}`);
+  };
+
+  const handleBack = () => {
+    navigate('/projects/form');
+  };
+
+  return (
+    <div className='min-h-screen bg-gray-50'>
+      <ProjectTabs />
+
+      {!formId || formId === 'blank' ? (
+        <div className='p-4 space-y-3  '>
+          <h2 className='text-lg font-semibold text-gray-800'>Create a new form</h2>
+
+          <div className='flex flex-wrap gap-3 p-4 border rounded-md bg-white shadow-sm'>
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => handleSelect(template.id)}
+                className={`flex items-center gap-2 px-3 py-2 border rounded-md transition ${
+                  template.id === 'blank'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
+                }`}
+              >
+                {template.icon}
+                <span className='text-sm'>{template.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <RecentForm />
         </div>
-      </div>
+      ) : (
+        <div className='mt-6 max-w-5xl mx-auto'>
+          {formId === 'feature' && <FeatureRequestForm onBack={handleBack} />}
+          {/* {formId === 'bug' && <BugReportForm onBack={handleBack} />} */}
+          {/* ... */}
+        </div>
+      )}
     </div>
   );
 }

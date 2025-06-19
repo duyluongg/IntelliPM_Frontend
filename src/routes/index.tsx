@@ -7,7 +7,9 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 
 import ProtectedRoute from '../components/ProtectedRoute';
-import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
+import Form from '../pages/PM/YourProject/Form';
+import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFormWrapper';
+// import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
 
 export const router = createBrowserRouter([
   // Route riêng cho trang login
@@ -24,14 +26,15 @@ export const router = createBrowserRouter([
         index: true,
         element: <Homepage />,
       },
-      {
-        path: '/projects/form',
-        element: <Homepage />,
-      },
-        {
-        path: '/projects/form/feature',
-        element: <FeatureRequestForm />,
-      },
+      // {
+      //   path: '/projects/form',
+      //   element: <Homepage />,
+      // },
+       { path: 'projects/form', element: <Form /> },
+
+       { path: 'projects/form/:formId', element: <Form /> },
+       { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
+
     ],
   },
 

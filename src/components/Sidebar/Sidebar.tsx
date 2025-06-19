@@ -24,7 +24,7 @@ const menuItems = [
 
 export default function Sidebar() {
   return (
-    <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between'>
+    <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 '>
       <div className='pt-4'>
         {menuItems.map((item, index) => (
           <div

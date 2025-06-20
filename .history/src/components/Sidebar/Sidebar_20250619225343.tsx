@@ -12,13 +12,6 @@ import {
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useGetProjectsByAccountQuery } from '../../services/accountApi';
-
-// Interface cho recentProjects
-interface RecentProject {
-  name: string;
-  icon: string;
-}
 
 const menuItems = [
   { icon: <UserCircle className='w-5 h-5' />, label: 'For you' },
@@ -30,25 +23,15 @@ const menuItems = [
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
 
+const recentProjects = [
+  { name: 'My Kanban Project', icon: '🧠' },
+  { name: 'SEP_Agile_Scrum', icon: '☁️' },
+  { name: 'SEP_Project_Manage', icon: '🖼️' },
+];
+
 export default function Sidebar() {
- const [showProjects, setShowProjects] = useState(false);
-const [hovered, setHovered] = useState(false);
-
-const user = localStorage.getItem('user');
-const accessToken = user ? JSON.parse(user).accessToken : '';
-const {
-  data: projectsData,
-  isLoading,
-  error
-} = useGetProjectsByAccountQuery(accessToken);
-
-const recentProjects: RecentProject[] = projectsData?.isSuccess
-  ? projectsData.data.map((proj) => ({
-      name: proj.projectName,
-      icon: '📊',
-    }))
-  : [];
-
+  const [showProjects, setShowProjects] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   return (
     <aside className='w-64 h-screen border-r bg-white flex flex-col justify-between'>
@@ -109,23 +92,15 @@ const recentProjects: RecentProject[] = projectsData?.isSuccess
           {showProjects && (
             <div className='mt-1 pl-10 pr-4'>
               <div className='text-gray-500 text-xs mb-1'>Recent</div>
-              {isLoading ? (
-                <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
-              ) : error ? (
-                <div className='text-sm text-red-500 py-1'>Error loading projects: {error.toString()}</div>
-              ) : recentProjects.length === 0 ? (
-                <div className='text-sm text-gray-500 py-1'>No projects found</div>
-              ) : (
-                recentProjects.map((proj, i) => (
-                  <div
-                    key={i}
-                    className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm'
-                  >
-                    <span className='text-lg'>{proj.icon}</span>
-                    <span className='truncate'>{proj.name}</span>
-                  </div>
-                ))
-              )}
+              {recentProjects.map((proj, i) => (
+                <div
+                  key={i}
+                  className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm'
+                >
+                  <span className='text-lg'>{proj.icon}</span>
+                  <span className='truncate'>{proj.name}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

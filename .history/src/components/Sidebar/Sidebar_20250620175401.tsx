@@ -36,6 +36,8 @@ const [hovered, setHovered] = useState(false);
 
 const user = localStorage.getItem('user');
 const accessToken = user ? JSON.parse(user).accessToken : '';
+
+
 const {
   data: projectsData,
   isLoading,

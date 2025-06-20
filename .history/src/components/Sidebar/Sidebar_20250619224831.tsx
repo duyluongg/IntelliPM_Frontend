@@ -12,7 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useGetProjectsByAccountQuery } from '../../services/accountApi';
+import { useGetProjectsByAccountIdQuery } from '../../services/accountApi.ts'; 
 
 // Interface cho recentProjects
 interface RecentProject {
@@ -31,24 +31,20 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
- const [showProjects, setShowProjects] = useState(false);
-const [hovered, setHovered] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-const user = localStorage.getItem('user');
-const accessToken = user ? JSON.parse(user).accessToken : '';
-const {
-  data: projectsData,
-  isLoading,
-  error
-} = useGetProjectsByAccountQuery(accessToken);
+  // Giả định accountId = 1, có thể lấy từ AuthContext hoặc props
+  const accountId = 1;
+  const { data: projectsData, isLoading, error } = useGetProjectsByAccountIdQuery(accountId);
 
-const recentProjects: RecentProject[] = projectsData?.isSuccess
-  ? projectsData.data.map((proj) => ({
-      name: proj.projectName,
-      icon: '📊',
-    }))
-  : [];
-
+  // Xử lý danh sách dự án từ API
+  const recentProjects: RecentProject[] = projectsData?.isSuccess
+    ? projectsData.data.map((proj: { projectName: string }) => ({
+        name: proj.projectName,
+        icon: '📊', // Icon cố định
+      }))
+    : [];
 
   return (
     <aside className='w-64 h-screen border-r bg-white flex flex-col justify-between'>
@@ -112,7 +108,7 @@ const recentProjects: RecentProject[] = projectsData?.isSuccess
               {isLoading ? (
                 <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
               ) : error ? (
-                <div className='text-sm text-red-500 py-1'>Error loading projects: {error.toString()}</div>
+                <div className='text-sm text-red-500 py-1'>Error loading projects</div>
               ) : recentProjects.length === 0 ? (
                 <div className='text-sm text-gray-500 py-1'>No projects found</div>
               ) : (

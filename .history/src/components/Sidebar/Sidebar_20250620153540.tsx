@@ -34,8 +34,7 @@ export default function Sidebar() {
  const [showProjects, setShowProjects] = useState(false);
 const [hovered, setHovered] = useState(false);
 
-const user = localStorage.getItem('user');
-const accessToken = user ? JSON.parse(user).accessToken : '';
+const accessToken = localStorage.getItem('accessToken') ?? '';
 const {
   data: projectsData,
   isLoading,

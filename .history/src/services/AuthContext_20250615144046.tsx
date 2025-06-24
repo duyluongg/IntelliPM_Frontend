@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react'; 
 
-export type Role = 'PROJECT MANAGER' | 'ADMIN' | 'TEAM MEMBER' | 'CLIENT' | 'TEAM LEADER'; 
+export type Role = 'PROJECT MANAGER' | 'ADMIN' | 'TEAM MEMBER' | 'STAKEHOLDER'; 
 
 export type User = {
   id: number;

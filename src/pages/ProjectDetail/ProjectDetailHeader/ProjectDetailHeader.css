@@ -1,0 +1,47 @@
+.container {
+  margin-left: 4rem; /* mx-16 */
+  margin-right: 4rem;
+  padding-top: 1.5rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.projectName {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.navTabs {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
+  padding-bottom: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid #e5e7eb; /* gray-200 */
+}
+
+.tabItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #4b5563; /* text-gray-600 */
+  cursor: pointer;
+  padding-bottom: 0.25rem;
+  transition: color 0.2s ease-in-out;
+}
+
+.tabItem:hover {
+  color: #111827; /* text-black */
+}
+
+.activeTab {
+  color: #2563eb; /* text-blue-600 */
+  border-bottom: 2px solid #2563eb;
+  font-weight: 500;
+}

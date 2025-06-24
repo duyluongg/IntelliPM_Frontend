@@ -6,6 +6,7 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import WorkItem from '../pages/WorkItem';
 import ProtectedRoute from '../components/ProtectedRoute';
+
 import WorkItemDetail from '../pages/WorkItemDetail';
 import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
@@ -35,6 +36,9 @@ const WorkItemPage: React.FC = () => {
     </div>
   );
 };
+
+import ProjectDetailHeader from '../pages/ProjectDetail/ProjectDetailHeader/ProjectDetailHeader';
+
 
 export const router = createBrowserRouter([
   {
@@ -80,8 +84,27 @@ export const router = createBrowserRouter([
     ],
   },
 
+
   {
     path: '*',
     element: <div>404 - Page Not Found</div>,
   },
+
+  
+  {
+    path: '/projects',
+    element: (
+      <ProtectedRoute allowedRoles={['PROJECT MANAGER', 'TEAM MEMBER', 'TEAM LEADER', 'CLIENT']}>
+        <ProjectDetailHeader />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: 'list',
+        element: <MeetingRoom />, // Có thể đổi sau nếu bạn muốn hiển thị tab khác
+      },
+    ],
+  },
+
+
 ]);

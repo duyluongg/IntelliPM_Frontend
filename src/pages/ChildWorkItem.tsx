@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ChildWorkItem.css';
 
@@ -34,15 +34,43 @@ const ChildWorkItem: React.FC = () => {
     );
   }
 
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      alert(`📁 File "${file.name}" đã được upload (mock).`);
+      // TODO: Xử lý upload thật sau
+    }
+    setIsAddDropdownOpen(false);
+  };
+
+
   return (
     <div className="child-work-item-container">
       <div className="child-header">
         <div className="breadcrumb">
           Projects / SEP_Agile_Scrum / <span>{item.parent}</span> / <span className="child-key">{item.key}</span>
-        <div className="child-header-row">
-          <h2 className="child-title">hello</h2>
-          <button className="btn-add">+ Add</button>
-        </div>
+          <div className="child-header-row">
+            <h2 className="child-title">hello</h2>
+            <div className="add-menu-wrapper">
+              <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
+              {isAddDropdownOpen && (
+                <div className="add-dropdown">
+                  <div className="add-item" onClick={() => fileInputRef.current?.click()}>
+                    📎 Attachment
+                  </div>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
+            </div>
+          </div>
         </div>
       </div>
 

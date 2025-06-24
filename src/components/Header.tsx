@@ -1,6 +1,7 @@
 import { Search, Plus, Bell, HelpCircle, Settings, AppWindow, PanelLeftClose } from 'lucide-react';
 
-import logo from '../assets/logo.png';
+import logo from '../assets/Logo_IntelliPM/Logo_NoText_NoBackgroud.png';
+import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
 // import Login from './Login';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
@@ -18,7 +19,18 @@ export default function Header() {
           <AppWindow className='w-5 h-5 text-gray-700' />
         </button>
 
-        <img src={logo} className='w-10 h-10 object-contain' />
+        <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
+          <img
+            src={logo}
+            className='h-10 w-auto object-contain scale-[1.2]'
+            style={{ transformOrigin: 'left center', marginRight: '-8px' }}
+          />
+          <img
+            src={textLogo}
+            className='h-9 w-auto object-contain scale-[0.36]'
+            style={{ transformOrigin: 'left center' }}
+          />
+        </Link>
       </div>
 
       <div className='flex-1 mx-4 flex items-center justify-center space-x-2'>
@@ -38,10 +50,6 @@ export default function Header() {
       </div>
 
       <div className='flex items-center space-x-2'>
-        <button className='hidden lg:flex border px-3 py-1.5 rounded-md text-sm items-center text-purple-600 border-blue-300 hover:bg-gray-100'>
-          <span className='mr-1'>💎</span> Premium
-        </button>
-
         <button className='hidden md:flex border px-3 py-1.5 rounded-md text-sm items-center hover:bg-gray-100'>
           <span className='mr-1'>💬</span> Chat
         </button>

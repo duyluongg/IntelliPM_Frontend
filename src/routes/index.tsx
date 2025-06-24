@@ -9,6 +9,7 @@ import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Form from '../pages/PM/YourProject/Form';
 import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFormWrapper';
+// import DocBlank from '../pages/PM/YourProject/DocBlank';
 // import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
 
 export const router = createBrowserRouter([
@@ -34,6 +35,8 @@ export const router = createBrowserRouter([
 
        { path: 'projects/form/:formId', element: <Form /> },
        { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
+      //  { path: 'projects/form/:formId', element: <DocBlank /> },
+
 
     ],
   },
@@ -42,7 +45,7 @@ export const router = createBrowserRouter([
   {
     path: '/pm',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT MANAGER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER']}>
         <PMLayout />
       </ProtectedRoute>
     ),

@@ -14,6 +14,8 @@ const FeatureRequestForm = ({ doc, onBack }: FeatureRequestFormProps) => {
   const isNewForm = !doc?.id;
   const isEditMode = !!doc?.id;
 
+  
+
   const [formData, setFormData] = useState({
     summary: '',
     description: '',
@@ -32,10 +34,12 @@ const FeatureRequestForm = ({ doc, onBack }: FeatureRequestFormProps) => {
       alert('Bạn chưa đăng nhập!');
       return;
     }
+   
+    
 
     const payload = {
-      projectId: doc.projectId || 1,
-      taskId: doc.taskId || 1,
+      projectId: 1,
+      taskId:  'PROJA-3',
       title: formData.summary,
       type: 'FEATURE_REQUEST',
       template: 'default',

@@ -3,9 +3,12 @@ import ProjectTabs from '../../../components/PM/ProjectTabs';
 import { FileText, Zap, Bug, AlertTriangle, Shuffle, SlidersHorizontal } from 'lucide-react';
 import FeatureRequestForm from './FeatureRequestForm';
 import RecentForm from './RecentForm';
+import DocBlank from './DocBlank';
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
+  { id: 'doc', label: 'Documents', icon: <FileText size={16} /> },
+
   { id: 'feature', label: 'Feature request', icon: <Zap size={16} /> },
   { id: 'bug', label: 'Bug report', icon: <Bug size={16} /> },
   { id: 'incident', label: 'Incident report', icon: <AlertTriangle size={16} /> },
@@ -26,7 +29,7 @@ export default function Form() {
   };
 
   return (
-    <div className='min-h-screen bg-gray-50'>
+    <div className='min-h-screen bg-white'>
       <ProjectTabs />
 
       {!formId || formId === 'blank' ? (
@@ -55,6 +58,8 @@ export default function Form() {
       ) : (
         <div className='mt-6 max-w-5xl mx-auto'>
           {formId === 'feature' && <FeatureRequestForm onBack={handleBack} />}
+          {formId === 'doc' && <DocBlank  />}
+
           {/* {formId === 'bug' && <BugReportForm onBack={handleBack} />} */}
           {/* ... */}
         </div>

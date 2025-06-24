@@ -21,7 +21,7 @@ const RootLayout: React.FC = () => {
       <Header />
       <main className='flex bg-slate-100 min-h-screen'>
         <Sidebar />
-        <main className='ml-56 mt-16 p-4 overflow-auto bg-slate-100 min-h-screen'>
+        <main className='ml-56 mt-12 p-1 overflow-auto flex-1 bg-slate-100 min-h-screen'>
           <Outlet />
         </main>
       </main>

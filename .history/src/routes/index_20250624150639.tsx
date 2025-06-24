@@ -45,20 +45,19 @@ export const router = createBrowserRouter([
      
     ],
   },
-
-  
-  {
+{
     path: '/projects',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT MANAGER', 'TEAM MEMBER', 'TEAM LEADER', 'CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT MANAGER']}>
         <ProjectDetailHeader />
       </ProtectedRoute>
     ),
     children: [
       {
         path: 'list',
-        element: <MeetingRoom />, // Có thể đổi sau nếu bạn muốn hiển thị tab khác
+        element: <MeetingRoom />,
       },
+     
     ],
   },
 

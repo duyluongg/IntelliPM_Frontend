@@ -7,7 +7,6 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 
 import ProtectedRoute from '../components/ProtectedRoute';
-import ProjectDetailHeader from '../pages/ProjectDetail/ProjectDetailHeader/ProjectDetailHeader';
 
 export const router = createBrowserRouter([
   // Route riêng cho trang login
@@ -43,22 +42,6 @@ export const router = createBrowserRouter([
         element: <MeetingRoom />,
       },
      
-    ],
-  },
-
-  
-  {
-    path: '/projects',
-    element: (
-      <ProtectedRoute allowedRoles={['PROJECT MANAGER', 'TEAM MEMBER', 'TEAM LEADER', 'CLIENT']}>
-        <ProjectDetailHeader />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        path: 'list',
-        element: <MeetingRoom />, // Có thể đổi sau nếu bạn muốn hiển thị tab khác
-      },
     ],
   },
 

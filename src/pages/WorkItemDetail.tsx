@@ -64,6 +64,34 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
     navigate('/work-item');
   };
 
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    alert(`📁 File "${file.name}" đã được upload giả lập.`);
+    // TODO: Gửi file lên backend sau này
+  }
+  setIsAddDropdownOpen(false);
+};
+
+const handleAddSubtask = () => {
+  const newKey = `SAS-${childWorkItems.length + 15}`; // giả lập key mới
+  setChildWorkItems([
+    ...childWorkItems,
+    {
+      key: newKey,
+      summary: 'New subtask',
+      priority: 'Medium',
+      assignee: 'Unassigned',
+      status: 'TO DO'
+    }
+  ]);
+  setIsAddDropdownOpen(false);
+};
+
+
   return (
     <div className="work-item-detail-page">
       <div className="work-item-detail-container">
@@ -111,6 +139,26 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
         </div>
         <div className="detail-content">
           <div className="main-section">
+            <div className="add-menu-wrapper">
+              <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
+              {isAddDropdownOpen && (
+                <div className="add-dropdown">
+                  <div className="add-item" onClick={() => fileInputRef.current?.click()}>
+                    📎 Attachment
+                  </div>
+                  <div className="add-item" onClick={handleAddSubtask}>
+                    🗂 Subtask
+                  </div>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileUpload}
+              />
+            </div>
+
             <div className="field-group">
               <label>Description</label>
               <textarea

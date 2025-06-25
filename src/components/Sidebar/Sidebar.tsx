@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import {
   UserCircle,
   Clock,
@@ -28,6 +29,17 @@ const menuItems = [
   { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
+  // { icon: <Rocket className='w-5 h-5' />, label: 'Projects' },
+  {
+    icon: <Rocket className='w-5 h-5' />,
+    label: 'Projects',
+    hasArrow: true,
+    children: [
+      { label: 'Project 1', route: '/gantt-chart' },
+      { label: 'Project 2' },
+      { label: 'Project 3' },
+    ],
+  },
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },

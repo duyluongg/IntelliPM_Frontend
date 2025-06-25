@@ -13,6 +13,7 @@ import {
   FileText,
   Link,
   PackagePlus,
+  Plus,
 } from 'lucide-react';
 
 const navItems = [

@@ -6,7 +6,7 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import WorkItem from '../pages/WorkItem';
 import ProtectedRoute from '../components/ProtectedRoute';
-import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
+import ProjectDetailHeader from '../pages/ProjectDetail/ProjectDetailHeader/ProjectDetailHeader';
 import WorkItemDetail from '../pages/WorkItemDetail';
 import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
@@ -29,16 +29,13 @@ const WorkItemPage: React.FC = () => {
           isOpen={isWorkItemOpen}
           onClose={() => setIsWorkItemOpen(false)}
           childWorkItems={childWorkItems}
-          onChildItemClick={(item) => console.log('Clicked child item', item)} // 👈 truyền vào hàm
-          onChildPopupClose={() => console.log('Closed popup')}                // 👈 truyền vào hàm
+          onChildItemClick={(item) => console.log('Clicked child item', item)}
+          onChildPopupClose={() => console.log('Closed popup')}
         />
       )}
     </div>
   );
 };
-
-
-
 
 export const router = createBrowserRouter([
   {
@@ -63,12 +60,8 @@ export const router = createBrowserRouter([
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key', // ✅ route động cho child work item
+        path: 'child-work/:key',
         element: <ChildWorkItem />,
-      },
-        {
-        path: '/projects', 
-        element: <ProjectDetail />,
       },
     ],
   },
@@ -88,14 +81,27 @@ export const router = createBrowserRouter([
     ],
   },
 
+  {
+    path: '/projects',
+    element: (
+      <ProtectedRoute allowedRoles={['PROJECT MANAGER', 'TEAM MEMBER', 'TEAM LEADER', 'CLIENT']}>
+        <ProjectDetailHeader />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        path: 'list',
+        element: <MeetingRoom />, // Replace with a proper ProjectsList component if needed
+      },
+      {
+        path: ':projectId', // Dynamic route for individual project details
+        element: <ProjectDetailHeader />, // Or a ProjectDetail component
+      },
+    ],
+  },
 
   {
     path: '*',
     element: <div>404 - Page Not Found</div>,
   },
-
-  
-  
-
-
 ]);

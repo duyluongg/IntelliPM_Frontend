@@ -1,0 +1,99 @@
+.task-table-container {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-family: 'Segoe UI', sans-serif;
+
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.task-table th,
+.task-table td {
+  text-align: left;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.task-table th {
+  background-color: #f9fafb;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.task-table td {
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+/* Loại bỏ margin trái/phải nếu có */
+.no-margin {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Type icon mockup */
+.icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background-color: #d1d5db;
+}
+
+.icon-epic {
+  background-color: #a855f7;
+}
+.icon-task {
+  background-color: #3b82f6;
+}
+.icon-bug {
+  background-color: #ef4444;
+}
+.icon-subtask {
+  background-color: #10b981;
+}
+
+/* Status badges */
+.status {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.75rem;
+  display: inline-block;
+}
+
+.status-to-do {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.status-in-progress {
+  background-color: #e0f2fe;
+  color: #2563eb;
+}
+
+.status-done {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+/* Due date warning */
+.due-warning {
+  color: #dc2626;
+  font-weight: bold;
+}

@@ -13,6 +13,7 @@ import {
   FileText,
   Link,
   PackagePlus,
+  Plus,
 } from 'lucide-react';
 
 const navItems = [
@@ -82,6 +83,7 @@ const ProjectDetailHeader: React.FC = () => {
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
+        console.log('Click outside, closing popup'); // Debug log
         setIsPopupOpen(false);
       }
     };
@@ -200,7 +202,15 @@ const ProjectDetailHeader: React.FC = () => {
             </li>
           )}
         </ul>
- 
+        <div className='flex justify-end mt-2'>
+          <button
+            className='flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600'
+            aria-label='Add to navigation'
+          >
+            <Plus className='w-4 h-4' />
+            <span>Add to navigation</span>
+          </button>
+        </div>
       </nav>
     </div>
   );

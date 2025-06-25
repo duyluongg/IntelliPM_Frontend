@@ -13,6 +13,7 @@ import {
   FileText,
   Link,
   PackagePlus,
+  Plus,
 } from 'lucide-react';
 
 const navItems = [
@@ -39,29 +40,28 @@ interface NavItem {
 
 const ProjectDetailHeader: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [visibleTabs, setVisibleTabs] = useState(navItems);
+  const [visibleTabs, setVisibleTabs] = useState<NavItem[]>([]);
   const [hiddenTabs, setHiddenTabs] = useState<NavItem[]>([]);
   const [activeTab, setActiveTab] = useState('List');
   const containerRef = useRef<HTMLDivElement>(null);
-  const moreButtonRef = useRef<HTMLLIElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
 
   const togglePopup = () => {
-    console.log('Toggling popup, isPopupOpen:', !isPopupOpen); // Debug log
-    setIsPopupOpen(!isPopupOpen);
+    setIsPopupOpen((prev) => !prev);
   };
 
-  const projectIconUrl = 'https://fpt-tuandatcoder.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10410';
+  const projectIconUrl = 'https://via.placeholder.com/24';
 
   useEffect(() => {
     const updateTabs = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
-        const tabWidth = 100;
+        const tabWidth = 100; // Approximate width per tab
         const maxVisible = Math.floor(containerWidth / tabWidth);
 
         if (maxVisible < navItems.length) {
-          setVisibleTabs(navItems.slice(0, maxVisible));
-          setHiddenTabs(navItems.slice(maxVisible));
+          setVisibleTabs(navItems.slice(0, maxVisible - 1)); // Reserve space for "More"
+          setHiddenTabs(navItems.slice(maxVisible - 1));
         } else {
           setVisibleTabs(navItems);
           setHiddenTabs([]);
@@ -94,13 +94,16 @@ const ProjectDetailHeader: React.FC = () => {
     const currentPath = window.location.hash.split('/').pop();
     if (currentPath) {
       const matchedTab = navItems.find((item) => item.label.toLowerCase() === currentPath);
-      if (matchedTab) setActiveTab(matchedTab.label);
+      if (matchedTab) {
+        setActiveTab(matchedTab.label);
+      }
     }
   }, []);
 
   return (
-    <div className='mx-6 pt-6 relative'>
-      <nav aria-label='Breadcrumbs' className='mb-4'>
+    <div className='project-container'>
+      {/* Breadcrumbs */}
+      <nav aria-label='Breadcrumbs' className='breadcrumbs'>
         <ol className='flex items-center space-x-2 text-sm text-gray-600'>
           <li>
             <a href='/projects' className='hover:text-blue-600'>
@@ -110,87 +113,107 @@ const ProjectDetailHeader: React.FC = () => {
         </ol>
       </nav>
 
-      <div className='flex items-center gap-2'>
-        <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
-        <h1 className='text-lg font-semibold'>SEP_Agile_Scrum</h1>
-        <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
+      {/* Header */}
+      <div className='project-header'>
+        <img src={projectIconUrl} alt='Project Icon' className='project-icon' />
+        <h1 className='project-title'>SEP_Agile_Scrum</h1>
+        <button className='icon-button' aria-label='Team'>
           <Users2 className='w-4 h-4' />
         </button>
-        <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='More actions'>
+        <button className='icon-button' aria-label='More actions'>
           <MoreHorizontal className='w-4 h-4' />
         </button>
-        <div className='ml-auto flex items-center space-x-2'>
-          <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Fullscreen'>
+        <div className='header-actions'>
+          <button className='icon-button' aria-label='Fullscreen'>
             <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M14.78 2.28 9.53 7.53 8.47 6.47l5.25-5.25zM1.22 13.72l5.25-5.25 1.06 1.06-5.25 5.25z'
+              />
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M9.5 1h4.75a.75.75 0 01.75.75V6.5h-1.5v-4h-4zm-7 12.5v-4H1v4.75c0 .414.336.75.75.75H6.5v-1.5z'
+              />
             </svg>
           </button>
-          <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Share'>
+          <button className='icon-button' aria-label='Share'>
             <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M12 2.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2m-2.5 1a2.5 2.5 0 1 1 .73 1.765L6.212 7.567a2.5 2.5 0 0 1 0 .866l4.016 2.302a2.5 2.5 0 1 1-.692 1.332L5.521 9.766a2.5 2.5 0 1 1 0-3.53l4.016-2.302A2.5 2.5 0 0 1 9.5 3.5M3.75 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2M12 11.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2'
+              />
             </svg>
           </button>
-          <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Automation'>
+          <button className='icon-button' aria-label='Automation'>
             <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M10.377.102a.75.75 0 0 1 .346.847L8.985 7.25h4.265a.75.75 0 0 1 .53 1.28l-7.25 7.25a.75.75 0 0 1-1.253-.73l1.738-6.3H2.75a.75.75 0 0 1-.53-1.28L9.47.22a.75.75 0 0 1 .907-.118'
+              />
             </svg>
           </button>
         </div>
       </div>
 
-      <nav aria-label='Project navigation' className='mt-4 relative' ref={containerRef}>
-        <ul className='flex items-center gap-6 border-b border-gray-200 pb-1'>
-          {visibleTabs.map((item, idx) => (
-            <li key={idx} className='flex items-center relative group'>
+      {/* Tabs */}
+      <nav aria-label='Project navigation' className='nav-tabs' ref={containerRef}>
+        <ul className='flex items-center gap-0.5'>
+          {visibleTabs.map((item: NavItem, idx: number) => (
+            <li key={idx} className='relative'>
               <a
                 href={`#/projects/SAS/${item.label.toLowerCase()}`}
-                className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
-                   ${
-                        activeTab === item.label
-                         ? 'text-blue-600 border-blue-600 font-medium'
-                          : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
-                   }`}
-                  onClick={() => setActiveTab(item.label)}
+                className={`nav-tab ${
+                  activeTab === item.label ? 'active' : ''
+                }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab(item.label);
+                }}
               >
-                <span className='relative flex items-center'>
-                  <span className='default-icon group-hover:hidden'>{item.icon}</span>
-                  <MoreHorizontal className='w-4 h-4 hidden group-hover:inline-block text-gray-500' />
-                </span>
+                {item.icon}
                 <span>{item.label}</span>
               </a>
             </li>
           ))}
           {hiddenTabs.length > 0 && (
-            <li className='relative' ref={moreButtonRef}>
+            <li className='relative'>
               <button
+                ref={moreButtonRef}
                 onClick={togglePopup}
-                className='flex items-center gap-1 text-sm text-gray-600 hover:text-black pb-1'
+                className='more-tab'
                 aria-label='More tabs'
               >
                 <span>More</span>
-                <span className='flex items-center justify-center w-4 h-4 text-xs bg-gray-100 text-gray-600 rounded-full'>
+                <span className='flex items-center justify-center w-4 h-4 text-xs bg-gray-200 text-gray-600 rounded-full'>
                   {hiddenTabs.length}
                 </span>
               </button>
-
-              {isPopupOpen && (
-                <div className='absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 shadow-md z-50 rounded'>
+              {isPopupOpen && hiddenTabs.length > 0 && (
+                <div className='popup'>
                   <ul>
-                    {hiddenTabs.map((item, idx) => (
+                    {hiddenTabs.map((item: NavItem, idx: number) => (
                       <li key={idx}>
                         <a
-                          href={`/SAS/${item.label.toLowerCase()}`}
-                          className={`flex items-center gap-2 w-full py-2 px-4 hover:bg-gray-100 ${
-                            activeTab === item.label ? 'text-blue-600 font-medium' : 'text-gray-700'
+                          href={`#/projects/SAS/${item.label.toLowerCase()}`}
+                          className={`${
+                            activeTab === item.label ? 'text-blue-600 font-medium' : ''
                           }`}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.preventDefault();
                             setActiveTab(item.label);
-                            setIsPopupOpen(false);
+                            togglePopup();
                           }}
                         >
                           {item.icon}
-                          <span className='truncate'>{item.label}</span>
+                          <span>{item.label}</span>
                         </a>
                       </li>
                     ))}
@@ -200,8 +223,14 @@ const ProjectDetailHeader: React.FC = () => {
             </li>
           )}
         </ul>
- 
       </nav>
+
+      <div className='nav-footer'>
+        <button className='add-nav-btn' aria-label='Add to navigation'>
+          <Plus className='w-4 h-4' />
+          <span>Add to navigation</span>
+        </button>
+      </div>
     </div>
   );
 };

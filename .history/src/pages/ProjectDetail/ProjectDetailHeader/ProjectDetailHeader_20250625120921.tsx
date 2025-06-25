@@ -13,6 +13,7 @@ import {
   FileText,
   Link,
   PackagePlus,
+  Plus,
 } from 'lucide-react';
 
 const navItems = [
@@ -50,7 +51,7 @@ const ProjectDetailHeader: React.FC = () => {
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const projectIconUrl = 'https://fpt-tuandatcoder.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10410';
+  const projectIconUrl = 'https://via.placeholder.com/24';
 
   useEffect(() => {
     const updateTabs = () => {
@@ -82,6 +83,7 @@ const ProjectDetailHeader: React.FC = () => {
         containerRef.current &&
         !containerRef.current.contains(event.target as Node)
       ) {
+        console.log('Click outside, closing popup'); // Debug log
         setIsPopupOpen(false);
       }
     };
@@ -99,7 +101,7 @@ const ProjectDetailHeader: React.FC = () => {
   }, []);
 
   return (
-    <div className='mx-6 pt-6 relative'>
+    <div className='mx-16 pt-6 relative'>
       <nav aria-label='Breadcrumbs' className='mb-4'>
         <ol className='flex items-center space-x-2 text-sm text-gray-600'>
           <li>
@@ -143,22 +145,24 @@ const ProjectDetailHeader: React.FC = () => {
         <ul className='flex items-center gap-6 border-b border-gray-200 pb-1'>
           {visibleTabs.map((item, idx) => (
             <li key={idx} className='flex items-center relative group'>
-              <a
-                href={`#/projects/SAS/${item.label.toLowerCase()}`}
-                className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
-                   ${
-                        activeTab === item.label
-                         ? 'text-blue-600 border-blue-600 font-medium'
-                          : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
-                   }`}
-                  onClick={() => setActiveTab(item.label)}
-              >
+             <a
+  href={`#/projects/SAS/${item.label.toLowerCase()}`}
+  className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
+    ${
+      activeTab === item.label
+        ? 'text-blue-600 border-blue-600 font-medium'
+        : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
+    }`}
+  onClick={() => setActiveTab(item.label)}
+>
+
                 <span className='relative flex items-center'>
                   <span className='default-icon group-hover:hidden'>{item.icon}</span>
                   <MoreHorizontal className='w-4 h-4 hidden group-hover:inline-block text-gray-500' />
                 </span>
                 <span>{item.label}</span>
               </a>
+            
             </li>
           ))}
           {hiddenTabs.length > 0 && (
@@ -200,7 +204,15 @@ const ProjectDetailHeader: React.FC = () => {
             </li>
           )}
         </ul>
- 
+        <div className='flex justify-end mt-2'>
+          <button
+            className='flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600'
+            aria-label='Add to navigation'
+          >
+            <Plus className='w-4 h-4' />
+            <span>Add to navigation</span>
+          </button>
+        </div>
       </nav>
     </div>
   );

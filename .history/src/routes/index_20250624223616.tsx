@@ -6,7 +6,7 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import WorkItem from '../pages/WorkItem';
 import ProtectedRoute from '../components/ProtectedRoute';
-import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
+import ProjectDetailHeader from '../pages/ProjectDetail/ProjectDetailHeader/ProjectDetailHeader';
 import WorkItemDetail from '../pages/WorkItemDetail';
 import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
@@ -68,7 +68,7 @@ export const router = createBrowserRouter([
       },
         {
         path: '/projects', 
-        element: <ProjectDetail />,
+        element: <ProjectDetailHeader />,
       },
     ],
   },

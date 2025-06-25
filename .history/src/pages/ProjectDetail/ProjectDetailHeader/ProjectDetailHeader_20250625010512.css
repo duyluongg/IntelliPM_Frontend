@@ -1,0 +1,135 @@
+.project-container {
+  margin: 1.5rem 4rem 0 4rem;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.project-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.project-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.project-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.icon-button {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.icon-button:hover {
+  color: #111827;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.nav-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: hidden;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.25rem;
+  gap: 1rem;
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding-bottom: 0.25rem;
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-item:hover {
+  color: #111827;
+}
+
+.tab-item.active {
+  color: #2563eb;
+  font-weight: 500;
+  border-bottom: 2px solid #2563eb;
+}
+
+.group {
+  position: relative;
+}
+
+.group:hover .tab-options {
+  opacity: 1;
+}
+
+.tab-options {
+  position: absolute;
+  right: -1rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.nav-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.add-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.add-nav-btn:hover {
+  color: #2563eb;
+}
+
+/* Thêm vào file CSS hiện tại */
+.popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  width: 12rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

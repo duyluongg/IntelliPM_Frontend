@@ -56,7 +56,7 @@ export default function RecentForm() {
           <div
             key={doc.id}
             className='w-full border rounded-lg shadow-sm bg-white p-3 cursor-pointer hover:shadow-md transition'
-          onClick={() => navigate(`/projects/form/${doc.type.toLowerCase()}/${doc.id}`)}
+            onClick={() => navigate(`/projects/form/${doc.type.toLowerCase()}/${doc.id}`)}
           >
             <div className='bg-purple-400 h-32 rounded-lg flex items-center justify-center'>
               <FileText size={48} className='text-white' />

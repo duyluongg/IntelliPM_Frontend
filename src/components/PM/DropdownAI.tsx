@@ -1,0 +1,169 @@
+// import { useState } from 'react';
+// import Lottie from 'lottie-react';
+// import AI_Icon from '../../../src/assets/AnimationIcon/AI_Icon.json';
+
+// export default function DropdownAI({
+//   onGenerate,
+//   onSummarize,
+// }: {
+//   onGenerate: () => void;
+//   onSummarize: () => void;
+// }) {
+//   const [open, setOpen] = useState(false);
+//   const [openSummary, setOpenSummary] = useState(false);
+
+//   return (
+//     <div className='relative inline-block text-left'>
+//       <button
+//         onClick={() => setOpen(!open)}
+//         className='flex items-center gap-2 bg-blue-400 text-white px-3 py-1 rounded hover:bg-blue-500 transition text-sm'
+//       >
+//         <Lottie animationData={AI_Icon} loop autoplay style={{ width: 20, height: 20 }} />
+//         AI Assistant
+//       </button>
+
+//       {open && (
+//         <div className='absolute z-10 mt-2 w-48 bg-white border rounded shadow-lg'>
+//           <button
+//             onClick={() => {
+//               onGenerate();
+//               setOpen(false);
+//             }}
+//             className='w-full px-4 py-2 text-left hover:bg-gray-100'
+//           >
+//             Write with AI
+//           </button>
+//           <button
+//             onClick={() => {
+//               onSummarize();
+//               setOpen(false);
+//               setOpenSummary(true);
+//             }}
+//             className='w-full px-4 py-2 text-left hover:bg-gray-100'
+//           >
+//             Summarize
+//           </button>
+//         </div>
+//       )}
+
+//       {openSummary && (
+//         <div className='absolute z-20 mt-2 w-64 bg-white border rounded shadow-lg p-4'>
+//           <h3 className='font-semibold mb-2'>Summarize Document</h3>
+//           <p className='text-sm text-gray-600 mb-4'>
+//             AI will generate a summary based on the content of the document.
+//           </p>
+//           <button
+//             onClick={() => {
+//               onSummarize();
+//               setOpenSummary(false);
+//               console.log('Generating summary...');
+//             }}
+//             className='w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition'
+//           >
+//             Generate Summary
+//           </button>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+import { useState } from 'react';
+import Lottie from 'lottie-react';
+import AI_Icon from '../../../src/assets/AnimationIcon/AI_Icon.json';
+
+export default function DropdownAI({
+  onGenerate,
+  onSummarize,
+}: {
+  onGenerate: () => void;
+  onSummarize: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [openSummary, setOpenSummary] = useState(false);
+
+  return (
+    <div className='relative inline-block text-left'>
+      <button
+        onClick={() => setOpen(!open)}
+        className='flex items-center gap-2 bg-blue-400 text-white px-3 py-1 rounded hover:bg-blue-500 transition text-sm'
+      >
+        <Lottie animationData={AI_Icon} loop autoplay style={{ width: 20, height: 20 }} />
+        AI Assistant
+      </button>
+
+      {open && (
+        <div className='absolute z-10 mt-2 w-48 bg-white border rounded shadow-lg'>
+          <button
+            onClick={() => {
+              onGenerate();
+              setOpen(false);
+            }}
+            className='w-full px-4 py-2 text-left hover:bg-gray-100'
+          >
+            Write with AI
+          </button>
+          <button
+            onClick={() => {
+              setOpen(false);
+              setOpenSummary(true);
+            }}
+            className='w-full px-4 py-2 text-left hover:bg-gray-100'
+          >
+            Summarize
+          </button>
+        </div>
+      )}
+
+      {openSummary && (
+        <div className='absolute z-20 mt-2 w-96 bg-white border rounded shadow-lg p-4'>
+          <div className='flex justify-between items-center mb-3'>
+            <h3 className='font-semibold text-gray-800 flex items-center gap-2'>
+              <span>📄</span> Summarize
+            </h3>
+            <button
+              onClick={() => setOpenSummary(false)}
+              className='text-gray-500 hover:text-gray-700 text-sm'
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className='border rounded px-3 py-2 bg-white text-gray-700 whitespace-pre-line min-h-[100px]'>
+            Input did not contain enough meaningful information to summarize.
+          </div>
+
+          <div className='flex justify-between items-center mt-4'>
+            <button
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  'Input did not contain enough meaningful information to summarize.'
+                )
+              }
+              className='text-gray-600 text-sm hover:text-gray-800 px-2 py-1 border border-gray-300 rounded'
+            >
+              📋 Copy
+            </button>
+            <div className='flex gap-2'>
+              <button
+                onClick={() => setOpenSummary(false)}
+                className='px-3 py-1 text-sm border rounded hover:bg-gray-100'
+              >
+                Cancel
+              </button>
+              <button
+                disabled
+                className='px-4 py-1 bg-gray-200 text-gray-400 rounded text-sm cursor-not-allowed'
+              >
+                + Add to doc
+              </button>
+            </div>
+          </div>
+
+          <p className='text-xs text-gray-400 mt-2'>
+            AI generated content may be inaccurate, make sure to review it
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

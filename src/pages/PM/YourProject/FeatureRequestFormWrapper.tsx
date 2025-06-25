@@ -1,7 +1,7 @@
-// src/pages/PM/YourProject/FeatureRequestFormWrapper.tsx
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import FeatureRequestForm from './FeatureRequestForm';
+import DocBlank from './DocBlank';
 import axios from 'axios';
 import type { DocumentType } from '../../../types/DocumentType';
 import { useAuth } from '../../../services/AuthContext';
@@ -20,6 +20,7 @@ export default function FeatureRequestFormWrapper() {
             Authorization: `Bearer ${user?.accessToken}`,
           },
         });
+
         setDoc(res.data);
       } catch (err) {
         console.error('Failed to load document:', err);
@@ -36,5 +37,17 @@ export default function FeatureRequestFormWrapper() {
   if (loading) return <div className='p-4'>Loading...</div>;
   if (!doc) return <div className='p-4 text-red-500'>Document not found.</div>;
 
-  return <FeatureRequestForm doc={doc} onBack={() => window.history.back()} />;
+  return (
+    <div className='min-h-screen bg-white p-6'>
+      {doc.type === 'doc' ? (
+        <DocBlank doc={doc} />
+      ) : doc.type === 'FEATURE_REQUEST' ? (
+        <FeatureRequestForm doc={doc} onBack={() => window.history.back()} />
+      ) : (
+        <div className='p-4 text-yellow-600'>
+          ⚠️ Không hỗ trợ loại tài liệu: <code>{doc.type}</code>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -8,6 +8,8 @@ import Heading from '@tiptap/extension-heading';
 import Paragraph from '@tiptap/extension-paragraph';
 import BulletList from '@tiptap/extension-bullet-list';
 import ListItem from '@tiptap/extension-list-item';
+import Bold from '@tiptap/extension-bold';
+import Italic from '@tiptap/extension-italic';
 
 const CustomHeading = Heading.extend({
   addAttributes() {
@@ -34,7 +36,9 @@ const CustomHeading = Heading.extend({
       },
     };
   },
-});
+}).configure({
+  levels: [1, 2, 3], 
+});;
 
 const CustomParagraph = Paragraph.extend({
   addAttributes() {
@@ -92,6 +96,7 @@ export const CustomExtensions = [
     paragraph: false,
     bulletList: false,
     listItem: false,
+
   }),
   CustomHeading,
   CustomParagraph,
@@ -101,4 +106,6 @@ export const CustomExtensions = [
   TableRow,
   CustomTableHeader,
   CustomTableCell,
+  Bold,
+  Italic,
 ];

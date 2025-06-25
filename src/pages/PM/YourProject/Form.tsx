@@ -21,6 +21,8 @@ export default function Form() {
   const navigate = useNavigate();
 
   const handleSelect = (templateId: string) => {
+    console.log(`Selected template: ${templateId}`);
+    
     navigate(`/projects/form/${templateId}`);
   };
 

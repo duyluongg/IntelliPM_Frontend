@@ -7,8 +7,7 @@ import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
 import type { EventClickArg } from '@fullcalendar/core'
 import { Modal } from './Modal/Modal'
 import ModalDetailRoom from './Modal/MeetingDetailModal'
-import './MeetingRoom.css' // ✅ Import CSS tùy chỉnh
-
+import './MeetingRoom.css' 
 interface MeetingEvent {
   id: string
   title: string

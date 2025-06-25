@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   ChevronRight,
   LogOut,
+  CalendarCheck,
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -27,6 +28,7 @@ const menuItems = [
   { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
+  { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
@@ -54,7 +56,7 @@ export default function Sidebar() {
     <aside className='w-64 h-screen border-r bg-white flex flex-col justify-between'>
       <div className='pt-4'>
         {/* Các menu bình thường */}
-        {menuItems.map((item, index) => (
+        {/* {menuItems.map((item, index) => (
           <div
             key={index}
             className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
@@ -65,7 +67,37 @@ export default function Sidebar() {
             </div>
             {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
           </div>
-        ))}
+        ))} */}
+             
+
+             {menuItems.map((item, index) =>
+  item.path ? (  // Kiểm tra xem menu có path hay không
+    <Link
+      key={index}
+      to={item.path} // Dùng Link để điều hướng
+      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors no-underline'
+    >
+      <div className='flex items-center space-x-2'>
+        {item.icon}
+        <span>{item.label}</span>
+      </div>
+      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+    </Link>
+  ) : ( // Nếu không có path, vẫn giữ nguyên div như cũ
+    <div
+      key={index}
+      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
+    >
+      <div className='flex items-center space-x-2'>
+        {item.icon}
+        <span>{item.label}</span>
+      </div>
+      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+    </div>
+  )
+)}
+
+
 
         {/* Mục Projects */}
         <div

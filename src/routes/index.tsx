@@ -10,6 +10,8 @@ import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
 import WorkItemDetail from '../pages/WorkItemDetail';
 import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
+import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
+import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 
 // Optional: Trang demo mở popup WorkItem
 const WorkItemPage: React.FC = () => {
@@ -70,6 +72,18 @@ export const router = createBrowserRouter([
         path: '/projects', 
         element: <ProjectDetail />,
       },
+      {
+        path: 'meeting',
+        element: <MeetingCore />, // ✅ mới
+      },
+      {
+        path: 'meeting-room',
+        element: <MeetingRoom />,
+      },
+      {
+        path: 'create-meeting-room',
+        element: <CreateMeetingPage />,
+      },
     ],
   },
 
@@ -81,10 +95,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      {
-        path: 'meeting-room',
-        element: <MeetingRoom />,
-      },
+      // {
+      //   path: 'meeting',
+      //   element: <MeetingCore />, // ✅ mới
+      // },
+      // {
+      //   path: 'meeting-room',
+      //   element: <MeetingRoom />,
+      // },
     ],
   },
 

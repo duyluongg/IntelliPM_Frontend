@@ -60,6 +60,8 @@ export const router = createBrowserRouter([
       {
         path: 'gantt-chart',
         element: <Gantt />,
+      },
+      {
         path: 'work-item',
         element: <WorkItemPage />,
       },

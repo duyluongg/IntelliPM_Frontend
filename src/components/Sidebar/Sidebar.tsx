@@ -12,6 +12,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 
 // Interface cho recentProjects
@@ -31,24 +32,23 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
- const [showProjects, setShowProjects] = useState(false);
-const [hovered, setHovered] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-const user = localStorage.getItem('user');
-const accessToken = user ? JSON.parse(user).accessToken : '';
-const {
-  data: projectsData,
-  isLoading,
-  error
-} = useGetProjectsByAccountQuery(accessToken);
+  const user = localStorage.getItem('user');
+  const accessToken = user ? JSON.parse(user).accessToken : '';
+  const {
+    data: projectsData,
+    isLoading,
+    error,
+  } = useGetProjectsByAccountQuery(accessToken);
 
-const recentProjects: RecentProject[] = projectsData?.isSuccess
-  ? projectsData.data.map((proj) => ({
-      name: proj.projectName,
-      icon: '📊',
-    }))
-  : [];
-
+  const recentProjects: RecentProject[] = projectsData?.isSuccess
+    ? projectsData.data.map((proj) => ({
+        name: proj.projectName,
+        icon: '📊',
+      }))
+    : [];
 
   return (
     <aside className='w-64 h-screen border-r bg-white flex flex-col justify-between'>
@@ -117,13 +117,15 @@ const recentProjects: RecentProject[] = projectsData?.isSuccess
                 <div className='text-sm text-gray-500 py-1'>No projects found</div>
               ) : (
                 recentProjects.map((proj, i) => (
-                  <div
+                  <Link
                     key={i}
-                    className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm'
+                    to={`/projects?project=${encodeURIComponent(proj.name)}`}
+                    className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm text-gray-800 no-underline'
+                    onClick={() => setShowProjects(false)}
                   >
                     <span className='text-lg'>{proj.icon}</span>
                     <span className='truncate'>{proj.name}</span>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

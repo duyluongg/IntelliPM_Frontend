@@ -6,7 +6,7 @@ import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import WorkItem from '../pages/WorkItem';
 import ProtectedRoute from '../components/ProtectedRoute';
-
+import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
 import WorkItemDetail from '../pages/WorkItemDetail';
 import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
@@ -37,7 +37,7 @@ const WorkItemPage: React.FC = () => {
   );
 };
 
-import ProjectDetailHeader from '../pages/ProjectDetail/ProjectDetailHeader/ProjectDetailHeader';
+
 
 
 export const router = createBrowserRouter([
@@ -66,6 +66,10 @@ export const router = createBrowserRouter([
         path: 'child-work/:key', // ✅ route động cho child work item
         element: <ChildWorkItem />,
       },
+        {
+        path: '/projects', 
+        element: <ProjectDetail />,
+      },
     ],
   },
 
@@ -91,20 +95,7 @@ export const router = createBrowserRouter([
   },
 
   
-  {
-    path: '/projects',
-    element: (
-      <ProtectedRoute allowedRoles={['PROJECT MANAGER', 'TEAM MEMBER', 'TEAM LEADER', 'CLIENT']}>
-        <ProjectDetailHeader />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        path: 'list',
-        element: <MeetingRoom />, // Có thể đổi sau nếu bạn muốn hiển thị tab khác
-      },
-    ],
-  },
+  
 
 
 ]);

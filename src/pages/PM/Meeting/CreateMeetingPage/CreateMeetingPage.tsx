@@ -1,202 +1,3 @@
-// import React, { useState } from 'react';
-// import {
-//   useGetProjectsByAccountIdQuery,
-//   useGetProjectDetailsQuery,
-//   useCreateMeetingMutation,
-// } from '../../../../services/ProjectManagement/MeetingServices/MeetingServices';
-// import { useAuth } from '../../../../services/AuthContext';
-
-// const CreateMeetingPage: React.FC = () => {
-//   const { user } = useAuth();
-//   const accountId = user?.id;
-
-//   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-//   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
-//   const [meetingTopic, setMeetingTopic] = useState('');
-//   const [meetingUrl, setMeetingUrl] = useState('');
-//   const [meetingDate, setMeetingDate] = useState('');
-//   const [startTime, setStartTime] = useState('');
-//   const [endTime, setEndTime] = useState('');
-//   const [participantIds, setParticipantIds] = useState<number[]>([]);
-
-//   // 1️⃣ Lấy danh sách dự án của user
-//   const { data: projectsData, isLoading: loadingProjects } = useGetProjectsByAccountIdQuery(accountId!, {
-//     skip: !accountId,
-//   });
-
-//   // 2️⃣ Khi đã chọn project, lấy detail (danh sách thành viên)
-//   const { data: projectDetails } = useGetProjectDetailsQuery(selectedProjectId!, {
-//     skip: !selectedProjectId,
-//   });
-
-//   // 3️⃣ Mutation tạo meeting
-//   const [createMeeting, { isLoading: isCreating }] = useCreateMeetingMutation();
-
-//   const handleParticipantToggle = (id: number) => {
-//     setParticipantIds(prev =>
-//       prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
-//     );
-//   };
-
-//   const handleCreateMeeting = async () => {
-//     setErrorMessage(null);
-
-//     // ✏️ Validate đầu vào
-//     if (
-//       !selectedProjectId ||
-//       !meetingTopic ||
-//       !meetingUrl ||
-//       !meetingDate ||
-//       !startTime ||
-//       !endTime ||
-//       participantIds.length === 0
-//     ) {
-//       setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
-//       return;
-//     }
-
-//     // ✏️ Build ISO strings
-//     const startDateTime = new Date(`${meetingDate}T${startTime}`).toISOString();
-//     const endDateTime = new Date(`${meetingDate}T${endTime}`).toISOString();
-
-//     const meetingPayload = {
-//       projectId: selectedProjectId,
-//       meetingTopic,
-//       meetingDate: new Date(meetingDate).toISOString(),
-//       meetingUrl,
-//       startTime: startDateTime,
-//       endTime: endDateTime,
-//       attendees: participantIds.length,
-//       participantIds,
-//     };
-
-//     try {
-//       const response = await createMeeting(meetingPayload).unwrap();
-//       alert('✅ Cuộc họp đã được tạo thành công!');
-//       console.log('📥 Response:', response);
-//       setErrorMessage(null);
-//     } catch (error: any) {
-//       // 👇 Lấy innerDetails hoặc message chung
-//       const apiError = error?.data;
-//       const message =
-//       apiError?.innerDetails ??
-//       apiError?.details ??
-//       apiError?.message ??
-//       'Đã xảy ra lỗi không xác định.';
-//       setErrorMessage(message);
-
-//       console.error('❌ Lỗi tạo cuộc họp:', error);
-//       console.error('📦 Dữ liệu gửi đi:', meetingPayload);
-//     }
-//   };
-
-//   if (!accountId) {
-//     return (
-//       <div className="text-red-500 text-center mt-4">
-//         ⚠️ Bạn chưa đăng nhập hoặc thiếu thông tin người dùng.
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="p-6 max-w-2xl mx-auto bg-white rounded-lg shadow-md">
-//       <h1 className="text-xl font-bold mb-4">Tạo cuộc họp mới</h1>
-
-//       {loadingProjects ? (
-//         <p>Đang tải danh sách dự án...</p>
-//       ) : (
-//         <select
-//           className="w-full mb-4 p-2 border rounded"
-//           onChange={e => setSelectedProjectId(Number(e.target.value))}
-//           value={selectedProjectId ?? ''}
-//         >
-//           <option value="" disabled>
-//             -- Chọn dự án --
-//           </option>
-//           {projectsData?.data.map(project => (
-//             <option key={project.projectId} value={project.projectId}>
-//               {project.projectName}
-//             </option>
-//           ))}
-//         </select>
-//       )}
-
-//       {selectedProjectId && projectDetails && (
-//         <>
-//           <label className="block font-semibold mb-1">Chọn thành viên:</label>
-//           <div className="mb-4">
-//             {projectDetails.data.projectMembers.map(member => (
-//               <label key={member.id} className="block mb-1">
-//                 <input
-//                   type="checkbox"
-//                   checked={participantIds.includes(member.id)}
-//                   onChange={() => handleParticipantToggle(member.id)}
-//                   className="mr-2"
-//                 />
-//                 {member.fullName} ({member.username})
-//               </label>
-//             ))}
-//           </div>
-
-//           <input
-//             type="text"
-//             placeholder="Chủ đề cuộc họp"
-//             value={meetingTopic}
-//             onChange={e => setMeetingTopic(e.target.value)}
-//             className="w-full mb-3 p-2 border rounded"
-//           />
-
-//           <input
-//             type="text"
-//             placeholder="Link cuộc họp (Zoom/Meet...)"
-//             value={meetingUrl}
-//             onChange={e => setMeetingUrl(e.target.value)}
-//             className="w-full mb-3 p-2 border rounded"
-//           />
-
-//           <input
-//             type="date"
-//             value={meetingDate}
-//             onChange={e => setMeetingDate(e.target.value)}
-//             className="w-full mb-3 p-2 border rounded"
-//           />
-
-//           <input
-//             type="time"
-//             value={startTime}
-//             onChange={e => setStartTime(e.target.value)}
-//             className="w-full mb-3 p-2 border rounded"
-//           />
-
-//           <input
-//             type="time"
-//             value={endTime}
-//             onChange={e => setEndTime(e.target.value)}
-//             className="w-full mb-3 p-2 border rounded"
-//           />
-
-//           {/* Hiển thị lỗi API.innerDetails */}
-//           {errorMessage && (
-//             <div className="bg-red-100 text-red-700 border border-red-400 px-4 py-3 rounded mb-4">
-//               <strong className="font-semibold">Lỗi:</strong> {errorMessage}
-//             </div>
-//           )}
-
-//           <button
-//             onClick={handleCreateMeeting}
-//             disabled={isCreating}
-//             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-//           >
-//             {isCreating ? 'Đang tạo cuộc họp...' : 'Tạo cuộc họp'}
-//           </button>
-//         </>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default CreateMeetingPage;
-
 import React, { useState } from 'react';
 import {
   useGetProjectsByAccountIdQuery,
@@ -228,13 +29,16 @@ const CreateMeetingPage: React.FC = () => {
 
   const [createMeeting, { isLoading: isCreating }] = useCreateMeetingMutation();
 
-  const handleParticipantToggle = (id: number) => {
+  const handleParticipantToggle = (accountId: number) => {
     setParticipantIds((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
+      prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
     );
+    console.log(`🟩 ${participantIds.includes(accountId) ? 'Bỏ chọn' : 'Chọn'} account ID: ${accountId}`);
   };
+  
 
   const handleCreateMeeting = async () => {
+    console.log("🔍 Bắt đầu handleCreateMeeting");
     setErrorMessage(null);
 
     if (
@@ -264,6 +68,9 @@ const CreateMeetingPage: React.FC = () => {
       participantIds,
     };
 
+    console.log("📤 Payload gửi đi:", meetingPayload);
+    console.log("👥 Danh sách ID người tham gia:", participantIds);
+
     try {
       const response = await createMeeting(meetingPayload).unwrap();
       alert('✅ Cuộc họp đã được tạo thành công!');
@@ -272,10 +79,7 @@ const CreateMeetingPage: React.FC = () => {
     } catch (error: any) {
       const apiError = error?.data;
       const message =
-        apiError?.innerDetails ??
-        apiError?.details ??
-        apiError?.message ??
-        'Đã xảy ra lỗi không xác định.';
+        apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
       setErrorMessage(message);
       console.error('❌ Lỗi tạo cuộc họp:', error);
       console.error('📦 Dữ liệu gửi đi:', meetingPayload);
@@ -320,17 +124,26 @@ const CreateMeetingPage: React.FC = () => {
             <div>
               <label className="block mb-2 font-medium text-gray-700">Chọn thành viên tham dự</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {projectDetails.data.projectMembers.map((member) => (
-                  <label key={member.id} className="flex items-center text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={participantIds.includes(member.id)}
-                      onChange={() => handleParticipantToggle(member.id)}
-                      className="mr-2"
-                    />
-                    {member.fullName} ({member.username})
-                  </label>
-                ))}
+              {projectDetails.data.projectMembers.map((member) => {
+  const isSelected = participantIds.includes(member.accountId); // ✅
+  return (
+    <label
+      key={member.id}
+      className={`flex items-center p-2 rounded-md cursor-pointer transition 
+        ${isSelected ? 'bg-blue-100 border border-blue-500' : 'bg-white border border-gray-300'}`}
+      onClick={() => handleParticipantToggle(member.accountId)} // ✅
+    >
+      <input
+        type="checkbox"
+        checked={isSelected}
+        readOnly
+        className="mr-2"
+      />
+      {member.fullName} ({member.username})
+    </label>
+  );
+})}
+
               </div>
             </div>
 
@@ -389,7 +202,6 @@ const CreateMeetingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Error Alert */}
             {errorMessage && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
                 <strong className="font-semibold">Lỗi:</strong> <span>{errorMessage}</span>

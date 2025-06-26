@@ -3,7 +3,9 @@ import {
   useGetProjectsByAccountIdQuery,
   useGetProjectDetailsQuery,
   useCreateMeetingMutation,
+  useCreateInternalMeetingMutation,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingServices';
+
 import { useAuth } from '../../../../services/AuthContext';
 
 const CreateMeetingPage: React.FC = () => {
@@ -28,6 +30,8 @@ const CreateMeetingPage: React.FC = () => {
   });
 
   const [createMeeting, { isLoading: isCreating }] = useCreateMeetingMutation();
+  const [createInternalMeeting] = useCreateInternalMeetingMutation();
+
 
   const handleParticipantToggle = (accountId: number) => {
     setParticipantIds((prev) =>
@@ -37,55 +41,154 @@ const CreateMeetingPage: React.FC = () => {
   };
   
 
-  const handleCreateMeeting = async () => {
-    console.log("🔍 Bắt đầu handleCreateMeeting");
-    setErrorMessage(null);
+//   const handleCreateMeeting = async () => {
+//     console.log("🔍 Bắt đầu handleCreateMeeting");
+//     setErrorMessage(null);
+  
+//     if (
+//       !selectedProjectId ||
+//       !meetingTopic ||
+//       !meetingUrl ||
+//       !meetingDate ||
+//       !startTime ||
+//       !endTime ||
+//       participantIds.length === 0
+//     ) {
+//       setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
+//       return;
+//     }
+  
+//     const startDateTime = new Date(`${meetingDate}T${startTime}`).toISOString();
+//     const endDateTime = new Date(`${meetingDate}T${endTime}`).toISOString();
+  
+//     const meetingPayload = {
+//       projectId: selectedProjectId,
+//       meetingTopic,
+//       meetingDate: new Date(meetingDate).toISOString(),
+//       meetingUrl,
+//       startTime: startDateTime,
+//       endTime: endDateTime,
+//       attendees: participantIds.length,
+//       participantIds,
+//     };
+  
+//     console.log("📤 Payload gửi đi:", meetingPayload);
+//     console.log("👥 Danh sách ID người tham gia:", participantIds);
+  
+//     try {
+//       const role = user?.role as string;
+    
+//       const mutationToUse =
+//         role === 'TEAM_LEADER'
+//           ? createInternalMeeting
+//           : role === 'PROJECT_MANAGER'
+//           ? createMeeting
+//           : null;
+    
+//       if (!mutationToUse) {
+//         setErrorMessage('❌ Bạn không có quyền tạo cuộc họp.');
+//         return;
+//       }
+    
+//       const response = await mutationToUse(meetingPayload).unwrap();
+    
+//       // ✅ Sau khi tạo thành công thì ghi log
+// if (!user?.id) {
+//   setErrorMessage('Không xác định được người dùng để ghi log cuộc họp.');
+//   return;
+// }
 
-    if (
-      !selectedProjectId ||
-      !meetingTopic ||
-      !meetingUrl ||
-      !meetingDate ||
-      !startTime ||
-      !endTime ||
-      participantIds.length === 0
-    ) {
-      setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
+// await createMeetingLog({
+//   meetingId: response?.data?.id,
+//   accountId: user.id, // ✅ chắc chắn là number
+//   action: 'CREATE_MEETING',
+// });
+
+    
+//       alert('✅ Cuộc họp đã được tạo và ghi log thành công!');
+//       console.log('📥 Response:', response);
+//       setErrorMessage(null);
+//     } catch (error: any) {
+//       const apiError = error?.data;
+//       const message =
+//         apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
+//       setErrorMessage(message);
+//       console.error('❌ Lỗi tạo cuộc họp:', error);
+//       console.error('📦 Dữ liệu gửi đi:', meetingPayload);
+//     }
+    
+//   };
+
+const handleCreateMeeting = async () => {
+  console.log("🔍 Bắt đầu handleCreateMeeting");
+  setErrorMessage(null);
+
+  if (
+    !selectedProjectId ||
+    !meetingTopic ||
+    !meetingUrl ||
+    !meetingDate ||
+    !startTime ||
+    !endTime ||
+    participantIds.length === 0
+  ) {
+    setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
+    return;
+  }
+
+  // Đảm bảo user.id được thêm vào đầu danh sách, không bị trùng
+  const finalParticipantIds = [user!.id, ...participantIds.filter(id => id !== user!.id)];
+
+  const startDateTime = new Date(`${meetingDate}T${startTime}`).toISOString();
+  const endDateTime = new Date(`${meetingDate}T${endTime}`).toISOString();
+
+  const meetingPayload = {
+    projectId: selectedProjectId,
+    meetingTopic,
+    meetingDate: new Date(meetingDate).toISOString(),
+    meetingUrl,
+    startTime: startDateTime,
+    endTime: endDateTime,
+    attendees: finalParticipantIds.length,
+    participantIds: finalParticipantIds,
+  };
+
+  console.log("📤 Payload gửi đi:", meetingPayload);
+  console.log("👥 Danh sách ID người tham gia:", finalParticipantIds);
+
+  try {
+    const role = user?.role as string;
+
+    const mutationToUse =
+      role === 'TEAM_LEADER'
+        ? createInternalMeeting
+        : role === 'PROJECT_MANAGER'
+        ? createMeeting
+        : null;
+
+    if (!mutationToUse) {
+      setErrorMessage('❌ Bạn không có quyền tạo cuộc họp.');
       return;
     }
 
-    const startDateTime = new Date(`${meetingDate}T${startTime}`).toISOString();
-    const endDateTime = new Date(`${meetingDate}T${endTime}`).toISOString();
+    const response = await mutationToUse(meetingPayload).unwrap();
 
-    const meetingPayload = {
-      projectId: selectedProjectId,
-      meetingTopic,
-      meetingDate: new Date(meetingDate).toISOString(),
-      meetingUrl,
-      startTime: startDateTime,
-      endTime: endDateTime,
-      attendees: participantIds.length,
-      participantIds,
-    };
+    alert('✅ Cuộc họp đã được tạo thành công!');
+    console.log('📥 Response:', response);
+    setErrorMessage(null);
+  } catch (error: any) {
+    const apiError = error?.data;
+    const message =
+      apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
+    setErrorMessage(message);
+    console.error('❌ Lỗi tạo cuộc họp:', error);
+    console.error('📦 Dữ liệu gửi đi:', meetingPayload);
+  }
+};
 
-    console.log("📤 Payload gửi đi:", meetingPayload);
-    console.log("👥 Danh sách ID người tham gia:", participantIds);
 
-    try {
-      const response = await createMeeting(meetingPayload).unwrap();
-      alert('✅ Cuộc họp đã được tạo thành công!');
-      console.log('📥 Response:', response);
-      setErrorMessage(null);
-    } catch (error: any) {
-      const apiError = error?.data;
-      const message =
-        apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
-      setErrorMessage(message);
-      console.error('❌ Lỗi tạo cuộc họp:', error);
-      console.error('📦 Dữ liệu gửi đi:', meetingPayload);
-    }
-  };
 
+  
   if (!accountId) {
     return (
       <div className="text-red-500 text-center mt-6 font-medium">

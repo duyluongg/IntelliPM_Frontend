@@ -12,6 +12,7 @@ import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
+import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 
 // Optional: Trang demo mở popup WorkItem
 const WorkItemPage: React.FC = () => {
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
       {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,
+      },
+      {
+        path: 'meeting-management',
+        element: <MeetingManagementPage />,
       },
     ],
   },

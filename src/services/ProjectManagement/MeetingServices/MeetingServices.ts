@@ -20,6 +20,7 @@ export interface ProjectMember {
 }
 
 interface CreateMeetingRequest {
+ 
     projectId: number;
     meetingTopic: string;
     meetingDate: string; // ISO string
@@ -127,6 +128,15 @@ export const meetingApi = createApi({
         body: meetingData,
       }),
     }),
+
+    createInternalMeeting: builder.mutation<CreateMeetingResponse, CreateMeetingRequest>({
+      query: (meetingData) => ({
+        url: 'meetings/internal',
+        method: 'POST',
+        body: meetingData,
+      }),
+    }),
+    
     getMeetingParticipants: builder.query<MeetingParticipant[], number>({
       query: (meetingId) => ({
         url: `meeting-participants/meeting/${meetingId}`,
@@ -219,4 +229,6 @@ export const {
   useGetMeetingParticipantsQuery,
   useUpdateParticipantStatusMutation,
   useGetMeetingsWithParticipantStatusQuery,
+  useCreateInternalMeetingMutation,
+
 } = meetingApi;

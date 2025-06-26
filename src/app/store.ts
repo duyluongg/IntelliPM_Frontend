@@ -2,21 +2,29 @@ import { configureStore } from '@reduxjs/toolkit';
 import { api } from '../services/api';
 import { authApi } from '../services/authApi';
 import { accountApi } from '../services/accountApi';
-import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; // ✅ THÊM DÒNG NÀY
+import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; 
+import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices'; 
+
+
+
 
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
     [authApi.reducerPath]: authApi.reducer,
     [accountApi.reducerPath]: accountApi.reducer,
-    [meetingApi.reducerPath]: meetingApi.reducer, // ✅ THÊM DÒNG NÀY
+    [meetingApi.reducerPath]: meetingApi.reducer, 
+    [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
+
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
       api.middleware,
       authApi.middleware,
       accountApi.middleware,
-      meetingApi.middleware // ✅ THÊM DÒNG NÀY
+      meetingApi.middleware ,
+      meetingLogApi.middleware 
+
     ),
 });
 

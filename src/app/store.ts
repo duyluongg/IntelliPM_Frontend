@@ -5,8 +5,10 @@ import { taskApi } from '../services/taskApi';
 import { milestoneApi } from '../services/milestoneApi';
 import { sprintApi } from '../services/sprintApi';
 import { accountApi } from '../services/accountApi';
-import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; // ✅ THÊM DÒNG NÀY
+import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; 
+import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices'; 
 import { projectMetricApi } from '../services/projectMetricApi';
+
 
 export const store = configureStore({
   reducer: {
@@ -16,9 +18,10 @@ export const store = configureStore({
     [milestoneApi.reducerPath]: milestoneApi.reducer,
     [sprintApi.reducerPath]: sprintApi.reducer,
     [accountApi.reducerPath]: accountApi.reducer,
-    [meetingApi.reducerPath]: meetingApi.reducer,
+    [meetingApi.reducerPath]: meetingApi.reducer, 
+    [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
-    // Thêm các slice khác nếu có
+
   },
 
   middleware: (getDefaultMiddleware) =>
@@ -29,8 +32,10 @@ export const store = configureStore({
       milestoneApi.middleware, 
       sprintApi.middleware,
       accountApi.middleware,
-      meetingApi.middleware, // ✅ THÊM DÒNG NÀY
+      meetingApi.middleware ,
+      meetingLogApi.middleware,
       projectMetricApi.middleware
+
     ),
 });
 

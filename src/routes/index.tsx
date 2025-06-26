@@ -11,6 +11,7 @@ import WorkItemDetail from '../pages/WorkItem/WorkItemDetail';
 import ChildWorkItem from '../pages/WorkItem/ChildWorkItem';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
+import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,14 @@ export const router = createBrowserRouter([
         path: 'gantt-chart',
         element: <Gantt />,
       },
+      {
+        path: 'project-dashboard',
+        element: <ProjectDashboard />,
+      },
+      // {
+      //   path: 'work-item',
+      //   element: <WorkItemPage />,
+      // },
       {
         path: 'work-item-detail',
         element: <WorkItemDetail />,

@@ -45,7 +45,8 @@ export const taskApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
-      const token = localStorage.getItem('accessToken');
+      const userJson = localStorage.getItem('user');
+      const token = userJson ? JSON.parse(userJson).accessToken : null;
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }

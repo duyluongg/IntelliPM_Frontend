@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
 
 interface ChildWorkItemPopupProps {
@@ -15,7 +16,7 @@ interface ChildWorkItemPopupProps {
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const navigate = useNavigate();
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -29,7 +30,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       <div className="child-work-item-container" onClick={(e) => e.stopPropagation()}>
         <div className="child-header">
           <div className="breadcrumb">
-            Projects / SEP_Agile_Scrum / <span>{item.parent}</span> / <span className="child-key">{item.key}</span>
+            Projects / SEP_Agile_Scrum / <span>{item.parent}</span> / <span
+              className="child-key"
+              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => navigate(`/child-work/${item.key}`)}
+            >
+              {item.key}
+            </span>
+
           </div>
           <button className="btn-close" onClick={onClose}>✖</button>
         </div>

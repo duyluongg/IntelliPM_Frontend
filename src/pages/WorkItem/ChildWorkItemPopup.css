@@ -14,9 +14,13 @@
 }
 
 .child-work-item-container {
-  max-height: 95vh;
-  max-width: 90vw;
+  width: 90%;
+  max-width: 1000px;
+  height: 80vh;
+  background: #fff;
+  padding: 24px 32px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #172b4d;
   overflow-y: auto;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  border-radius: 0px; /* bỏ bo góc */
 }

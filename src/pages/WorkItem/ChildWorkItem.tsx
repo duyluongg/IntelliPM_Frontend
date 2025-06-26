@@ -108,7 +108,6 @@ const ChildWorkItem: React.FC = () => {
               <option value="IN PROGRESS">In Progress</option>
               <option value="DONE">Done</option>
             </select>
-            <button className="btn-improve">⚡ Improve Subtask</button>
           </div>
 
           <div className="details-panel">
@@ -120,12 +119,6 @@ const ChildWorkItem: React.FC = () => {
             <div className="detail-item"><label>Start date</label><span>None</span></div>
             <div className="detail-item"><label>Fix versions</label><span>None</span></div>
             <div className="detail-item"><label>Story point estimate</label><span>None</span></div>
-            <div className="detail-item">
-              <label>Development</label>
-              <button className="dev-btn">Open with VS Code</button>
-              <button className="dev-btn">Create branch</button>
-              <button className="dev-btn">Create commit</button>
-            </div>
             <div className="detail-item"><label>Reporter</label><span>Ngo Pham Thao Vy (K16_HCM)</span></div>
           </div>
         </div>

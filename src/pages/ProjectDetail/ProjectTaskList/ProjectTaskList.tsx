@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './ProjectTaskList.css';
 import { FaSearch, FaCalendarAlt, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
+import WorkItem from '../../WorkItem/WorkItem'; // ✅ Đảm bảo đường dẫn đúng
 
 interface Reporter {
   fullName: string;
@@ -125,6 +126,14 @@ const HeaderBar: React.FC = () => {
 };
 
 const ProjectTaskList: React.FC = () => {
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+  const handleOpenWorkItem = (key: string) => {
+    setSelectedKey(key);
+    setIsPopupOpen(true);
+  };
+
   return (
     <div className="task-page-wrapper">
       <HeaderBar />
@@ -150,7 +159,14 @@ const ProjectTaskList: React.FC = () => {
             {mockTasks.map((task) => (
               <tr key={task.id}>
                 <td><span className={`icon icon-${task.type}`}></span></td>
-                <td>{task.key}</td>
+                <td>
+                  <span
+                    style={{ color: '#2563eb', cursor: 'pointer' }}
+                    onClick={() => handleOpenWorkItem(task.key)}
+                  >
+                    {task.key}
+                  </span>
+                </td>
                 <td>{task.summary}</td>
                 <td>
                   <span className={`status status-${task.status.replace(/ /g, '-').toLowerCase()}`}>
@@ -172,6 +188,25 @@ const ProjectTaskList: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* ✅ WorkItem Popup */}
+      {isPopupOpen && selectedKey && (
+        <WorkItem
+          isOpen={isPopupOpen}
+          onClose={() => setIsPopupOpen(false)}
+          childWorkItems={[
+            {
+              key: 'SAS-15',
+              summary: 'child item',
+              priority: 'Medium', 
+              assignee: 'Unassigned', 
+              status: 'To Do'
+            },
+          ]}
+          onChildItemClick={(item) => console.log('Clicked child item', item)}
+          onChildPopupClose={() => setIsPopupOpen(false)}
+        />
+      )}
     </div>
   );
 };

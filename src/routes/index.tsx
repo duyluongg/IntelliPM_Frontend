@@ -13,6 +13,7 @@ import ChildWorkItem from '../pages/ChildWorkItem';
 import React from 'react';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
+import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 
 // Optional: Trang demo mở popup WorkItem
 const WorkItemPage: React.FC = () => {
@@ -60,6 +61,10 @@ export const router = createBrowserRouter([
       {
         path: 'gantt-chart',
         element: <Gantt />,
+      },
+      {
+        path: 'project-dashboard',
+        element: <ProjectDashboard />,
       },
       {
         path: 'work-item',

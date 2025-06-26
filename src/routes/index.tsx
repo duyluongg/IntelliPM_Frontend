@@ -4,16 +4,15 @@ import PMLayout from '../layout/PMLayout';
 import Homepage from '../pages/Homepage';
 import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
-import WorkItem from '../pages/WorkItem';
+import Gantt from '../pages/PM/Gantt/Gantt';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
-import WorkItemDetail from '../pages/WorkItemDetail';
-import ChildWorkItem from '../pages/ChildWorkItem';
-import React from 'react';
+import WorkItemDetail from '../pages/WorkItem/WorkItemDetail';
+import ChildWorkItem from '../pages/WorkItem/ChildWorkItem';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
-
+import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 // Optional: Trang demo mở popup WorkItem
 const WorkItemPage: React.FC = () => {
   const [isWorkItemOpen, setIsWorkItemOpen] = React.useState(false);
@@ -43,6 +42,7 @@ const WorkItemPage: React.FC = () => {
 
 
 
+
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -58,15 +58,23 @@ export const router = createBrowserRouter([
         element: <Homepage />,
       },
       {
-        path: 'work-item',
-        element: <WorkItemPage />,
+        path: 'gantt-chart',
+        element: <Gantt />,
       },
+      {
+        path: 'project-dashboard',
+        element: <ProjectDashboard />,
+      },
+      // {
+      //   path: 'work-item',
+      //   element: <WorkItemPage />,
+      // },
       {
         path: 'work-item-detail',
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key', // ✅ route động cho child work item
+        path: 'child-work/:key', 
         element: <ChildWorkItem />,
       },
         {

@@ -1,0 +1,26 @@
+@import './ChildWorkItem.css'; /* dùng lại style chính */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.child-work-item-container {
+  width: 90%;
+  max-width: 1000px;
+  height: 80vh;
+  background: #fff;
+  padding: 24px 32px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #172b4d;
+  overflow-y: auto;
+  border-radius: 0px; /* bỏ bo góc */
+}

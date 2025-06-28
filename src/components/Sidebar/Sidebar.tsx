@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import {
   UserCircle,
   Clock,
@@ -9,9 +10,11 @@ import {
   MoreHorizontal,
   ChevronRight,
   LogOut,
+  CalendarCheck,
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 
 // Interface cho recentProjects
@@ -26,35 +29,46 @@ const menuItems = [
   { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
+  { icon: <Rocket className='w-5 h-5' />, label: 'Projects' },
+  // {
+  //   icon: <Rocket className='w-5 h-5' />,
+  //   label: 'Projects',
+  //   hasArrow: true,
+  //   children: [
+  //     { label: 'Project 1', route: '/gantt-chart' },
+  //     { label: 'Project 2' },
+  //     { label: 'Project 3' },
+  //   ],
+  // },
+  { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
 
 export default function Sidebar() {
- const [showProjects, setShowProjects] = useState(false);
-const [hovered, setHovered] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-const user = localStorage.getItem('user');
-const accessToken = user ? JSON.parse(user).accessToken : '';
-const {
-  data: projectsData,
-  isLoading,
-  error
-} = useGetProjectsByAccountQuery(accessToken);
+  const user = localStorage.getItem('user');
+  const accessToken = user ? JSON.parse(user).accessToken : '';
+  const {
+    data: projectsData,
+    isLoading,
+    error,
+  } = useGetProjectsByAccountQuery(accessToken);
 
-const recentProjects: RecentProject[] = projectsData?.isSuccess
-  ? projectsData.data.map((proj) => ({
-      name: proj.projectName,
-      icon: '📊',
-    }))
-  : [];
-
+  const recentProjects: RecentProject[] = projectsData?.isSuccess
+    ? projectsData.data.map((proj) => ({
+        name: proj.projectName,
+        icon: '📊',
+      }))
+    : [];
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 '>
       <div className='pt-4'>
         {/* Các menu bình thường */}
-        {menuItems.map((item, index) => (
+        {/* {menuItems.map((item, index) => (
           <div
             key={index}
             className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
@@ -65,7 +79,37 @@ const recentProjects: RecentProject[] = projectsData?.isSuccess
             </div>
             {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
           </div>
-        ))}
+        ))} */}
+             
+
+             {menuItems.map((item, index) =>
+  item.path ? (  // Kiểm tra xem menu có path hay không
+    <Link
+      key={index}
+      to={item.path} // Dùng Link để điều hướng
+      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors no-underline'
+    >
+      <div className='flex items-center space-x-2'>
+        {item.icon}
+        <span>{item.label}</span>
+      </div>
+      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+    </Link>
+  ) : ( // Nếu không có path, vẫn giữ nguyên div như cũ
+    <div
+      key={index}
+      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
+    >
+      <div className='flex items-center space-x-2'>
+        {item.icon}
+        <span>{item.label}</span>
+      </div>
+      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+    </div>
+  )
+)}
+
+
 
         {/* Mục Projects */}
         <div
@@ -117,13 +161,15 @@ const recentProjects: RecentProject[] = projectsData?.isSuccess
                 <div className='text-sm text-gray-500 py-1'>No projects found</div>
               ) : (
                 recentProjects.map((proj, i) => (
-                  <div
+                  <Link
                     key={i}
-                    className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm'
+                    to={`/projects?project=${encodeURIComponent(proj.name)}`}
+                    className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm text-gray-800 no-underline'
+                    onClick={() => setShowProjects(false)}
                   >
                     <span className='text-lg'>{proj.icon}</span>
                     <span className='truncate'>{proj.name}</span>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

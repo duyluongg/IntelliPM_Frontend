@@ -17,6 +17,7 @@ import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
+import WorkItem from '../pages/WorkItem/WorkItem';
 // Optional: Trang demo mở popup WorkItem
 const WorkItemPage: React.FC = () => {
   const [isWorkItemOpen, setIsWorkItemOpen] = React.useState(false);

@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import {
   UserCircle,
   Clock,
@@ -14,8 +13,9 @@ import {
   Plus,
 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
+import { useAuth } from '../../services/AuthContext';
 
 // Interface cho recentProjects
 interface RecentProject {
@@ -43,19 +43,20 @@ const menuItems = [
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
+  {
+    icon: <CalendarCheck className='w-5 h-5' />,
+    label: 'Create and schedule meetings ',
+    path: '/pm/meeting-room',
+  },
 ];
 
 export default function Sidebar() {
   const [showProjects, setShowProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
-
+  const navigate = useNavigate();
   const user = localStorage.getItem('user');
   const accessToken = user ? JSON.parse(user).accessToken : '';
-  const {
-    data: projectsData,
-    isLoading,
-    error,
-  } = useGetProjectsByAccountQuery(accessToken);
+  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(accessToken);
 
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
@@ -63,6 +64,12 @@ export default function Sidebar() {
         icon: '📊',
       }))
     : [];
+
+  const { logout } = useAuth();
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 '>
@@ -80,36 +87,34 @@ export default function Sidebar() {
             {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
           </div>
         ))} */}
-             
 
-             {menuItems.map((item, index) =>
-  item.path ? (  // Kiểm tra xem menu có path hay không
-    <Link
-      key={index}
-      to={item.path} // Dùng Link để điều hướng
-      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors no-underline'
-    >
-      <div className='flex items-center space-x-2'>
-        {item.icon}
-        <span>{item.label}</span>
-      </div>
-      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
-    </Link>
-  ) : ( // Nếu không có path, vẫn giữ nguyên div như cũ
-    <div
-      key={index}
-      className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
-    >
-      <div className='flex items-center space-x-2'>
-        {item.icon}
-        <span>{item.label}</span>
-      </div>
-      {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
-    </div>
-  )
-)}
-
-
+        {menuItems.map((item, index) =>
+          item.path ? ( // Kiểm tra xem menu có path hay không
+            <Link
+              key={index}
+              to={item.path} // Dùng Link để điều hướng
+              className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors no-underline'
+            >
+              <div className='flex items-center space-x-2'>
+                {item.icon}
+                <span>{item.label}</span>
+              </div>
+              {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+            </Link>
+          ) : (
+            // Nếu không có path, vẫn giữ nguyên div như cũ
+            <div
+              key={index}
+              className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
+            >
+              <div className='flex items-center space-x-2'>
+                {item.icon}
+                <span>{item.label}</span>
+              </div>
+              {item.hasArrow && <ChevronRight className='w-4 h-4 text-gray-400' />}
+            </div>
+          )
+        )}
 
         {/* Mục Projects */}
         <div
@@ -156,7 +161,9 @@ export default function Sidebar() {
               {isLoading ? (
                 <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
               ) : error ? (
-                <div className='text-sm text-red-500 py-1'>Error loading projects: {error.toString()}</div>
+                <div className='text-sm text-red-500 py-1'>
+                  Error loading projects: {error.toString()}
+                </div>
               ) : recentProjects.length === 0 ? (
                 <div className='text-sm text-gray-500 py-1'>No projects found</div>
               ) : (
@@ -180,7 +187,7 @@ export default function Sidebar() {
       {/* Sign out */}
       <div className='text-sm text-gray-600 px-4 py-3 border-t border-gray-200 hover:bg-gray-50 cursor-pointer flex items-center space-x-2'>
         <LogOut className='w-4 h-4 text-red-500' />
-        <button>Sign out</button>
+        <button onClick={handleLogout}>Sign out</button>
       </div>
     </aside>
   );

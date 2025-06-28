@@ -5,6 +5,8 @@ import { useCalculateProjectMetricsMutation } from '../../../services/projectMet
 import HealthOverview from './HealthOverview';
 import ProgressPerSprint from './ProgressPerSprint';
 import TimeComparisonChart from './TimeComparisonChart';
+import CostBarChart from './CostBarChart';
+import WorkloadChart from './WorkloadChart';
 
 const ProjectDashboard = () => {
   const [calculate] = useCalculateProjectMetricsMutation();
@@ -28,7 +30,7 @@ const ProjectDashboard = () => {
         <TaskStatusChart />
       </DashboardCard>
 
-      <DashboardCard title='Progress per Sprint'>
+      <DashboardCard title='Progress'>
         <ProgressPerSprint />
       </DashboardCard>
 
@@ -36,12 +38,12 @@ const ProjectDashboard = () => {
         <TimeComparisonChart />
       </DashboardCard>
 
-      <DashboardCard title='Project Cost'>
-        <TaskStatusChart />
+      <DashboardCard title='Cost'>
+        <CostBarChart />
       </DashboardCard>
 
-      <DashboardCard title='Workload Analysis'>
-        <TaskStatusChart />
+      <DashboardCard title='Workload'>
+        <WorkloadChart />
       </DashboardCard>
     </div>
   );

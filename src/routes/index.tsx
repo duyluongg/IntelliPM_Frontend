@@ -23,9 +23,7 @@ const WorkItemPage: React.FC = () => {
   const [isWorkItemOpen, setIsWorkItemOpen] = React.useState(false);
 
   // Dữ liệu mẫu cho child work items
-  const childWorkItems = [
-    { key: 'SAS-15', summary: 'hello', status: 'To Do' },
-  ];
+  const childWorkItems = [{ key: 'SAS-15', summary: 'hello', status: 'To Do' }];
 
   return (
     <div>
@@ -37,16 +35,12 @@ const WorkItemPage: React.FC = () => {
           onClose={() => setIsWorkItemOpen(false)}
           childWorkItems={childWorkItems}
           onChildItemClick={(item) => console.log('Clicked child item', item)} // 👈 truyền vào hàm
-          onChildPopupClose={() => console.log('Closed popup')}                // 👈 truyền vào hàm
+          onChildPopupClose={() => console.log('Closed popup')} // 👈 truyền vào hàm
         />
       )}
     </div>
   );
 };
-
-
-
-
 
 export const router = createBrowserRouter([
   {
@@ -66,14 +60,10 @@ export const router = createBrowserRouter([
       //   path: '/projects/form',
       //   element: <Homepage />,
       // },
-       { path: 'projects/form', element: <Form /> },
+      { path: 'projects/form', element: <Form /> },
 
-       { path: 'projects/form/:formId', element: <Form /> },
-       { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
-
-       
-     
-
+      { path: 'projects/form/:formId', element: <Form /> },
+      { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
 
       {
         path: 'gantt-chart',
@@ -92,11 +82,11 @@ export const router = createBrowserRouter([
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key', 
+        path: 'child-work/:key',
         element: <ChildWorkItem />,
       },
-        {
-        path: '/projects', 
+      {
+        path: '/projects',
         element: <ProjectDetail />,
       },
       {

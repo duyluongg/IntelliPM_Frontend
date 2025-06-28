@@ -1,12 +1,12 @@
 import { Outlet } from 'react-router-dom';
-import SidebarPM from '../components/PM/sildebarPM';
 import Header from '../components/Header';
+import Sidebar from '../components/Sidebar/Sidebar';
 
 const PMLayout = () => (
   <>
     <Header/>
     <div className='flex h-screen  mt-10'>
-      <SidebarPM />
+      <Sidebar />
       <div className='flex-1 overflow-auto'>
         <Outlet />
       </div>

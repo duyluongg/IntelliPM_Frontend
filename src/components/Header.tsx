@@ -20,16 +20,16 @@ export default function Header() {
         </button>
 
         <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
-            <img
-              src={logo}
-              className='h-10 w-auto object-contain scale-[1.2]'
-              style={{ transformOrigin: 'left center', marginRight: '-8px'  }}
-            />
-            <img
-              src={textLogo}
-              className='h-9 w-auto object-contain scale-[0.36]'
-              style={{ transformOrigin: 'left center' }}
-            />
+          <img
+            src={logo}
+            className='h-10 w-auto object-contain scale-[1.2]'
+            style={{ transformOrigin: 'left center', marginRight: '-8px' }}
+          />
+          <img
+            src={textLogo}
+            className='h-9 w-auto object-contain scale-[0.36]'
+            style={{ transformOrigin: 'left center' }}
+          />
         </Link>
       </div>
 
@@ -50,10 +50,6 @@ export default function Header() {
       </div>
 
       <div className='flex items-center space-x-2'>
-        <button className='hidden lg:flex border px-3 py-1.5 rounded-md text-sm items-center text-purple-600 border-blue-300 hover:bg-gray-100'>
-          <span className='mr-1'>💎</span> Premium
-        </button>
-
         <button className='hidden md:flex border px-3 py-1.5 rounded-md text-sm items-center hover:bg-gray-100'>
           <span className='mr-1'>💬</span> Chat
         </button>

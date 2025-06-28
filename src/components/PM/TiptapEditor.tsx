@@ -25,13 +25,6 @@ export default function TiptapEditor({ content, onChange }: Props) {
   if (!editor) return null;
 
   return (
-    // <div>
-    //   <EditorContent
-    //     editor={editor}
-    //     className='focus:outline-none focus:ring-0 focus:border-none'
-    //   />
-    // </div>
-
     <div className='space-y-2'>
       {/* Toolbar */}
       <div className='flex flex-wrap gap-2 border p-2 rounded bg-gray-50'>
@@ -77,7 +70,7 @@ export default function TiptapEditor({ content, onChange }: Props) {
           <Table size={16} />
         </button>
 
-        <DropdownAI/>
+        <DropdownAI editor={editor} onGenerate={() => {}} />
       </div>
 
       <EditorContent
@@ -87,51 +80,3 @@ export default function TiptapEditor({ content, onChange }: Props) {
     </div>
   );
 }
-// import { useEditor, EditorContent } from '@tiptap/react';
-// import { CustomExtensions } from './tiptapExtensions';
-// import {
-//   Bold, Italic, Undo, Redo, List, ListOrdered, Table
-// } from 'lucide-react'; // bạn có thể dùng icon khác hoặc text thuần
-// import '../../../src/index.css'
-
-// export default function TiptapEditor({ content, onChange }: any) {
-//   const editor = useEditor({
-//     extensions: CustomExtensions,
-//     content,
-//     onUpdate: ({ editor }) => onChange(editor.getHTML()),
-//   });
-
-//   if (!editor) return null;
-
-//   return (
-//     <div className="space-y-2">
-//       {/* Toolbar */}
-//       <div className="flex flex-wrap gap-2 border p-2 rounded bg-gray-50">
-//         <button onClick={() => editor.chain().focus().undo().run()}><Undo size={16} /></button>
-//         <button onClick={() => editor.chain().focus().redo().run()}><Redo size={16} /></button>
-
-//         <select
-//           onChange={(e) => {
-//             const level = parseInt(e.target.value);
-//             editor.chain().focus().toggleHeading({ level }).run();
-//           }}
-//           defaultValue=""
-//         >
-//           <option value="" disabled>Heading</option>
-//           <option value="1">H1</option>
-//           <option value="2">H2</option>
-//           <option value="3">H3</option>
-//         </select>
-
-//         <button onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={16} /></button>
-//         <button onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={16} /></button>
-//         <button onClick={() => editor.chain().focus().toggleBulletList().run()}><List size={16} /></button>
-//         <button onClick={() => editor.chain().focus().toggleOrderedList().run()}><ListOrdered size={16} /></button>
-//         <button onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Table size={16} /></button>
-//       </div>
-
-//       {/* Editor */}
-//       <EditorContent editor={editor} className="border p-4 rounded min-h-[300px]" />
-//     </div>
-//   );
-// }

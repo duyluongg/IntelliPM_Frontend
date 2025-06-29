@@ -161,7 +161,7 @@ const ProjectTaskList: React.FC = () => {
                   .map((n) => n[0])
                   .join('')
                   .substring(0, 2) || '',
-              avatarColor: '#f3eded',
+              avatarColor: '#2563eb',
               picture: assignee.picture || undefined,
             })),
             dueDate: item.dueDate || null,
@@ -176,7 +176,7 @@ const ProjectTaskList: React.FC = () => {
                   .map((n) => n[0])
                   .join('')
                   .substring(0, 2) || '',
-              avatarColor: '#f3eded',
+              avatarColor: '#2563eb',
               picture: item.reporterPicture || undefined,
             },
           };

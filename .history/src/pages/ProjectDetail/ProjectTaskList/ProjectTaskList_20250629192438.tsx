@@ -137,7 +137,13 @@ const ProjectTaskList: React.FC = () => {
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
 
-  const [isPopupOpen, setIsPopupOpen] = useState(false); // Xóa selectedKey và setSelectedKey
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+  const handleOpenWorkItem = (key: string) => {
+    setSelectedKey(key);
+    setIsPopupOpen(true);
+  };
 
   const tasks: TaskItem[] =
     isLoading || error || !workItemsData?.data
@@ -161,7 +167,7 @@ const ProjectTaskList: React.FC = () => {
                   .map((n) => n[0])
                   .join('')
                   .substring(0, 2) || '',
-              avatarColor: '#f3eded',
+              avatarColor: '#2563eb',
               picture: assignee.picture || undefined,
             })),
             dueDate: item.dueDate || null,
@@ -176,7 +182,7 @@ const ProjectTaskList: React.FC = () => {
                   .map((n) => n[0])
                   .join('')
                   .substring(0, 2) || '',
-              avatarColor: '#f3eded',
+              avatarColor: '#2563eb',
               picture: item.reporterPicture || undefined,
             },
           };
@@ -253,7 +259,7 @@ const ProjectTaskList: React.FC = () => {
                             fill='none'
                           ></path>
                         </svg>
-                        <span className='subtask-id' onClick={() => setIsPopupOpen(true)}> {/* Thay handleOpenWorkItem bằng setIsPopupOpen */}
+                        <span className='subtask-id' onClick={() => handleOpenWorkItem(task.key)}>
                           {task.key}
                         </span>
                       </div>
@@ -261,7 +267,7 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div className='task-key-wrapper'>
                       <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => setIsPopupOpen(true)}> {/* Thay handleOpenWorkItem bằng setIsPopupOpen */}
+                      <span className='task-key' onClick={() => handleOpenWorkItem(task.key)}>
                         {task.key}
                       </span>
                     </div>
@@ -345,15 +351,29 @@ const ProjectTaskList: React.FC = () => {
         </table>
       </div>
 
-      {/* ✅ WorkItem Popup */}
-      {isPopupOpen && (
+
+      {isPopupOpen && selectedKey && (
         <WorkItem
           isOpen={isPopupOpen}
           onClose={() => setIsPopupOpen(false)}
+          childWorkItems={[
+            {
+              key: 'SAS-15',
+              summary: 'child item',
+              priority: 'Medium',
+              assignee: 'Unassigned',
+              status: 'To Do',
+            },
+          ]}
+          onChildItemClick={(item) => console.log('Clicked child item', item)}
+          onChildPopupClose={() => setIsPopupOpen(false)}
         />
       )}
+      
     </div>
   );
 };
 
 export default ProjectTaskList;
+
+/// Tuan dat

@@ -38,7 +38,7 @@ export const store = configureStore({
       meetingApi.middleware ,
       meetingLogApi.middleware,
       projectMetricApi.middleware,
-      subtaskApi.middleware
+      subtaskApi.middleware,
       projectApi.middleware
     ),
 });

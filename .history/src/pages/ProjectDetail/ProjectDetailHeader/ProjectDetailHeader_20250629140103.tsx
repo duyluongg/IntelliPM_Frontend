@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
+import projectIcon from '../../assets/projectManagement.png';
 
 import {
   Users2,
@@ -59,8 +59,6 @@ const ProjectDetailHeader: React.FC = () => {
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
-
   useEffect(() => {
     const updateTabs = () => {
       if (containerRef.current) {
@@ -108,7 +106,7 @@ const ProjectDetailHeader: React.FC = () => {
   }, []);
 
   // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
-  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
+  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'SEP_Agile_Scrum';
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -123,7 +121,7 @@ const ProjectDetailHeader: React.FC = () => {
       </nav>
 
       <div className='flex items-center gap-2'>
-        <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
+        <img src={projectIcon} alt='Project Icon' className='w-6 h-6 rounded' />
         <h1 className='text-lg font-semibold'>{projectName}</h1>
         <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
           <Users2 className='w-4 h-4' />

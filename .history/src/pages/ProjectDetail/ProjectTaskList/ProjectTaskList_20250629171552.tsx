@@ -350,11 +350,22 @@ const ProjectTaskList: React.FC = () => {
           </tbody>
         </table>
       </div>
-     
-      {isPopupOpen && (
+
+      {isPopupOpen && selectedKey && (
         <WorkItem
           isOpen={isPopupOpen}
           onClose={() => setIsPopupOpen(false)}
+          childWorkItems={[
+            {
+              key: 'SAS-15',
+              summary: 'child item',
+              priority: 'Medium',
+              assignee: 'Unassigned',
+              status: 'To Do',
+            },
+          ]}
+          onChildItemClick={(item) => console.log('Clicked child item', item)}
+          onChildPopupClose={() => setIsPopupOpen(false)}
         />
       )}
     </div>

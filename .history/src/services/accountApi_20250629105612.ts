@@ -4,8 +4,6 @@ import { API_BASE_URL } from '../constants/api';
 interface Project {
   projectId: number;
   projectName: string;
-  projectKey: string;
-  iconUrl: string | null;
   projectStatus: string;
   joinedAt: string;
   invitedAt: string;

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
-
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
+import type { SerializedError } from '@reduxjs/toolkit';
 import {
   Users2,
   MoreHorizontal,
@@ -49,18 +49,14 @@ const ProjectDetailHeader: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound'; // Lấy projectKey từ URL
+  const projectKey = searchParams.get('projectKey') || '';
 
-  // Gọi API để lấy chi tiết dự án
-  const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
+  const { data, isLoading, isError, error } = useGetProjectDetailsByKeyQuery(projectKey);
+  const projectDetails = data?.data;
 
-  const togglePopup = () => {
-    console.log('Toggling popup, isPopupOpen:', !isPopupOpen); // Debug log
-    setIsPopupOpen(!isPopupOpen);
-  };
+  const togglePopup = () => setIsPopupOpen(!isPopupOpen);
 
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
-
+  // Tab overflow handling
   useEffect(() => {
     const updateTabs = () => {
       if (containerRef.current) {
@@ -68,13 +64,8 @@ const ProjectDetailHeader: React.FC = () => {
         const tabWidth = 100;
         const maxVisible = Math.floor(containerWidth / tabWidth);
 
-        if (maxVisible < navItems.length) {
-          setVisibleTabs(navItems.slice(0, maxVisible));
-          setHiddenTabs(navItems.slice(maxVisible));
-        } else {
-          setVisibleTabs(navItems);
-          setHiddenTabs([]);
-        }
+        setVisibleTabs(navItems.slice(0, maxVisible));
+        setHiddenTabs(navItems.slice(maxVisible));
       }
     };
 
@@ -83,6 +74,7 @@ const ProjectDetailHeader: React.FC = () => {
     return () => window.removeEventListener('resize', updateTabs);
   }, []);
 
+  // Close popup when click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -99,6 +91,7 @@ const ProjectDetailHeader: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Detect current tab
   useEffect(() => {
     const currentPath = window.location.hash.split('/').pop();
     if (currentPath) {
@@ -107,8 +100,20 @@ const ProjectDetailHeader: React.FC = () => {
     }
   }, []);
 
-  // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
-  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
+  // Error handling
+  if (isLoading) return <div className='mx-6 pt-6 text-gray-500'>Loading project details...</div>;
+
+  if (isError) {
+    const err = error as FetchBaseQueryError | SerializedError;
+    const errorMessage =
+      'status' in err
+        ? (err.data as { message?: string })?.message ?? 'Server error'
+        : err.message ?? 'Unexpected error';
+
+    return <div className='mx-6 pt-6 text-red-500'>Error: {errorMessage}</div>;
+  }
+
+  const projectIconUrl = projectDetails?.iconUrl || '/default-project-icon.png';
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -124,7 +129,7 @@ const ProjectDetailHeader: React.FC = () => {
 
       <div className='flex items-center gap-2'>
         <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
-        <h1 className='text-lg font-semibold'>{projectName}</h1>
+        <h1 className='text-lg font-semibold'>{projectDetails?.name || 'Unnamed Project'}</h1>
         <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
           <Users2 className='w-4 h-4' />
         </button>
@@ -133,36 +138,28 @@ const ProjectDetailHeader: React.FC = () => {
         </button>
         <div className='ml-auto flex items-center space-x-2'>
           <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Fullscreen'>
-            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
-            </svg>
+            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'></svg>
           </button>
           <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Share'>
-            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
-            </svg>
+            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'></svg>
           </button>
           <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Automation'>
-            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} />
-            </svg>
+            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'></svg>
           </button>
         </div>
       </div>
 
-      <nav aria-label='Project navigation' className='mt-4 relative' ref={containerRef}>
+      <nav className='mt-4 relative' ref={containerRef}>
         <ul className='flex items-center gap-6 border-b border-gray-200 pb-1'>
           {visibleTabs.map((item, idx) => (
             <li key={idx} className='flex items-center relative group'>
               <a
-                href={`#/${item.label.toLowerCase()}`}
-                className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
-                   ${
-                     activeTab === item.label
-                       ? 'text-blue-600 border-blue-600 font-medium'
-                       : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
-                   }`}
+                href={`#/projects/${projectKey}/${item.label.toLowerCase()}`}
+                className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 ${
+                  activeTab === item.label
+                    ? 'text-blue-600 border-blue-600 font-medium'
+                    : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
+                }`}
                 onClick={() => setActiveTab(item.label)}
               >
                 <span className='relative flex items-center'>
@@ -178,21 +175,19 @@ const ProjectDetailHeader: React.FC = () => {
               <button
                 onClick={togglePopup}
                 className='flex items-center gap-1 text-sm text-gray-600 hover:text-black pb-1'
-                aria-label='More tabs'
               >
                 <span>More</span>
                 <span className='flex items-center justify-center w-4 h-4 text-xs bg-gray-100 text-gray-600 rounded-full'>
                   {hiddenTabs.length}
                 </span>
               </button>
-
               {isPopupOpen && (
                 <div className='absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 shadow-md z-50 rounded'>
                   <ul>
                     {hiddenTabs.map((item, idx) => (
                       <li key={idx}>
                         <a
-                          href={`/${item.label.toLowerCase()}`}
+                          href={`#/projects/${projectKey}/${item.label.toLowerCase()}`}
                           className={`flex items-center gap-2 w-full py-2 px-4 hover:bg-gray-100 ${
                             activeTab === item.label ? 'text-blue-600 font-medium' : 'text-gray-700'
                           }`}

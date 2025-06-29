@@ -7,7 +7,6 @@
   background-color: #ffffff;
 }
 
-/* Header chứa search, avatar, filter, group, ... */
 .task-header-bar {
   display: flex;
   align-items: center;

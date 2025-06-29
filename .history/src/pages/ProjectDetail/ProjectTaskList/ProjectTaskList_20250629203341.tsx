@@ -48,35 +48,22 @@ interface Assignee {
 
 // Component Status
 const Status: React.FC<{ status: string }> = ({ status }) => {
-  const formatStatusForDisplay = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'to_do':
-        return 'TO DO';
-      case 'in_progress':
-        return 'IN PROGRESS';
-      case 'done':
-        return 'DONE';
-      default:
-        return status;
-    }
-  };
-
   const getStatusStyle = () => {
     switch (status.toLowerCase()) {
-      case 'to_do':
-        return { backgroundColor: '#dddee1', color: '#6B778C' };
-      case 'in_progress':
-        return { backgroundColor: '#87b1e1', color: '#0747A6' };
+      case 'to do':
+        return { backgroundColor: '#dddee1', color: '#42526E' };
+      case 'in progress':
+        return { backgroundColor: '#87b1e1', color: '#172B4D' };
       case 'done':
-        return { backgroundColor: '#b2da73', color: '#006644' };
+        return { backgroundColor: '#b2da73', color: '#172B4D' };
       default:
-        return { backgroundColor: '#dddee1', color: '#6B778C' };
+        return { backgroundColor: '#dddee1', color: '#42526E' };
     }
   };
 
   return (
     <div className="status-container">
-      <span className="status-line" style={getStatusStyle()}>{formatStatusForDisplay(status)}</span>
+      <span className="status-line" style={getStatusStyle()}>{status}</span>
     </div>
   );
 };
@@ -183,7 +170,7 @@ const ProjectTaskList: React.FC = () => {
           key: item.key || '',
           taskId: item.taskId || null,
           summary: item.summary || '',
-          status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
+          status: item.status || '',
           comments: item.commentCount || 0,
           sprint: item.sprintId || null,
           assignees: item.assignees.map((assignee) => ({
@@ -269,7 +256,7 @@ const ProjectTaskList: React.FC = () => {
                             stroke="#42526E"
                             stroke-width="1.33333"
                             fill="none"
-                          ></circle>
+                          />
                           <circle
                             cx="10.6667"
                             cy="10.6666"
@@ -277,13 +264,13 @@ const ProjectTaskList: React.FC = () => {
                             stroke="#42526E"
                             stroke-width="1.33333"
                             fill="none"
-                          ></circle>
+                          />
                           <path
                             d="M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337"
                             stroke="#42526E"
                             stroke-width="1.33333"
                             fill="none"
-                          ></path>
+                          />
                         </svg>
                         <span className="subtask-id" onClick={() => setIsPopupOpen(true)}>
                           {task.key}
@@ -345,7 +332,7 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.sprint === null || task.sprint === undefined || task.sprint === 0
                     ? ''
-                    : <span className="sprint-cell">Sprint {task.sprint}</span>}
+                    : `Sprint ${task.sprint}`}
                 </td>
                 <td>
                   {task.assignees.map((assignee, index) => (
@@ -362,7 +349,9 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                        <span key={index} className="label-tag">{label}</span>
+                        <span key={index} className="label-tag">
+                          {label}
+                        </span>
                       ))
                     : ''}
                 </td>
@@ -376,13 +365,7 @@ const ProjectTaskList: React.FC = () => {
           </tbody>
         </table>
       </div>
-
-      {isPopupOpen && (
-        <WorkItem
-          isOpen={isPopupOpen}
-          onClose={() => setIsPopupOpen(false)}
-        />
-      )}
+      {isPopupOpen && <WorkItem isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)} />}
     </div>
   );
 };

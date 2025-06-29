@@ -48,24 +48,11 @@ interface Assignee {
 
 // Component Status
 const Status: React.FC<{ status: string }> = ({ status }) => {
-  const formatStatusForDisplay = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'to_do':
-        return 'TO DO';
-      case 'in_progress':
-        return 'IN PROGRESS';
-      case 'done':
-        return 'DONE';
-      default:
-        return status;
-    }
-  };
-
   const getStatusStyle = () => {
     switch (status.toLowerCase()) {
-      case 'to_do':
+      case 'to do':
         return { backgroundColor: '#dddee1', color: '#6B778C' };
-      case 'in_progress':
+      case 'in progress':
         return { backgroundColor: '#87b1e1', color: '#0747A6' };
       case 'done':
         return { backgroundColor: '#b2da73', color: '#006644' };
@@ -76,7 +63,7 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
 
   return (
     <div className="status-container">
-      <span className="status-line" style={getStatusStyle()}>{formatStatusForDisplay(status)}</span>
+      <span className="status-line" style={getStatusStyle()}>{status}</span>
     </div>
   );
 };
@@ -183,7 +170,7 @@ const ProjectTaskList: React.FC = () => {
           key: item.key || '',
           taskId: item.taskId || null,
           summary: item.summary || '',
-          status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
+          status: item.status || '',
           comments: item.commentCount || 0,
           sprint: item.sprintId || null,
           assignees: item.assignees.map((assignee) => ({
@@ -345,7 +332,7 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.sprint === null || task.sprint === undefined || task.sprint === 0
                     ? ''
-                    : <span className="sprint-cell">Sprint {task.sprint}</span>}
+                    : `Sprint ${task.sprint}`}
                 </td>
                 <td>
                   {task.assignees.map((assignee, index) => (

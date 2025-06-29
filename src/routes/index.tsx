@@ -17,30 +17,6 @@ import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
-import WorkItem from '../pages/WorkItem/WorkItem';
-// Optional: Trang demo mở popup WorkItem
-const WorkItemPage: React.FC = () => {
-  const [isWorkItemOpen, setIsWorkItemOpen] = React.useState(false);
-
-  // Dữ liệu mẫu cho child work items
-  const childWorkItems = [{ key: 'SAS-15', summary: 'hello', status: 'To Do' }];
-
-  return (
-    <div>
-      <h1>Work Item Management</h1>
-      <button onClick={() => setIsWorkItemOpen(true)}>Open Work Item</button>
-      {isWorkItemOpen && (
-        <WorkItem
-          isOpen={isWorkItemOpen}
-          onClose={() => setIsWorkItemOpen(false)}
-          childWorkItems={childWorkItems}
-          onChildItemClick={(item) => console.log('Clicked child item', item)} // 👈 truyền vào hàm
-          onChildPopupClose={() => console.log('Closed popup')} // 👈 truyền vào hàm
-        />
-      )}
-    </div>
-  );
-};
 
 export const router = createBrowserRouter([
   {

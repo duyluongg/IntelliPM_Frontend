@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
+import projectIcon from '../../assets/projectManagement.png';
 
 import {
   Users2,

@@ -16,13 +16,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 import { useAuth } from '../../services/AuthContext';
-import  projectIcon  from '../../assets/projectManagement.png';
-
 
 // Interface cho recentProjects
 interface RecentProject {
   name: string;
-  key: string;
   icon: string;
 }
 
@@ -64,8 +61,7 @@ export default function Sidebar() {
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
         name: proj.projectName,
-        key: proj.projectKey,
-        icon: proj.iconUrl || projectIcon, // Sử dụng icon mặc định nếu không có
+        icon: '📊',
       }))
     : [];
 
@@ -174,11 +170,11 @@ export default function Sidebar() {
                 recentProjects.map((proj, i) => (
                   <Link
                     key={i}
-                    to={`/projects?projectKey=${proj.key}`}
+                    to={`/projects?project=${encodeURIComponent(proj.name)}`}
                     className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm text-gray-800 no-underline'
                     onClick={() => setShowProjects(false)}
                   >
-                    <img src={projectIcon} alt='Project icon' className='w-6 h-6' />
+                    <span className='text-lg'>{proj.icon}</span>
                     <span className='truncate'>{proj.name}</span>
                   </Link>
                 ))

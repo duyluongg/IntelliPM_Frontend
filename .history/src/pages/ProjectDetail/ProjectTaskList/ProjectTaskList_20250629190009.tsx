@@ -351,7 +351,6 @@ const ProjectTaskList: React.FC = () => {
         </table>
       </div>
 
-
       {isPopupOpen && selectedKey && (
         <WorkItem
           isOpen={isPopupOpen}
@@ -369,7 +368,6 @@ const ProjectTaskList: React.FC = () => {
           onChildPopupClose={() => setIsPopupOpen(false)}
         />
       )}
-      
     </div>
   );
 };

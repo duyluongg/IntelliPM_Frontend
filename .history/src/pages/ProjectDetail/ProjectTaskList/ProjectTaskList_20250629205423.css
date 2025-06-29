@@ -1,12 +1,7 @@
 .task-page-wrapper {
   padding: 24px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: #FFFFFF; /* Changed from #F4F5F7 to #FFFFFF */
-  margin: 0 !important ; /* Reset all margins to remove any centering */
-  width: 100% !important; /* Ensure it takes full width of parent */
-  display: block; /* Ensure block-level behavior */
-  position: relative; /* Allow precise positioning */
-  left: 0; /* Force alignment to the left edge */
+  background-color: #F4F5F7;
 }
 
 .task-header-bar {
@@ -124,16 +119,12 @@
 .task-table-container {
   overflow-x: auto;
   background-color: #FFFFFF;
-  margin: 0; /* Reset any inherited margins */
-  width: 100%; /* Ensure full width */
-  display: block; /* Ensure block-level behavior */
 }
 
 .task-table {
-  width: 100%; /* Ensure table takes full width of container */
+  width: 100%;
   border-collapse: collapse;
   min-width: 800px;
-  margin: 0; /* Remove any table-specific margins */
 }
 
 .task-table th,

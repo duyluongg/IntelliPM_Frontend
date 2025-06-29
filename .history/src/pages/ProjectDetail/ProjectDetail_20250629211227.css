@@ -2,11 +2,12 @@
   padding: 24px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
   background-color: #FFFFFF; /* Changed from #F4F5F7 to #FFFFFF */
-  margin: 0 !important ; /* Reset all margins to remove any centering */
-  width: 100% !important; /* Ensure it takes full width of parent */
+  margin: 0; /* Reset all margins to remove any centering */
+  width: 100%; /* Ensure it takes full width of parent */
   display: block; /* Ensure block-level behavior */
   position: relative; /* Allow precise positioning */
   left: 0; /* Force alignment to the left edge */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .task-header-bar {
@@ -127,6 +128,7 @@
   margin: 0; /* Reset any inherited margins */
   width: 100%; /* Ensure full width */
   display: block; /* Ensure block-level behavior */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .task-table {
@@ -134,6 +136,7 @@
   border-collapse: collapse;
   min-width: 800px;
   margin: 0; /* Remove any table-specific margins */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .task-table th,

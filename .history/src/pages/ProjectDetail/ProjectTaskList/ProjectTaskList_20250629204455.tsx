@@ -48,21 +48,8 @@ interface Assignee {
 
 // Component Status
 const Status: React.FC<{ status: string }> = ({ status }) => {
-  const formatStatusForDisplay = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'to_do':
-        return 'TO DO';
-      case 'in_progress':
-        return 'IN PROGRESS';
-      case 'done':
-        return 'DONE';
-      default:
-        return status;
-    }
-  };
-
   const getStatusStyle = () => {
-    switch (status.toLowerCase()) {
+    switch (status.toLowerCase().replace(' ', '_')) {
       case 'to_do':
         return { backgroundColor: '#dddee1', color: '#6B778C' };
       case 'in_progress':
@@ -74,9 +61,13 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
     }
   };
 
+  const formatStatus = (status: string) => {
+    return status.toLowerCase().replace(' ', '_') === 'in_progress' ? 'IN_PRO' : status.toUpperCase().replace(' ', '_');
+  };
+
   return (
     <div className="status-container">
-      <span className="status-line" style={getStatusStyle()}>{formatStatusForDisplay(status)}</span>
+      <span className="status-line" style={getStatusStyle()}>{formatStatus(status)}</span>
     </div>
   );
 };
@@ -183,7 +174,7 @@ const ProjectTaskList: React.FC = () => {
           key: item.key || '',
           taskId: item.taskId || null,
           summary: item.summary || '',
-          status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
+          status: item.status || '',
           comments: item.commentCount || 0,
           sprint: item.sprintId || null,
           assignees: item.assignees.map((assignee) => ({
@@ -345,7 +336,7 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.sprint === null || task.sprint === undefined || task.sprint === 0
                     ? ''
-                    : <span className="sprint-cell">Sprint {task.sprint}</span>}
+                    : `Sprint ${task.sprint}`}
                 </td>
                 <td>
                   {task.assignees.map((assignee, index) => (

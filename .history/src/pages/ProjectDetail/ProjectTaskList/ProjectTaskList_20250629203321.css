@@ -1,12 +1,7 @@
 .task-page-wrapper {
   padding: 24px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: #FFFFFF; /* Changed from #F4F5F7 to #FFFFFF */
-  margin: 0 !important ; /* Reset all margins to remove any centering */
-  width: 100% !important; /* Ensure it takes full width of parent */
-  display: block; /* Ensure block-level behavior */
-  position: relative; /* Allow precise positioning */
-  left: 0; /* Force alignment to the left edge */
+  background-color: #F4F5F7;
 }
 
 .task-header-bar {
@@ -124,16 +119,12 @@
 .task-table-container {
   overflow-x: auto;
   background-color: #FFFFFF;
-  margin: 0; /* Reset any inherited margins */
-  width: 100%; /* Ensure full width */
-  display: block; /* Ensure block-level behavior */
 }
 
 .task-table {
-  width: 100%; /* Ensure table takes full width of container */
+  width: 100%;
   border-collapse: collapse;
   min-width: 800px;
-  margin: 0; /* Remove any table-specific margins */
 }
 
 .task-table th,
@@ -162,8 +153,8 @@
 }
 
 .type-icon {
-  width: 20px; /* Increased from 16px to 24px */
-  height: 20px; /* Increased from 16px to 24px */
+  width: 16px;
+  height: 16px;
   background-color: #FFFFFF;
   border-radius: 4px;
   padding: 2px;
@@ -183,17 +174,37 @@
 
 .status-line {
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: 3px;
   font-weight: 500;
   font-size: 0.75rem;
   display: block;
   white-space: nowrap;
-  text-decoration: none; /* Remove default underline */
 }
 
-.status-to-do { background-color: #dddee1; color: #6B778C; }
-.status-in-progress { background-color: #87b1e1; color: #0747A6; }
-.status-done { background-color: #b2da73; color: #006644; }
+.comment-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.comment-cell-inactive {
+  background-color: #ECECEC;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.label-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  margin-right: 4px;
+  border: 1px solid #DFE1E6;
+  border-radius: 3px;
+  background-color: #FFFFFF;
+  font-size: 0.75rem;
+  color: #172B4D;
+}
 
 .due-warning {
   color: #BF2600;
@@ -237,9 +248,8 @@
   width: 100%;
 }
 
-/* Removed gray background from .task-row */
 .task-row {
-  background-color: inherit; /* Reset to default background */
+  background-color: #EDEDED;
 }
 
 .subtask-link-icon {
@@ -253,15 +263,10 @@
   gap: 4px;
   background-color: #F9FAFB;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 0.85rem;
   font-weight: 500;
   color: #374151;
-}
-
-.date-cell svg {
-  width: 16px;
-  height: 16px;
 }
 
 .reporter {
@@ -280,40 +285,4 @@
   height: 24px;
   border-radius: 50%;
   object-fit: cover;
-}
-
-.comment-cell {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
-  color: #374151;
-}
-
-.comment-cell-inactive {
-  background-color: #ECECEC;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
-.label-tag {
-  display: inline-block;
-  padding: 2px 6px;
-  margin-right: 4px;
-  border: 1px solid #DFE1E6;
-  border-radius: 4px;
-  background-color: #FFFFFF;
-  font-size: 0.75rem;
-  color: #172B4D;
-}
-
-/* New style for Sprint cells */
-.sprint-cell {
-  display: inline-block;
-  padding: 2px 6px;
-  border: 1px solid #DFE1E6;
-  border-radius: 4px;
-  background-color: #FFFFFF;
-  font-size: 0.75rem;
-  color: #172B4D;
 }

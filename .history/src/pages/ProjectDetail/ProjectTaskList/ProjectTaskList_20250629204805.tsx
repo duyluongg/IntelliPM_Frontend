@@ -345,7 +345,7 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.sprint === null || task.sprint === undefined || task.sprint === 0
                     ? ''
-                    : <span className="sprint-cell">Sprint {task.sprint}</span>}
+                    : `Sprint ${task.sprint}`}
                 </td>
                 <td>
                   {task.assignees.map((assignee, index) => (

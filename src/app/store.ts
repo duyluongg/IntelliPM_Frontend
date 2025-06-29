@@ -10,6 +10,7 @@ import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/Mee
 import { projectMetricApi } from '../services/projectMetricApi';
 import { subtaskApi } from '../services/subtaskApi';
 import { projectApi } from '../services/projectApi';
+import { taskCommentApi } from '../services/taskCommentApi';
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
     [subtaskApi.reducerPath]: subtaskApi.reducer,
     [projectApi.reducerPath]: projectApi.reducer,
+    [taskCommentApi.reducerPath]: taskCommentApi.reducer,
 
   },
 
@@ -39,7 +41,8 @@ export const store = configureStore({
       meetingLogApi.middleware,
       projectMetricApi.middleware,
       subtaskApi.middleware,
-      projectApi.middleware
+      projectApi.middleware,
+      taskCommentApi.middleware
     ),
 });
 

@@ -1,13 +1,14 @@
 import React from 'react';
 import './WorkItem.css';
-import tickIcon from '/src/assets/check_box.png';
-import bugIcon from '/src/assets/bug.png';
-import flagIcon from '/src/assets/flag.png';
-import subtaskIcon from '/src/assets/subtask.png';
+import tickIcon from '../../assets/icon/type_task.svg';
+import subtaskIcon from '../../assets/icon/type_subtask.svg';
+import bugIcon from '../../assets/icon/type_bug.svg';
+import flagIcon from '../../assets/icon/type_story.svg';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
-import { useGetTaskByIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
-import { useNavigate } from 'react-router-dom';
+import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation } from '../../services/taskApi';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useGetCommentsByTaskIdQuery } from '../../services/taskCommentApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -15,35 +16,45 @@ interface WorkItemProps {
 }
 
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
-  const taskId = 'FLOWER1-1';
+  const [searchParams] = useSearchParams();
+  const taskId = searchParams.get('taskId') ?? '';
 
   const [status, setStatus] = React.useState('');
   const [workType, setWorkType] = React.useState('Task');
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
+  const [title, setTitle] = React.useState('');
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [updateTaskType] = useUpdateTaskTypeMutation();
+
+  const { data: comments = [], isLoading: isCommentsLoading } = useGetCommentsByTaskIdQuery(taskId, {
+    skip: !isOpen || !taskId,
+  });
 
   const {
     data: subtaskData = [],
     isLoading,
     refetch,
   } = useGetSubtasksByTaskIdQuery(taskId, {
-    skip: !isOpen,
+    skip: !isOpen || !taskId,
   });
 
   const { data: taskData, isLoading: isTaskLoading, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
-    skip: !isOpen,
+    skip: !isOpen || !taskId,
   });
 
   React.useEffect(() => {
     if (taskData) {
       setStatus(taskData.status);
       setDescription(taskData.description ?? '');
+      setTitle(taskData.title ?? '');
+      setWorkType(taskData.type ?? 'Task');
     }
   }, [taskData]);
 
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
-
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
 
   const childWorkItems = subtaskData.map((item) => ({
@@ -57,7 +68,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateSubtaskStatus({ id, status: newStatus }).unwrap();
-      console.log(`Updated ${id} to ${newStatus}`);
       refetch();
     } catch (err) {
       console.error('Failed to update subtask status', err);
@@ -67,7 +77,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
       await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
-      console.log(`Updated task ${taskId} to ${newStatus}`);
       setStatus(newStatus);
       await refetchTask();
     } catch (err) {
@@ -81,19 +90,23 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const handleWorkTypeChange = (type: string) => {
-    setWorkType(type);
-    setIsDropdownOpen(false);
+  const handleWorkTypeChange = async (type: string) => {
+    try {
+      setWorkType(type);
+      setIsDropdownOpen(false);
+      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await refetchTask(); // Cập nhật lại dữ liệu task sau khi đổi type
+    } catch (err) {
+      console.error('❌ Lỗi cập nhật work type:', err);
+    }
   };
 
-  const handleDropdownClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
+  const handleDropdownClick = (e: React.MouseEvent) => e.stopPropagation();
 
   const getIconSrc = () => {
     switch (workType) {
-      case 'Bug': return bugIcon;
-      case 'Story': return flagIcon;
+      case 'BUG': return bugIcon;
+      case 'STORY': return flagIcon;
       default: return tickIcon;
     }
   };
@@ -110,10 +123,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
   };
 
   if (!isOpen) return null;
+  if (!taskId) return <div className="modal-overlay"><p style={{ padding: 24 }}>❌ Không tìm thấy taskId trong URL.</p></div>;
 
   return (
     <div className="modal-overlay" onClick={() => setIsDropdownOpen(false)}>
       <div className="work-item-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Modal Header */}
         <div className="modal-header">
           <div className="issue-header">
             <span className="issue-type">
@@ -125,16 +140,27 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
                 <div className="issue-type-dropdown" onClick={handleDropdownClick}>
                   <div className="dropdown-title">Change Work Type</div>
                   {['Task', 'Bug', 'Story'].map((type) => (
-                    <div key={type} className="dropdown-item" onClick={() => handleWorkTypeChange(type)}>
-                      <input type="radio" checked={workType === type} readOnly />
+                    <div
+                      key={type}
+                      className={`dropdown-item ${workType === type ? 'selected' : ''}`}
+                      onClick={() => handleWorkTypeChange(type)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer' }}
+                    >
                       <img
                         src={type === 'Task' ? tickIcon : type === 'Bug' ? bugIcon : flagIcon}
                         alt={type}
-                        className="dropdown-icon"
+                        style={{
+                          width: '18px',
+                          filter: type === 'Bug' ? 'hue-rotate(-1deg) saturate(3)' : 'none',
+                        }}
                       />
-                      {type}
+                      <span style={{ flex: 1 }}>{type}</span>
+                      {workType === type && (
+                        <span style={{ fontSize: '16px' }}>✔</span>
+                      )}
                     </div>
                   ))}
+
                 </div>
               )}
             </span>
@@ -142,8 +168,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
               type="text"
               className="issue-summary"
               placeholder="Enter summary"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div className="header-actions">
@@ -151,8 +177,41 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
+        {/* Modal Content */}
         <div className="modal-content">
           <div className="main-section">
+            <div className="add-menu-wrapper">
+              <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>
+                + Add
+              </button>
+              {isAddDropdownOpen && (
+                <div className="add-dropdown">
+                  <div className="add-item" onClick={() => fileInputRef.current?.click()}>
+                    📁 Attachment
+                  </div>
+                  <div
+                    className="add-item"
+                    onClick={() => alert('🗂 Tính năng thêm subtask đang được phát triển...')}
+                    style={{ display: 'flex', alignItems: 'center' }}
+                  >
+                    <img src={subtaskIcon} alt="Subtask" style={{ width: '16px', marginRight: '6px' }} />
+                    Subtask
+                  </div>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    alert(`📁 File "${file.name}" đã được upload giả lập.`);
+                  }
+                  setIsAddDropdownOpen(false);
+                }}
+              />
+            </div>
             <div className="field-group">
               <label>Description</label>
               <textarea
@@ -210,11 +269,31 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
                 <button className="tab">History</button>
                 <button className="tab">Work log</button>
               </div>
+              <div className="comment-list" style={{ marginBottom: '12px' }}>
+                {isCommentsLoading ? (
+                  <p>Loading comments...</p>
+                ) : comments.length === 0 ? (
+                  <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
+                ) : (
+                  comments.map((comment: any) => (
+                    <div key={comment.id} style={{ marginBottom: '12px' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                        User #{comment.accountId}{' '}
+                        <span style={{ fontWeight: 'normal', color: '#888', fontSize: '12px' }}>
+                          {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '14px', marginTop: '4px' }}>{comment.content}</div>
+                    </div>
+                  ))
+                )}
+              </div>
               <textarea className="activity-input" placeholder="Add a comment...\nCan I get more info..? Status update... Thanks..." />
               <p className="pro-tip">Pro tip: Press <strong>M</strong> to comment</p>
             </div>
           </div>
 
+          {/* Details Panel */}
           <div className="details-panel">
             <div className="panel-header">
               <select

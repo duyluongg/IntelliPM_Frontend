@@ -373,5 +373,3 @@ const ProjectTaskList: React.FC = () => {
 };
 
 export default ProjectTaskList;
-
-/// Tuan dat

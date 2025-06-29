@@ -119,6 +119,9 @@
 .task-table-container {
   overflow-x: auto;
   background-color: #FFFFFF;
+  border: 1px solid #DFE1E6;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #DFE1E6;
 }
 
 .task-table {
@@ -146,10 +149,6 @@
 
 .task-table td {
   color: #172B4D;
-}
-
-.task-table tr:hover {
-  background-color: #F4F5F7; /* Hiệu ứng xám nhẹ khi hover */
 }
 
 .type-icon {
@@ -190,7 +189,7 @@
 }
 
 .task-id-small {
-  font-size: 0.65rem; /* Giảm kích thước xuống */
+  font-size: 0.75rem;
   color: #6B778C;
   margin-bottom: 2px;
 }
@@ -201,16 +200,14 @@
   gap: 4px;
 }
 
-.subtask-id,
-.task-key {
+.subtask-id {
   font-size: 0.875rem;
-  color: #000000; /* Màu đen mặc định cho tất cả key */
+  color: #000000;
   cursor: pointer;
 }
 
-.subtask-id:hover,
-.task-key:hover {
-  text-decoration: underline; /* Gạch dưới khi hover */
+.subtask-id:hover {
+  text-decoration: underline;
 }
 
 .task-key-wrapper {
@@ -220,11 +217,22 @@
   width: 100%;
 }
 
+.task-key {
+  font-size: 0.875rem;
+  color: #0052CC;
+  cursor: pointer;
+}
+
+.task-key:hover {
+  color: #000000;
+  text-decoration: underline;
+}
+
 .task-row {
   background-color: #EDEDED;
 }
 
-.subtask-link-icon {
+.calendar-icon {
   width: 16px;
   height: 16px;
 }

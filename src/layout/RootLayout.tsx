@@ -15,16 +15,15 @@ const ScrollToTop: React.FC = () => {
 };
 
 const RootLayout: React.FC = () => {
-  
   return (
     <>
       <ScrollToTop />
       <Header />
       <main className='flex bg-slate-100 min-h-screen'>
         <Sidebar />
-        <div className='flex-1 p-4 overflow-auto mt-10'>
+        <main className='ml-56 mt-12 p-1 overflow-auto flex-1 bg-slate-100 min-h-screen'>
           <Outlet />
-        </div>
+        </main>
       </main>
     </>
   );

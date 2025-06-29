@@ -22,7 +22,6 @@ export const store = configureStore({
     [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
     [subtaskApi.reducerPath]: subtaskApi.reducer,
-    // Thêm các slice khác nếu có
   },
 
   middleware: (getDefaultMiddleware) =>
@@ -40,6 +39,5 @@ export const store = configureStore({
     ),
 });
 
-// Kiểu cho RootState và AppDispatch
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

@@ -13,13 +13,11 @@ import { useGetCommentsByTaskIdQuery } from '../../services/taskCommentApi';
 interface WorkItemProps {
   isOpen: boolean;
   onClose: () => void;
-  taskId?: string | null; // Add taskId as an optional prop
 }
 
-const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
+const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
   const [searchParams] = useSearchParams();
-  // Prefer the propTaskId if provided, fallback to searchParams
-  const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
+  const taskId = searchParams.get('taskId') ?? '';
 
   const [status, setStatus] = React.useState('');
   const [workType, setWorkType] = React.useState('Task');
@@ -162,6 +160,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       )}
                     </div>
                   ))}
+
                 </div>
               )}
             </span>

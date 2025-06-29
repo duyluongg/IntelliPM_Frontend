@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
 
 import {
   Users2,
@@ -48,18 +45,13 @@ const ProjectDetailHeader: React.FC = () => {
   const [activeTab, setActiveTab] = useState('List');
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound'; // Lấy projectKey từ URL
-
-  // Gọi API để lấy chi tiết dự án
-  const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
 
   const togglePopup = () => {
     console.log('Toggling popup, isPopupOpen:', !isPopupOpen); // Debug log
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
+  const projectIconUrl = 'https://fpt-tuandatcoder.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10410';
 
   useEffect(() => {
     const updateTabs = () => {
@@ -107,9 +99,6 @@ const ProjectDetailHeader: React.FC = () => {
     }
   }, []);
 
-  // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
-  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
-
   return (
     <div className='mx-6 pt-6 relative'>
       <nav aria-label='Breadcrumbs' className='mb-4'>
@@ -124,7 +113,7 @@ const ProjectDetailHeader: React.FC = () => {
 
       <div className='flex items-center gap-2'>
         <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
-        <h1 className='text-lg font-semibold'>{projectName}</h1>
+        <h1 className='text-lg font-semibold'>SEP_Agile_Scrum</h1>
         <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
           <Users2 className='w-4 h-4' />
         </button>
@@ -156,14 +145,14 @@ const ProjectDetailHeader: React.FC = () => {
           {visibleTabs.map((item, idx) => (
             <li key={idx} className='flex items-center relative group'>
               <a
-                href={`#/${item.label.toLowerCase()}`}
+                href={`#/projects/SAS/${item.label.toLowerCase()}`}
                 className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
                    ${
-                     activeTab === item.label
-                       ? 'text-blue-600 border-blue-600 font-medium'
-                       : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
+                        activeTab === item.label
+                         ? 'text-blue-600 border-blue-600 font-medium'
+                          : 'text-gray-600 border-transparent group-hover:text-blue-600 group-hover:border-blue-600'
                    }`}
-                onClick={() => setActiveTab(item.label)}
+                  onClick={() => setActiveTab(item.label)}
               >
                 <span className='relative flex items-center'>
                   <span className='default-icon group-hover:hidden'>{item.icon}</span>
@@ -212,6 +201,7 @@ const ProjectDetailHeader: React.FC = () => {
             </li>
           )}
         </ul>
+ 
       </nav>
     </div>
   );

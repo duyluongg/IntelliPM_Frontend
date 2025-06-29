@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
+import projectIcon from '../../assets/projectManagement.png';
 
 import {
   Users2,
@@ -58,8 +58,6 @@ const ProjectDetailHeader: React.FC = () => {
     console.log('Toggling popup, isPopupOpen:', !isPopupOpen); // Debug log
     setIsPopupOpen(!isPopupOpen);
   };
-
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
 
   useEffect(() => {
     const updateTabs = () => {
@@ -123,7 +121,7 @@ const ProjectDetailHeader: React.FC = () => {
       </nav>
 
       <div className='flex items-center gap-2'>
-        <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
+        <img src={projectIcon} alt='Project Icon' className='w-6 h-6 rounded' />
         <h1 className='text-lg font-semibold'>{projectName}</h1>
         <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
           <Users2 className='w-4 h-4' />

@@ -58,14 +58,14 @@ const DateWithIcon = ({ date }: { date?: string | null }) => {
   };
   return (
     <div className='date-cell'>
-      <svg fill='none' viewBox='0 0 16 16' role='presentation' width='16' height='16'>
-        <path
-          fill='currentColor'
-          fillRule='evenodd'
-          d='M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z'
-          clipRule='evenodd'
-        />
-      </svg>
+    <svg fill="none" viewBox="0 0 16 16" role="presentation" width="16" height="16">
+    <path
+      fill="currentColor"
+      fillRule="evenodd"
+      d="M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z"
+      clipRule="evenodd"
+    />
+  </svg>
       <span>{formatDate(date)}</span>
     </div>
   );
@@ -283,17 +283,34 @@ const ProjectTaskList: React.FC = () => {
                   {task.comments > 0 ? (
                     <div className='comment-cell'>
                       <svg
-                        fill='none'
-                        viewBox='0 0 16 16'
                         role='presentation'
                         width='16'
                         height='16'
+                        viewBox='0 0 16 16'
+                        fill='none'
+                        xmlns='http://www.w3.org/2000/svg'
                       >
                         <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
+                          d='M2 2H14C14.5523 2 15 2.44772 15 3V11C15 11.5523 14.5523 12 14 12H6L2 15V3C2 2.44772 2.44772 2 3 2Z'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
+                        />
+                        <circle
+                          cx='7'
+                          cy='6'
+                          r='1'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
+                        />
+                        <circle
+                          cx='10'
+                          cy='6'
+                          r='1'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
                         />
                       </svg>
                       <span>{task.comments} comment</span>
@@ -301,17 +318,34 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div className='comment-cell'>
                       <svg
-                        fill='none'
-                        viewBox='0 0 16 16'
                         role='presentation'
                         width='16'
                         height='16'
+                        viewBox='0 0 16 16'
+                        fill='none'
+                        xmlns='http://www.w3.org/2000/svg'
                       >
                         <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
+                          d='M2 2H14C14.5523 2 15 2.44772 15 3V11C15 11.5523 14.5523 12 14 12H6L2 15V3C2 2.44772 2.44772 2 3 2Z'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
+                        />
+                        <circle
+                          cx='7'
+                          cy='6'
+                          r='1'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
+                        />
+                        <circle
+                          cx='10'
+                          cy='6'
+                          r='1'
+                          stroke='#42526E'
+                          strokeWidth='1.33333'
+                          fill='none'
                         />
                       </svg>
                       <span>Add comment</span>

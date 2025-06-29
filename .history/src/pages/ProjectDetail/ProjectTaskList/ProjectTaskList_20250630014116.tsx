@@ -12,6 +12,7 @@ import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 
+
 // Interface Reporter
 interface Reporter {
   fullName: string;
@@ -92,8 +93,8 @@ const DateWithIcon = ({ date, status, isDueDate }: { date?: string | null; statu
     return `${month} ${day}, ${year}`;
   };
 
-  // Use current date and time (01:44 AM +07, June 30, 2025)
-  const currentDate = new Date('2025-06-30T01:44:00+07:00');
+  // Use current date and time (01:14 AM +07, June 30, 2025)
+  const currentDate = new Date('2025-06-30T01:14:00+07:00');
   const dueDate = date ? new Date(date) : null;
 
   let icon = (
@@ -211,33 +212,29 @@ const ProjectTaskList: React.FC = () => {
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  // ✅ Open popup
+  // ✅ mở popup
   const handleOpenPopup = (taskId: string) => {
     setSelectedTaskId(taskId);
     setIsPopupOpen(true);
   };
 
-  // ✅ Push taskId into URL
-  useEffect(() => {
+  // ✅ đẩy taskId vào URL
+  React.useEffect(() => {
     if (isPopupOpen && selectedTaskId) {
       searchParams.set('taskId', selectedTaskId);
       setSearchParams(searchParams);
-    } else {
-      searchParams.delete('taskId');
-      setSearchParams(searchParams);
     }
-  }, [isPopupOpen, selectedTaskId, searchParams, setSearchParams]);
+  }, [isPopupOpen, selectedTaskId]);
 
-  // ✅ Close popup
+  // ✅ đóng popup
   const handleClosePopup = () => {
     setIsPopupOpen(false);
     setSelectedTaskId(null);
     searchParams.delete('taskId');
     setSearchParams(searchParams);
-  };
-
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({
     type: 55,
     key: 100,
@@ -303,6 +300,43 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item) => ({
+
+        id: item.key || '',
+        type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+        key: item.key || '',
+        taskId: item.taskId || null,
+        summary: item.summary || '',
+        status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
+        comments: item.commentCount || 0,
+        sprint: item.sprintId || null,
+        assignees: item.assignees.map((assignee) => ({
+          fullName: assignee.fullname || 'Unknown',
+          initials:
+            assignee.fullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: assignee.picture || undefined,
+        })),
+        dueDate: item.dueDate || null,
+        labels: item.labels || [],
+        created: item.createdAt || '',
+        updated: item.updatedAt || '',
+        reporter: {
+          fullName: item.reporterFullname || 'Unknown',
+          initials:
+            item.reporterFullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: item.reporterPicture || undefined,
+        },
+      }));
+
           id: item.key || '',
           type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
           key: item.key || '',
@@ -338,6 +372,7 @@ const ProjectTaskList: React.FC = () => {
             picture: item.reporterPicture || undefined,
           },
         }));
+
 
   return (
     <div className="task-page-wrapper">
@@ -575,8 +610,7 @@ const ProjectTaskList: React.FC = () => {
       {isPopupOpen && (
         <WorkItem
           isOpen={isPopupOpen}
-          onClose={handleClosePopup}
-          taskId={selectedTaskId}
+          onClose={() => setIsPopupOpen(false)}
         />
       )}
     </div>

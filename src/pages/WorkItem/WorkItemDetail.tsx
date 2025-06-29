@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './WorkItemDetail.css';
-import tickIcon from '/src/assets/check_box.png';
-import bugIcon from '/src/assets/bug.png';
-import flagIcon from '/src/assets/flag.png';
-import subtaskIcon from '/src/assets/subtask.png';
+import tickIcon from '../../assets/icon/type_task.svg';
+import subtaskIcon from '../../assets/icon/type_subtask.svg';
+import bugIcon from '../../assets/icon/type_bug.svg';
+import flagIcon from '../../assets/icon/type_story.svg';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useGetSubtasksByTaskIdQuery,
@@ -158,10 +158,11 @@ const WorkItemDetail: React.FC = () => {
               {isAddDropdownOpen && (
                 <div className="add-dropdown">
                   <div className="add-item" onClick={() => fileInputRef.current?.click()}>
-                    📎 Attachment
+                    📁 Attachment
                   </div>
-                  <div className="add-item" onClick={handleAddSubtask}>
-                    🗂 Subtask
+                  <div className="add-item" onClick={handleAddSubtask} style={{ display: 'flex', alignItems: 'center' }}>
+                    <img src={subtaskIcon} alt="Subtask" style={{ width: '16px', marginRight: '6px' }} />
+                    Subtask
                   </div>
                 </div>
               )}

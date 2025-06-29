@@ -60,6 +60,7 @@ export const taskApi = createApi({
       }),
       transformResponse: (response: TaskListResponse) => response.data,
     }),
+
     updateTaskStatus: builder.mutation<void, { id: string; status: string }>({
       query: ({ id, status }) => ({
         url: `task/${id}/status`,
@@ -70,9 +71,21 @@ export const taskApi = createApi({
         body: JSON.stringify(status),
       }),
     }),
+
     getTaskById: builder.query<TaskResponseDTO, string>({
       query: (id) => `task/${id}`,
       transformResponse: (response: { isSuccess: boolean; data: TaskResponseDTO }) => response.data,
+    }),
+
+    updateTaskType: builder.mutation<void, { id: string; type: string }>({
+      query: ({ id, type }) => ({
+        url: `task/${id}/type`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(type), // Gửi "TASK", "BUG", "STORY"
+      }),
     }),
   }),
 });
@@ -81,4 +94,5 @@ export const {
   useGetTasksByProjectIdQuery,
   useUpdateTaskStatusMutation,
   useGetTaskByIdQuery,
+  useUpdateTaskTypeMutation
 } = taskApi;

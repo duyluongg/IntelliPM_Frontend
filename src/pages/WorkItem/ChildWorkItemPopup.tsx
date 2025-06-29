@@ -1,6 +1,16 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
+
+interface SubtaskDetail {
+  id: string;
+  taskId: string;
+  assignedBy: number;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+}
 
 interface ChildWorkItemPopupProps {
   item: {
@@ -15,8 +25,26 @@ interface ChildWorkItemPopupProps {
 
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchSubtask = async () => {
+      try {
+        const res = await fetch(`https://localhost:7128/api/subtask/${item.key}`);
+        const json = await res.json();
+        if (json.isSuccess && json.data) {
+          setSubtaskDetail(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch subtask', err);
+      }
+    };
+
+    fetchSubtask();
+  }, [item.key]);
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -25,28 +53,29 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     setIsAddDropdownOpen(false);
   };
 
+  if (!subtaskDetail) return <div className="modal-overlay"><div className="child-work-item-container">Loading...</div></div>;
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="child-work-item-container" onClick={(e) => e.stopPropagation()}>
         <div className="child-header">
           <div className="breadcrumb">
-            Projects / SEP_Agile_Scrum / <span>{item.parent}</span> / <span
+            Projects / OnlineFlowerShop / <span>{subtaskDetail.taskId}</span> /{' '}
+            <span
               className="child-key"
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={() => navigate(`/child-work/${item.key}`)}
+              onClick={() => navigate(`/child-work/${subtaskDetail.id}`)}
             >
-              {item.key}
+              {subtaskDetail.id}
             </span>
-
           </div>
           <button className="btn-close" onClick={onClose}>✖</button>
         </div>
 
         <div className="child-content">
-          {/* Left column */}
           <div className="child-main">
             <div className="child-header-row">
-              <h2 className="child-title">{item.summary}</h2>
+              <h2 className="child-title">{subtaskDetail.title}</h2>
               <div className="add-menu-wrapper">
                 <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
                 {isAddDropdownOpen && (
@@ -56,18 +85,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     </div>
                   </div>
                 )}
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                  onChange={handleFileUpload}
-                />
+                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
               </div>
             </div>
 
             <div className="field-group">
               <label>Description</label>
-              <textarea placeholder="Add a description..." />
+              <textarea defaultValue={subtaskDetail.description} placeholder="Add a description..." />
             </div>
 
             <div className="activity-section">
@@ -90,33 +114,24 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             </div>
           </div>
 
-          {/* Right column */}
           <div className="child-sidebar">
             <div className="status-section">
-              <select defaultValue={item.status} className={`status-dropdown ${item.status.toLowerCase().replace(' ', '\\ ')}`}>
-                <option value="TO DO">To Do</option>
+              <select defaultValue={subtaskDetail.status} className={`status-dropdown`}>
+                <option value="TO-DO">To Do</option>
                 <option value="IN PROGRESS">In Progress</option>
                 <option value="DONE">Done</option>
               </select>
-              <button className="btn-improve">⚡ Improve Subtask</button>
             </div>
 
             <div className="details-panel">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>{item.assignee}</span></div>
+              <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
-              <div className="detail-item"><label>Parent</label><span>{item.parent}</span></div>
+              <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
               <div className="detail-item"><label>Due date</label><span>None</span></div>
               <div className="detail-item"><label>Start date</label><span>None</span></div>
               <div className="detail-item"><label>Fix versions</label><span>None</span></div>
-              <div className="detail-item"><label>Story point estimate</label><span>None</span></div>
-              <div className="detail-item">
-                <label>Development</label>
-                <button className="dev-btn">Open with VS Code</button>
-                <button className="dev-btn">Create branch</button>
-                <button className="dev-btn">Create commit</button>
-              </div>
-              <div className="detail-item"><label>Reporter</label><span>Ngo Pham Thao Vy (K16_HCM)</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.assignedBy}</span></div>
             </div>
           </div>
         </div>

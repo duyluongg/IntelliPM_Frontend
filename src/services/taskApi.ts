@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
-  id: number;
+  id: string;
   reporterId: number;
   projectId: number;
   epicId: number;
@@ -61,7 +61,25 @@ export const taskApi = createApi({
       }),
       transformResponse: (response: TaskListResponse) => response.data,
     }),
+    updateTaskStatus: builder.mutation<void, { id: string; status: string }>({
+      query: ({ id, status }) => ({
+        url: `task/${id}/status`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(status),
+      }),
+    }),
+    getTaskById: builder.query<TaskResponseDTO, string>({
+      query: (id) => `task/${id}`,
+      transformResponse: (response: { isSuccess: boolean; data: TaskResponseDTO }) => response.data,
+    }),
   }),
 });
 
-export const { useGetTasksByProjectIdQuery } = taskApi;
+export const {
+  useGetTasksByProjectIdQuery,
+  useUpdateTaskStatusMutation,
+  useGetTaskByIdQuery,
+} = taskApi;

@@ -8,7 +8,7 @@ import { accountApi } from '../services/accountApi';
 import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; 
 import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices'; 
 import { projectMetricApi } from '../services/projectMetricApi';
-
+import { subtaskApi } from '../services/subtaskApi';
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +22,9 @@ export const store = configureStore({
     [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
 
+    [meetingApi.reducerPath]: meetingApi.reducer,
+    [subtaskApi.reducerPath]: subtaskApi.reducer,
+    // Thêm các slice khác nếu có
   },
 
   middleware: (getDefaultMiddleware) =>
@@ -34,8 +37,8 @@ export const store = configureStore({
       accountApi.middleware,
       meetingApi.middleware ,
       meetingLogApi.middleware,
-      projectMetricApi.middleware
-
+      projectMetricApi.middleware,
+      subtaskApi.middleware
     ),
 });
 

@@ -4,9 +4,10 @@ import tickIcon from '/src/assets/check_box.png';
 import bugIcon from '/src/assets/bug.png';
 import flagIcon from '/src/assets/flag.png';
 import subtask from '/src/assets/subtask.png';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useGetSubtasksByTaskIdQuery } from '../../services/subtaskApi';
 
-interface WorkItemDetailProps { }
+interface WorkItemDetailProps {}
 
 const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
   const [status] = useState('In Progress');
@@ -15,29 +16,19 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
   const [description, setDescription] = useState('');
   const navigate = useNavigate();
 
-  const [childWorkItems, setChildWorkItems] = useState([
-    { key: 'SAS-15', summary: 'hello', priority: 'Medium', assignee: 'Ngo Pham Thao Vy (K16_HCM)', status: 'DONE' },
-    { key: 'SAS-17', summary: 'ok', priority: 'Medium', assignee: 'Unassigned', status: 'TO DO' }
-  ]);
+  // ✅ Lấy taskId từ URL
+  const [searchParams] = useSearchParams();
+  const taskId = searchParams.get('taskId') || '';
 
+  // ✅ Gọi API subtasks
+  const { data: subtaskData = [], isLoading } = useGetSubtasksByTaskIdQuery(taskId, {
+    skip: !taskId,
+  });
 
   const handleWorkTypeChange = (type: string) => {
     setWorkType(type);
     setIsDropdownOpen(false);
   };
-
-  const handlePriorityChange = (index: number, value: string) => {
-    const updated = [...childWorkItems];
-    updated[index].priority = value;
-    setChildWorkItems(updated);
-  };
-
-  const handleStatusChange = (index: number, value: string) => {
-    const updated = [...childWorkItems];
-    updated[index].status = value;
-    setChildWorkItems(updated);
-  };
-
 
   const handleDropdownClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -49,7 +40,6 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
         return bugIcon;
       case 'Story':
         return flagIcon;
-      case 'Task':
       default:
         return tickIcon;
     }
@@ -65,32 +55,20 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
   };
 
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    alert(`📁 File "${file.name}" đã được upload giả lập.`);
-    // TODO: Gửi file lên backend sau này
-  }
-  setIsAddDropdownOpen(false);
-};
-
-const handleAddSubtask = () => {
-  const newKey = `SAS-${childWorkItems.length + 15}`; // giả lập key mới
-  setChildWorkItems([
-    ...childWorkItems,
-    {
-      key: newKey,
-      summary: 'New subtask',
-      priority: 'Medium',
-      assignee: 'Unassigned',
-      status: 'TO DO'
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      alert(`📁 File "${file.name}" đã được upload giả lập.`);
     }
-  ]);
-  setIsAddDropdownOpen(false);
-};
+    setIsAddDropdownOpen(false);
+  };
 
+  const handleAddSubtask = () => {
+    alert('🗂 Tính năng thêm subtask đang được phát triển...');
+    setIsAddDropdownOpen(false);
+  };
 
   return (
     <div className="work-item-detail-page">
@@ -102,26 +80,22 @@ const handleAddSubtask = () => {
                 <img src={getIconSrc()} alt={`${workType} Icon`} />
               </span>
               <span className="issue-key" onClick={handleKeyClick}>
-                SAS-1
+                {taskId}
               </span>
               {isDropdownOpen && (
                 <div className="issue-type-dropdown" onClick={handleDropdownClick}>
                   <div className="dropdown-title">Change Work Type</div>
-                  <div onClick={() => handleWorkTypeChange('Task')}>
-                    <input type="radio" checked={workType === 'Task'} readOnly />
-                    <img src={tickIcon} alt="Task" className="dropdown-icon" />
-                    Task
-                  </div>
-                  <div onClick={() => handleWorkTypeChange('Bug')}>
-                    <input type="radio" checked={workType === 'Bug'} readOnly />
-                    <img src={bugIcon} alt="Bug" className="dropdown-icon" />
-                    Bug
-                  </div>
-                  <div onClick={() => handleWorkTypeChange('Story')}>
-                    <input type="radio" checked={workType === 'Story'} readOnly />
-                    <img src={flagIcon} alt="Story" className="dropdown-icon" />
-                    Story
-                  </div>
+                  {['Task', 'Bug', 'Story'].map((type) => (
+                    <div key={type} onClick={() => handleWorkTypeChange(type)}>
+                      <input type="radio" checked={workType === type} readOnly />
+                      <img
+                        src={type === 'Task' ? tickIcon : type === 'Bug' ? bugIcon : flagIcon}
+                        alt={type}
+                        className="dropdown-icon"
+                      />
+                      {type}
+                    </div>
+                  ))}
                 </div>
               )}
             </span>
@@ -137,6 +111,7 @@ const handleAddSubtask = () => {
             <button className="close-btn" onClick={() => navigate('/work-item')}>✖</button>
           </div>
         </div>
+
         <div className="detail-content">
           <div className="main-section">
             <div className="add-menu-wrapper">
@@ -167,60 +142,41 @@ const handleAddSubtask = () => {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
             <div className="field-group">
               <label>Child work items</label>
               <div className="issue-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Key</th>
-                      <th>Summary</th>
-                      <th>Priority</th>
-                      <th>Assignee</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {childWorkItems.map((item, index) => (
-                      <tr key={index}>
-                        <td><img src={subtask} alt="Subtask" /></td>
-                        <td>
-                          <a onClick={() => navigate(`/child-work/${item.key}`)}>{item.key}</a>
-                        </td>
-                        <td>
-                          <a onClick={() => navigate(`/child-work/${item.key}`)}>{item.summary}</a>
-                        </td>
-                        <td>
-                          <select
-                            value={item.priority}
-                            onChange={(e) => handlePriorityChange(index, e.target.value)}
-                            className="dropdown"
-                          >
-                            <option value="Hard">Hard</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Easy">Easy</option>
-                          </select>
-                        </td>
-                        <td><span className="assignee">{item.assignee}</span></td>
-                        <td>
-                          <select
-                            value={item.status}
-                            onChange={(e) => handleStatusChange(index, e.target.value)}
-                            className={`dropdown status-dropdown ${item.status.toLowerCase()}`}
-                          >
-                            <option value="TO DO">TO DO</option>
-                            <option value="IN PROGRESS">IN PROGRESS</option>
-                            <option value="DONE">DONE</option>
-                          </select>
-                        </td>
-
+                {isLoading ? (
+                  <p>Loading subtasks...</p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Key</th>
+                        <th>Summary</th>
+                        <th>Priority</th>
+                        <th>Assignee</th>
+                        <th>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {subtaskData.map((item: any, index: number) => (
+                        <tr key={index}>
+                          <td><img src={subtask} alt="Subtask" /></td>
+                          <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.id}</a></td>
+                          <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.title}</a></td>
+                          <td>{item.priority}</td>
+                          <td>{item.assignedBy?.toString() ?? 'Unassigned'}</td>
+                          <td>{item.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
+
             <div className="field-group">
               <div className="activity-tabs">
                 <button className="tab active">All</button>
@@ -232,6 +188,7 @@ const handleAddSubtask = () => {
               <p className="pro-tip">Pro tip: Press <strong>M</strong> to comment</p>
             </div>
           </div>
+
           <div className="details-panel">
             <div className="pinned-fields">
               <h4>Pinned fields</h4>

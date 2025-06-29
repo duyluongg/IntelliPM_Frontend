@@ -13,6 +13,9 @@ export interface SubtaskResponseDTO {
   generationAiInput: boolean;
   createdAt: string;
   updatedAt: string;
+  startDate: string;
+  endDate: string;
+  reporterId: number;
 }
 
 interface ApiResponse<T> {
@@ -55,5 +58,5 @@ export const subtaskApi = createApi({
 
 export const {
   useGetSubtasksByTaskIdQuery,
-  useUpdateSubtaskStatusMutation, // 👈 export thêm hook mutation
+  useUpdateSubtaskStatusMutation, 
 } = subtaskApi;

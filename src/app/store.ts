@@ -21,8 +21,6 @@ export const store = configureStore({
     [meetingApi.reducerPath]: meetingApi.reducer, 
     [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
-
-    [meetingApi.reducerPath]: meetingApi.reducer,
     [subtaskApi.reducerPath]: subtaskApi.reducer,
     // Thêm các slice khác nếu có
   },

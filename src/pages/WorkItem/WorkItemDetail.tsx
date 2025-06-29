@@ -1,37 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './WorkItemDetail.css';
 import tickIcon from '/src/assets/check_box.png';
 import bugIcon from '/src/assets/bug.png';
 import flagIcon from '/src/assets/flag.png';
-import subtask from '/src/assets/subtask.png';
+import subtaskIcon from '/src/assets/subtask.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGetSubtasksByTaskIdQuery } from '../../services/subtaskApi';
+import {
+  useGetSubtasksByTaskIdQuery,
+  useUpdateSubtaskStatusMutation,
+} from '../../services/subtaskApi';
+import {
+  useGetTaskByIdQuery,
+  useUpdateTaskStatusMutation,
+} from '../../services/taskApi';
 
-interface WorkItemDetailProps {}
-
-const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
-  const [status] = useState('In Progress');
-  const [workType, setWorkType] = useState('Task');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [description, setDescription] = useState('');
-  const navigate = useNavigate();
-
-  // ✅ Lấy taskId từ URL
+const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const taskId = searchParams.get('taskId') || '';
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Gọi API subtasks
-  const { data: subtaskData = [], isLoading } = useGetSubtasksByTaskIdQuery(taskId, {
+  const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('');
+  const [workType, setWorkType] = useState('Task');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const [selectedChild, setSelectedChild] = React.useState<any>(null);
+
+  const { data: taskData, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
     skip: !taskId,
   });
+  const {
+    data: subtaskData = [],
+    isLoading,
+    refetch: refetchSubtask,
+  } = useGetSubtasksByTaskIdQuery(taskId, {
+    skip: !taskId,
+  });
+  const [updateTaskStatus] = useUpdateTaskStatusMutation();
+  const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
+
+  useEffect(() => {
+    if (taskData) {
+      setStatus(taskData.status);
+      setDescription(taskData.description ?? '');
+    }
+  }, [taskData]);
+
+  const handleTaskStatusChange = async (newStatus: string) => {
+    try {
+      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await refetchTask();
+    } catch (err) {
+      console.error('Update task status failed', err);
+    }
+  };
+
+  const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateSubtaskStatus({ id, status: newStatus }).unwrap();
+      await refetchSubtask();
+    } catch (err) {
+      console.error('Update subtask status failed', err);
+    }
+  };
+
+  const formatDate = (isoString: string | undefined) => {
+    if (!isoString) return 'None';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('vi-VN');
+  };
 
   const handleWorkTypeChange = (type: string) => {
     setWorkType(type);
     setIsDropdownOpen(false);
   };
 
-  const handleDropdownClick = (e: React.MouseEvent) => {
+  const handleIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setIsDropdownOpen(!isDropdownOpen);
   };
 
   const getIconSrc = () => {
@@ -44,18 +91,6 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
         return tickIcon;
     }
   };
-
-  const handleIconClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDropdownOpen(!isDropdownOpen);
-  };
-
-  const handleKeyClick = () => {
-    navigate('/work-item');
-  };
-
-  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,11 +114,11 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
               <span className="issue-icon-wrapper" onClick={handleIconClick}>
                 <img src={getIconSrc()} alt={`${workType} Icon`} />
               </span>
-              <span className="issue-key" onClick={handleKeyClick}>
+              <span className="issue-key" onClick={() => navigate('/work-item')}>
                 {taskId}
               </span>
               {isDropdownOpen && (
-                <div className="issue-type-dropdown" onClick={handleDropdownClick}>
+                <div className="issue-type-dropdown">
                   <div className="dropdown-title">Change Work Type</div>
                   {['Task', 'Bug', 'Story'].map((type) => (
                     <div key={type} onClick={() => handleWorkTypeChange(type)}>
@@ -108,14 +143,18 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
             />
           </div>
           <div className="header-actions">
-            <button className="close-btn" onClick={() => navigate('/work-item')}>✖</button>
+            <button className="close-btn" onClick={() => navigate('/work-item')}>
+              ✖
+            </button>
           </div>
         </div>
 
         <div className="detail-content">
           <div className="main-section">
             <div className="add-menu-wrapper">
-              <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
+              <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>
+                + Add
+              </button>
               {isAddDropdownOpen && (
                 <div className="add-dropdown">
                   <div className="add-item" onClick={() => fileInputRef.current?.click()}>
@@ -163,12 +202,18 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
                     <tbody>
                       {subtaskData.map((item: any, index: number) => (
                         <tr key={index}>
-                          <td><img src={subtask} alt="Subtask" /></td>
+                          <td><img src={subtaskIcon} alt="Subtask" /></td>
                           <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.id}</a></td>
                           <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.title}</a></td>
                           <td>{item.priority}</td>
                           <td>{item.assignedBy?.toString() ?? 'Unassigned'}</td>
-                          <td>{item.status}</td>
+                          <td>
+                            <select value={item.status} onChange={(e) => handleSubtaskStatusChange(item.id, e.target.value)}>
+                              <option value="TO_DO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="DONE">Done</option>
+                            </select>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -185,31 +230,28 @@ const WorkItemDetail: React.FC<WorkItemDetailProps> = () => {
                 <button className="tab">Work log</button>
               </div>
               <textarea className="activity-input" placeholder="Add a comment...\nCan I get more info..? Status update... Thanks..." />
-              <p className="pro-tip">Pro tip: Press <strong>M</strong> to comment</p>
+              <p className="pro-tip">
+                Pro tip: Press <strong>M</strong> to comment
+              </p>
             </div>
           </div>
 
           <div className="details-panel">
-            <div className="pinned-fields">
-              <h4>Pinned fields</h4>
-              <p>Click on the ✂ next to a field label to start pinning.</p>
-            </div>
             <div className="details-content">
-              <div className="detail-item"><label>Assignee</label><span>Ngo Pham Thao Vy (K16_HC...)</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
-              <div className="detail-item"><label>Parent</label><span>None</span></div>
-              <div className="detail-item"><label>Due date</label><span>None</span></div>
-              <div className="detail-item"><label>Team</label><span>None</span></div>
-              <div className="detail-item"><label>Start date</label><span>None</span></div>
-              <div className="detail-item"><label>Sprint</label><span>None</span></div>
-              <div className="detail-item"><label>Story point estimate</label><span>None</span></div>
-              <div className="detail-item"><label>Fix versions</label><span>None</span></div>
-              <div className="detail-item"><label>Development</label>
-                <button className="dev-btn">Open with VS Code</button>
-                <button className="dev-btn">Create branch</button>
-                <button className="dev-btn">Create commit</button>
+              <div className="detail-item">
+                <label>Status</label>
+                <select value={status} onChange={(e) => handleTaskStatusChange(e.target.value)}>
+                  <option value="TO_DO">To Do</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="DONE">Done</option>
+                </select>
               </div>
-              <div className="detail-item"><label>Reporter</label><span>Dinh Quoc Tuan Dat (K17_H...)</span></div>
+              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
+              <div className="detail-item"><label>Labels</label><span>None</span></div>
+              <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskData[0]?.endDate)}</span></div>
+              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskData[0]?.startDate)}</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{subtaskData[0]?.reporterId ?? 'None'}</span></div>
             </div>
           </div>
         </div>

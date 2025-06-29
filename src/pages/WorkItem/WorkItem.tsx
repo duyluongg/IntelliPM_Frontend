@@ -26,7 +26,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
   const {
     data: subtaskData = [],
     isLoading,
-    refetch, // ✅ Thêm dòng này
+    refetch,
   } = useGetSubtasksByTaskIdQuery(taskId, {
     skip: !isOpen,
   });
@@ -37,7 +37,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
 
   React.useEffect(() => {
     if (taskData) {
-      setStatus(taskData.status); 
+      setStatus(taskData.status);
       setDescription(taskData.description ?? '');
     }
   }, [taskData]);
@@ -58,7 +58,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
     try {
       await updateSubtaskStatus({ id, status: newStatus }).unwrap();
       console.log(`Updated ${id} to ${newStatus}`);
-      refetch(); 
+      refetch();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -68,11 +68,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
     try {
       await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
       console.log(`Updated task ${taskId} to ${newStatus}`);
-      setStatus(newStatus); 
+      setStatus(newStatus);
       await refetchTask();
     } catch (err) {
       console.error('Failed to update task status', err);
     }
+  };
+
+  const formatDate = (isoString: string | undefined) => {
+    if (!isoString) return 'None';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('vi-VN');
   };
 
   const handleWorkTypeChange = (type: string) => {
@@ -183,7 +189,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
                           <td>
                             <select
                               value={item.status}
-                              onChange={(e) => handleStatusChange(item.key, e.target.value)} // ✅
+                              onChange={(e) => handleStatusChange(item.key, e.target.value)}
                             >
                               <option value="TO_DO">To Do</option>
                               <option value="IN_PROGRESS">In Progress</option>
@@ -221,14 +227,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
               </select>
             </div>
             <div className="details-content">
-              <div className="detail-item"><label>Assignee</label><span>Ngo Pham Thao Vy (K16_...)</span></div>
+              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
-              <div className="detail-item"><label>Parent</label><span>None</span></div>
-              <div className="detail-item"><label>Due date</label><span>None</span></div>
-              <div className="detail-item"><label>Start date</label><span>None</span></div>
-              <div className="detail-item"><label>Sprint</label><span>None</span></div>
-              <div className="detail-item"><label>Fix versions</label><span>None</span></div>
-              <div className="detail-item"><label>Reporter</label><span>Dinh Quoc Tuan Dat (K17_H...)</span></div>
+              <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskData[0]?.endDate)}</span></div>
+              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskData[0]?.startDate)}</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{subtaskData[0]?.reporterId ?? 'None'}</span></div>
             </div>
           </div>
         </div>

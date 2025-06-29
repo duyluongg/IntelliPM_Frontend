@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
+import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
 
 interface SubtaskDetail {
   id: string;
@@ -10,6 +11,9 @@ interface SubtaskDetail {
   description: string;
   status: string;
   priority: string;
+  startDate: string;
+  endDate: string;
+  reporterId: number;
 }
 
 interface ChildWorkItemPopupProps {
@@ -26,6 +30,7 @@ interface ChildWorkItemPopupProps {
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
+  const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -53,7 +58,31 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     setIsAddDropdownOpen(false);
   };
 
-  if (!subtaskDetail) return <div className="modal-overlay"><div className="child-work-item-container">Loading...</div></div>;
+  const formatDate = (isoString: string | undefined) => {
+    if (!isoString) return 'None';
+    const date = new Date(isoString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+    if (!subtaskDetail) return;
+
+    try {
+      await updateSubtaskStatus({ id: subtaskDetail.id, status: newStatus }).unwrap();
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // cập nhật UI
+      console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+    } catch (err) {
+      console.error('❌ Failed to update subtask status', err);
+    }
+  };
+
+  if (!subtaskDetail)
+    return (
+      <div className="modal-overlay">
+        <div className="child-work-item-container">Loading...</div>
+      </div>
+    );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -116,9 +145,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
           <div className="child-sidebar">
             <div className="status-section">
-              <select defaultValue={subtaskDetail.status} className={`status-dropdown`}>
-                <option value="TO-DO">To Do</option>
-                <option value="IN PROGRESS">In Progress</option>
+              <select
+                value={subtaskDetail.status}
+                className="status-dropdown"
+                onChange={handleStatusChange}
+              >
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
                 <option value="DONE">Done</option>
               </select>
             </div>
@@ -126,12 +159,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             <div className="details-panel">
               <h4>Details</h4>
               <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
-              <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
-              <div className="detail-item"><label>Due date</label><span>None</span></div>
-              <div className="detail-item"><label>Start date</label><span>None</span></div>
-              <div className="detail-item"><label>Fix versions</label><span>None</span></div>
-              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.assignedBy}</span></div>
+            <div className="detail-item"><label>Labels</label><span>None</span></div>
+            <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
+            <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
+            <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>
+            <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.reporterId}</span></div>
             </div>
           </div>
         </div>

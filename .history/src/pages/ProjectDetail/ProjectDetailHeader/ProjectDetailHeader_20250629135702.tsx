@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
-
 import {
   Users2,
   MoreHorizontal,
@@ -59,7 +57,7 @@ const ProjectDetailHeader: React.FC = () => {
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
+  const projectIconUrl = 'https://fpt-tuandatcoder.atlassian.net/rest/api/2/universal_avatar/view/type/project/avatar/10410';
 
   useEffect(() => {
     const updateTabs = () => {
@@ -108,7 +106,7 @@ const ProjectDetailHeader: React.FC = () => {
   }, []);
 
   // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
-  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
+  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'SEP_Agile_Scrum';
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -156,7 +154,7 @@ const ProjectDetailHeader: React.FC = () => {
           {visibleTabs.map((item, idx) => (
             <li key={idx} className='flex items-center relative group'>
               <a
-                href={`#/${item.label.toLowerCase()}`}
+                href={`#/projects/SAS/${item.label.toLowerCase()}`}
                 className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
                    ${
                      activeTab === item.label

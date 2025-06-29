@@ -8,7 +8,7 @@ import { accountApi } from '../services/accountApi';
 import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; 
 import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices'; 
 import { projectMetricApi } from '../services/projectMetricApi';
-
+import { projectApi } from '../services/projectApi';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +21,7 @@ export const store = configureStore({
     [meetingApi.reducerPath]: meetingApi.reducer, 
     [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
+    [projectApi.reducerPath]: projectApi.reducer,
 
   },
 
@@ -34,8 +35,8 @@ export const store = configureStore({
       accountApi.middleware,
       meetingApi.middleware ,
       meetingLogApi.middleware,
-      projectMetricApi.middleware
-
+      projectMetricApi.middleware,
+      projectApi.middleware
     ),
 });
 

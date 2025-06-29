@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
-import projectIcon from '../../../assets/projectManagement.png';
-
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; 
+import projectIcon from '../../../../assets/projectManagement.png';
 import {
   Users2,
   MoreHorizontal,
@@ -49,9 +48,8 @@ const ProjectDetailHeader: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound'; // Lấy projectKey từ URL
+  const projectKey = searchParams.get('projectKey') || 'NotFound'; 
 
-  // Gọi API để lấy chi tiết dự án
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
 
   const togglePopup = () => {
@@ -59,7 +57,7 @@ const ProjectDetailHeader: React.FC = () => {
     setIsPopupOpen(!isPopupOpen);
   };
 
-  const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
+  const projectIconUrl = projectDetails?.data?.iconUrl ||projectIcon;
 
   useEffect(() => {
     const updateTabs = () => {
@@ -107,8 +105,8 @@ const ProjectDetailHeader: React.FC = () => {
     }
   }, []);
 
-  // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
-  const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
+  if (isLoading) return <div className='mx-6 pt-6 text-center'>Loading project details...</div>;
+  if (error) return <div className='mx-6 pt-6 text-red-500 text-center'>Error: {error.toString()}</div>;
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -124,7 +122,7 @@ const ProjectDetailHeader: React.FC = () => {
 
       <div className='flex items-center gap-2'>
         <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
-        <h1 className='text-lg font-semibold'>{projectName}</h1>
+        <h1 className='text-lg font-semibold'>{projectDetails?.data?.name || 'SEP_Agile_Scrum'}</h1>
         <button className='p-1 text-gray-500 hover:text-gray-700' aria-label='Team'>
           <Users2 className='w-4 h-4' />
         </button>
@@ -156,7 +154,7 @@ const ProjectDetailHeader: React.FC = () => {
           {visibleTabs.map((item, idx) => (
             <li key={idx} className='flex items-center relative group'>
               <a
-                href={`#/${item.label.toLowerCase()}`}
+                href={`#/projects/${projectKey}/${item.label.toLowerCase()}`}
                 className={`flex items-center gap-1 text-sm pb-1 border-b-2 transition-all duration-200 
                    ${
                      activeTab === item.label
@@ -192,7 +190,7 @@ const ProjectDetailHeader: React.FC = () => {
                     {hiddenTabs.map((item, idx) => (
                       <li key={idx}>
                         <a
-                          href={`/${item.label.toLowerCase()}`}
+                          href={`/projects/${projectKey}/${item.label.toLowerCase()}`}
                           className={`flex items-center gap-2 w-full py-2 px-4 hover:bg-gray-100 ${
                             activeTab === item.label ? 'text-blue-600 font-medium' : 'text-gray-700'
                           }`}

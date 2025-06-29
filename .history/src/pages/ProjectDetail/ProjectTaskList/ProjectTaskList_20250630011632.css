@@ -1,34 +1,35 @@
 .task-page-wrapper {
-  padding: 24px;
+  padding: 12px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
-  background-color: #FFFFFF; /* Changed from #F4F5F7 to #FFFFFF */
-  margin: 0; /* Reset all margins to remove any centering */
-  width: 100%; /* Ensure it takes full width of parent */
-  display: block; /* Ensure block-level behavior */
-  position: relative; /* Allow precise positioning */
-  left: 0; /* Force alignment to the left edge */
+  background-color: #FFFFFF;
+  margin: 0 !important;
+  width: 100% !important;
+  display: block;
+  position: relative;
+  left: 0;
 }
 
 .task-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-top: 0px !important;
+  margin-bottom: 32px;
   background-color: #FFFFFF;
   border-radius: 4px;
-  padding: 8px 16px;
-  box-shadow: 0 1px 0 #DFE1E6;
+  padding: 10px 12px;
+  padding-top: 0px !important;
 }
 
 .left-section {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .page-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #172B4D;
 }
@@ -41,23 +42,23 @@
 
 .search-icon {
   position: absolute;
-  left: 8px;
+  left: 6px;
   color: #6B778C;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .search-input {
-  padding: 4px 8px 4px 28px;
+  padding: 3px 10px 3px 24px;
   border: 1px solid #DFE1E6;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 14px;
   background-color: #FFFFFF;
-  min-width: 120px;
+  min-width: 240px;
 }
 
 .avatar-group {
   display: flex;
-  gap: 2px;
+  gap: 3px;
 }
 
 .avatar {
@@ -70,6 +71,7 @@
   color: #FFFFFF;
   font-size: 0.75rem;
   font-weight: bold;
+  border: 2px solid #FFFFFF;
 }
 
 .filter-btn {
@@ -78,89 +80,125 @@
   background-color: #FFFFFF;
   border: 1px solid #4C9AFF;
   color: #4C9AFF;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   font-weight: 500;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .filter-count {
-  margin-left: 4px;
+  margin-left: 3px;
   background-color: #4C9AFF;
   color: white;
-  padding: 1px 4px;
+  padding: 1px 3px;
   border-radius: 9999px;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .group-dropdown {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background-color: #FFFFFF;
   border: 1px solid #DFE1E6;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   color: #6B778C;
 }
 
 .right-section {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .menu-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   color: #6B778C;
 }
 
 .task-table-container {
   overflow-x: auto;
   background-color: #FFFFFF;
+  margin: 0;
+  width: 100%;
+  display: block;
 }
 
 .task-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   min-width: 800px;
+  margin: 0;
+  table-layout: fixed;
 }
 
 .task-table th,
 .task-table td {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid #DFE1E6;
-  font-size: 0.875rem;
+  padding: 6px;
+  border-bottom: 0.5px solid #DFE1E6;
+  border-left: 0.5px solid #DFE1E6;
+  border-right: 0.5px solid #DFE1E6;
+  font-size: 0.825rem;
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .task-table th {
   background-color: #F4F5F7;
-  color: #6B778C;
+  color: #353535;
   font-weight: 600;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  padding: 12px 10px;
+  position: relative;
 }
 
 .task-table td {
   color: #172B4D;
+  padding: 6px 10px;
+}
+
+.task-table th:last-child,
+.task-table td:last-child {
+  border-right: 0.5px solid #DFE1E6;
+}
+
+.task-table th:first-child,
+.task-table td:first-child {
+  border-left: none;
 }
 
 .task-table tr:hover {
   background-color: #F4F5F7;
 }
 
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: transparent;
+  z-index: 1;
+}
+
+.resizer:hover {
+  background-color: #4C9AFF;
+}
+
 .type-icon {
-  width: 20px; /* Increased from 16px to 24px */
-  height: 20px; /* Increased from 16px to 24px */
-  background-color: #FFFFFF;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   padding: 2px;
   vertical-align: middle;
@@ -178,13 +216,14 @@
 }
 
 .status-line {
-  padding: 1px 4px;
+  padding: 2px 5px;
   border-radius: 4px;
   font-weight: 500;
-  font-size: 0.75rem;
-  display: block;
+  font-size: 0.7rem;
+  display: inline-block;
   white-space: nowrap;
-  text-decoration: none; /* Remove default underline */
+  text-decoration: none;
+  width: fit-content;
 }
 
 .status-to-do { background-color: #dddee1; color: #6B778C; }
@@ -203,20 +242,20 @@
 }
 
 .task-id-small {
-  font-size: 0.65rem;
-  color: #6B778C;
+  font-size: 0.68rem;
+  color: #57595f;
   margin-bottom: 2px;
 }
 
 .key-bottom {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .subtask-id,
 .task-key {
-  font-size: 0.875rem;
+  font-size: 0.825rem;
   color: #000000;
   cursor: pointer;
 }
@@ -233,47 +272,67 @@
   width: 100%;
 }
 
-/* Removed gray background from .task-row */
 .task-row {
-  background-color: inherit; /* Reset to default background */
+  background-color: inherit;
 }
 
 .subtask-link-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .date-cell {
   display: flex;
   align-items: center;
-  gap: 4px;
-  background-color: #F9FAFB;
-  padding: 2px 8px;
+  gap: 3px;
+  padding: 2px 5px;
   border-radius: 4px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: #374151;
 }
 
 .date-cell svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+}
+
+.date-cell {
+  border: 0.5px solid currentColor; /* Border color matches text/icon color */
+}
+
+.date-cell.due-warning {
+  border-color: #BF2600; /* Red border for overdue */
+  color: #BF2600; /* Match text color to icon */
+}
+
+.date-cell.due-warning svg {
+  color: #BF2600; /* Red color for overdue warning */
+}
+
+.date-cell.due-today {
+  border: 1px solid #a04301; /* Orange border for due today */
+  color: #a04301; /* Match text color to orange */
+}
+
+.date-cell.due-today svg {
+  color: #a04301; /* Orange color for due today icon */
 }
 
 .reporter {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .reporter-name {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #172B4D;
 }
 
 .avatar img {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -281,35 +340,53 @@
 .comment-cell {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.85rem;
+  gap: 3px;
+  font-size: 0.8rem;
   color: #374151;
+  padding: 0;
 }
 
 .comment-cell-inactive {
-  background-color: #ECECEC;
-  padding: 2px 4px;
+  background-color: transparent;
+  padding: 2px 0;
   border-radius: 4px;
+  color: #6b6e76;
+  font-weight: normal;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+}
+
+.comment-cell-inactive svg {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  margin-right: 3px;
 }
 
 .label-tag {
   display: inline-block;
-  padding: 2px 6px;
-  margin-right: 4px;
-  border: 1px solid #DFE1E6;
+  padding: 2px 5px;
+  margin-right: 3px;
+  border: 0.5px solid #DFE1E6;
   border-radius: 4px;
-  background-color: #FFFFFF;
-  font-size: 0.75rem;
+  background-color: transparent;
+  font-size: 0.7rem;
   color: #172B4D;
 }
 
-/* New style for Sprint cells */
 .sprint-cell {
   display: inline-block;
-  padding: 2px 6px;
-  border: 1px solid #DFE1E6;
+  padding: 2px 5px;
+  border: 0.5px solid #DFE1E6;
   border-radius: 4px;
-  background-color: #FFFFFF;
-  font-size: 0.75rem;
+  background-color: transparent;
+  font-size: 0.7rem;
   color: #172B4D;
+}
+
+.due-today-icon {
+  stroke: #a04301; /* Orange border */
+  fill: #a04301; /* Orange fill */
 }

@@ -3,24 +3,77 @@ import './WorkItem.css';
 import tickIcon from '/src/assets/check_box.png';
 import bugIcon from '/src/assets/bug.png';
 import flagIcon from '/src/assets/flag.png';
-import subtask from '/src/assets/subtask.png';
+import subtaskIcon from '/src/assets/subtask.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
+import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useGetTaskByIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
+import { useNavigate } from 'react-router-dom';
 
 interface WorkItemProps {
   isOpen: boolean;
   onClose: () => void;
-  childWorkItems: { key: string; summary: string; priority: string; assignee: string; status: string }[];
-  onChildItemClick: (item: any) => void;
-  onChildPopupClose: () => void;
 }
 
-const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) => {
-  const [status, setStatus] = React.useState('In Progress');
+const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose }) => {
+  const taskId = 'FLOWER1-1';
+
+  const [status, setStatus] = React.useState('');
   const [workType, setWorkType] = React.useState('Task');
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
-  const [isChildPopupOpen, setIsChildPopupOpen] = React.useState(false);
+
+  const {
+    data: subtaskData = [],
+    isLoading,
+    refetch, // ✅ Thêm dòng này
+  } = useGetSubtasksByTaskIdQuery(taskId, {
+    skip: !isOpen,
+  });
+
+  const { data: taskData, isLoading: isTaskLoading, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
+    skip: !isOpen,
+  });
+
+  React.useEffect(() => {
+    if (taskData) {
+      setStatus(taskData.status); 
+      setDescription(taskData.description ?? '');
+    }
+  }, [taskData]);
+
+  const [updateTaskStatus] = useUpdateTaskStatusMutation();
+
+  const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
+
+  const childWorkItems = subtaskData.map((item) => ({
+    key: item.id,
+    summary: item.title,
+    priority: item.priority,
+    assignee: item.assignedBy?.toString() ?? 'Unassigned',
+    status: item.status,
+  }));
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      await updateSubtaskStatus({ id, status: newStatus }).unwrap();
+      console.log(`Updated ${id} to ${newStatus}`);
+      refetch(); 
+    } catch (err) {
+      console.error('Failed to update subtask status', err);
+    }
+  };
+
+  const handleTaskStatusChange = async (newStatus: string) => {
+    try {
+      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      console.log(`Updated task ${taskId} to ${newStatus}`);
+      setStatus(newStatus); 
+      await refetchTask();
+    } catch (err) {
+      console.error('Failed to update task status', err);
+    }
+  };
 
   const handleWorkTypeChange = (type: string) => {
     setWorkType(type);
@@ -35,7 +88,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
     switch (workType) {
       case 'Bug': return bugIcon;
       case 'Story': return flagIcon;
-      case 'Task':
       default: return tickIcon;
     }
   };
@@ -45,8 +97,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
     setIsDropdownOpen(!isDropdownOpen);
   };
 
+  const navigate = useNavigate();
+
   const handleKeyClick = () => {
-    window.location.href = '/work-item-detail';
+    navigate(`/work-item-detail?taskId=${taskId}`);
   };
 
   if (!isOpen) return null;
@@ -60,26 +114,31 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
               <span className="issue-icon-wrapper" onClick={handleIconClick}>
                 <img src={getIconSrc()} alt={`${workType} Icon`} />
               </span>
-              <span className="issue-key" onClick={handleKeyClick}>SAS-1</span>
+              <span className="issue-key" onClick={handleKeyClick}>{taskId}</span>
               {isDropdownOpen && (
                 <div className="issue-type-dropdown" onClick={handleDropdownClick}>
                   <div className="dropdown-title">Change Work Type</div>
-                  <div className="dropdown-item" onClick={() => handleWorkTypeChange('Task')}>
-                    <input type="radio" checked={workType === 'Task'} readOnly />
-                    <img src={tickIcon} alt="Task" className="dropdown-icon" /> Task
-                  </div>
-                  <div className="dropdown-item" onClick={() => handleWorkTypeChange('Bug')}>
-                    <input type="radio" checked={workType === 'Bug'} readOnly />
-                    <img src={bugIcon} alt="Bug" className="dropdown-icon" /> Bug
-                  </div>
-                  <div className="dropdown-item" onClick={() => handleWorkTypeChange('Story')}>
-                    <input type="radio" checked={workType === 'Story'} readOnly />
-                    <img src={flagIcon} alt="Story" className="dropdown-icon" /> Story
-                  </div>
+                  {['Task', 'Bug', 'Story'].map((type) => (
+                    <div key={type} className="dropdown-item" onClick={() => handleWorkTypeChange(type)}>
+                      <input type="radio" checked={workType === type} readOnly />
+                      <img
+                        src={type === 'Task' ? tickIcon : type === 'Bug' ? bugIcon : flagIcon}
+                        alt={type}
+                        className="dropdown-icon"
+                      />
+                      {type}
+                    </div>
+                  ))}
                 </div>
               )}
             </span>
-            <input type="text" className="issue-summary" placeholder="Enter summary" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <input
+              type="text"
+              className="issue-summary"
+              placeholder="Enter summary"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
           </div>
           <div className="header-actions">
             <button className="close-btn" onClick={onClose}>✖</button>
@@ -90,35 +149,52 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
           <div className="main-section">
             <div className="field-group">
               <label>Description</label>
-              <textarea placeholder="Add a description..." value={description} onChange={(e) => setDescription(e.target.value)} />
+              <textarea
+                placeholder="Add a description..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
             <div className="field-group">
               <label>Child work items</label>
               <div className="issue-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Key</th>
-                      <th>Summary</th>
-                      <th>Priority</th>
-                      <th>Assignee</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {childWorkItems.map((item, index) => (
-                      <tr key={index}>
-                        <td><img src={subtask} alt="Subtask" /></td>
-                        <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
-                      <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
-                        <td><span>{item.priority}</span></td>
-                        <td><span className="assignee">{item.assignee}</span></td>
-                        <td><span>{item.status}</span></td>
+                {isLoading ? (
+                  <p>Loading...</p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Key</th>
+                        <th>Summary</th>
+                        <th>Priority</th>
+                        <th>Assignee</th>
+                        <th>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {childWorkItems.map((item, index) => (
+                        <tr key={index}>
+                          <td><img src={subtaskIcon} alt="Subtask" /></td>
+                          <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
+                          <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
+                          <td>{item.priority}</td>
+                          <td className="assignee">{item.assignee}</td>
+                          <td>
+                            <select
+                              value={item.status}
+                              onChange={(e) => handleStatusChange(item.key, e.target.value)} // ✅
+                            >
+                              <option value="TO_DO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="DONE">Done</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
             <div className="field-group">
@@ -135,10 +211,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
 
           <div className="details-panel">
             <div className="panel-header">
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option>To Do</option>
-                <option>In Progress</option>
-                <option>Done</option>
+              <select
+                value={status}
+                onChange={(e) => handleTaskStatusChange(e.target.value)}
+              >
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="DONE">Done</option>
               </select>
             </div>
             <div className="details-content">
@@ -146,10 +225,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, childWorkItems }) 
               <div className="detail-item"><label>Labels</label><span>None</span></div>
               <div className="detail-item"><label>Parent</label><span>None</span></div>
               <div className="detail-item"><label>Due date</label><span>None</span></div>
-              <div className="detail-item"><label>Team</label><span>None</span></div>
               <div className="detail-item"><label>Start date</label><span>None</span></div>
               <div className="detail-item"><label>Sprint</label><span>None</span></div>
-              <div className="detail-item"><label>Story point estimate</label><span>None</span></div>
               <div className="detail-item"><label>Fix versions</label><span>None</span></div>
               <div className="detail-item"><label>Reporter</label><span>Dinh Quoc Tuan Dat (K17_H...)</span></div>
             </div>

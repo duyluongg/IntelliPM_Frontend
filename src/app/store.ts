@@ -6,6 +6,7 @@ import { milestoneApi } from '../services/milestoneApi';
 import { sprintApi } from '../services/sprintApi';
 import { accountApi } from '../services/accountApi';
 import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; // ✅ THÊM DÒNG NÀY
+import { subtaskApi } from '../services/subtaskApi';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     [sprintApi.reducerPath]: sprintApi.reducer,
     [accountApi.reducerPath]: accountApi.reducer,
     [meetingApi.reducerPath]: meetingApi.reducer,
+    [subtaskApi.reducerPath]: subtaskApi.reducer,
     // Thêm các slice khác nếu có
   },
 
@@ -27,7 +29,8 @@ export const store = configureStore({
       milestoneApi.middleware, 
       sprintApi.middleware,
       accountApi.middleware,
-      meetingApi.middleware // ✅ THÊM DÒNG NÀY
+      meetingApi.middleware, // ✅ THÊM DÒNG NÀY
+      subtaskApi.middleware
     ),
 });
 

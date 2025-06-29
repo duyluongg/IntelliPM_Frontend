@@ -4,10 +4,6 @@
   background: #fff;
   color: #172b4d;
   min-height: 100vh;
-  box-shadow: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-  border-radius: 0 !important;
 }
 
 .child-header {

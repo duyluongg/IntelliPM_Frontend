@@ -12,6 +12,7 @@ import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 
+
 // Interface Reporter
 interface Reporter {
   fullName: string;
@@ -166,53 +167,76 @@ const HeaderBar: React.FC = () => {
 
 // Component ProjectTaskList
 const ProjectTaskList: React.FC = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // ✅ mở popup
+  const handleOpenPopup = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsPopupOpen(true);
+  };
+
+  // ✅ đẩy taskId vào URL
+  React.useEffect(() => {
+    if (isPopupOpen && selectedTaskId) {
+      searchParams.set('taskId', selectedTaskId);
+      setSearchParams(searchParams);
+    }
+  }, [isPopupOpen, selectedTaskId]);
+
+  // ✅ đóng popup
+  const handleClosePopup = () => {
+    setIsPopupOpen(false);
+    setSelectedTaskId(null);
+    searchParams.delete('taskId');
+    setSearchParams(searchParams);
+  };
 
   const tasks: TaskItem[] =
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item) => ({
-          id: item.key || '',
-          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-          key: item.key || '',
-          taskId: item.taskId || null,
-          summary: item.summary || '',
-          status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
-          comments: item.commentCount || 0,
-          sprint: item.sprintId || null,
-          assignees: item.assignees.map((assignee) => ({
-            fullName: assignee.fullname || 'Unknown',
-            initials:
-              assignee.fullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: assignee.picture || undefined,
-          })),
-          dueDate: item.dueDate || null,
-          labels: item.labels || [],
-          created: item.createdAt || '',
-          updated: item.updatedAt || '',
-          reporter: {
-            fullName: item.reporterFullname || 'Unknown',
-            initials:
-              item.reporterFullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: item.reporterPicture || undefined,
-          },
-        }));
+        id: item.key || '',
+        type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+        key: item.key || '',
+        taskId: item.taskId || null,
+        summary: item.summary || '',
+        status: item.status.replace(' ', '_').toLowerCase() || '', // Convert "TO DO" to "to_do" and "IN PROGRESS" to "in_progress"
+        comments: item.commentCount || 0,
+        sprint: item.sprintId || null,
+        assignees: item.assignees.map((assignee) => ({
+          fullName: assignee.fullname || 'Unknown',
+          initials:
+            assignee.fullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: assignee.picture || undefined,
+        })),
+        dueDate: item.dueDate || null,
+        labels: item.labels || [],
+        created: item.createdAt || '',
+        updated: item.updatedAt || '',
+        reporter: {
+          fullName: item.reporterFullname || 'Unknown',
+          initials:
+            item.reporterFullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: item.reporterPicture || undefined,
+        },
+      }));
 
   return (
     <div className="task-page-wrapper">
@@ -285,7 +309,7 @@ const ProjectTaskList: React.FC = () => {
                             fill="none"
                           ></path>
                         </svg>
-                        <span className="subtask-id" onClick={() => setIsPopupOpen(true)}>
+                        <span className="subtask-id" onClick={() => handleOpenPopup(task.key)}>
                           {task.key}
                         </span>
                       </div>
@@ -293,7 +317,7 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div className="task-key-wrapper">
                       <span className="task-id-small"></span>
-                      <span className="task-key" onClick={() => setIsPopupOpen(true)}>
+                      <span className="task-key" onClick={() => handleOpenPopup(task.key)}>
                         {task.key}
                       </span>
                     </div>
@@ -362,8 +386,8 @@ const ProjectTaskList: React.FC = () => {
                 <td>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                        <span key={index} className="label-tag">{label}</span>
-                      ))
+                      <span key={index} className="label-tag">{label}</span>
+                    ))
                     : ''}
                 </td>
                 <td>{task.created !== 'Unknown' ? <DateWithIcon date={task.created} /> : ''}</td>

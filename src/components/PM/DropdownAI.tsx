@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import Lottie from 'lottie-react';
 import AI_Icon from '../../../src/assets/AnimationIcon/AI_Icon.json';
-import { useParams } from 'react-router-dom';
 import { useAuth } from '../../services/AuthContext';
 import axios from 'axios';
 import type { Editor } from '@tiptap/react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 
 export default function DropdownAI({
   editor,
@@ -15,19 +16,19 @@ export default function DropdownAI({
 }) {
   const [open, setOpen] = useState(false);
   const [openSummary, setOpenSummary] = useState(false);
-  const { id } = useParams();
   const { user } = useAuth();
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [summaryResult, setSummaryResult] = useState('');
   const [saving, setSaving] = useState(false);
+  const docId = useSelector((state: RootState) => state.doc.id);
 
   const handleAddToDoc = async () => {
-    if (!user || !id || !summaryResult) return;
+    if (!user || !docId || !summaryResult) return;
 
     setSaving(true);
     try {
       // Lấy document hiện tại
-      const docRes = await axios.get(`https://localhost:7128/api/documents/${id}`, {
+      const docRes = await axios.get(`https://localhost:7128/api/documents/${docId}/summary`, {
         headers: { Authorization: `Bearer ${user.accessToken}` },
       });
 
@@ -39,7 +40,7 @@ export default function DropdownAI({
         updatedBy: user.id,
       };
 
-      await axios.put(`https://localhost:7128/api/documents/${id}`, updatedDoc, {
+      await axios.put(`https://localhost:7128/api/documents/${docId}`, updatedDoc, {
         headers: {
           Authorization: `Bearer ${user.accessToken}`,
         },
@@ -58,13 +59,13 @@ export default function DropdownAI({
   };
 
   const handleSummarize = async () => {
-    if (!user || !id) return;
+    if (!user || !docId) return;
 
     setLoadingSummary(true);
     setOpenSummary(true);
     try {
       const res = await axios.get(
-        `https://localhost:7128/api/documents/${id}/summary`,
+        `https://localhost:7128/api/documents/${docId}/summary`,
 
         {
           headers: {
@@ -105,7 +106,7 @@ export default function DropdownAI({
           <button
             onClick={() => {
               setOpen(false);
-              // setOpenSummary(true);
+              setOpenSummary(true);
               handleSummarize();
             }}
             className='w-full px-4 py-2 text-left hover:bg-gray-100'

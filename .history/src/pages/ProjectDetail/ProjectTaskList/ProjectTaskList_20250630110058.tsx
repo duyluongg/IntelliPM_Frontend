@@ -75,24 +75,14 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
   };
 
   return (
-    <div className='status-container'>
-      <span className='status-line' style={getStatusStyle()}>
-        {formatStatusForDisplay(status)}
-      </span>
+    <div className="status-container">
+      <span className="status-line" style={getStatusStyle()}>{formatStatusForDisplay(status)}</span>
     </div>
   );
 };
 
 // Component DateWithIcon
-const DateWithIcon = ({
-  date,
-  status,
-  isDueDate,
-}: {
-  date?: string | null;
-  status: string;
-  isDueDate?: boolean;
-}) => {
+const DateWithIcon = ({ date, status, isDueDate }: { date?: string | null; status: string; isDueDate?: boolean }) => {
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -102,20 +92,16 @@ const DateWithIcon = ({
     return `${month} ${day}, ${year}`;
   };
 
-  const today = new Date();
-  const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate()); // reset giờ
-
-  const dueDate = date
-    ? new Date(new Date(date).getFullYear(), new Date(date).getMonth(), new Date(date).getDate())
-    : null;
+  const currentDate = new Date('2025-06-30T02:15:00+07:00'); // Updated to current time
+  const dueDate = date ? new Date(date) : null;
 
   let icon = (
-    <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
+    <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4">
       <path
-        fill='currentColor'
-        fillRule='evenodd'
-        d='M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z'
-        clipRule='evenodd'
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z"
+        clipRule="evenodd"
       />
     </svg>
   );
@@ -128,31 +114,18 @@ const DateWithIcon = ({
 
     if (isOverdue && !isDone) {
       icon = (
-        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
-          <path
-            fill='currentColor'
-            fill-rule='evenodd'
-            d='M5.7 1.384c.996-1.816 3.605-1.818 4.602-.003l5.35 9.73C16.612 12.86 15.346 15 13.35 15H2.667C.67 15-.594 12.862.365 11.113zm3.288.72a1.125 1.125 0 0 0-1.972 0l-5.336 9.73c-.41.75.132 1.666.987 1.666H13.35c.855 0 1.398-.917.986-1.667z'
-            clip-rule='evenodd'
-          ></path>
-          <path
-            fill='currentColor'
-            fill-rule='evenodd'
-            d='M7.25 9V4h1.5v5z'
-            clip-rule='evenodd'
-          ></path>
-          <path fill='currentColor' d='M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0'></path>
+        <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4">
+          <path fill="currentColor" fill-rule="evenodd" d="M5.7 1.384c.996-1.816 3.605-1.818 4.602-.003l5.35 9.73C16.612 12.86 15.346 15 13.35 15H2.667C.67 15-.594 12.862.365 11.113zm3.288.72a1.125 1.125 0 0 0-1.972 0l-5.336 9.73c-.41.75.132 1.666.987 1.666H13.35c.855 0 1.398-.917.986-1.667z" clip-rule="evenodd"></path>
+          <path fill="currentColor" fill-rule="evenodd" d="M7.25 9V4h1.5v5z" clip-rule="evenodd"></path>
+          <path fill="currentColor" d="M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0"></path>
         </svg>
       );
       className = 'date-cell due-warning';
     } else if (isDueToday && !isDone) {
       icon = (
-        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4 due-today-icon'>
-          <circle cx='8' cy='8' r='7' stroke='currentColor' strokeWidth='1' fill='none' />
-          <path
-            fill='currentColor'
-            d='M14.5 8a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0M8.75 3.25v4.389l2.219 1.775-.938 1.172-2.5-2-.281-.226V3.25zM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0'
-          ></path>
+        <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4 due-today-icon">
+          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1" fill="none" />
+          <path fill="currentColor" d="M14.5 8a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0M8.75 3.25v4.389l2.219 1.775-.938 1.172-2.5-2-.281-.226V3.25zM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"></path>
         </svg>
       );
       className = 'date-cell due-today';
@@ -170,54 +143,54 @@ const DateWithIcon = ({
 // Component Avatar
 const Avatar = ({ person }: { person: Reporter | Assignee }) =>
   person.fullName !== 'Unknown' ? (
-    <div className='reporter'>
+    <div className="reporter">
       {person.picture ? (
         <img
           src={person.picture}
           alt={`${person.fullName}'s avatar`}
-          className='avatar'
+          className="avatar"
           style={{ backgroundColor: person.avatarColor }}
         />
       ) : (
-        <div className='avatar' style={{ backgroundColor: person.avatarColor }}>
+        <div className="avatar" style={{ backgroundColor: person.avatarColor }}>
           {person.initials}
         </div>
       )}
-      <span className='reporter-name'>{person.fullName}</span>
+      <span className="reporter-name">{person.fullName}</span>
     </div>
   ) : null;
 
 // Component HeaderBar
 const HeaderBar: React.FC = () => {
   return (
-    <div className='task-header-bar'>
-      <div className='left-section'>
-        <div className='search-wrapper'>
-          <FaSearch className='search-icon' />
-          <input type='text' className='search-input' placeholder='Search list' />
+    <div className="task-header-bar">
+      <div className="left-section">
+        <div className="search-wrapper">
+          <FaSearch className="search-icon" />
+          <input type="text" className="search-input" placeholder="Search list" />
         </div>
-        <div className='avatar-group'>
-          <div className='avatar' style={{ backgroundColor: '#059669' }}>
+        <div className="avatar-group">
+          <div className="avatar" style={{ backgroundColor: '#059669' }}>
             DH
           </div>
-          <div className='avatar' style={{ backgroundColor: '#ef4444' }}>
+          <div className="avatar" style={{ backgroundColor: '#ef4444' }}>
             D
           </div>
-          <div className='avatar' style={{ backgroundColor: '#2563eb' }}>
+          <div className="avatar" style={{ backgroundColor: '#2563eb' }}>
             NV
           </div>
         </div>
-        <button className='filter-btn'>
+        <button className="filter-btn">
           <FaFilter style={{ marginRight: '4px' }} />
-          Filter <span className='filter-count'>1</span>
+          Filter <span className="filter-count">1</span>
         </button>
       </div>
-      <div className='right-section'>
-        <div className='group-dropdown'>
+      <div className="right-section">
+        <div className="group-dropdown">
           <MdGroup />
           <span>Group</span>
         </div>
-        <button className='menu-btn'>
+        <button className="menu-btn">
           <FaEllipsisV />
         </button>
       </div>
@@ -360,200 +333,230 @@ const ProjectTaskList: React.FC = () => {
         }));
 
   return (
-    <div className='task-page-wrapper'>
+    <div className="task-page-wrapper">
       <HeaderBar />
-      <div className='task-table-container'>
-        <table className='task-table' ref={tableRef}>
+      <div className="task-table-container">
+        <table className="task-table" ref={tableRef}>
           <thead>
             <tr>
-              <th className='w-16' style={{ width: `${columnWidths.type}px` }}>
+              <th className="w-16" style={{ width: `${columnWidths.type}px` }}>
                 Type
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'type')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'type')}
+                />
               </th>
-              <th className='w-20' style={{ width: `${columnWidths.key}px` }}>
+              <th className="w-20" style={{ width: `${columnWidths.key}px` }}>
                 Key
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'key')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'key')}
+                />
               </th>
               <th style={{ width: `${columnWidths.summary}px` }}>
                 Summary
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'summary')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'summary')}
+                />
               </th>
-              <th className='w-24' style={{ width: `${columnWidths.status}px` }}>
+              <th className="w-24" style={{ width: `${columnWidths.status}px` }}>
                 Status
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'status')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'status')}
+                />
               </th>
-              <th className='w-24' style={{ width: `${columnWidths.comments}px` }}>
+              <th className="w-24" style={{ width: `${columnWidths.comments}px` }}>
                 Comments
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'comments')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'comments')}
+                />
               </th>
-              <th className='w-20' style={{ width: `${columnWidths.sprint}px` }}>
+              <th className="w-20" style={{ width: `${columnWidths.sprint}px` }}>
                 Sprint
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'sprint')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                />
               </th>
-              <th className='w-32' style={{ width: `${columnWidths.assignee}px` }}>
+              <th className="w-32" style={{ width: `${columnWidths.assignee}px` }}>
                 Assignee
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'assignee')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'assignee')}
+                />
               </th>
-              <th className='w-28' style={{ width: `${columnWidths.dueDate}px` }}>
+              <th className="w-28" style={{ width: `${columnWidths.dueDate}px` }}>
                 Due date
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'dueDate')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'dueDate')}
+                />
               </th>
-              <th className='w-24' style={{ width: `${columnWidths.labels}px` }}>
+              <th className="w-24" style={{ width: `${columnWidths.labels}px` }}>
                 Labels
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'labels')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'labels')}
+                />
               </th>
-              <th className='w-28' style={{ width: `${columnWidths.created}px` }}>
+              <th className="w-28" style={{ width: `${columnWidths.created}px` }}>
                 Created
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'created')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'created')}
+                />
               </th>
-              <th className='w-28' style={{ width: `${columnWidths.updated}px` }}>
+              <th className="w-28" style={{ width: `${columnWidths.updated}px` }}>
                 Updated
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'updated')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'updated')}
+                />
               </th>
-              <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+              <th className="w-32" style={{ width: `${columnWidths.reporter}px` }}>
                 Reporter
-                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+                <div
+                  className="resizer"
+                  onMouseDown={(e) => handleMouseDown(e, 'reporter')}
+                />
               </th>
             </tr>
           </thead>
           <tbody>
             {tasks.map((task) => (
               <tr key={task.id} className={task.type === 'task' ? 'task-row' : ''}>
-                <td className='w-16' style={{ width: `${columnWidths.type}px` }}>
-                  {task.type === 'task' && <img src={taskIcon} alt='Task' className='type-icon' />}
-                  {task.type === 'subtask' && (
-                    <img src={subtaskIcon} alt='Subtask' className='type-icon' />
-                  )}
-                  {task.type === 'bug' && <img src={bugIcon} alt='Bug' className='type-icon' />}
-                  {task.type === 'epic' && <img src={epicIcon} alt='Epic' className='type-icon' />}
-                  {task.type === 'story' && (
-                    <img src={storyIcon} alt='Story' className='type-icon' />
-                  )}
+                <td className="w-16" style={{ width: `${columnWidths.type}px` }}>
+                  {task.type === 'task' && <img src={taskIcon} alt="Task" className="type-icon" />}
+                  {task.type === 'subtask' && <img src={subtaskIcon} alt="Subtask" className="type-icon" />}
+                  {task.type === 'bug' && <img src={bugIcon} alt="Bug" className="type-icon" />}
+                  {task.type === 'epic' && <img src={epicIcon} alt="Epic" className="type-icon" />}
+                  {task.type === 'story' && <img src={storyIcon} alt="Story" className="type-icon" />}
                 </td>
-                <td className='w-20' style={{ width: `${columnWidths.key}px` }}>
+                <td className="w-20" style={{ width: `${columnWidths.key}px` }}>
                   {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
-                    <div className='subtask-key'>
-                      <span className='task-id-small'>{task.taskId}</span>
-                      <div className='key-bottom'>
+                    <div className="subtask-key">
+                      <span className="task-id-small">{task.taskId}</span>
+                      <div className="key-bottom">
                         <svg
-                          role='presentation'
-                          width='16'
-                          height='16'
-                          viewBox='0 0 16 16'
-                          fill='none'
-                          xmlns='http://www.w3.org/2000/svg'
+                          role="presentation"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
                         >
                           <circle
-                            cx='5.33333'
-                            cy='5.33333'
-                            r='1.33333'
-                            stroke='#42526E'
-                            stroke-width='1.33333'
-                            fill='none'
+                            cx="5.33333"
+                            cy="5.33333"
+                            r="1.33333"
+                            stroke="#42526E"
+                            stroke-width="1.33333"
+                            fill="none"
                           />
                           <circle
-                            cx='10.6667'
-                            cy='10.6666'
-                            r='1.33333'
-                            stroke='#42526E'
-                            stroke-width='1.33333'
-                            fill='none'
+                            cx="10.6667"
+                            cy="10.6666"
+                            r="1.33333"
+                            stroke="#42526E"
+                            stroke-width="1.33333"
+                            fill="none"
                           />
                           <path
-                            d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
-                            stroke='#42526E'
-                            stroke-width='1.33333'
-                            fill='none'
+                            d="M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337"
+                            stroke="#42526E"
+                            stroke-width="1.33333"
+                            fill="none"
                           />
                         </svg>
-                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key)}>
+                        <span className="subtask-id" onClick={() => handleOpenPopup(task.key)}>
                           {task.key}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className='task-key-wrapper'>
-                      <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => handleOpenPopup(task.key)}>
+                    <div className="task-key-wrapper">
+                      <span className="task-id-small"></span>
+                      <span className="task-key" onClick={() => handleOpenPopup(task.key)}>
                         {task.key}
                       </span>
                     </div>
                   )}
                 </td>
                 <td style={{ width: `${columnWidths.summary}px` }}>{task.summary}</td>
-                <td className='w-24' style={{ width: `${columnWidths.status}px` }}>
+                <td className="w-24" style={{ width: `${columnWidths.status}px` }}>
                   <Status status={task.status} />
                 </td>
-                <td className='w-24' style={{ width: `${columnWidths.comments}px` }}>
+                <td className="w-24" style={{ width: `${columnWidths.comments}px` }}>
                   {task.comments > 0 ? (
-                    <div className='comment-cell'>
-                      <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
+                    <div className="comment-cell">
+                      <svg
+                        fill="none"
+                        viewBox="0 0 16 16"
+                        role="presentation"
+                        className="w-4 h-4"
+                      >
                         <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
+                          fill="currentColor"
+                          fillRule="evenodd"
+                          d="M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z"
+                          clipRule="evenodd"
                         />
                       </svg>
                       <span>{task.comments} comment</span>
                     </div>
                   ) : (
-                    <div className='comment-cell comment-cell-inactive'>
-                      <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
+                    <div className="comment-cell comment-cell-inactive">
+                      <svg
+                        fill="none"
+                        viewBox="0 0 16 16"
+                        role="presentation"
+                        className="w-4 h-4"
+                      >
                         <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
+                          fill="currentColor"
+                          fillRule="evenodd"
+                          d="M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z"
+                          clipRule="evenodd"
                         />
                       </svg>
                       <span>Add comment</span>
                     </div>
                   )}
                 </td>
-                <td className='w-20' style={{ width: `${columnWidths.sprint}px` }}>
-                  {task.sprint === null || task.sprint === undefined || task.sprint === 0 ? (
-                    ''
-                  ) : (
-                    <span className='sprint-cell'>Sprint {task.sprint}</span>
-                  )}
+                <td className="w-20" style={{ width: `${columnWidths.sprint}px` }}>
+                  {task.sprint === null || task.sprint === undefined || task.sprint === 0
+                    ? ''
+                    : <span className="sprint-cell">Sprint {task.sprint}</span>}
                 </td>
-                <td className='w-32' style={{ width: `${columnWidths.assignee}px` }}>
+                <td className="w-32" style={{ width: `${columnWidths.assignee}px` }}>
                   {task.assignees.map((assignee, index) => (
                     <Avatar key={index} person={assignee} />
                   ))}
                 </td>
-                <td className='w-28' style={{ width: `${columnWidths.dueDate}px` }}>
+                <td className="w-28" style={{ width: `${columnWidths.dueDate}px` }}>
                   {task.dueDate && task.dueDate !== 'Unknown' ? (
                     <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
                   ) : (
                     ''
                   )}
                 </td>
-                <td className='w-24' style={{ width: `${columnWidths.labels}px` }}>
+                <td className="w-24" style={{ width: `${columnWidths.labels}px` }}>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                        <span key={index} className='label-tag'>
-                          {label}
-                        </span>
-                      ))
+                      <span key={index} className="label-tag">{label}</span>
+                    ))
                     : ''}
                 </td>
-                <td className='w-28' style={{ width: `${columnWidths.created}px` }}>
-                  {task.created !== 'Unknown' ? (
-                    <DateWithIcon date={task.created} status={task.status} />
-                  ) : (
-                    ''
-                  )}
+                <td className="w-28" style={{ width: `${columnWidths.created}px` }}>
+                  {task.created !== 'Unknown' ? <DateWithIcon date={task.created} status={task.status} /> : ''}
                 </td>
-                <td className='w-28' style={{ width: `${columnWidths.updated}px` }}>
-                  {task.updated !== 'Unknown' ? (
-                    <DateWithIcon date={task.updated} status={task.status} />
-                  ) : (
-                    ''
-                  )}
+                <td className="w-28" style={{ width: `${columnWidths.updated}px` }}>
+                  {task.updated !== 'Unknown' ? <DateWithIcon date={task.updated} status={task.status} /> : ''}
                 </td>
-                <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+                <td className="w-32" style={{ width: `${columnWidths.reporter}px` }}>
                   <Avatar person={task.reporter} />
                 </td>
               </tr>
@@ -563,7 +566,11 @@ const ProjectTaskList: React.FC = () => {
       </div>
 
       {isPopupOpen && (
-        <WorkItem isOpen={isPopupOpen} onClose={handleClosePopup} taskId={selectedTaskId} />
+        <WorkItem
+          isOpen={isPopupOpen}
+          onClose={handleClosePopup}
+          taskId={selectedTaskId}
+        />
       )}
     </div>
   );

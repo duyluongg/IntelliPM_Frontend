@@ -298,25 +298,25 @@
 }
 
 .date-cell {
-  border: 0.5px solid currentColor; 
+  border: 0.5px solid currentColor; /* Border color matches text/icon color */
 }
 
 .date-cell.due-warning {
-  border-color: #BF2600; 
-  color: #BF2600; 
+  border-color: #BF2600; /* Red border for overdue */
+  color: #BF2600; /* Match text color to icon */
 }
 
 .date-cell.due-warning svg {
-  color: #BF2600;
+  color: #BF2600; /* Red color for overdue warning */
 }
 
 .date-cell.due-today {
-  border: 1px solid #a04301;
-  color: #a04301; 
+  border: 1px solid #a04301; /* Orange border for due today */
+  color: #a04301; /* Match text color to orange */
 }
 
 .date-cell.due-today svg {
-  color: #a04301; 
+  color: #a04301; /* Orange color for due today icon */
 }
 
 .reporter {
@@ -387,6 +387,6 @@
 }
 
 .due-today-icon {
-  stroke: #a04301; 
-  fill: #a04301; 
+  stroke: #a04301; /* Orange border */
+  fill: #a04301; /* Orange fill */
 }

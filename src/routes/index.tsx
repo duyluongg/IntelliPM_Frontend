@@ -17,6 +17,9 @@ import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
+import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
+import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
+import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 
 export const router = createBrowserRouter([
   {
@@ -62,8 +65,20 @@ export const router = createBrowserRouter([
         element: <ChildWorkItem />,
       },
       {
-        path: '/projects',
+        path: 'projects',
         element: <ProjectDetail />,
+      },
+      {
+        path: 'create-project/project-introduction',
+        element: <ProjectIntroduction />,
+      },
+      {
+        path: 'create-project/project-details-form',
+        element: <ProjectDetailsForm />,
+      },
+      {
+        path: 'create-project/invitees-form',
+        element: <InviteesForm />,
       },
       {
         path: 'meeting',
@@ -81,6 +96,7 @@ export const router = createBrowserRouter([
         path: 'meeting-management',
         element: <MeetingManagementPage />,
       },
+
     ],
   },
 

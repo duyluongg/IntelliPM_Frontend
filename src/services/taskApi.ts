@@ -2,7 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
-  id: number;
+  id: string;
   reporterId: number;
   projectId: number;
   epicId: number;
@@ -45,8 +45,7 @@ export const taskApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
-      const userJson = localStorage.getItem('user');
-      const token = userJson ? JSON.parse(userJson).accessToken : null;
+      const token = localStorage.getItem('accessToken');
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
@@ -61,7 +60,39 @@ export const taskApi = createApi({
       }),
       transformResponse: (response: TaskListResponse) => response.data,
     }),
+
+    updateTaskStatus: builder.mutation<void, { id: string; status: string }>({
+      query: ({ id, status }) => ({
+        url: `task/${id}/status`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(status),
+      }),
+    }),
+
+    getTaskById: builder.query<TaskResponseDTO, string>({
+      query: (id) => `task/${id}`,
+      transformResponse: (response: { isSuccess: boolean; data: TaskResponseDTO }) => response.data,
+    }),
+
+    updateTaskType: builder.mutation<void, { id: string; type: string }>({
+      query: ({ id, type }) => ({
+        url: `task/${id}/type`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(type), // Gửi "TASK", "BUG", "STORY"
+      }),
+    }),
   }),
 });
 
-export const { useGetTasksByProjectIdQuery } = taskApi;
+export const {
+  useGetTasksByProjectIdQuery,
+  useUpdateTaskStatusMutation,
+  useGetTaskByIdQuery,
+  useUpdateTaskTypeMutation
+} = taskApi;

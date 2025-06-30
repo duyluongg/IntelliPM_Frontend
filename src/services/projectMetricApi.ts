@@ -68,6 +68,35 @@ interface TimeDashboardResponse {
   };
 }
 
+interface WorkloadMember {
+  memberName: string;
+  completed: number;
+  remaining: number;
+  overdue: number;
+}
+
+interface WorkloadDashboardResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: WorkloadMember[];
+}
+
+interface CostDashboardResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    actualCost: number;
+    actualTaskCost: number;
+    actualResourceCost: number;
+    plannedCost: number;
+    plannedTaskCost: number;
+    plannedResourceCost: number;
+    budget: number;
+  };
+}
+
 export const projectMetricApi = createApi({
   reducerPath: 'projectMetricApi',
   baseQuery: fetchBaseQuery({
@@ -116,6 +145,20 @@ export const projectMetricApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getCostDashboard: builder.query<CostDashboardResponse, number>({
+      query: (projectId) => ({
+        url: `projectmetric/cost-dashboard?projectId=${projectId}`,
+        method: 'GET',
+      }),
+    }),
+
+    getWorkloadDashboard: builder.query<WorkloadDashboardResponse, number>({
+      query: (projectId) => ({
+        url: `projectmetric/workload-dashboard?projectId=${projectId}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -125,4 +168,6 @@ export const {
   useGetTaskStatusDashboardQuery,
   useGetProgressDashboardQuery,
   useGetTimeDashboardQuery,
+  useGetCostDashboardQuery,
+  useGetWorkloadDashboardQuery, 
 } = projectMetricApi;

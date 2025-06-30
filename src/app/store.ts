@@ -8,7 +8,9 @@ import { accountApi } from '../services/accountApi';
 import { meetingApi } from '../services/ProjectManagement/MeetingServices/MeetingServices'; 
 import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices'; 
 import { projectMetricApi } from '../services/projectMetricApi';
-
+import { subtaskApi } from '../services/subtaskApi';
+import { projectApi } from '../services/projectApi';
+import { taskCommentApi } from '../services/taskCommentApi';
 
 export const store = configureStore({
   reducer: {
@@ -21,6 +23,9 @@ export const store = configureStore({
     [meetingApi.reducerPath]: meetingApi.reducer, 
     [meetingLogApi.reducerPath]: meetingLogApi.reducer, 
     [projectMetricApi.reducerPath]: projectMetricApi.reducer,
+    [subtaskApi.reducerPath]: subtaskApi.reducer,
+    [projectApi.reducerPath]: projectApi.reducer,
+    [taskCommentApi.reducerPath]: taskCommentApi.reducer,
 
   },
 
@@ -34,11 +39,12 @@ export const store = configureStore({
       accountApi.middleware,
       meetingApi.middleware ,
       meetingLogApi.middleware,
-      projectMetricApi.middleware
-
+      projectMetricApi.middleware,
+      subtaskApi.middleware,
+      projectApi.middleware,
+      taskCommentApi.middleware
     ),
 });
 
-// Kiểu cho RootState và AppDispatch
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

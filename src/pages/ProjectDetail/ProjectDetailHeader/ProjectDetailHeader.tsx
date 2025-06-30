@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi'; // Điều chỉnh đường dẫn nếu cần
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import projectIcon from '../../../assets/projectManagement.png';
 
 import {
@@ -49,13 +49,12 @@ const ProjectDetailHeader: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound'; // Lấy projectKey từ URL
+  const projectKey = searchParams.get('projectKey') || 'NotFound'; 
 
-  // Gọi API để lấy chi tiết dự án
+
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
 
   const togglePopup = () => {
-    console.log('Toggling popup, isPopupOpen:', !isPopupOpen); // Debug log
     setIsPopupOpen(!isPopupOpen);
   };
 
@@ -106,8 +105,6 @@ const ProjectDetailHeader: React.FC = () => {
       if (matchedTab) setActiveTab(matchedTab.label);
     }
   }, []);
-
-  // Không thay thế toàn bộ giao diện khi loading/error, chỉ hiển thị thông báo nhẹ nhàng
   const projectName = isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found';
 
   return (

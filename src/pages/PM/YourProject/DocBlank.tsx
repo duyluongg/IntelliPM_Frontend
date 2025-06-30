@@ -1,11 +1,24 @@
 import { useRef, useState } from 'react';
-import axios from 'axios';
-import { Sparkles, FileText, Table, BarChart2, LayoutList, KanbanSquare } from 'lucide-react';
+import {
+  Sparkles,
+  FileText,
+  Table,
+  BarChart2,
+  LayoutList,
+  KanbanSquare,
+  Loader2,
+} from 'lucide-react';
 import { useAuth } from '../../../services/AuthContext';
 import TiptapEditor from '../../../components/PM/TiptapEditor';
 import { useDebouncedEffect } from '../../../components/hook/useDebouncedEffect';
 import type { DocumentType } from '../../../types/DocumentType';
 import { useParams } from 'react-router-dom';
+import {
+  useCreateDocumentMutation,
+  useUpdateDocumentMutation,
+} from '../../../services/Document/documentAPI';
+import { useDispatch } from 'react-redux';
+import { setDoc } from '../../../components/slices/Document/documentSlice';
 
 type Props = {
   doc?: DocumentType;
@@ -24,12 +37,15 @@ export default function DocBlank({ doc }: Props) {
   const [aiInput, setAiInput] = useState('');
   const { user } = useAuth();
   const { formId } = useParams<{ formId?: string }>();
-  const [loading, setLoading] = useState(false);
   const [docId, setDocId] = useState<number | null>(doc?.id ?? null);
   const [isNewDoc, setIsNewDoc] = useState(!doc?.id);
-
+  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
   const isCreatingRef = useRef(false);
   const skipAutosaveRef = useRef(false);
+
+  const [createDocument] = useCreateDocumentMutation();
+  const [updateDocument] = useUpdateDocumentMutation();
 
   const submitDocument = async () => {
     if (!user || !formData.content.trim()) return;
@@ -53,25 +69,23 @@ export default function DocBlank({ doc }: Props) {
         if (isCreatingRef.current) return;
         isCreatingRef.current = true;
 
-        const res = await axios.post('https://localhost:7128/api/documents', payload, {
-          headers: { Authorization: `Bearer ${user.accessToken}` },
-        });
-        console.log('Này là api nhập tay tạo');
+        const res = await createDocument(payload).unwrap();
+        console.log('✅ Tạo mới document bằng RTK Query');
 
-        if (res.data?.id) {
-          setDocId(res.data.id);
+        if (res?.id) {
+          setDocId(res.id);
           setIsNewDoc(false);
+          dispatch(setDoc({ id: res.id }));
         }
       } else {
-        await axios.put(`https://localhost:7128/api/documents/${docId}`, payload, {
-          headers: { Authorization: `Bearer ${user.accessToken}` },
-        });
+        await updateDocument({ id: docId!, data: payload }).unwrap();
+        console.log('✅ Cập nhật document bằng RTK Query');
       }
     } catch (err) {
       console.error('[AutoSave] Error ❌', err);
     } finally {
-      setLoading(false);
       isCreatingRef.current = false;
+      setLoading(false);
     }
   };
 
@@ -80,7 +94,7 @@ export default function DocBlank({ doc }: Props) {
 
     const payload = {
       projectId: 1,
-      taskId: 'PROJA-3',
+      taskId: doc?.taskId ?? 'PROJA-3',
       title: formData.title || 'Untitled Document',
       type: formId,
       template: 'blank',
@@ -92,22 +106,19 @@ export default function DocBlank({ doc }: Props) {
 
     try {
       setLoading(true);
-      const res = await axios.post('https://localhost:7128/api/documents', payload, {
-        headers: {
-          Authorization: `Bearer ${user.accessToken}`,
-        },
-      });
+      const res = await createDocument(payload).unwrap();
 
-      if (res.data?.id) {
-        setDocId(res.data.id);
+      if (res?.id) {
+        setDocId(res.id);
         setIsNewDoc(false);
+        dispatch(setDoc({ id: res.id }));
       }
 
       skipAutosaveRef.current = true;
 
       setFormData({
-        title: res.data.title || '',
-        content: res.data.content || '',
+        title: res.title || '',
+        content: res.content || '',
       });
 
       setAiInput('');
@@ -169,16 +180,10 @@ export default function DocBlank({ doc }: Props) {
       </div>
 
       {loading ? (
-        <div className='p-[2px] rounded-xl bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500'>
-          <div className='p-4 rounded-xl bg-white shadow-md flex flex-col space-y-2 hover:shadow-lg transition'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-2 text-blue-600 font-medium'>
-                <Sparkles size={18} />
-                Start with AI
-              </div>
-            </div>
-
-            <div className='font-semibold text-gray-800 mb-2'>Generate ...</div>
+        <div className='p-[2px] rounded-xl bg-gradient-to-r from-red-500 via-yellow-500 to-blue-500 animate-pulse'>
+          <div className='p-4 rounded-xl bg-white shadow-md flex flex-col space-y-4 hover:shadow-lg transition items-center justify-center text-blue-600'>
+            <Loader2 className='animate-spin' size={24} />
+            <div className='font-semibold text-sm'>Generating with AI...</div>
           </div>
         </div>
       ) : (

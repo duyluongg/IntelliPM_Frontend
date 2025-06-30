@@ -37,7 +37,7 @@ export default function TiptapEditor({ content, onChange }: Props) {
 
         <select
           onChange={(e) => {
-            const level = parseInt(e.target.value);
+            const level = parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5 | 6;
             editor.chain().focus().toggleHeading({ level }).run();
           }}
           defaultValue=''

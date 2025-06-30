@@ -37,8 +37,11 @@ export const documentApi = createApi({
         body: data,
       }),
     }),
+    getMyDocuments: builder.query<DocumentType[], void>({
+      query: () => 'documents/created-by-me',
+    }),
   }),
 });
 
-export const { useGetDocumentByIdQuery, useCreateDocumentMutation, useUpdateDocumentMutation } =
+export const { useGetDocumentByIdQuery, useCreateDocumentMutation, useUpdateDocumentMutation,  useGetMyDocumentsQuery, } =
   documentApi;

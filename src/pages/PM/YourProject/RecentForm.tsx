@@ -1,51 +1,22 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { FileText, Lock, MoreHorizontal, CheckSquare } from 'lucide-react';
-import { useAuth } from '../../../services/AuthContext';
-// import FeatureRequestForm from './FeatureRequestForm';
-
-import type { DocumentType } from '../../../types/DocumentType';
 import { useNavigate } from 'react-router-dom';
+import { FileText, Lock, MoreHorizontal, CheckSquare } from 'lucide-react';
+import { useGetMyDocumentsQuery } from '../../../services/Document/documentAPI';
 
 export default function RecentForm() {
-  const [documents, setDocuments] = useState<DocumentType[]>([]);
-  // const [selectedDoc, setSelectedDoc] = useState<DocumentType | null>(null);
   const navigate = useNavigate();
+  const {
+    data: documents = [],
+    isLoading,
+    isError,
+  } = useGetMyDocumentsQuery();
 
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchRecentForms = async () => {
-      if (!user) {
-        alert('Bạn chưa đăng nhập!');
-        return;
-      }
-      try {
-        const res = await axios.get('https://localhost:7128/api/documents/created-by-me', {
-          headers: {
-            Authorization: `Bearer ${user.accessToken}`,
-          },
-        });
-
-        setDocuments(res.data);
-      } catch (error) {
-        console.error('Failed to load recent documents:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecentForms();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <p className='text-sm text-gray-500 p-4'>Loading recent forms...</p>;
   }
 
-  //   if (documents.length === 0) {
-  //     return <p className='text-sm text-gray-500 p-4'>No recent forms found.</p>;
-  //   }
+  if (isError || documents.length === 0) {
+    return <p className='text-sm text-gray-500 p-4'>No recent forms found.</p>;
+  }
 
   return (
     <div>
@@ -82,12 +53,6 @@ export default function RecentForm() {
           </div>
         ))}
       </div>
-
-      {/* {selectedDoc && (
-        <div className='mt-6'>
-          <FeatureRequestForm doc={selectedDoc} onBack={() => setSelectedDoc(null)} />
-        </div>
-      )} */}
     </div>
   );
 }

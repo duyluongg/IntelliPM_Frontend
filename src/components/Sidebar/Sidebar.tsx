@@ -50,8 +50,11 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-
-  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(`${user?.accessToken || ''}`);
+  const {
+    data: projectsData,
+    isLoading,
+    error,
+  } = useGetProjectsByAccountQuery(`${user?.accessToken || ''}`);
 
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
@@ -63,10 +66,12 @@ export default function Sidebar() {
 
   const handleLogout = () => {
     console.log('Logging out...');
-    
+
     logout();
     navigate('/login');
   };
+
+  const isRole = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 '>
@@ -102,10 +107,12 @@ export default function Sidebar() {
                     {(hovered || showProjects) && (
                       <div className='flex items-center space-x-2'>
                         <span title='New project'>
-                          <Plus
-                            className='w-4 h-4 hover:text-blue-500 cursor-pointer'
-                            onClick={() => navigate('/create-project/project-introduction')}
-                          />
+                          {isRole && (
+                            <Plus
+                              className='w-4 h-4 hover:text-blue-500 cursor-pointer'
+                              onClick={() => navigate('/project/create-project/project-introduction')}
+                            />
+                          )}
                         </span>
                         <span title='Manage'>
                           <MoreHorizontal className='w-4 h-4 hover:text-blue-500' />
@@ -131,7 +138,7 @@ export default function Sidebar() {
                       recentProjects.map((proj, i) => (
                         <Link
                           key={i}
-                          to={`/pm/projects?projectKey=${proj.key}`}
+                          to={`/project?projectKey=${proj.key}`}
                           className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm text-gray-800 no-underline'
                           onClick={() => setShowProjects(false)}
                         >
@@ -176,9 +183,12 @@ export default function Sidebar() {
       </div>
 
       {/* Sign out */}
-      <div onClick={handleLogout} className='text-sm text-gray-600 px-4 py-3 border-t border-gray-200 hover:bg-gray-50 cursor-pointer flex items-center space-x-2'>
+      <div
+        onClick={handleLogout}
+        className='text-sm text-gray-600 px-4 py-3 border-t border-gray-200 hover:bg-gray-50 cursor-pointer flex items-center space-x-2'
+      >
         <LogOut className='w-4 h-4 text-red-500' />
-        <button >Sign out</button>
+        <button>Sign out</button>
       </div>
     </aside>
   );

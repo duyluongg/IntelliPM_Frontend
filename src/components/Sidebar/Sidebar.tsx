@@ -34,11 +34,7 @@ const menuItems = [
 
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
-  {
-    icon: <CalendarCheck className='w-5 h-5' />,
-    label: 'Create and schedule meetings ',
-    path: '/pm/meeting-room',
-  },
+
   {
     icon: <Rocket className='w-5 h-5' />, // Icon for Projects
     label: 'Projects',
@@ -52,9 +48,10 @@ export default function Sidebar() {
   const [showProjects, setShowProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
-  const user = localStorage.getItem('user');
-  const accessToken = user ? JSON.parse(user).accessToken : '';
-  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(accessToken);
+  const { user, logout } = useAuth();
+
+
+  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(`${user?.accessToken || ''}`);
 
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
@@ -64,8 +61,9 @@ export default function Sidebar() {
       }))
     : [];
 
-  const { logout } = useAuth();
   const handleLogout = () => {
+    console.log('Logging out...');
+    
     logout();
     navigate('/login');
   };
@@ -133,7 +131,7 @@ export default function Sidebar() {
                       recentProjects.map((proj, i) => (
                         <Link
                           key={i}
-                          to={`/projects?projectKey=${proj.key}`}
+                          to={`/pm/projects?projectKey=${proj.key}`}
                           className='flex items-center space-x-2 py-1 px-2 rounded hover:bg-gray-100 text-sm text-gray-800 no-underline'
                           onClick={() => setShowProjects(false)}
                         >

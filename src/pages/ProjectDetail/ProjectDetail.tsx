@@ -1,23 +1,30 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import ProjectDetailHeader from './ProjectDetailHeader/ProjectDetailHeader';
-import ListPage from './ProjectTaskList/ProjectTaskList';
+// import React from 'react';
+// import { Routes, Route } from 'react-router-dom';
+// import ProjectDetailHeader from './ProjectDetailHeader/ProjectDetailHeader';
+// import ListPage from './ProjectTaskList/ProjectTaskList';
 
-import './ProjectDetail.css';
+// import './ProjectDetail.css';
 
-const ProjectDetail: React.FC = () => {
-  return (
-    <div className="project-detail-container">
-      <ProjectDetailHeader />
-      <div className="content-area">
-        <Routes>
-          <Route path="list" element={<ListPage />} />
+// const ProjectDetail: React.FC = () => {
+//   return (
+//     <div className="project-detail-container">
+//       <ProjectDetailHeader />
+//       <div className="content-area">
+//         <Routes>
+//           <Route path="list" element={<ListPage />} />
     
-          <Route path="*" element={<ListPage />} /> {/* default tab */}
-        </Routes>
-      </div>
-    </div>
-  );
-};
+//           <Route path="*" element={<ListPage />} /> {/* default tab */}
+//         </Routes>
+//       </div>
+//     </div>
+//   );
+// };
 
-export default ProjectDetail;
+// export default ProjectDetail;
+import React from 'react'
+
+export default function ProjectDetail() {
+  return (
+    <div>ProjectDetail</div>
+  )
+}

@@ -140,6 +140,10 @@ import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskList';
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
+//import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
+//import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
+import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+
 
 export const router = createBrowserRouter([
   {
@@ -229,17 +233,21 @@ export const router = createBrowserRouter([
         element: <ProjectDetail />,
       },
       {
+        path: 'create-project',
+        element: <ProjectCreation />,
+      },
+      {
         path: 'create-project/project-introduction',
         element: <ProjectIntroduction />,
       },
-      {
-        path: 'create-project/project-details-form',
-        element: <ProjectDetailsForm />,
-      },
-      {
-        path: 'create-project/invitees-form',
-        element: <InviteesForm />,
-      },
+      // {
+      //   path: 'create-project/project-details-form',
+      //   element: <ProjectDetailsForm />,
+      // },
+      // {
+      //   path: 'create-project/invitees-form',
+      //   element: <InviteesForm />,
+      // },
       {
         path: 'meeting',
         element: <MeetingCore />, // ✅ mới

@@ -1,6 +1,38 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
+interface CreateProjectRequest {
+  name: string;
+  projectKey: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface CreateProjectResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    id: number;
+    name: string;
+    projectKey: string;
+    description: string;
+    budget: number;
+    projectType: string;
+    createdBy: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    updatedAt: string;
+    iconUrl: string;
+    status: string;
+  };
+  message: string;
+}
+
+
 // Interface cho Assignee dựa trên response mới
 interface Assignee {
   fullname: string;
@@ -88,17 +120,33 @@ export const projectApi = createApi({
         method: 'GET',
       }),
     }),
+
     checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
       query: (projectKey) => ({
         url: `project/check-project-key?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
+
+createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
+  query: (body) => ({
+    url: 'project',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+    },
+    body,
+  }),
+}),
+
+
   }),
 });
 
 export const { 
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
-  useCheckProjectKeyQuery 
+  useCheckProjectKeyQuery,
+  useCreateProjectMutation,
 } = projectApi;

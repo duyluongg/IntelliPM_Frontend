@@ -52,11 +52,11 @@ const Gantt = () => {
         }));
 
       const sprintMilestones = milestones
-        .filter((m) => tasks.some((t) => t.sprintId === sprint.id && t.milestoneId === m.id))
+        .filter((m) => m.sprintId === sprint.id)
         .map((m) => ({
           label: m.name,
           dateStart: m.startDate,
-          dateEnd: m.startDate,
+          dateEnd: m.endDate,
           status: m.status,
           type: 'milestone',
           id: `milestone-${m.id}`,
@@ -72,16 +72,12 @@ const Gantt = () => {
       };
     });
 
-    const milestoneIdsInSprints = new Set(
-      tasks.map((t) => t.milestoneId).filter((id) => id != null)
-    );
-
     const standaloneMilestones = milestones
-      .filter((m) => !milestoneIdsInSprints.has(m.id))
+      .filter((m) => !m.sprintId)
       .map((m) => ({
         label: m.name,
-        dateStart: m.startDate,
-        dateEnd: addOneDay(m.startDate),
+        // dateStart: m.startDate,
+        dateEnd: m.endDate,
         status: m.status,
         type: 'milestone',
         id: `milestone-${m.id}`,

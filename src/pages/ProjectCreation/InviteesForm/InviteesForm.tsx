@@ -1,12 +1,31 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+//import { useNavigate } from 'react-router-dom';
 
-const InviteesForm: React.FC = () => {
-  const navigate = useNavigate();
+interface InviteesFormProps {
+  initialData: {
+    name: string;
+    projectKey: string;
+    description: string;
+    requirements: string[];
+    invitees: string[];
+  };
+  onNext: () => Promise<void>; // Matches the handleSubmit type in ProjectCreation
+  onBack: () => void;
+}
+
+const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack }) => {
+  //const navigate = useNavigate();
 
   const [invitees, setInvitees] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [role, setRole] = useState('Administrators');
+
+  // Initialize invitees from initialData when the component mounts
+  useEffect(() => {
+    if (initialData.invitees && initialData.invitees.length > 0) {
+      setInvitees([...initialData.invitees]);
+    }
+  }, [initialData.invitees]);
 
   const handleAddInvitee = () => {
     if (inputValue.trim() && !invitees.includes(inputValue)) {
@@ -16,11 +35,12 @@ const InviteesForm: React.FC = () => {
   };
 
   const handleRemoveInvitee = (name: string) => {
-    setInvitees(invitees.filter(inv => inv !== name));
+    setInvitees(invitees.filter((inv) => inv !== name));
   };
 
-  const handleContinue = () => {
-    navigate('/create-project/finish'); // hoặc bất kỳ route nào tiếp theo
+  const handleContinue = async () => {
+    // You can pass the updated invitees back if needed, but for now, just call onNext
+    await onNext();
   };
 
   return (
@@ -38,13 +58,15 @@ const InviteesForm: React.FC = () => {
 
         {/* Input */}
         <div className="flex flex-wrap gap-2 mb-4">
-          {invitees.map(name => (
+          {invitees.map((name) => (
             <span
               key={name}
               className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full flex items-center gap-2"
             >
               {name}
-              <button onClick={() => handleRemoveInvitee(name)} className="text-sm font-bold">×</button>
+              <button onClick={() => handleRemoveInvitee(name)} className="text-sm font-bold">
+                ×
+              </button>
             </span>
           ))}
         </div>
@@ -82,19 +104,16 @@ const InviteesForm: React.FC = () => {
 
       {/* Footer actions */}
       <div className="mt-10 flex justify-between items-center text-sm text-gray-500">
-        <span>Step 1 of 2</span>
+        <span>Step 2 of 2</span>
         <div className="flex gap-4">
-          <button
-            onClick={handleContinue}
-            className="text-gray-500 hover:underline"
-          >
-            Skip
+          <button onClick={onBack} className="text-gray-500 hover:underline">
+            Back
           </button>
           <button
             onClick={handleContinue}
             className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition"
           >
-            Invite and continue
+            Invite and Continue
           </button>
         </div>
       </div>

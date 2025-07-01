@@ -5,7 +5,7 @@ import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
-import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetCommentsByTaskIdQuery } from '../../services/taskCommentApi';
@@ -30,10 +30,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [updateTaskType] = useUpdateTaskTypeMutation();
+  const [createSubtask] = useCreateSubtaskMutation();
+  const [showSubtaskInput, setShowSubtaskInput] = React.useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
+
 
   const { data: comments = [], isLoading: isCommentsLoading } = useGetCommentsByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
+
+  const handleCreateSubtask = async () => {
+    if (!newSubtaskTitle.trim()) return;
+    try {
+      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+      setNewSubtaskTitle('');
+      setShowSubtaskInput(false); // ẩn form sau khi tạo
+      await refetch(); // cập nhật lại danh sách
+    } catch (error) {
+      console.error('Lỗi tạo subtask:', error);
+    }
+  };
 
   const {
     data: subtaskData = [],
@@ -63,7 +79,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     key: item.id,
     summary: item.title,
     priority: item.priority,
-    assignee: item.assignedBy?.toString() ?? 'Unassigned',
+    assignee: item.assignedByName ?? 'Unassigned',
     status: item.status,
   }));
 
@@ -190,9 +206,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   <div className="add-item" onClick={() => fileInputRef.current?.click()}>
                     📁 Attachment
                   </div>
-                  <div
-                    className="add-item"
-                    onClick={() => alert('🗂 Tính năng thêm subtask đang được phát triển...')}
+                  <div className="add-item"
+                    onClick={() => {
+                      setShowSubtaskInput(true);
+                      setIsAddDropdownOpen(false);
+                    }}
                     style={{ display: 'flex', alignItems: 'center' }}
                   >
                     <img src={subtaskIcon} alt="Subtask" style={{ width: '16px', marginRight: '6px' }} />
@@ -258,6 +276,72 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           </td>
                         </tr>
                       ))}
+                      {showSubtaskInput && (
+                        <tr>
+                          <td><img src={subtaskIcon} alt="Subtask" /></td>
+                          <td colSpan={5}>
+                            <input
+                              type="text"
+                              placeholder="Enter subtask title..."
+                              value={newSubtaskTitle}
+                              onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                              style={{
+                                width: '70%',
+                                padding: '6px',
+                                border: '1px solid #ccc',
+                                borderRadius: '4px',
+                                marginRight: '8px',
+                              }}
+                            />
+                            <button
+                              onClick={async () => {
+                                try {
+                                  try {
+                                    await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                    console.log("✅ Tạo thành công");
+                                  } catch (err) {
+                                    console.error("❌ Lỗi khi gọi createSubtask:", err);
+                                  }
+
+                                  setNewSubtaskTitle('');
+                                  setShowSubtaskInput(false);
+                                  await refetch(); // lấy lại danh sách subtask mới nhất
+                                } catch (err) {
+                                  console.error('Lỗi khi tạo subtask:', err);
+                                }
+                              }}
+                              disabled={!newSubtaskTitle.trim()}
+                              style={{
+                                padding: '6px 12px',
+                                backgroundColor: '#0052cc',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
+                              }}
+                            >
+                              Create
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowSubtaskInput(false);
+                                setNewSubtaskTitle('');
+                              }}
+                              style={{
+                                marginLeft: '8px',
+                                padding: '6px 12px',
+                                backgroundColor: '#ccc',
+                                color: 'black',
+                                border: 'none',
+                                borderRadius: '4px',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </td>
+                        </tr>
+                      )}
+
                     </tbody>
                   </table>
                 )}

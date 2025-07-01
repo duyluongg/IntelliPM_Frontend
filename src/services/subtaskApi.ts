@@ -5,6 +5,7 @@ export interface SubtaskResponseDTO {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedByName: string;
   title: string;
   description: string;
   status: string;
@@ -53,10 +54,23 @@ export const subtaskApi = createApi({
         body: JSON.stringify(status),
       }),
     }),
+
+    createSubtask: builder.mutation<void, { taskId: string; title: string }>({
+      query: ({ taskId, title }) => ({
+        url: 'subtask/create2', // ✅ endpoint đúng như curl bạn gửi
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: { taskId, title }, // ✅ không cần JSON.stringify
+      }),
+    }),
+
   }),
 });
 
 export const {
   useGetSubtasksByTaskIdQuery,
-  useUpdateSubtaskStatusMutation, 
+  useUpdateSubtaskStatusMutation,
+  useCreateSubtaskMutation,
 } = subtaskApi;

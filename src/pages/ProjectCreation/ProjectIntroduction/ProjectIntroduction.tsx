@@ -26,7 +26,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
     if (onNext) {
       onNext();
     } else {
-      navigate('/create-project/project-details-form'); // Route mặc định, thay đổi nếu cần
+      navigate('/create-project'); // Route mặc định, thay đổi nếu cần
     }
   };
 
@@ -40,7 +40,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
             onClick={handleNext}
             className="bg-white text-[#0052CC] font-medium px-4 py-1.5 rounded hover:bg-gray-100 transition"
           >
-            Use template
+            Create project
           </button>
           <button
             onClick={() => navigate('/')}
@@ -153,7 +153,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
           onClick={handleNext}
           className="bg-[#0052CC] text-white px-4 py-1.5 rounded hover:bg-[#003087] text-sm"
         >
-          Use template
+          Create project
         </button>
       </div>
     </div>

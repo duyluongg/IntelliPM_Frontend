@@ -1,139 +1,236 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useCreateProjectMutation } from '../../../services/projectApi';
+import type { CreateProjectRequest } from '../../../services/projectApi';
+import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 
-import scrumIcon from '../../../assets/CreateProject/scrum.svg';
-import companyIcon from '../../../assets/CreateProject/AiIntro.png';
+interface ProjectFormData {
+  name: string;
+  projectKey: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  startDate: string;
+  endDate: string;
+}
 
-const ProjectDetailsForm: React.FC = () => {
-  const navigate = useNavigate();
-  const [name, setName] = useState('');
-  const [key, setKey] = useState('');
-  const [shareSettings, setShareSettings] = useState(false);
+interface Props {
+  initialData: Partial<ProjectFormData>;
+  onNext: (data: Partial<ProjectFormData>) => void;
+}
 
-  const handleNext = () => {
-    if (name && key) {
-      navigate('/create-project/invitees-form');
+const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
+  const [form, setForm] = useState<Partial<ProjectFormData>>({
+    name: initialData.name || '',
+    projectKey: initialData.projectKey || '',
+    description: initialData.description || '',
+    budget: initialData.budget || 0,
+    projectType: initialData.projectType || 'WEB_APPLICATION',
+    startDate: initialData.startDate || new Date().toISOString().split('T')[0],
+    endDate: initialData.endDate || new Date().toISOString().split('T')[0],
+  });
+
+  const [createProject, { isLoading, isError, error, isSuccess }] = useCreateProjectMutation();
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [isFading, setIsFading] = useState(false);
+
+  useEffect(() => {
+    if (isError && error) {
+      setNotificationMessage(getErrorMessage());
+      setShowNotification(true);
+      const timer = setTimeout(() => setShowNotification(false), 5000); // Auto-hide after 5 seconds
+      return () => clearTimeout(timer);
+    }
+    // Removed success notification logic
+  }, [isError, error]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: name === 'budget' ? parseFloat(value) || 0 : value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const requestData: CreateProjectRequest = {
+      name: form.name || '',
+      projectKey: form.projectKey || '',
+      description: form.description || '',
+      budget: form.budget || 0,
+      projectType: form.projectType || 'WEB_APPLICATION',
+      startDate: form.startDate ? new Date(form.startDate).toISOString() : new Date().toISOString(),
+      endDate: form.endDate ? new Date(form.endDate).toISOString() : new Date().toISOString(),
+    };
+
+    try {
+      await createProject(requestData).unwrap();
+      setIsFading(true); // Start fade-out effect
+      setTimeout(() => {
+        setIsFading(false); // Reset fade state
+        onNext(form); // Proceed to next step without notification
+      }, 1000); // 1-second transition
+    } catch (err) {
+      console.error('Failed to create project:', err);
     }
   };
 
+  const getErrorMessage = (): string => {
+    if (isError && error && 'data' in error) {
+      const baseError = error as FetchBaseQueryError;
+      const errorData = baseError.data as { message?: string };
+      return errorData?.message || 'Failed to create project';
+    }
+    return 'Failed to create project';
+  };
+
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      {/* Back navigation */}
-      <button
-        onClick={() => navigate('/create-project/project-introduction')}
-        className="text-sm text-blue-600 mb-6 hover:underline flex items-center gap-1"
+    <div className="relative">
+      {/* Notification Popup */}
+      {showNotification && (
+        <div
+          className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg z-50 animate-slide-in"
+          style={{ animation: 'slideIn 0.3s ease-out' }}
+        >
+          {notificationMessage}
+        </div>
+      )}
+
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          .animate-slide-in {
+            animation: slideIn 0.3s ease-out forwards;
+          }
+          @keyframes fadeOut {
+            from {
+              opacity: 1;
+            }
+            to {
+              opacity: 0;
+            }
+          }
+          .fade-out {
+            animation: fadeOut 1s ease-out forwards;
+          }
+        `}
+      </style>
+
+      <form
+        onSubmit={handleSubmit}
+        className={`space-y-6 ${isSuccess && isFading ? 'fade-out' : ''}`}
       >
-        ← Back to project types
-      </button>
+        <h2 className="text-xl font-semibold text-gray-800">Project Details</h2>
 
-      {/* Header */}
-      <h1 className="text-2xl font-semibold text-gray-900 mb-1">Add project details</h1>
-      <p className="text-sm text-gray-600 mb-1">
-        Explore what's possible when you collaborate with your team. Edit project details anytime in project settings.
-      </p>
-      <p className="text-sm text-red-500 mb-6">
-        Required fields are marked with an asterisk <span className="text-red-500">*</span>
-      </p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Name *</label>
+          <input
+            name="name"
+            type="text"
+            value={form.name}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm focus:ring focus:ring-blue-500"
+          />
+        </div>
 
-      {/* Form Body */}
-      <div className="grid md:grid-cols-2 gap-10">
-        {/* Left: Inputs */}
-        <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Project Key *</label>
+          <input
+            name="projectKey"
+            type="text"
+            value={form.projectKey}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            rows={3}
+            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Budget</label>
+          <input
+            name="budget"
+            type="number"
+            value={form.budget}
+            onChange={handleChange}
+            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Name <span className="text-red-500">*</span>
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Start Date</label>
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Try a team name, project goal, milestone..."
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              name="startDate"
+              type="date"
+              value={form.startDate}
+              onChange={handleChange}
+              className="mt-1 block w-full border px-3 py-2 rounded"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Key <span className="text-red-500">*</span>
-            </label>
+            <label className="block text-sm font-medium text-gray-700">End Date</label>
             <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              name="endDate"
+              type="date"
+              value={form.endDate}
+              onChange={handleChange}
+              className="mt-1 block w-full border px-3 py-2 rounded"
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="share"
-              checked={shareSettings}
-              onChange={() => setShareSettings(!shareSettings)}
-              className="h-4 w-4 text-blue-600"
-            />
-            <label htmlFor="share" className="text-sm text-gray-700">
-              Share settings with an existing project
-            </label>
           </div>
         </div>
 
-        {/* Right: Template and Type */}
-        <div className="space-y-8">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-sm text-gray-600 font-medium">Template</p>
-              <button className="text-sm text-blue-600 hover:underline">Change template</button>
-            </div>
-            <div className="border rounded flex items-center p-4 gap-4 bg-gray-50">
-              <img src={scrumIcon} alt="Scrum" className="w-10 h-10 object-contain" />
-              <div>
-                <p className="font-semibold text-sm text-gray-900">Scrum</p>
-                <p className="text-sm text-gray-600">
-                  Sprint toward your project goals with a board, backlog, and timeline.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-sm text-gray-600 font-medium">Type</p>
-              <button className="text-sm text-blue-600 hover:underline">Change type</button>
-            </div>
-            <div className="border rounded flex items-center p-4 gap-4 bg-gray-50">
-              <img src={companyIcon} alt="Company Managed" className="w-10 h-10 object-contain" />
-              <div>
-                <p className="font-semibold text-sm text-blue-700">Company-managed</p>
-                <p className="text-sm text-gray-600">
-                  Work with other teams across many projects in a standard way.
-                </p>
-              </div>
-            </div>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Project Type</label>
+          <select
+            name="projectType"
+            value={form.projectType}
+            onChange={handleChange}
+            className="mt-1 block w-full border px-3 py-2 rounded"
+          >
+            <option value="WEB_APPLICATION">Web Application</option>
+            <option value="MOBILE_APP">Mobile App</option>
+            <option value="RESEARCH">Research</option>
+          </select>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="flex justify-end mt-10 gap-4">
-        <button
-          onClick={() => navigate('/')}
-          className="px-4 py-2 text-sm border rounded hover:bg-gray-100 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleNext}
-          disabled={!name || !key}
-          className={`px-4 py-2 text-sm rounded transition ${
-            !name || !key
-              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          Next
-        </button>
-      </div>
+        {/* Removed inline feedback since we're using popup */}
+        {isLoading && <div className="text-gray-500">Creating project...</div>}
+
+        <div className="pt-4">
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-blue-300"
+          >
+            {isLoading ? 'Creating...' : 'Next'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

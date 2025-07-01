@@ -21,12 +21,11 @@ interface ProjectIntroductionProps {
 const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => {
   const navigate = useNavigate();
 
-  // Hàm xử lý khi nhấp vào "Use template", sử dụng onNext nếu có, nếu không dùng navigate
   const handleNext = () => {
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform'); // Route mặc định, thay đổi nếu cần
+      navigate('project/createform'); 
     }
   };
 

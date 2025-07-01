@@ -243,11 +243,7 @@ export const router = createBrowserRouter([
         element: <ProjectTaskList />,
       },
       {
-        path: `createform`,
-        element: <ProjectCreation />,
-      },
-      {
-        path: `introduction`,
+        path: `create-project/project-introduction`,
         element: <ProjectIntroduction />,
       },
     ],

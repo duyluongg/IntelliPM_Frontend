@@ -26,12 +26,12 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform'); // Route mặc định, thay đổi nếu cần
+      navigate('/create-project'); // Route mặc định, thay đổi nếu cần
     }
   };
 
   return (
-    <div className="bg-white max-w-7xl mx-auto rounded-lg shadow min-h-screen pb-32 relative">
+    <div className="bg-white max-w-7xl mx-auto rounded-lg shadow min-h-screen pb-32 relative ml-56">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0052CC] to-[#2684FF] p-4 flex justify-between items-center rounded-t-lg text-white">
         <h1 className="text-xl font-semibold">Project Introduction</h1>

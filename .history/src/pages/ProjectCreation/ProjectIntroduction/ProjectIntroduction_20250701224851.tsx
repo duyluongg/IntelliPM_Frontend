@@ -26,7 +26,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform'); // Route mặc định, thay đổi nếu cần
+      navigate('/project/create'); // Route mặc định, thay đổi nếu cần
     }
   };
 

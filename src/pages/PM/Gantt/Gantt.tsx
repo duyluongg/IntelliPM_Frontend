@@ -15,7 +15,8 @@ const Gantt = () => {
   const projectId = 1;
 
   const { data: tasks = [], isLoading, isError, error } = useGetTasksByProjectIdQuery(projectId);
-  const { data: milestones = [], isLoading: loadingMilestones } = useGetMilestonesByProjectIdQuery(projectId);
+  const { data: milestones = [], isLoading: loadingMilestones } =
+    useGetMilestonesByProjectIdQuery(projectId);
   const { data: sprints = [] } = useGetSprintsByProjectIdQuery(projectId);
 
   const taskColumns = [
@@ -42,7 +43,7 @@ const Gantt = () => {
         .map((t) => ({
           label: t.title,
           dateStart: t.plannedStartDate,
-          dateEnd: addOneDay(t.plannedEndDate),
+          dateEnd: t.plannedEndDate,
           assigned: 1,
           status: t.status,
           progress: t.percentComplete,
@@ -54,7 +55,8 @@ const Gantt = () => {
         .filter((m) => tasks.some((t) => t.sprintId === sprint.id && t.milestoneId === m.id))
         .map((m) => ({
           label: m.name,
-          dateEnd: addOneDay(m.startDate),
+          dateStart: m.startDate,
+          dateEnd: m.startDate,
           status: m.status,
           type: 'milestone',
           id: `milestone-${m.id}`,
@@ -63,14 +65,39 @@ const Gantt = () => {
       return {
         label: sprint.name,
         dateStart: sprint.startDate,
-        dateEnd: addOneDay(sprint.endDate),
+        dateEnd: sprint.endDate,
         type: 'project',
         expanded: true,
         tasks: [...sprintTasks, ...sprintMilestones],
       };
     });
 
-    return sprintGroups;
+    const milestoneIdsInSprints = new Set(
+      tasks.map((t) => t.milestoneId).filter((id) => id != null)
+    );
+
+    const standaloneMilestones = milestones
+      .filter((m) => !milestoneIdsInSprints.has(m.id))
+      .map((m) => ({
+        label: m.name,
+        dateStart: m.startDate,
+        dateEnd: addOneDay(m.startDate),
+        status: m.status,
+        type: 'milestone',
+        id: `milestone-${m.id}`,
+      }));
+
+    // Đưa từng milestone vào làm 1 mục riêng độc lập như 1 sprint
+    // const standaloneGroups = standaloneMilestones.map((m) => ({
+    //   label: m.label,
+    //   dateStart: m.dateStart,
+    //   dateEnd: m.dateEnd,
+    //   type: 'project',
+    //   expanded: true,
+    //   tasks: [m],
+    // }));
+
+    return [...sprintGroups, ...standaloneMilestones];
   };
 
   const dataSource = buildDataSource();
@@ -103,4 +130,3 @@ const Gantt = () => {
 };
 
 export default Gantt;
-

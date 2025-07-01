@@ -280,7 +280,7 @@ export const router = createBrowserRouter([
   {
     path: '/pm/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER','TEAM_LEADER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -289,6 +289,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage  />,
       },
+      
 
 
       

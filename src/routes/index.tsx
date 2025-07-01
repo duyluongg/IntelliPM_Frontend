@@ -205,21 +205,18 @@ export const router = createBrowserRouter([
       // },
       {
         path: 'meeting',
-        element: <MeetingCore />, // ✅ mới
+        element: <MeetingCore />, 
       },
 
-      // {
-      //   path: 'meeting-room',
-      //   element: <MeetingRoom />,
-      // },
-      // {
-      //   path: 'create-meeting-room',
-      //   element: <CreateMeetingPage />,
-      // },
-      // {
-      //   path: 'meeting-management',
-      //   element: <MeetingManagementPage />,
-      // },
+      {
+        path: 'meeting-room',
+        element: <MeetingRoom />,
+      },
+
+            {
+        path: 'meeting-feedback',
+        element: <MeetingFeedbackPage />,
+      },
     ],
   },
 
@@ -245,6 +242,14 @@ export const router = createBrowserRouter([
       {
         path: `create-project/project-introduction`,
         element: <ProjectCreation />,
+      },
+            {
+        path: 'create-meeting-room',
+        element: <CreateMeetingPage />,
+      },
+      {
+        path: 'meeting-management',
+        element: <MeetingManagementPage />,
       },
     ],
   },

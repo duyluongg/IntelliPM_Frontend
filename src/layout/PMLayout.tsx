@@ -7,7 +7,7 @@ const PMLayout = () => (
     <Header/>
     <div className='flex h-screen  mt-10'>
       <Sidebar />
-      <div className='flex-1 overflow-auto'>
+      <div className='flex-1 '>
         <Outlet />
       </div>
     </div>

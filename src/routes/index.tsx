@@ -251,7 +251,7 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-management',
         element: <MeetingManagementPage />,
-
+      },
       {
         path: `introduction`,
         element: <ProjectIntroduction />,

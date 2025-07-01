@@ -78,7 +78,7 @@ const ProjectCreation: React.FC = () => {
 
   return (
     <div className='min-h-screen bg-white'>
-      <div className='ml-56 mx-auto p-6'>
+      <div className=' mx-auto p-6'>
         {/* Step indicator */}
         <div className='relative flex justify-between items-center mb-10'>
           {steps.map((label, index) => (

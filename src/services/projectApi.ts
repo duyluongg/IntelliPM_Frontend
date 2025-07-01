@@ -1,7 +1,8 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-interface CreateProjectRequest {
+
+export interface CreateProjectRequest {
   name: string;
   projectKey: string;
   description: string;
@@ -129,15 +130,19 @@ export const projectApi = createApi({
     }),
 
 createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
-  query: (body) => ({
-    url: 'project',
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-    },
-    body,
-  }),
+  query: (body) => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const accessToken = user?.accessToken || '';
+    return {
+      url: 'project',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body,
+    };
+  },
 }),
 
 
@@ -149,4 +154,5 @@ export const {
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,
   useCreateProjectMutation,
+  
 } = projectApi;

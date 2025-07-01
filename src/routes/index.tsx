@@ -236,6 +236,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage />,
       },
+      
 
       {
         path: `/project?:projectKey`,

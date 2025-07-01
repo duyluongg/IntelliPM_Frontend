@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../constants/api';
 export interface MilestoneResponseDTO {
   id: number;
   projectId: number;
+  sprintId: number;
   name: string;
   description: string;
   startDate: string;

@@ -139,6 +139,7 @@ import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/Proj
 import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskList';
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
+import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 
 export const router = createBrowserRouter([
   {
@@ -215,6 +216,51 @@ export const router = createBrowserRouter([
       //   path: 'meeting-management',
       //   element: <MeetingManagementPage />,
       // },
+      {
+        path: 'work-item-detail',
+        element: <WorkItemDetail />,
+      },
+      {
+        path: 'child-work/:key',
+        element: <ChildWorkItem />,
+      },
+      {
+        path: 'projects',
+        element: <ProjectDetail />,
+      },
+      {
+        path: 'create-project/project-introduction',
+        element: <ProjectIntroduction />,
+      },
+      {
+        path: 'create-project/project-details-form',
+        element: <ProjectDetailsForm />,
+      },
+      {
+        path: 'create-project/invitees-form',
+        element: <InviteesForm />,
+      },
+      {
+        path: 'meeting',
+        element: <MeetingCore />, // ✅ mới
+      },
+            {
+        path: 'meeting-feedback',
+        element: <MeetingFeedbackPage />, // ✅ mới
+      },
+      {
+        path: 'meeting-room',
+        element: <MeetingRoom />,
+      },
+      {
+        path: 'create-meeting-room',
+        element: <CreateMeetingPage />,
+      },
+      {
+        path: 'meeting-management',
+        element: <MeetingManagementPage />,
+      },
+
     ],
   },
 

@@ -11,13 +11,23 @@ import WorkloadChart from './WorkloadChart';
 const ProjectDashboard = () => {
   const [calculate] = useCalculateProjectMetricsMutation();
   const projectId = 1;
-  const token = localStorage.getItem('accessToken');
+
+  // useEffect(() => {
+  //   calculate({ projectId }).catch((err) => {
+  //     console.error('Error calculating project metrics:', err);
+  //   });
+  // }, [calculate, projectId]);
 
   useEffect(() => {
-    calculate({ projectId, calculatedBy: 'system' }).catch((err) => {
-      console.log('Token:', token);
-      console.error('Error calculating project metrics:', err);
-    });
+    const doCalculation = async () => {
+      try {
+        await calculate({ projectId }).unwrap();
+      } catch (err) {
+        console.error('Error calculating project metrics:', err);
+      }
+    };
+
+    doCalculation();
   }, [calculate, projectId]);
 
   return (

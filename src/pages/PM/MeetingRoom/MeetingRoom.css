@@ -41,6 +41,7 @@
     padding: 0.4rem 0.8rem;
     transition: background-color 0.3s ease;
     border-radius: 4px;
+     text-transform: capitalize !important;
   }
   
   .fc-button:hover {

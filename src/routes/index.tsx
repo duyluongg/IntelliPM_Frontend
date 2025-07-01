@@ -144,7 +144,6 @@ import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeed
 //import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 
-
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -204,10 +203,11 @@ export const router = createBrowserRouter([
       //   path: 'create-project/invitees-form',
       //   element: <InviteesForm />,
       // },
-      // {
-      //   path: 'meeting',
-      //   element: <MeetingCore />, // ✅ mới
-      // },
+      {
+        path: 'meeting',
+        element: <MeetingCore />, // ✅ mới
+      },
+
       // {
       //   path: 'meeting-room',
       //   element: <MeetingRoom />,
@@ -220,82 +220,33 @@ export const router = createBrowserRouter([
       //   path: 'meeting-management',
       //   element: <MeetingManagementPage />,
       // },
-      {
-        path: 'work-item-detail',
-        element: <WorkItemDetail />,
-      },
-      {
-        path: 'child-work/:key',
-        element: <ChildWorkItem />,
-      },
-      {
-        path: 'projects',
-        element: <ProjectDetail />,
-      },
-      {
-        path: 'create-project',
-        element: <ProjectCreation />,
-      },
-      {
-        path: 'create-project/project-introduction',
-        element: <ProjectIntroduction />,
-      },
-      // {
-      //   path: 'create-project/project-details-form',
-      //   element: <ProjectDetailsForm />,
-      // },
-      // {
-      //   path: 'create-project/invitees-form',
-      //   element: <InviteesForm />,
-      // },
-      {
-        path: 'meeting',
-        element: <MeetingCore />, // ✅ mới
-      },
-            {
-        path: 'meeting-feedback',
-        element: <MeetingFeedbackPage />, // ✅ mới
-      },
-      {
-        path: 'meeting-room',
-        element: <MeetingRoom />,
-      },
-      {
-        path: 'create-meeting-room',
-        element: <CreateMeetingPage />,
-      },
-      {
-        path: 'meeting-management',
-        element: <MeetingManagementPage />,
-      },
-      {
-        path: 'gantt-chart',
-        element: <Gantt />,
-      },
-
     ],
   },
 
-
+  //  PM, Team Leader, Team Member đều có thể truy cập vào
   {
-    path: '/pm/project',
+    path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER','TEAM_LEADER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
     children: [
       {
         index: true,
-        element: <ProjectDetailPage  />,
+        element: <ProjectDetailPage />,
       },
 
-
-      
-    
+      {
+        path: `/project?:projectKey`,
+        element: <ProjectTaskList />,
+      },
+      {
+        path: `create-project/project-introduction`,
+        element: <ProjectCreation />,
+      },
     ],
   },
-
 
   {
     path: '/team-member',
@@ -307,16 +258,12 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <ProjectDetailPage  />,
+        element: <ProjectDetailPage />,
       },
-
-
-      
-    
     ],
   },
 
-    {
+  {
     path: '/team-leader',
     element: (
       <ProtectedRoute allowedRoles={['TEAM_LEADER']}>
@@ -326,15 +273,9 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <ProjectDetailPage  />,
+        element: <ProjectDetailPage />,
       },
-
-
-      
-    
     ],
   },
-  
 
-  
 ]);

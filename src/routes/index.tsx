@@ -20,6 +20,7 @@ import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
 import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
 import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
+import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 
 export const router = createBrowserRouter([
   {
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
       {
         path: 'meeting',
         element: <MeetingCore />, // ✅ mới
+      },
+            {
+        path: 'meeting-feedback',
+        element: <MeetingFeedbackPage />, // ✅ mới
       },
       {
         path: 'meeting-room',

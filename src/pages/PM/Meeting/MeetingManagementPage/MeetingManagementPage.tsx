@@ -109,66 +109,6 @@ onClick={() => {
                     ✏️ Sửa
                   </button>
                 </DialogTrigger>
-                {/* <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
-                  <h3 className="mb-4 text-lg font-semibold">✏️ Cập nhật cuộc họp</h3>
-                  <label className="mb-2 block text-sm font-medium">Chủ đề</label>
-                  <label className="mb-2 mt-4 block text-sm font-medium">Link họp</label>
-<input
-  type="url"
-  className="w-full rounded border px-3 py-2"
-  value={formData.meetingUrl || ''}
-  onChange={(e) => setFormData({ ...formData, meetingUrl: e.target.value })}
-/>
-
-<label className="mb-2 mt-4 block text-sm font-medium">Ngày họp</label>
-<input
-  type="date"
-  className="w-full rounded border px-3 py-2"
-   value={formData.meetingDate || ''}
-  onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
-/>
-
-<label className="mb-2 mt-4 block text-sm font-medium">Giờ bắt đầu</label>
-<input
-  type="time"
-  className="w-full rounded border px-3 py-2"
-  value={formData.startTime || ''}
-  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-/>
-
-<label className="mb-2 mt-4 block text-sm font-medium">Giờ kết thúc</label>
-<input
-  type="time"
-  className="w-full rounded border px-3 py-2"
-  value={formData.endTime || ''}
-  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-/>
-
-                  <button
-                    className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-onClick={async () => {
-  const startISO = new Date(`${formData.meetingDate}T${formData.startTime}`).toISOString();
-  const endISO = new Date(`${formData.meetingDate}T${formData.endTime}`).toISOString();
-
-  await updateMeeting({
-    meetingId: m.id,
-    data: {
-      ...formData,
-      startTime: startISO,
-      endTime: endISO,
-    },
-  });
-
-  toast.success('✅ Cập nhật cuộc họp thành công!');
-  await refetch(); // refetch danh sách để thấy kết quả ngay
-  setEditOpen(false);
-}}
-
-
-                  >
-                    💾 Lưu
-                  </button>
-                </DialogContent> */}
                 <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
   <h3 className="mb-4 text-lg font-semibold">✏️ Cập nhật cuộc họp</h3>
 

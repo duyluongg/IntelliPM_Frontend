@@ -14,6 +14,8 @@ import { taskCommentApi } from '../services/taskCommentApi';
 import { meetingParticipantApi } from '../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 import { documentApi } from '../services/Document/documentAPI';
 import docReducer from '../components/slices/Document/documentSlice';
+import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
+
 
 export const store = configureStore({
   reducer: {
@@ -31,6 +33,7 @@ export const store = configureStore({
     [taskCommentApi.reducerPath]: taskCommentApi.reducer,
     [meetingParticipantApi.reducerPath]: meetingParticipantApi.reducer,
     [documentApi.reducerPath]: documentApi.reducer,
+    [meetingFeedbackApi.reducerPath]: meetingFeedbackApi.reducer,
     doc: docReducer,
   },
 
@@ -49,7 +52,8 @@ export const store = configureStore({
       projectApi.middleware,
       taskCommentApi.middleware,
       meetingParticipantApi.middleware,
-      documentApi.middleware
+      documentApi.middleware,
+      meetingFeedbackApi.middleware,
     ),
 });
 

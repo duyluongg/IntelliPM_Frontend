@@ -31,10 +31,10 @@ const menuItems = [
   { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
-  
+
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams' },
-   {
+  {
     icon: <CalendarCheck className='w-5 h-5' />,
     label: 'Create and schedule meetings ',
     path: '/pm/meeting-room',
@@ -46,7 +46,6 @@ const menuItems = [
     isDropdown: true, // Custom flag to indicate a dropdown
   },
   { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
- 
 ];
 
 export default function Sidebar() {
@@ -84,9 +83,7 @@ export default function Sidebar() {
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
               >
-                <div
-                  className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
-                >
+                <div className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'>
                   <div className='flex items-center justify-between'>
                     <div
                       className='flex items-center space-x-2'
@@ -107,7 +104,10 @@ export default function Sidebar() {
                     {(hovered || showProjects) && (
                       <div className='flex items-center space-x-2'>
                         <span title='New project'>
-                          <Plus className='w-4 h-4 hover:text-blue-500' />
+                          <Plus
+                            className='w-4 h-4 hover:text-blue-500 cursor-pointer'
+                            onClick={() => navigate('/create-project/project-introduction')}
+                          />
                         </span>
                         <span title='Manage'>
                           <MoreHorizontal className='w-4 h-4 hover:text-blue-500' />
@@ -175,7 +175,6 @@ export default function Sidebar() {
             );
           }
         })}
-
       </div>
 
       {/* Sign out */}

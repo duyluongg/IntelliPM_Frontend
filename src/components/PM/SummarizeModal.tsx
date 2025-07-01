@@ -35,7 +35,7 @@ export default function SummarizeModal({ message, onClose }: { message: string; 
               onClick={onClose}
               className="text-sm text-gray-600 hover:underline"
             >
-              Cancel
+              Cancelllllll
             </button>
             <button
               disabled

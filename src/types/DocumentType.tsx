@@ -1,7 +1,7 @@
 export type DocumentType = {
   id: number;
   projectId: number;
-  taskId: number;
+  taskId: string;
   title: string;
   type: string;
   content: string;

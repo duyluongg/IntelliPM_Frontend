@@ -235,6 +235,7 @@ const ProjectTaskList: React.FC = () => {
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+console.log('🧩 ProjectTaskList rendered');
 
   const handleOpenPopup = (taskId: string) => {
     setSelectedTaskId(taskId);
@@ -360,7 +361,8 @@ const ProjectTaskList: React.FC = () => {
         }));
 
   return (
-    <div className='task-page-wrapper'>
+    <div className=' '>
+   
       <HeaderBar />
       <div className='task-table-container'>
         <table className='task-table' ref={tableRef}>

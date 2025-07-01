@@ -32,7 +32,7 @@ export interface CreateMeetingLogResponse {
   isSuccess: boolean;
   message: string;
   data: any;
-}
+} 
 
 export const meetingLogApi = createApi({
   reducerPath: 'meetingLogApi',

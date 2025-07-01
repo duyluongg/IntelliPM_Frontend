@@ -18,7 +18,11 @@ export default function TiptapEditor({ content, onChange }: Props) {
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      editor.commands.insertContent(content, {
+        parseOptions: {
+          preserveWhitespace: true,
+        },
+      });
     }
   }, [editor, content]);
 

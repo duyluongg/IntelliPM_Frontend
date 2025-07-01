@@ -32,7 +32,7 @@ export default function Form() {
 
   return (
     <div className='min-h-screen bg-white'>
-      <ProjectTabs />
+      {/* <ProjectTabs /> */}
 
       {!formId || formId === 'blank' ? (
         <div className='p-4 space-y-3  '>

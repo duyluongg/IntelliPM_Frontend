@@ -1,0 +1,32 @@
+.ProseMirror table {
+  table-layout: auto;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  position: relative;
+  min-width: 40px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  user-select: text;
+  background-color: #fff;
+}
+
+.ProseMirror th::after,
+.ProseMirror td::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  background-color: transparent;
+}
+
+.ProseMirror th:hover::after,
+.ProseMirror td:hover::after {
+  background-color: rgba(0, 0, 0, 0.1);
+}

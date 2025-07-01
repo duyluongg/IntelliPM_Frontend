@@ -111,9 +111,16 @@ export const projectMetricApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    calculateProjectMetrics: builder.mutation<any, { projectId: number; calculatedBy: string }>({
-      query: ({ projectId, calculatedBy }) => ({
-        url: `projectmetric/calculate?projectId=${projectId}&calculatedBy=${calculatedBy}`,
+    // calculateProjectMetrics: builder.mutation<any, { projectId: number; calculatedBy: string }>({
+    //   query: ({ projectId, calculatedBy }) => ({
+    //     url: `projectmetric/calculate?projectId=${projectId}&calculatedBy=${calculatedBy}`,
+    //     method: 'POST',
+    //   }),
+    // }),
+
+    calculateProjectMetrics: builder.mutation<any, { projectId: number }>({
+      query: ({ projectId }) => ({
+        url: `projectmetric/calculate-and-save?projectId=${projectId}`,
         method: 'POST',
       }),
     }),

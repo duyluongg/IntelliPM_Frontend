@@ -19,7 +19,7 @@ import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/Mee
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
 //import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-//import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
+import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 
 export const router = createBrowserRouter([

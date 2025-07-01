@@ -9,6 +9,7 @@ interface ProjectFormData {
   projectType: string;
   startDate: string;
   endDate: string;
+  status: string;
 }
 
 interface Props {
@@ -25,6 +26,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     projectType: initialData.projectType || 'WEB_APPLICATION',
     startDate: initialData.startDate || new Date().toISOString().slice(0, 10),
     endDate: initialData.endDate || new Date().toISOString().slice(0, 10),
+    status: initialData.status || 'PLANNING',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -125,7 +127,19 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
         </select>
       </div>
 
-  
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Status</label>
+        <select
+          name="status"
+          value={form.status}
+          onChange={handleChange}
+          className="mt-1 block w-full border px-3 py-2 rounded"
+        >
+          <option value="PLANNING">Planning</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+      </div>
 
       <div className="pt-4">
         <button

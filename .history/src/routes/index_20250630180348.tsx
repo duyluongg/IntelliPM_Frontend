@@ -18,9 +18,8 @@ import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeeti
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
-//import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-//import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
-import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
+import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 
 export const router = createBrowserRouter([
   {
@@ -70,21 +69,17 @@ export const router = createBrowserRouter([
         element: <ProjectDetail />,
       },
       {
-        path: 'create-project',
-        element: <ProjectCreation />,
-      },
-      {
         path: 'create-project/project-introduction',
         element: <ProjectIntroduction />,
       },
-      // {
-      //   path: 'create-project/project-details-form',
-      //   element: <ProjectDetailsForm />,
-      // },
-      // {
-      //   path: 'create-project/invitees-form',
-      //   element: <InviteesForm />,
-      // },
+      {
+        path: 'create-project/project-details-form',
+        element: <ProjectDetailsForm />,
+      },
+      {
+        path: 'create-project/invitees-form',
+        element: <InviteesForm />,
+      },
       {
         path: 'meeting',
         element: <MeetingCore />, // ✅ mới

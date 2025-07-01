@@ -245,7 +245,10 @@ const Login: React.FC = () => {
       navigate(`/pm/project?projectKey=${firstProject.projectKey}#list`);
     } else if (user?.role === 'ADMIN') {
       navigate('/admin/dashboard');
-    }
+    }else if (user?.role === 'TEAM_MEMBER') {
+      navigate('/team-member');
+    }else if (user?.role === 'TEAM_LEADER') 
+      navigate('/team-leader');
   }, [user, hasProjects, projectData, navigate]);
 
   return (

@@ -260,6 +260,10 @@ export const router = createBrowserRouter([
         path: 'meeting-management',
         element: <MeetingManagementPage />,
       },
+      {
+        path: 'gantt-chart',
+        element: <Gantt />,
+      },
 
     ],
   },
@@ -284,6 +288,44 @@ export const router = createBrowserRouter([
     ],
   },
 
+
+  {
+    path: '/team-member',
+    element: (
+      <ProtectedRoute allowedRoles={['TEAM_MEMBER']}>
+        <PMLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ProjectDetailPage  />,
+      },
+
+
+      
+    
+    ],
+  },
+
+    {
+    path: '/team-leader',
+    element: (
+      <ProtectedRoute allowedRoles={['TEAM_LEADER']}>
+        <PMLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ProjectDetailPage  />,
+      },
+
+
+      
+    
+    ],
+  },
   
 
   

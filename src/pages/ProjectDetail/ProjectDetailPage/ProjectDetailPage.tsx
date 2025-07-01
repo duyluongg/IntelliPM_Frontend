@@ -5,6 +5,7 @@ import Form from '../../PM/YourProject/Form';
 import ProjectTaskList from '../ProjectTaskList/ProjectTaskList';
 import ProjectDetailHeader from '../ProjectDetailHeader/ProjectDetailHeader';
 
+
 const ProjectDetailPage = () => {
   const location = useLocation();
   const activeTab = useMemo(() => {
@@ -22,6 +23,8 @@ const ProjectDetailPage = () => {
       <div className='p-4'>
         {activeTab === 'forms' && <Form />}
         {activeTab === 'list' && <ProjectTaskList />}
+
+
       </div>
     </div>
   );

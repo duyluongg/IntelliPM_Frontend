@@ -12,11 +12,7 @@ interface ProjectFormData {
   invitees: string[];
 }
 
-const steps = [
-  'Project Details',
-  'Requirements',
-  'Invite Members',
-];
+const steps = ['Project Details', 'Requirements', 'Invite Members'];
 
 const ProjectCreation: React.FC = () => {
   const [step, setStep] = useState(0);
@@ -25,17 +21,17 @@ const ProjectCreation: React.FC = () => {
     projectKey: '',
     description: '',
     requirements: [''],
-    invitees: ['']
+    invitees: [''],
   });
   const navigate = useNavigate();
 
   const handleNext = (data: Partial<ProjectFormData>) => {
-    setFormData(prev => ({ ...prev, ...data }));
-    setStep(prev => prev + 1);
+    setFormData((prev) => ({ ...prev, ...data }));
+    setStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
-    setStep(prev => prev - 1);
+    setStep((prev) => prev - 1);
   };
 
   const handleSubmit = async () => {
@@ -44,7 +40,7 @@ const ProjectCreation: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           name: formData.name,
@@ -54,8 +50,8 @@ const ProjectCreation: React.FC = () => {
           projectType: 'WEB_APPLICATION',
           startDate: new Date().toISOString(),
           endDate: new Date().toISOString(),
-          status: 'PLANNING'
-        })
+          status: 'PLANNING',
+        }),
       });
 
       const result = await response.json();
@@ -81,15 +77,15 @@ const ProjectCreation: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-5xl mx-auto p-6">
+    <div className='min-h-screen bg-white'>
+      <div className='max-w-5xl mx-auto p-6'>
         {/* Step indicator */}
-        <div className="relative flex justify-between items-center mb-10">
+        <div className='relative flex justify-between items-center mb-10'>
           {steps.map((label, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center relative">
+            <div key={index} className='flex-1 flex flex-col items-center relative'>
               {/* Line connector */}
               {index < steps.length - 1 && (
-                <div className="absolute top-4 left-1/2 w-full h-0.5 bg-gray-300 z-0">
+                <div className='absolute top-4 left-1/2 w-full h-0.5 bg-gray-300 z-0'>
                   <div
                     className={`h-0.5 ${index < step ? 'bg-[#1c73fd]' : 'bg-gray-300'}`}
                     style={{ width: '100%' }}
@@ -97,11 +93,17 @@ const ProjectCreation: React.FC = () => {
                 </div>
               )}
               {/* Circle step */}
-              <div className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
-                ${index <= step ? 'bg-[#1c73fd] text-white' : 'bg-gray-300 text-gray-700'}`}>
+              <div
+                className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
+                ${index <= step ? 'bg-[#1c73fd] text-white' : 'bg-gray-300 text-gray-700'}`}
+              >
                 {index + 1}
               </div>
-              <p className={`text-sm mt-2 text-center w-24 ${index === step ? 'text-[#1c73fd] font-medium' : 'text-gray-500'}`}>
+              <p
+                className={`text-sm mt-2 text-center w-24 ${
+                  index === step ? 'text-[#1c73fd] font-medium' : 'text-gray-500'
+                }`}
+              >
                 {label}
               </p>
             </div>
@@ -109,9 +111,7 @@ const ProjectCreation: React.FC = () => {
         </div>
 
         {/* Step content */}
-        <div className="bg-white rounded shadow p-6">
-          {renderStep()}
-        </div>
+        <div className='bg-white rounded shadow p-6'>{renderStep()}</div>
       </div>
     </div>
   );

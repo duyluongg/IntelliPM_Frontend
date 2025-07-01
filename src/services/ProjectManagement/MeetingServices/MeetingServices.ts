@@ -87,6 +87,7 @@ export interface MeetingEventWithStatus {
   participants: string;
   roomUrl: string;
   status: 'Present' | 'Absent' | 'Active';
+  meetingStatus: string;
 }
 
 
@@ -191,15 +192,17 @@ export const meetingApi = createApi({
               endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
             }
     
-            results.push({
-              id: meeting.id.toString(),
-              title: meeting.meetingTopic,
-              start: startDate.toISOString(),
-              end: endDate.toISOString(),
-              participants: `${meeting.attendees} người`,
-              roomUrl: meeting.meetingUrl,
-              status: current?.status === 'Absent' ? 'Absent' : current?.status === 'Active' ? 'Active' : 'Present',
-            });
+results.push({
+  id: meeting.id.toString(),
+  title: meeting.meetingTopic,
+  start: startDate.toISOString(),
+  end: endDate.toISOString(),
+  participants: `${meeting.attendees} người`,
+  roomUrl: meeting.meetingUrl,
+  status: current?.status ?? 'Active',     // từ participant
+  meetingStatus: meeting.status,           // ✅ từ bảng meeting
+});
+
           }
     
           return { data: results };

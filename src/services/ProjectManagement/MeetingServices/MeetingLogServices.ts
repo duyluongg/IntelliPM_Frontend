@@ -16,6 +16,8 @@ export interface ManagedMeeting {
   attendees: number;
   createdAt: string;
   projectName: string | null;
+  participantIds: number[];
+
 }
 
 // Giao diện cho Log Request

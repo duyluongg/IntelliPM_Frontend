@@ -31,7 +31,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
   };
 
   return (
-    <div className="bg-white max-w-7xl mx-auto rounded-lg shadow min-h-screen pb-32 relative">
+    <div className="bg-white ml-56 mx-auto rounded-lg shadow min-h-screen pb-32 relative">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0052CC] to-[#2684FF] p-4 flex justify-between items-center rounded-t-lg text-white">
         <h1 className="text-xl font-semibold">Project Introduction</h1>

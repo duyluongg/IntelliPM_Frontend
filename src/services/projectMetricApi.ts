@@ -33,14 +33,29 @@ interface HealthDashboardResponse {
   };
 }
 
+// interface TaskStatusDashboardResponse {
+//   isSuccess: boolean;
+//   code: number;
+//   message: string;
+//   data: {
+//     notStarted: number;
+//     inProgress: number;
+//     completed: number;
+//   };
+// }
+
+interface TaskStatusItem {
+  key: number;
+  name: string;
+  count: number;
+}
+
 interface TaskStatusDashboardResponse {
   isSuccess: boolean;
   code: number;
   message: string;
   data: {
-    notStarted: number;
-    inProgress: number;
-    completed: number;
+    statusCounts: TaskStatusItem[];
   };
 }
 
@@ -118,51 +133,58 @@ export const projectMetricApi = createApi({
     //   }),
     // }),
 
-    calculateProjectMetrics: builder.mutation<any, { projectId: number }>({
-      query: ({ projectId }) => ({
-        url: `projectmetric/calculate-and-save?projectId=${projectId}`,
+    // calculateProjectMetrics: builder.mutation<any, { projectId: number }>({
+    //   query: ({ projectId }) => ({
+    //     url: `projectmetric/calculate-and-save?projectId=${projectId}`,
+    //     method: 'POST',
+    //   }),
+    // }),
+
+    calculateProjectMetrics: builder.mutation<any, { projectKey: string }>({
+      query: (projectKey) => ({
+        url: `projectmetric/calculate-metrics-by-ai?projectKey=${projectKey}`,
         method: 'POST',
       }),
     }),
 
-    getHealthDashboard: builder.query<HealthDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/health-dashboard?projectId=${projectId}`,
+    getHealthDashboard: builder.query<HealthDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/health-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
 
-    getTaskStatusDashboard: builder.query<TaskStatusDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/tasks-dashboard?projectId=${projectId}`,
+    getTaskStatusDashboard: builder.query<TaskStatusDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/tasks-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
 
-    getProgressDashboard: builder.query<ProgressDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/progress-dashboard?projectId=${projectId}`,
+    getProgressDashboard: builder.query<ProgressDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/progress-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
 
-    getTimeDashboard: builder.query<TimeDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/time-dashboard?projectId=${projectId}`,
+    getTimeDashboard: builder.query<TimeDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/time-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
 
-    getCostDashboard: builder.query<CostDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/cost-dashboard?projectId=${projectId}`,
+    getCostDashboard: builder.query<CostDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/cost-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
 
-    getWorkloadDashboard: builder.query<WorkloadDashboardResponse, number>({
-      query: (projectId) => ({
-        url: `projectmetric/workload-dashboard?projectId=${projectId}`,
+    getWorkloadDashboard: builder.query<WorkloadDashboardResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/workload-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
@@ -176,5 +198,5 @@ export const {
   useGetProgressDashboardQuery,
   useGetTimeDashboardQuery,
   useGetCostDashboardQuery,
-  useGetWorkloadDashboardQuery, 
+  useGetWorkloadDashboardQuery,
 } = projectMetricApi;

@@ -1,8 +1,10 @@
 import { useGetProgressDashboardQuery } from "../../../services/projectMetricApi";
+import { useSearchParams } from "react-router-dom";
 
 const ProgressPerSprint = () => {
-  const projectId = 1; // hoặc lấy từ props/context
-  const { data, isLoading, error } = useGetProgressDashboardQuery(projectId);
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { data, isLoading, error } = useGetProgressDashboardQuery(projectKey);
 
   if (isLoading) return <div>Loading progress...</div>;
   if (error || !data?.data) return <div>Error loading progress data</div>;

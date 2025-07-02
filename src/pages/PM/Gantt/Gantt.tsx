@@ -4,6 +4,8 @@ import 'smart-webcomponents-react/source/styles/smart.default.css';
 import { useGetTasksByProjectIdQuery } from '../../../services/taskApi';
 import { useGetMilestonesByProjectIdQuery } from '../../../services/milestoneApi';
 import { useGetSprintsByProjectIdQuery } from '../../../services/sprintApi';
+import { useGetFullProjectDetailsByKeyQuery } from '../../../services/projectApi';
+import { useSearchParams } from 'react-router-dom';
 
 const Gantt = () => {
   const ganttRef = useRef(null);
@@ -12,12 +14,24 @@ const Gantt = () => {
   const nonworkingDays = [0, 6]; // Chủ Nhật & Thứ Bảy
   const nonworkingHours = [[18, 6]]; // Nghỉ từ 6PM đến 6AM
   const [adjustToNonworkingTime, setAdjustToNonworkingTime] = useState(true);
-  const projectId = 1;
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
 
-  const { data: tasks = [], isLoading, isError, error } = useGetTasksByProjectIdQuery(projectId);
-  const { data: milestones = [], isLoading: loadingMilestones } =
-    useGetMilestonesByProjectIdQuery(projectId);
-  const { data: sprints = [] } = useGetSprintsByProjectIdQuery(projectId);
+  // const { data: tasks = [], isLoading, isError, error } = useGetTasksByProjectIdQuery(projectId);
+  // const { data: milestones = [], isLoading: loadingMilestones } =
+  //   useGetMilestonesByProjectIdQuery(projectId);
+  // const { data: sprints = [] } = useGetSprintsByProjectIdQuery(projectId);
+
+  const {
+    data: projectData,
+    isLoading,
+    isError,
+    error,
+  } = useGetFullProjectDetailsByKeyQuery(projectKey);
+
+  const tasks = projectData?.data?.tasks || [];
+  const milestones = projectData?.data?.milestones || [];
+  const sprints = projectData?.data?.sprints || [];
 
   const taskColumns = [
     { label: 'Tasks', value: 'label', size: '30%' },

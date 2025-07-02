@@ -110,7 +110,7 @@ export default function Sidebar() {
                           {isRole && (
                             <Plus
                               className='w-4 h-4 hover:text-blue-500 cursor-pointer'
-                              onClick={() => navigate('/project/create-project/project-introduction')}
+                              onClick={() => navigate('/project/introduction')}
                             />
                           )}
                         </span>

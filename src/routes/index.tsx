@@ -225,7 +225,7 @@ export const router = createBrowserRouter([
     path: '/project',
     element: (
       <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
-        <PMLayout />
+        <RootLayout />
       </ProtectedRoute>
     ),
     children: [
@@ -240,9 +240,10 @@ export const router = createBrowserRouter([
         element: <ProjectTaskList />,
       },
       {
-        path: `create-project/project-introduction`,
+        path: `createform`,
         element: <ProjectCreation />,
       },
+
             {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,
@@ -250,6 +251,11 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-management',
         element: <MeetingManagementPage />,
+
+      {
+        path: `introduction`,
+        element: <ProjectIntroduction />,
+
       },
     ],
   },

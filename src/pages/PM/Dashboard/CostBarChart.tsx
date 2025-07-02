@@ -9,10 +9,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useGetCostDashboardQuery } from '../../../services/projectMetricApi';
+import { useSearchParams } from 'react-router-dom';
 
 const CostBarChart = () => {
-  const projectId = 1;
-  const { data, isLoading, isError } = useGetCostDashboardQuery(projectId);
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
 
   if (isLoading) return <div>Loading cost data...</div>;
   if (isError || !data?.data) return <div>Failed to load cost data</div>;

@@ -4,6 +4,8 @@ import { useEffect, useMemo } from 'react';
 import Form from '../../PM/YourProject/Form';
 import ProjectTaskList from '../ProjectTaskList/ProjectTaskList';
 import ProjectDetailHeader from '../ProjectDetailHeader/ProjectDetailHeader';
+import Gantt from '../../PM/Gantt/Gantt';
+import ProjectDashboard from '../../PM/Dashboard/ProjectDashboard';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -22,6 +24,8 @@ const ProjectDetailPage = () => {
       <div className='p-4'>
         {activeTab === 'forms' && <Form />}
         {activeTab === 'list' && <ProjectTaskList />}
+        {activeTab === 'gantt-chart' && <Gantt />}
+        {activeTab === 'dashboard' && <ProjectDashboard />}
       </div>
     </div>
   );

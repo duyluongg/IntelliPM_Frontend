@@ -364,7 +364,7 @@ console.log('🧩 ProjectTaskList rendered');
     <div className=' '>
    
       <HeaderBar />
-      <div className='task-table-container'>
+      <div className='task-table-container '>
         <table className='task-table' ref={tableRef}>
           <thead>
             <tr>

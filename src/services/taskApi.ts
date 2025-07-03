@@ -87,6 +87,13 @@ export const taskApi = createApi({
         body: JSON.stringify(type), // Gửi "TASK", "BUG", "STORY"
       }),
     }),
+    getTasksByEpicId: builder.query<TaskResponseDTO[], string>({
+      query: (epicId) => ({
+        url: 'task/by-epic-id',
+        params: { epicId },
+      }),
+      transformResponse: (response: TaskListResponse) => response.data,
+    }),
   }),
 });
 
@@ -94,5 +101,6 @@ export const {
   useGetTasksByProjectIdQuery,
   useUpdateTaskStatusMutation,
   useGetTaskByIdQuery,
-  useUpdateTaskTypeMutation
+  useUpdateTaskTypeMutation,
+  useGetTasksByEpicIdQuery
 } = taskApi;

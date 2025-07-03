@@ -91,7 +91,7 @@
 .modal-content {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
   padding: 15px;
 }
 
@@ -291,7 +291,7 @@ input {
 
 .dropdown-item input[type="radio"] {
   margin-right: 8px;
-  accent-color: #2684ff; /* Màu xanh Jira */
+  accent-color: #2684ff;
 }
 
 .dropdown-icon {
@@ -447,4 +447,163 @@ input {
   color: black;
 }
 
+.issue-table table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.issue-table th {
+  position: relative;
+  background-color: #F4F5F7;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  user-select: none;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  min-width: 120px;
+}
+
+.issue-table td {
+  padding: 8px 10px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  min-width: 120px;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background-color: transparent;
+}
+
+.resizer:hover {
+  background-color: #4C9AFF;
+}
+
+.status-label {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  width: fit-content;
+}
+
+.status-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.status-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 120px;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  border-radius: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.status-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-option:hover {
+  background-color: #F4F5F7;
+}
+
+.status-option.view-workflow {
+  color: #888;
+  font-size: 12px;
+}
+
+.to_do {
+  background-color: #DFE1E6;
+  color: #6B778C;
+}
+
+.in_progress {
+  background-color: #B3D4FF;
+  color: #0747A6;
+}
+
+.done {
+  background-color: #C3FBCB;
+  color: #006644;
+}
+
+.scrollable-table-wrapper {
+  max-height: 300px; 
+  max-width: 900px;   
+  overflow: auto;    
+  border: 1px solid #DFE1E6; 
+}
+
+.scrollable-table-wrapper table {
+  min-width: 900px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.custom-status-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-weight: 600;
+  font-size: 0.85rem;  
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  width: fit-content;
+  min-width: 105px;
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  color: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%236B778C' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  margin-top: 10px;
+}
+
+.custom-status-select option {
+  background-color: #ffffff !important;
+  color: #172B4D !important;
+}
+
+
+/* Màu theo status */
+.status-to-do {
+  background-color: #dddee1;
+  color: #6B778C;
+}
+
+.status-in-progress {
+  background-color: #87b1e1;
+  color: #0747A6;
+}
+
+.status-done {
+  background-color: #b2da73;
+  color: #006644;
+}
 

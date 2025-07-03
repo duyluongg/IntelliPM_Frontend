@@ -73,6 +73,7 @@ const ChildWorkItem: React.FC = () => {
   if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
 
   return (
+    <div className="child-work-item-page">
     <div className="child-work-item-container">
       <div className="child-header">
         <div className="breadcrumb">
@@ -124,16 +125,17 @@ const ChildWorkItem: React.FC = () => {
 
         <div className="child-sidebar">
           <div className="status-section">
-            <select
-              value={subtaskDetail.status}
-              onChange={handleStatusChange}
-              className="status-dropdown"
-            >
-              <option value="TO_DO">To Do</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="DONE">Done</option>
-            </select>
-          </div>
+              <select
+                value={subtaskDetail.status}
+                className={`status-dropdown ${subtaskDetail.status.toLowerCase().replace('_', '-')}`}
+                onChange={handleStatusChange}
+              >
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="DONE">Done</option>
+              </select>
+
+            </div>
           <div className="details-panel">
             <h4>Details</h4>
             <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
@@ -145,6 +147,7 @@ const ChildWorkItem: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

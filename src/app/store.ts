@@ -9,6 +9,7 @@ import { meetingApi } from '../services/ProjectManagement/MeetingServices/Meetin
 import { meetingLogApi } from '../services/ProjectManagement/MeetingServices/MeetingLogServices';
 import { projectMetricApi } from '../services/projectMetricApi';
 import { subtaskApi } from '../services/subtaskApi';
+import { epicApi } from '../services/epicApi';
 import { projectApi } from '../services/projectApi';
 import { taskCommentApi } from '../services/taskCommentApi';
 import { meetingParticipantApi } from '../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
@@ -39,6 +40,7 @@ export const store = configureStore({
     [meetingFeedbackApi.reducerPath]: meetingFeedbackApi.reducer,
     [dynamicCategoryApi.reducerPath]: dynamicCategoryApi.reducer,
     [requirementApi.reducerPath]: requirementApi.reducer,
+    [epicApi.reducerPath]: epicApi.reducer,
     [projectMemberApi.reducerPath]: projectMemberApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
@@ -63,6 +65,7 @@ export const store = configureStore({
       meetingFeedbackApi.middleware,
       dynamicCategoryApi.middleware,
       requirementApi.middleware,
+      epicApi.middleware,
       projectMemberApi.middleware,
     ),
 });

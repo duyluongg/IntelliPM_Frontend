@@ -34,7 +34,6 @@ const ProjectCreation: React.FC = () => {
 
   const handleNext = (data: Partial<ProjectFormData> | RequirementRequest[]) => {
     if (Array.isArray(data)) {
-      // Convert RequirementRequest[] to string[] for formData.requirements
       const simplifiedRequirements = data.map(req => req.title);
       setFormData((prev) => ({ ...prev, requirements: simplifiedRequirements }));
     } else {
@@ -48,32 +47,8 @@ const ProjectCreation: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    try {
-      const response = await fetch('https://localhost:7128/api/project', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          projectKey: formData.projectKey,
-          description: formData.description,
-          budget: 0,
-          projectType: 'WEB_APPLICATION',
-          startDate: new Date().toISOString(),
-          endDate: new Date().toISOString(),
-          status: 'PLANNING',
-        }),
-      });
 
-      const result = await response.json();
-      if (result.isSuccess) {
-        navigate(`/projects?projectKey=${formData.projectKey}`);
-      }
-    } catch (err) {
-      console.error('Failed to create project:', err);
-    }
+    navigate(`/`);
   };
 
   const renderStep = () => {
@@ -81,10 +56,9 @@ const ProjectCreation: React.FC = () => {
       case 0:
         return <ProjectDetailsForm initialData={formData} onNext={handleNext} />;
       case 1:
-        // Convert string[] to RequirementRequest[] for RequirementsForm
         const initialRequirements = formData.requirements.map(title => ({
           title,
-          type: '', // Default values
+          type: '',
           description: '',
           priority: '',
         }));
@@ -99,11 +73,9 @@ const ProjectCreation: React.FC = () => {
   return (
     <div className='min-h-screen bg-white'>
       <div className='mx-auto '>
-        {/* Step indicator */}
         <div className='relative flex justify-between items-center mb-10'>
           {steps.map((label, index) => (
             <div key={index} className='flex-1 flex flex-col items-center relative'>
-              {/* Line connector */}
               {index < steps.length - 1 && (
                 <div className='absolute top-4 left-1/2 w-full h-0.5 bg-gray-300 z-0'>
                   <div
@@ -112,7 +84,6 @@ const ProjectCreation: React.FC = () => {
                   ></div>
                 </div>
               )}
-              {/* Circle step */}
               <div
                 className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
                 ${index <= step ? 'bg-[#1c73fd] text-white' : 'bg-gray-300 text-gray-700'}`}
@@ -130,7 +101,6 @@ const ProjectCreation: React.FC = () => {
           ))}
         </div>
 
-        {/* Step content */}
         <div className='bg-white rounded shadow p-6'>{renderStep()}</div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingService
 import projectCreationReducer  from '../components/slices/Project/projectCreationSlice';
 import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
+import { projectMemberApi } from '../services/projectMemberApi';
 
 export const store = configureStore({
   reducer: {
@@ -38,6 +39,7 @@ export const store = configureStore({
     [meetingFeedbackApi.reducerPath]: meetingFeedbackApi.reducer,
     [dynamicCategoryApi.reducerPath]: dynamicCategoryApi.reducer,
     [requirementApi.reducerPath]: requirementApi.reducer,
+    [projectMemberApi.reducerPath]: projectMemberApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -61,6 +63,7 @@ export const store = configureStore({
       meetingFeedbackApi.middleware,
       dynamicCategoryApi.middleware,
       requirementApi.middleware,
+      projectMemberApi.middleware,
     ),
 });
 

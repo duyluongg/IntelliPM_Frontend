@@ -13,14 +13,14 @@ import { useGetCommentsByTaskIdQuery } from '../../services/taskCommentApi';
 interface WorkItemProps {
   isOpen: boolean;
   onClose: () => void;
-  taskId?: string | null; // Add taskId as an optional prop
+  taskId?: string | null; 
 }
 
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
   const [searchParams] = useSearchParams();
-  // Prefer the propTaskId if provided, fallback to searchParams
   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
-
+  const [plannedStartDate, setPlannedStartDate] = React.useState('');
+  const [plannedEndDate, setPlannedEndDate] = React.useState('');
   const [status, setStatus] = React.useState('');
   const [workType, setWorkType] = React.useState('Task');
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
@@ -34,6 +34,24 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [showSubtaskInput, setShowSubtaskInput] = React.useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
 
+  const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
+    const startX = e.clientX;
+    const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;
+    const startWidth = th.offsetWidth;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = startWidth + (e.clientX - startX);
+      th.style.width = `${newWidth}px`;
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
 
   const { data: comments = [], isLoading: isCommentsLoading } = useGetCommentsByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
@@ -44,8 +62,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
       setNewSubtaskTitle('');
-      setShowSubtaskInput(false); // ẩn form sau khi tạo
-      await refetch(); // cập nhật lại danh sách
+      setShowSubtaskInput(false); 
+      await refetch(); 
     } catch (error) {
       console.error('Lỗi tạo subtask:', error);
     }
@@ -69,6 +87,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setDescription(taskData.description ?? '');
       setTitle(taskData.title ?? '');
       setWorkType(taskData.type ?? 'Task');
+      setPlannedStartDate(taskData.plannedStartDate);
+      setPlannedEndDate(taskData.plannedEndDate);
     }
   }, [taskData]);
 
@@ -113,7 +133,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setWorkType(type);
       setIsDropdownOpen(false);
       await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
-      await refetchTask(); // Cập nhật lại dữ liệu task sau khi đổi type
+      await refetchTask(); 
     } catch (err) {
       console.error('❌ Lỗi cập nhật work type:', err);
     }
@@ -240,110 +260,133 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               />
             </div>
             <div className="field-group">
-              <label>Child work items</label>
+              <label>Subtasks</label>
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading...</p>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Key</th>
-                        <th>Summary</th>
-                        <th>Priority</th>
-                        <th>Assignee</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {childWorkItems.map((item, index) => (
-                        <tr key={index}>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
-                          <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
-                          <td>{item.priority}</td>
-                          <td className="assignee">{item.assignee}</td>
-                          <td>
-                            <select
-                              value={item.status}
-                              onChange={(e) => handleStatusChange(item.key, e.target.value)}
-                            >
-                              <option value="TO_DO">To Do</option>
-                              <option value="IN_PROGRESS">In Progress</option>
-                              <option value="DONE">Done</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                      {showSubtaskInput && (
+                  <div className="scrollable-table-wrapper">
+                    <table>
+                      <thead>
                         <tr>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td colSpan={5}>
-                            <input
-                              type="text"
-                              placeholder="Enter subtask title..."
-                              value={newSubtaskTitle}
-                              onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                              style={{
-                                width: '70%',
-                                padding: '6px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                marginRight: '8px',
-                              }}
-                            />
-                            <button
-                              onClick={async () => {
-                                try {
-                                  try {
-                                    await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-                                    console.log("✅ Tạo thành công");
-                                  } catch (err) {
-                                    console.error("❌ Lỗi khi gọi createSubtask:", err);
-                                  }
-
-                                  setNewSubtaskTitle('');
-                                  setShowSubtaskInput(false);
-                                  await refetch(); // lấy lại danh sách subtask mới nhất
-                                } catch (err) {
-                                  console.error('Lỗi khi tạo subtask:', err);
-                                }
-                              }}
-                              disabled={!newSubtaskTitle.trim()}
-                              style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#0052cc',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
-                              }}
-                            >
-                              Create
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowSubtaskInput(false);
-                                setNewSubtaskTitle('');
-                              }}
-                              style={{
-                                marginLeft: '8px',
-                                padding: '6px 12px',
-                                backgroundColor: '#ccc',
-                                color: 'black',
-                                border: 'none',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </td>
+                          <th>
+                            Type
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 0)} />
+                          </th>
+                          <th>
+                            Key
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 1)} />
+                          </th>
+                          <th>
+                            Summary
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 2)} />
+                          </th>
+                          <th>
+                            Priority
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 3)} />
+                          </th>
+                          <th>
+                            Assignee
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 4)} />
+                          </th>
+                          <th>
+                            Status
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 5)} />
+                          </th>
                         </tr>
-                      )}
+                      </thead>
 
-                    </tbody>
-                  </table>
+                      <tbody>
+                        {childWorkItems.map((item, index) => (
+                          <tr key={index}>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
+                            <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
+                            <td>{item.priority}</td>
+                            <td className="assignee">{item.assignee}</td>
+                            <td>
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleStatusChange(item.key, e.target.value)}
+                                className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                              >
+                                <option value="TO_DO">To Do</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="DONE">Done</option>
+                              </select>
+                            </td>
+
+                          </tr>
+                        ))}
+                        {showSubtaskInput && (
+                          <tr>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td colSpan={5}>
+                              <input
+                                type="text"
+                                placeholder="Enter subtask title..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                style={{
+                                  width: '45%',
+                                  padding: '6px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  marginRight: '8px',
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    try {
+                                      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                      console.log("✅ Tạo thành công");
+                                    } catch (err) {
+                                      console.error("❌ Lỗi khi gọi createSubtask:", err);
+                                    }
+
+                                    setNewSubtaskTitle('');
+                                    setShowSubtaskInput(false);
+                                    await refetch(); // lấy lại danh sách subtask mới nhất
+                                  } catch (err) {
+                                    console.error('Lỗi khi tạo subtask:', err);
+                                  }
+                                }}
+                                disabled={!newSubtaskTitle.trim()}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#0052cc',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
+                                }}
+                              >
+                                Create
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowSubtaskInput(false);
+                                  setNewSubtaskTitle('');
+                                }}
+                                style={{
+                                  marginLeft: '8px',
+                                  padding: '6px 12px',
+                                  backgroundColor: '#ccc',
+                                  color: 'black',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -384,6 +427,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <select
                 value={status}
                 onChange={(e) => handleTaskStatusChange(e.target.value)}
+                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
               >
                 <option value="TO_DO">To Do</option>
                 <option value="IN_PROGRESS">In Progress</option>
@@ -394,8 +438,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
-              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskData[0]?.endDate)}</span></div>
-              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskData[0]?.startDate)}</span></div>
+              <div className="detail-item"><label>Due date</label><span>{formatDate(taskData?.plannedEndDate)}</span></div>
+              <div className="detail-item"><label>Start date</label><span>{formatDate(taskData?.plannedStartDate)}</span></div>
               <div className="detail-item"><label>Reporter</label><span>{subtaskData[0]?.reporterId ?? 'None'}</span></div>
             </div>
           </div>
@@ -406,6 +450,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         <ChildWorkItemPopup
           item={selectedChild}
           onClose={() => setSelectedChild(null)}
+          taskId={taskId}
         />
       )}
     </div>

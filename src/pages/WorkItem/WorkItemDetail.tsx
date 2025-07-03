@@ -13,6 +13,7 @@ import {
 import {
   useGetTaskByIdQuery,
   useUpdateTaskStatusMutation,
+  useUpdateTaskTypeMutation,
 } from '../../services/taskApi';
 
 const WorkItemDetail: React.FC = () => {
@@ -20,7 +21,7 @@ const WorkItemDetail: React.FC = () => {
   const taskId = searchParams.get('taskId') || '';
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [updateTaskType] = useUpdateTaskTypeMutation();
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('');
   const [workType, setWorkType] = useState('Task');
@@ -30,6 +31,26 @@ const WorkItemDetail: React.FC = () => {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [createSubtask] = useCreateSubtaskMutation();
+  const [title, setTitle] = React.useState('');
+  
+  const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
+    const startX = e.clientX;
+    const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;
+    const startWidth = th.offsetWidth;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = startWidth + (e.clientX - startX);
+      th.style.width = `${newWidth}px`;
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
 
   const { data: taskData, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
     skip: !taskId,
@@ -48,8 +69,17 @@ const WorkItemDetail: React.FC = () => {
     if (taskData) {
       setStatus(taskData.status);
       setDescription(taskData.description ?? '');
+      setWorkType(taskData.type);
     }
   }, [taskData]);
+
+  const childWorkItems = subtaskData.map((item) => ({
+    key: item.id,
+    summary: item.title,
+    priority: item.priority,
+    assignee: item.assignedByName ?? 'Unassigned',
+    status: item.status,
+  }));
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
@@ -75,10 +105,19 @@ const WorkItemDetail: React.FC = () => {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const handleWorkTypeChange = (type: string) => {
-    setWorkType(type);
-    setIsDropdownOpen(false);
+  const handleWorkTypeChange = async (type: string) => {
+    try {
+      setWorkType(type);
+      setIsDropdownOpen(false);
+      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await refetchTask(); 
+    } catch (err) {
+      console.error('❌ Lỗi cập nhật work type:', err);
+    }
   };
+
+  const handleDropdownClick = (e: React.MouseEvent) => e.stopPropagation();
+  
 
   const handleIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,12 +126,9 @@ const WorkItemDetail: React.FC = () => {
 
   const getIconSrc = () => {
     switch (workType) {
-      case 'Bug':
-        return bugIcon;
-      case 'Story':
-        return flagIcon;
-      default:
-        return tickIcon;
+      case 'BUG': return bugIcon;
+      case 'STORY': return flagIcon;
+      default: return tickIcon;
     }
   };
 
@@ -109,31 +145,42 @@ const WorkItemDetail: React.FC = () => {
     setIsAddDropdownOpen(false);
   };
 
+  const handleKeyClick = () => {
+    navigate(`/work-item-detail?taskId=${taskId}`);
+  };
 
   return (
     <div className="work-item-detail-page">
       <div className="work-item-detail-container">
-        <div className="detail-header">
+        <div className="modal-header">
           <div className="issue-header">
             <span className="issue-type">
               <span className="issue-icon-wrapper" onClick={handleIconClick}>
                 <img src={getIconSrc()} alt={`${workType} Icon`} />
               </span>
-              <span className="issue-key" onClick={() => navigate('/work-item')}>
-                {taskId}
-              </span>
+              <span className="issue-key" onClick={handleKeyClick}>{taskId}</span>
               {isDropdownOpen && (
-                <div className="issue-type-dropdown">
+                <div className="issue-type-dropdown" onClick={handleDropdownClick}>
                   <div className="dropdown-title">Change Work Type</div>
                   {['Task', 'Bug', 'Story'].map((type) => (
-                    <div key={type} onClick={() => handleWorkTypeChange(type)}>
-                      <input type="radio" checked={workType === type} readOnly />
+                    <div
+                      key={type}
+                      className={`dropdown-item ${workType === type ? 'selected' : ''}`}
+                      onClick={() => handleWorkTypeChange(type)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', cursor: 'pointer' }}
+                    >
                       <img
                         src={type === 'Task' ? tickIcon : type === 'Bug' ? bugIcon : flagIcon}
                         alt={type}
-                        className="dropdown-icon"
+                        style={{
+                          width: '18px',
+                          filter: type === 'Bug' ? 'hue-rotate(-1deg) saturate(3)' : 'none',
+                        }}
                       />
-                      {type}
+                      <span style={{ flex: 1 }}>{type}</span>
+                      {workType === type && (
+                        <span style={{ fontSize: '16px' }}>✔</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -143,14 +190,9 @@ const WorkItemDetail: React.FC = () => {
               type="text"
               className="issue-summary"
               placeholder="Enter summary"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
             />
-          </div>
-          <div className="header-actions">
-            <button className="close-btn" onClick={() => navigate('/work-item')}>
-              ✖
-            </button>
           </div>
         </div>
 
@@ -195,101 +237,133 @@ const WorkItemDetail: React.FC = () => {
             </div>
 
             <div className="field-group">
-              <label>Child work items</label>
+              <label>Subtasks</label>
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading subtasks...</p>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Key</th>
-                        <th>Summary</th>
-                        <th>Priority</th>
-                        <th>Assignee</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subtaskData.map((item: any, index: number) => (
-                        <tr key={index}>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.id}</a></td>
-                          <td><a onClick={() => navigate(`/child-work/${item.id}`)}>{item.title}</a></td>
-                          <td>{item.priority}</td>
-                          <td>{item.assignedByName ?? 'Unassigned'}</td>
-                          <td>
-                            <select value={item.status} onChange={(e) => handleSubtaskStatusChange(item.id, e.target.value)}>
-                              <option value="TO_DO">To Do</option>
-                              <option value="IN_PROGRESS">In Progress</option>
-                              <option value="DONE">Done</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                      {showSubtaskInput && (
+                  <div className="scrollable-table-wrapper">
+                    <table>
+                      <thead>
                         <tr>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td colSpan={5}>
-                            <input
-                              type="text"
-                              placeholder="Enter subtask title..."
-                              value={newSubtaskTitle}
-                              onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                              style={{
-                                width: '70%',
-                                padding: '6px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                marginRight: '8px',
-                              }}
-                            />
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-                                  setNewSubtaskTitle('');
-                                  setShowSubtaskInput(false);
-                                  await refetchSubtask(); // cập nhật lại danh sách
-                                } catch (err) {
-                                  console.error('Lỗi tạo subtask:', err);
-                                }
-                              }}
-                              disabled={!newSubtaskTitle.trim()}
-                              style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#0052cc',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
-                              }}
-                            >
-                              Create
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowSubtaskInput(false);
-                                setNewSubtaskTitle('');
-                              }}
-                              style={{
-                                marginLeft: '8px',
-                                padding: '6px 12px',
-                                backgroundColor: '#ccc',
-                                color: 'black',
-                                border: 'none',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </td>
+                          <th>
+                            Type
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 0)} />
+                          </th>
+                          <th>
+                            Key
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 1)} />
+                          </th>
+                          <th>
+                            Summary
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 2)} />
+                          </th>
+                          <th>
+                            Priority
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 3)} />
+                          </th>
+                          <th>
+                            Assignee
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 4)} />
+                          </th>
+                          <th>
+                            Status
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 5)} />
+                          </th>
                         </tr>
-                      )}
+                      </thead>
 
-                    </tbody>
-                  </table>
+                      <tbody>
+                        {childWorkItems.map((item, index) => (
+                          <tr key={index}>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
+                            <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
+                            <td>{item.priority}</td>
+                            <td className="assignee">{item.assignee}</td>
+                            <td>
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleSubtaskStatusChange(item.key, e.target.value)}
+                                className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                              >
+                                <option value="TO_DO">To Do</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="DONE">Done</option>
+                              </select>
+                            </td>
+
+                          </tr>
+                        ))}
+                        {showSubtaskInput && (
+                          <tr>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td colSpan={5}>
+                              <input
+                                type="text"
+                                placeholder="Enter subtask title..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                style={{
+                                  width: '45%',
+                                  padding: '6px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  marginRight: '8px',
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    try {
+                                      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                      console.log("✅ Tạo thành công");
+                                    } catch (err) {
+                                      console.error("❌ Lỗi khi gọi createSubtask:", err);
+                                    }
+
+                                    setNewSubtaskTitle('');
+                                    setShowSubtaskInput(false);
+                                    await refetchSubtask(); 
+                                  } catch (err) {
+                                    console.error('Lỗi khi tạo subtask:', err);
+                                  }
+                                }}
+                                disabled={!newSubtaskTitle.trim()}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#0052cc',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
+                                }}
+                              >
+                                Create
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowSubtaskInput(false);
+                                  setNewSubtaskTitle('');
+                                }}
+                                style={{
+                                  marginLeft: '8px',
+                                  padding: '6px 12px',
+                                  backgroundColor: '#ccc',
+                                  color: 'black',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -310,14 +384,17 @@ const WorkItemDetail: React.FC = () => {
 
           <div className="details-panel">
             <div className="details-content">
-              <div className="detail-item">
-                <label>Status</label>
-                <select value={status} onChange={(e) => handleTaskStatusChange(e.target.value)}>
-                  <option value="TO_DO">To Do</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="DONE">Done</option>
-                </select>
-              </div>
+              <div className="panel-header">
+              <select
+                value={status}
+                onChange={(e) => handleTaskStatusChange(e.target.value)}
+                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+              >
+                <option value="TO_DO">To Do</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="DONE">Done</option>
+              </select>
+            </div>
               <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>

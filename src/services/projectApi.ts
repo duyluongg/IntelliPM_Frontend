@@ -11,7 +11,7 @@ export interface CreateProjectRequest {
   endDate: string;
 }
 
-interface CreateProjectResponse {
+export interface CreateProjectResponse {
   isSuccess: boolean;
   code: number;
   data: {
@@ -56,7 +56,7 @@ interface WorkItem {
   reporterPicture: string | null;
 }
 
-interface GetWorkItemsResponse {
+export interface GetWorkItemsResponse {
   isSuccess: boolean;
   code: number;
   data: WorkItem[];

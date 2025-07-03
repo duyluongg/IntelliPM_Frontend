@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-//import { useNavigate } from 'react-router-dom';
 
 interface InviteesFormProps {
   initialData: {
@@ -9,16 +8,15 @@ interface InviteesFormProps {
     requirements: string[];
     invitees: string[];
   };
-  onNext: () => Promise<void>; // Matches the handleSubmit type in ProjectCreation
+  onNext: () => Promise<void>;
   onBack: () => void;
 }
 
 const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack }) => {
-  //const navigate = useNavigate();
-
   const [invitees, setInvitees] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [role, setRole] = useState('Administrators');
+  const [showTable, setShowTable] = useState(false);
 
   // Initialize invitees from initialData when the component mounts
   useEffect(() => {
@@ -39,8 +37,12 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
   };
 
   const handleContinue = async () => {
-    // You can pass the updated invitees back if needed, but for now, just call onNext
     await onNext();
+  };
+
+  // Extract fullname from email (simple assumption: before @)
+  const getFullnameFromEmail = (email: string) => {
+    return email.split('@')[0] || email;
   };
 
   return (
@@ -88,18 +90,37 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
           </button>
         </div>
 
-        {/* Role dropdown */}
-        <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full px-4 py-2 border rounded shadow-sm"
+        {/* Show Table Button */}
+        <button
+          onClick={() => setShowTable(!showTable)}
+          className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
         >
-          <option>Administrators</option>
-          <option>Project Manager</option>
-          <option>Developer</option>
-          <option>Viewer</option>
-        </select>
+          {showTable ? 'Hide Table' : 'Show Table'}
+        </button>
+
+        {/* Table Display */}
+        {showTable && (
+          <div className="mt-6 overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
+              <thead>
+                <tr className="bg-gray-100 text-left text-sm font-semibold text-gray-700">
+                  <th className="px-4 py-2 border-b">Địa chỉ email</th>
+                  <th className="px-4 py-2 border-b">Fullname</th>
+                  <th className="px-4 py-2 border-b">Vị trí role trong công ty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invitees.map((email) => (
+                  <tr key={email} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 border-b">{email}</td>
+                    <td className="px-4 py-2 border-b">{getFullnameFromEmail(email)}</td>
+                    <td className="px-4 py-2 border-b">{role}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Footer actions */}

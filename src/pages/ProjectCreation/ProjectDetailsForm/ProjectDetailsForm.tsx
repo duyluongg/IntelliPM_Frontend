@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCreateProjectMutation } from '../../../services/projectApi';
-import type { CreateProjectRequest } from '../../../services/projectApi';
+import type { CreateProjectRequest, CreateProjectResponse } from '../../../services/projectApi';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
+import { useDispatch } from 'react-redux';
+import { setProjectId } from '../../../components/slices/Project/projectCreationSlice';
 
 interface ProjectFormData {
   name: string;
@@ -32,16 +34,21 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   const [createProject, { isLoading, isError, error, isSuccess }] = useCreateProjectMutation();
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [isFading, setIsFading] = useState(false);
+  const dispatch = useDispatch();
+  const nameInputRef = useRef<HTMLInputElement>(null); // Tham chiếu đến input Name
 
   useEffect(() => {
+    // Tự động focus vào trường Name khi component mount
+    if (nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+
     if (isError && error) {
       setNotificationMessage(getErrorMessage());
       setShowNotification(true);
-      const timer = setTimeout(() => setShowNotification(false), 5000); // Auto-hide after 5 seconds
+      const timer = setTimeout(() => setShowNotification(false), 5000);
       return () => clearTimeout(timer);
     }
-    // Removed success notification logic
   }, [isError, error]);
 
   const handleChange = (
@@ -68,12 +75,9 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     };
 
     try {
-      await createProject(requestData).unwrap();
-      setIsFading(true); // Start fade-out effect
-      setTimeout(() => {
-        setIsFading(false); // Reset fade state
-        onNext(form); // Proceed to next step without notification
-      }, 1000); // 1-second transition
+      const response = await createProject(requestData).unwrap() as CreateProjectResponse;
+      dispatch(setProjectId(response.data.id)); // Lưu projectId vào Redux
+      onNext(form); // Chuyển sang bước tiếp theo
     } catch (err) {
       console.error('Failed to create project:', err);
     }
@@ -89,8 +93,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   };
 
   return (
-    <div className="relative">
-      {/* Notification Popup */}
+    <div className="relative max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md">
       {showNotification && (
         <div
           className="fixed top-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg z-50 animate-slide-in"
@@ -103,47 +106,27 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
       <style>
         {`
           @keyframes slideIn {
-            from {
-              transform: translateX(100%);
-              opacity: 0;
-            }
-            to {
-              transform: translateX(0);
-              opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
           }
-          .animate-slide-in {
-            animation: slideIn 0.3s ease-out forwards;
-          }
-          @keyframes fadeOut {
-            from {
-              opacity: 1;
-            }
-            to {
-              opacity: 0;
-            }
-          }
-          .fade-out {
-            animation: fadeOut 1s ease-out forwards;
-          }
+          .animate-slide-in { animation: slideIn 0.3s ease-out forwards; }
         `}
       </style>
 
-      <form
-        onSubmit={handleSubmit}
-        className={`space-y-6 ${isSuccess && isFading ? 'fade-out' : ''}`}
-      >
-        <h2 className="text-xl font-semibold text-gray-800">Project Details</h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6">Project Details</h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Name *</label>
+          <label className="block text-sm font-medium text-gray-700">Project Name *</label>
           <input
+            ref={nameInputRef} // Tự động focus vào trường này
             name="name"
             type="text"
             value={form.name}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm focus:ring focus:ring-blue-500"
+            placeholder="Enter project name"
+            className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
@@ -155,7 +138,8 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             value={form.projectKey}
             onChange={handleChange}
             required
-            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+            placeholder="Enter unique project key"
+            className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
@@ -166,7 +150,8 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             value={form.description}
             onChange={handleChange}
             rows={3}
-            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+            placeholder="Enter project description"
+            className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
@@ -177,7 +162,8 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             type="number"
             value={form.budget}
             onChange={handleChange}
-            className="mt-1 block w-full border px-3 py-2 rounded shadow-sm"
+            placeholder="Enter budget (optional)"
+            className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
 
@@ -189,7 +175,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
               type="date"
               value={form.startDate}
               onChange={handleChange}
-              className="mt-1 block w-full border px-3 py-2 rounded"
+              className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
@@ -199,7 +185,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
               type="date"
               value={form.endDate}
               onChange={handleChange}
-              className="mt-1 block w-full border px-3 py-2 rounded"
+              className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
@@ -210,7 +196,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             name="projectType"
             value={form.projectType}
             onChange={handleChange}
-            className="mt-1 block w-full border px-3 py-2 rounded"
+            className="mt-1 block w-full border border-gray-300 px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="WEB_APPLICATION">Web Application</option>
             <option value="MOBILE_APP">Mobile App</option>
@@ -218,14 +204,13 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           </select>
         </div>
 
-        {/* Removed inline feedback since we're using popup */}
-        {isLoading && <div className="text-gray-500">Creating project...</div>}
+        {isLoading && <div className="text-gray-500 text-sm">Creating project...</div>}
 
         <div className="pt-4">
           <button
             type="submit"
             disabled={isLoading}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-blue-300"
+            className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:bg-blue-300 text-sm"
           >
             {isLoading ? 'Creating...' : 'Next'}
           </button>

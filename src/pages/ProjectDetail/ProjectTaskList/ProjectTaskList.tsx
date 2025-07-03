@@ -6,6 +6,8 @@ import './ProjectTaskList.css';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
 import WorkItem from '../../WorkItem/WorkItem';
+import EpicPopup from '../../WorkItem/EpicPopup';
+import ChildWorkItemPopup from '../../WorkItem/ChildWorkItemPopup';
 import taskIcon from '../../../assets/icon/type_task.svg';
 import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
@@ -232,13 +234,21 @@ const ProjectTaskList: React.FC = () => {
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
-
+  const [selectedTaskType, setSelectedTaskType] = useState<'epic' | 'task' | 'bug' | 'subtask' | 'story' | null>(null);
+  //const selectedItem = tasks.find((t) => t.key === selectedTaskId);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-console.log('🧩 ProjectTaskList rendered');
+  const shouldShowWorkItem =
+  isPopupOpen &&
+  selectedTaskId &&
+  selectedTaskType !== null &&
+  ['task', 'bug', 'story'].includes(selectedTaskType);
 
-  const handleOpenPopup = (taskId: string) => {
+  console.log('🧩 ProjectTaskList rendered');
+
+  const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
+    setSelectedTaskType(taskType);
     setIsPopupOpen(true);
   };
 
@@ -255,6 +265,7 @@ console.log('🧩 ProjectTaskList rendered');
   const handleClosePopup = () => {
     setIsPopupOpen(false);
     setSelectedTaskId(null);
+    setSelectedTaskType(null);
     searchParams.delete('taskId');
     setSearchParams(searchParams);
   };
@@ -324,45 +335,45 @@ console.log('🧩 ProjectTaskList rendered');
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item) => ({
-          id: item.key || '',
-          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-          key: item.key || '',
-          taskId: item.taskId || null,
-          summary: item.summary || '',
-          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
-          comments: item.commentCount || 0,
-          sprint: item.sprintId || null,
-          assignees: item.assignees.map((assignee) => ({
-            fullName: assignee.fullname || 'Unknown',
-            initials:
-              assignee.fullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: assignee.picture || undefined,
-          })),
-          dueDate: item.dueDate || null,
-          labels: item.labels || [],
-          created: item.createdAt || '',
-          updated: item.updatedAt || '',
-          reporter: {
-            fullName: item.reporterFullname || 'Unknown',
-            initials:
-              item.reporterFullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: item.reporterPicture || undefined,
-          },
-        }));
+        id: item.key || '',
+        type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+        key: item.key || '',
+        taskId: item.taskId || null,
+        summary: item.summary || '',
+        status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
+        comments: item.commentCount || 0,
+        sprint: item.sprintId || null,
+        assignees: item.assignees.map((assignee) => ({
+          fullName: assignee.fullname || 'Unknown',
+          initials:
+            assignee.fullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: assignee.picture || undefined,
+        })),
+        dueDate: item.dueDate || null,
+        labels: item.labels || [],
+        created: item.createdAt || '',
+        updated: item.updatedAt || '',
+        reporter: {
+          fullName: item.reporterFullname || 'Unknown',
+          initials:
+            item.reporterFullname
+              ?.split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2) || '',
+          avatarColor: '#f3eded',
+          picture: item.reporterPicture || undefined,
+        },
+      }));
 
   return (
     <div className=' '>
-   
+
       <HeaderBar />
       <div className='task-table-container '>
         <table className='task-table' ref={tableRef}>
@@ -468,7 +479,7 @@ console.log('🧩 ProjectTaskList rendered');
                             fill='none'
                           />
                         </svg>
-                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key)}>
+                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key, task.type)}>
                           {task.key}
                         </span>
                       </div>
@@ -476,7 +487,7 @@ console.log('🧩 ProjectTaskList rendered');
                   ) : (
                     <div className='task-key-wrapper'>
                       <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => handleOpenPopup(task.key)}>
+                      <span className='task-key' onClick={() => handleOpenPopup(task.key, task.type)}>
                         {task.key}
                       </span>
                     </div>
@@ -535,10 +546,10 @@ console.log('🧩 ProjectTaskList rendered');
                 <td className='w-24' style={{ width: `${columnWidths.labels}px` }}>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                        <span key={index} className='label-tag'>
-                          {label}
-                        </span>
-                      ))
+                      <span key={index} className='label-tag'>
+                        {label}
+                      </span>
+                    ))
                     : ''}
                 </td>
                 <td className='w-28' style={{ width: `${columnWidths.created}px` }}>
@@ -564,8 +575,30 @@ console.log('🧩 ProjectTaskList rendered');
         </table>
       </div>
 
-      {isPopupOpen && (
-        <WorkItem isOpen={isPopupOpen} onClose={handleClosePopup} taskId={selectedTaskId} />
+      {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (
+        <EpicPopup id={selectedTaskId} onClose={handleClosePopup} />
+      )}
+
+      {isPopupOpen && selectedTaskType === 'subtask' && selectedTaskId && (
+        <ChildWorkItemPopup
+          taskId={selectedTaskId}
+          onClose={handleClosePopup}
+          item={{
+            key: selectedTaskId,
+            summary: '',
+            assignee: '',
+            parent: '',
+            status: '',
+          }}
+        />
+      )}
+
+      {shouldShowWorkItem && (
+        <WorkItem
+          isOpen={true}
+          onClose={handleClosePopup}
+          taskId={selectedTaskId as string}
+        />
       )}
     </div>
   );

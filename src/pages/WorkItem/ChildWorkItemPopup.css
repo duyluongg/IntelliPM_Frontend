@@ -11,13 +11,13 @@
   z-index: 1000;
 }
 
-.child-work-item-container {
+.child-work-item-popup-container {
   background: white;
-  width: 80%;
+  width: 90%;
   max-width: 1000px;
-  height: auto;
-  max-height: 70vh;
-  border-radius: 8px;
+  height: 80vh;
+  max-height: 80vh;
+  border-radius: 4px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
@@ -27,7 +27,7 @@
   color: #172b4d;
 }
 
-.child-header {
+.child-popup-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -38,12 +38,12 @@
   font-size: 14px;
 }
 
-.child-key {
+.child-popup-key {
   font-weight: bold;
   color: #0052cc;
 }
 
-.child-title {
+.child-popup-title {
   font-size: 24px;
   margin: 8px 0;
 }
@@ -83,15 +83,23 @@
   font-weight: 500;
 }
 
-.child-content {
-  display: flex; /* Thay đổi thành flex nếu cần */
-  flex-direction: column; /* Để các phần tử xếp chồng lên nhau */
+.child-popup-content {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 16px;
 }
 
-.child-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+.child-popup-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #f4f5f7;
+  padding: 16px;
+}
+
+
+.child-popup-main {
+  flex: 1;
 }
 
 .field-group label {
@@ -166,14 +174,6 @@
   color: #6b778c;
 }
 
-.child-sidebar {
-  border-left: 1px solid #dfe1e6;
-  padding-left: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
 .status-section {
   display: flex;
   flex-direction: column;
@@ -198,13 +198,12 @@
 }
 
 .details-panel {
-  border-top: 1px solid #dfe1e6;
-  padding-top: 16px;
+  border-top: 0px;
+  padding-top: 0px;
 }
 
 .details-panel h4 {
   font-size: 15px;
-  margin-bottom: 12px;
 }
 
 .detail-item {
@@ -244,4 +243,19 @@
   margin-top: 16px;
   cursor: pointer;
   font-size: 16px;
+}
+
+.status-dropdown.to-do {
+  background-color: #dddee1;
+  color: #6B778C;
+}
+
+.status-dropdown.in-progress {
+  background-color: #87b1e1;
+  color: #0747A6;
+}
+
+.status-dropdown.done {
+  background-color: #b2da73;
+  color: #006644;
 }

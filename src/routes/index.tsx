@@ -217,6 +217,14 @@ export const router = createBrowserRouter([
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
+      {
+        path: 'work-item-detail',
+        element: <WorkItemDetail />,
+      },
+      {
+        path: 'child-work/:key',
+        element: <ChildWorkItem />,
+      },
     ],
   },
 

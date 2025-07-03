@@ -103,6 +103,7 @@
 
 .field-group {
   margin-bottom: 15px;
+  width: 100%;
 }
 
 .field-group label {
@@ -308,11 +309,6 @@ input {
   width: 16px;
   height: 16px;
   margin-right: 5px;
-}
-
-.issue-table {
-  width: 100%; /* Cho container bao table dãn full */
-  overflow-x: auto; /* Nếu nội dung tràn */
 }
 
 .issue-table table {

@@ -8,8 +8,15 @@ interface ProjectFormData {
   name: string;
   projectKey: string;
   description: string;
-  requirements: string[];
+  requirements: string[]; // Local state uses string[] for simplicity
   invitees: string[];
+}
+
+interface RequirementRequest {
+  title: string;
+  type: string;
+  description: string;
+  priority: string;
 }
 
 const steps = ['Project Details', 'Requirements', 'Invite Members'];
@@ -25,8 +32,14 @@ const ProjectCreation: React.FC = () => {
   });
   const navigate = useNavigate();
 
-  const handleNext = (data: Partial<ProjectFormData>) => {
-    setFormData((prev) => ({ ...prev, ...data }));
+  const handleNext = (data: Partial<ProjectFormData> | RequirementRequest[]) => {
+    if (Array.isArray(data)) {
+      // Convert RequirementRequest[] to string[] for formData.requirements
+      const simplifiedRequirements = data.map(req => req.title);
+      setFormData((prev) => ({ ...prev, requirements: simplifiedRequirements }));
+    } else {
+      setFormData((prev) => ({ ...prev, ...data }));
+    }
     setStep((prev) => prev + 1);
   };
 
@@ -68,7 +81,14 @@ const ProjectCreation: React.FC = () => {
       case 0:
         return <ProjectDetailsForm initialData={formData} onNext={handleNext} />;
       case 1:
-        return <RequirementsForm initialData={formData} onNext={handleNext} onBack={handleBack} />;
+        // Convert string[] to RequirementRequest[] for RequirementsForm
+        const initialRequirements = formData.requirements.map(title => ({
+          title,
+          type: '', // Default values
+          description: '',
+          priority: '',
+        }));
+        return <RequirementsForm initialData={{ requirements: initialRequirements }} onNext={handleNext} onBack={handleBack} />;
       case 2:
         return <InviteesForm initialData={formData} onNext={handleSubmit} onBack={handleBack} />;
       default:
@@ -78,7 +98,7 @@ const ProjectCreation: React.FC = () => {
 
   return (
     <div className='min-h-screen bg-white'>
-      <div className=' mx-auto p-6'>
+      <div className='mx-auto p-6'>
         {/* Step indicator */}
         <div className='relative flex justify-between items-center mb-10'>
           {steps.map((label, index) => (

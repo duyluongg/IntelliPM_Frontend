@@ -1,0 +1,33 @@
+/* MeetingCore.css */
+
+@keyframes gradientBackground {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.meeting-gradient-bg {
+  background: linear-gradient(-45deg, #e0c3fc, #8ec5fc, #a1c4fd, #d4fc79);
+  background-size: 400% 400%;
+  animation: gradientBackground 15s ease infinite;
+}
+
+
+
+/* MeetingCore.css */
+
+.banner-heading {
+  color: #ffffff;
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.card-base {
+  @apply rounded-2xl cursor-pointer flex flex-col justify-center items-center p-8 shadow-lg transition-transform duration-300 transform hover:-translate-y-1 hover:scale-105 hover:shadow-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300;
+}
+

@@ -1,114 +1,152 @@
-import type { FC } from 'react'
-import { useState } from 'react'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
-import type { EventClickArg } from '@fullcalendar/core'
-import { Modal } from './Modal/Modal'
-import ModalDetailRoom from './Modal/MeetingDetailModal'
-import './MeetingRoom.css' // ✅ Import CSS tùy chỉnh
+import { useEffect, useState } from 'react';
+import type { FC } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import type { EventClickArg } from '@fullcalendar/core';
+import { useAuth } from '../../../services/AuthContext';
+import ModalDetailRoom from './Modal/MeetingDetailModal';
+import { useGetMeetingsWithParticipantStatusQuery } from '../../../services/ProjectManagement/MeetingServices/MeetingServices';
+import './MeetingRoom.css';
 
 interface MeetingEvent {
-  id: string
-  title: string
-  start: string
-  end?: string
-  startTime: string
-  endTime: string
-  participants: string
-  roomUrl: string
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  startTime: string;
+  endTime: string;
+  participants: string;
+  roomUrl: string;
+  status: 'Present' | 'Absent' | 'Active';
+  meetingStatus: string; // 👈 Trạng thái từ bảng Meeting: SCHEDULED, CANCELLED, v.v.
 }
 
 const MeetingRoom: FC = () => {
-  const [events, setEvents] = useState<MeetingEvent[]>([])
-  const [modalOpen, setModalOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<string>('')
-  const [selectedEvent, setSelectedEvent] = useState<MeetingEvent | null>(null)
+  const { user } = useAuth();
+  const accountId = user?.id;
 
-  const handleDateClick = (arg: DateClickArg) => {
-    setSelectedDate(arg.dateStr)
-    setModalOpen(true)
+  const [events, setEvents] = useState<MeetingEvent[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<MeetingEvent | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(true);
+
+
+  const { data: meetingData, isLoading, isError, refetch } = useGetMeetingsWithParticipantStatusQuery(accountId!, {
+    skip: !accountId,
+  });
+
+  useEffect(() => {
+  if (accountId) {
+    setIsRefreshing(true);
+    refetch().finally(() => setIsRefreshing(false)); // 👈 Sau khi gọi API xong, tắt loading
   }
+}, [accountId]);
 
-  const handleAddMeeting = (data: {
-    title: string
-    startTime: string
-    endTime: string
-    participants: string
-    roomUrl: string
-  }) => {
-    const id = Date.now().toString()
 
-    const newEvent: MeetingEvent = {
-      id,
-      title: data.title,
-      start: `${selectedDate}T${data.startTime}:00`,
-      end: `${selectedDate}T${data.endTime}:00`,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      participants: data.participants,
-      roomUrl: data.roomUrl,
+  useEffect(() => {
+    if (meetingData && Array.isArray(meetingData)) {
+      const mapped: MeetingEvent[] = meetingData
+        .filter((m) => m.meetingStatus !== 'CANCELLED') // 👈 Ẩn sự kiện bị huỷ
+        .map((m) => {
+          const startDate = new Date(m.start);
+          const endDate = new Date(m.end);
+
+          return {
+            id: m.id,
+            title: m.title,
+            start: m.start,
+            end: m.end,
+            startTime: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            participants: m.participants,
+            roomUrl: m.roomUrl,
+            status: m.status,
+            meetingStatus: m.meetingStatus, // 👈 Lưu để dùng nếu cần
+          };
+        });
+
+      setEvents(mapped);
     }
-
-    setEvents(prev => [...prev, newEvent])
-    setModalOpen(false)
-  }
+  }, [meetingData]);
 
   const handleEventClick = (info: EventClickArg) => {
-    const event = events.find(ev => ev.id === info.event.id)
-    if (event) {
-      setSelectedEvent(event)
-    }
-  }
+    const event = events.find((e) => e.id === info.event.id);
+    if (event) setSelectedEvent(event);
+  };
 
-  const handleDeleteMeeting = () => {
-    if (selectedEvent) {
-      setEvents(prev => prev.filter(ev => ev.id !== selectedEvent.id))
-      setSelectedEvent(null)
+  const getStatusColor = (status: MeetingEvent['status'], startDateStr: string) => {
+    const eventDate = new Date(startDateStr);
+    const now = new Date();
+
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (eventDay < today) return '#d1d5db'; // Xám cho sự kiện trong quá khứ
+
+    switch (status) {
+      case 'Present':
+        return '#22c55e'; // Xanh lá
+      case 'Absent':
+        return '#ef4444'; // Đỏ
+      case 'Active':
+      default:
+        return '#3b82f6'; // Xanh dương
     }
+  };
+
+  if (!accountId) {
+    return <div className="text-red-500 text-center mt-6 font-medium">⚠️ Bạn chưa đăng nhập.</div>;
   }
 
   return (
-    <div className="meeting-container">
-      <h1 className="meeting-title">📅 Tạo & Theo Dõi Lịch Họp</h1>
+    <div className="max-w-6xl mx-auto py-6 px-4">
+      <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">📅 Meeting schedule</h1>
 
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay',
-        }}
-        events={events.map(ev => ({
-          id: ev.id,
-          title: ev.title,
-          start: ev.start,
-          end: ev.end,
-        }))}
-        dateClick={handleDateClick}
-        eventClick={handleEventClick}
-        height="auto"
-      />
-
-      {modalOpen && (
-        <Modal
-          date={selectedDate}
-          onClose={() => setModalOpen(false)}
-          onSave={handleAddMeeting}
-        />
+{isLoading || isRefreshing ? (
+  <div className="flex justify-center items-center py-10">
+    <span className="loader"></span>
+  </div>
+) : isError ? (
+        <p className="text-center text-red-500">Lỗi khi tải lịch.</p>
+      ) : (
+        <div className="bg-white p-4 rounded-xl shadow-lg">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek',
+            }}
+            events={events.map((ev) => {
+              const color = getStatusColor(ev.status, ev.start);
+              return {
+                id: ev.id,
+                title: ev.title,
+                start: ev.start,
+                end: ev.end,
+                backgroundColor: color,
+                borderColor: color,
+                textColor: '#fff',
+              };
+            })}
+            eventClick={handleEventClick}
+            
+            height="auto"
+          />
+        </div>
       )}
 
       {selectedEvent && (
         <ModalDetailRoom
           meeting={selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          onDelete={handleDeleteMeeting}
+          onDelete={() => {}}
         />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default MeetingRoom
+export default MeetingRoom;

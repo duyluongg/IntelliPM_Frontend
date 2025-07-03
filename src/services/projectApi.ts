@@ -1,0 +1,244 @@
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { API_BASE_URL } from '../constants/api';
+
+export interface CreateProjectRequest {
+  name: string;
+  projectKey: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface CreateProjectResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    id: number;
+    name: string;
+    projectKey: string;
+    description: string;
+    budget: number;
+    projectType: string;
+    createdBy: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    updatedAt: string;
+    iconUrl: string;
+    status: string;
+  };
+  message: string;
+}
+
+// Interface cho Assignee dựa trên response mới
+interface Assignee {
+  fullname: string;
+  picture: string | null;
+}
+
+// Interface cho WorkItem dựa trên response từ /api/project/{id}/workitems
+interface WorkItem {
+  type: string;
+  key: string;
+  taskId: string | null;
+  summary: string;
+  status: string;
+  commentCount: number;
+  sprintId: number | null;
+  assignees: Assignee[];
+  dueDate: string | null;
+  labels: string[];
+  createdAt: string;
+  updatedAt: string;
+  reporterFullname: string;
+  reporterPicture: string | null;
+}
+
+export interface GetWorkItemsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: WorkItem[];
+  message: string;
+}
+
+// Interface cho ProjectDetails dựa trên response từ /api/project/view-by-key
+interface ProjectDetails {
+  id: number;
+  name: string;
+  projectKey: string;
+  iconUrl: string | null;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+}
+
+interface GetProjectDetailsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails;
+  message: string;
+}
+
+// Interface cho CheckProjectKeyResponse dựa trên response từ /api/project/check-project-key
+interface CheckProjectKeyResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    exists: boolean;
+  };
+  message: string;
+}
+
+interface TaskItem {
+  id: string | null;
+  reporterId: number;
+  projectId: number;
+  epicId: string;
+  sprintId: number;
+  type: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  duration: string | null;
+  percentComplete: number | null;
+  plannedHours: number | null;
+  actualHours: number | null;
+  remainingHours: number | null;
+  plannedCost: number | null;
+  plannedResourceCost: number | null;
+  actualCost: number | null;
+  actualResourceCost: number | null;
+  priority: string;
+  status: string;
+  evaluate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SprintItem {
+  id: number;
+  projectId: number;
+  name: string;
+  goal: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+}
+
+interface MilestoneItem {
+  id: number;
+  projectId: number;
+  sprintId: number | null;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+}
+
+// Full Project Details
+interface ProjectDetailsFull {
+  id: number;
+  name: string;
+  projectKey: string;
+  iconUrl: string | null;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+  sprints: SprintItem[];
+  tasks: TaskItem[];
+  milestones: MilestoneItem[];
+}
+
+interface GetProjectDetailsFullResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetailsFull;
+  message: string;
+}
+
+export const projectApi = createApi({
+  reducerPath: 'projectApi',
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      headers.set('accept', '*/*');
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getWorkItemsByProjectId: builder.query<GetWorkItemsResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/workitems`,
+        method: 'GET',
+      }),
+    }),
+    getProjectDetailsByKey: builder.query<GetProjectDetailsResponse, string>({
+      query: (projectKey) => ({
+        url: `project/view-by-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+
+    checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
+      query: (projectKey) => ({
+        url: `project/check-project-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+
+    createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
+      query: (body) => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const accessToken = user?.accessToken || '';
+        return {
+          url: 'project',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body,
+        };
+      },
+    }),
+
+    getFullProjectDetailsByKey: builder.query<GetProjectDetailsFullResponse, string>({
+      query: (projectKey) => ({
+        url: `project/by-project-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+  }),
+});
+
+export const {
+  useGetWorkItemsByProjectIdQuery,
+  useGetProjectDetailsByKeyQuery,
+  useCheckProjectKeyQuery,
+  useCreateProjectMutation,
+  useGetFullProjectDetailsByKeyQuery,
+} = projectApi;

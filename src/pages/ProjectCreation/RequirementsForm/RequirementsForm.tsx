@@ -46,13 +46,12 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
   const [requirements, setRequirements] = useState<LocalRequirement[]>([]);
   const { data: prioritiesResponse } = useGetCategoriesByGroupQuery('requirement_priority');
   const [createRequirementsBulk, { error }] = useCreateRequirementsBulkMutation();
-  const projectId = useSelector(selectProjectId); // number | undefined
+  const projectId = useSelector(selectProjectId);
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Hiển thị form rỗng của Functional và Non-Functional ngay khi vào trang
     if (initialData?.requirements && initialData.requirements.length > 0) {
       setRequirements(
         initialData.requirements.map((req) => ({
@@ -62,7 +61,6 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
         }))
       );
     } else {
-      // Luôn hiển thị 1 Functional và 1 Non-Functional rỗng ngay từ đầu
       setRequirements([
         {
           uiId: crypto.randomUUID(),
@@ -83,7 +81,6 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
       ]);
     }
 
-    // Đóng dropdown khi click ra ngoài
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
@@ -173,16 +170,16 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
     return (
       <div
         key={req.uiId}
-        className="bg-white border border-gray-200 p-4 rounded-lg shadow-sm hover:shadow-md transition space-y-3"
+        className="bg-white border-2 border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition space-y-4"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <input
               type="text"
               value={req.title}
               onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
               placeholder="Requirement title"
-              className="flex-1 border px-3 py-2 rounded text-sm focus:ring-blue-500 focus:border-blue-500 pr-10"
+              className="flex-1 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10"
               required
             />
             {!req.expanded &&
@@ -194,10 +191,8 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
 
                 return (
                   <div
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
-                    style={{
-                      borderColor: priority.color || 'gray',
-                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
+                    style={{ borderColor: priority.color || '#1c73fd' }}
                   >
                     <img
                       src={priority.iconLink}
@@ -211,34 +206,34 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           <button
             onClick={() => toggleExpand(req.uiId)}
             type="button"
-            className="text-gray-600 hover:text-blue-600"
+            className="text-[#1c73fd] hover:text-[#155ac7] transition"
             title="Toggle details"
           >
             <ChevronDown
-              className={`w-5 h-5 transform transition ${req.expanded ? 'rotate-180' : ''}`}
+              className={`w-6 h-6 transform transition ${req.expanded ? 'rotate-180' : ''}`}
             />
           </button>
           <button
             onClick={() => removeRequirement(req.uiId)}
             type="button"
-            className="text-red-500 hover:text-red-700"
+            className="text-[#1c73fd] hover:text-[#155ac7] transition"
             title="Delete"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-6 h-6" />
           </button>
         </div>
 
         {req.expanded && (
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-6">
             <div>
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                <Tag className="w-4 h-4" /> Priority
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Tag className="w-5 h-5" /> Priority
               </label>
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setIsOpen(!isOpen)}
-                  className="w-[180px] mt-1 border px-3 py-1 rounded text-sm focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
+                  className="w-[180px] mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] flex items-center justify-between"
                 >
                   <span className="flex items-center">
                     {req.priority &&
@@ -251,16 +246,16 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
                           alt={`${
                             prioritiesResponse.data.find((p) => p.name === req.priority)?.label
                           } icon`}
-                          className="w-4 h-4 mr-1"
+                          className="w-5 h-5 mr-2"
                         />
                       )}
                     {prioritiesResponse?.data?.find((p) => p.name === req.priority)?.label ||
-                      '-- Select priority --'}
+                      '- Select priority -'}
                   </span>
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-5 h-5" />
                 </button>
                 {isOpen && (
-                  <div className="absolute z-10 w-[180px] mt-1 bg-white border border-gray-200 rounded shadow-lg">
+                  <div className="absolute z-10 w-[180px] mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg">
                     {prioritiesResponse?.data?.map((p) => (
                       <div
                         key={p.name}
@@ -268,13 +263,13 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
                           updateRequirement(req.uiId, 'priority', p.name);
                           setIsOpen(false);
                         }}
-                        className="flex items-center px-3 py-1 hover:bg-gray-100 cursor-pointer"
+                        className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                       >
                         {p.iconLink && (
                           <img
                             src={p.iconLink || undefined}
                             alt={`${p.label} icon`}
-                            className="w-4 h-4 mr-2"
+                            className="w-5 h-5 mr-2"
                           />
                         )}
                         {p.label}
@@ -285,14 +280,14 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
               </div>
             </div>
             <div className="col-span-3">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-                <FileText className="w-4 h-4" /> Description
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <FileText className="w-5 h-5" /> Description
               </label>
               <textarea
                 value={req.description}
                 onChange={(e) => updateRequirement(req.uiId, 'description', e.target.value)}
-                rows={4}
-                className="w-full mt-1 border px-3 py-2 rounded text-sm focus:ring-blue-500 focus:border-blue-500"
+                rows={5}
+                className="w-full mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd]"
                 required
               ></textarea>
             </div>
@@ -306,47 +301,52 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
   const nonFunctional = requirements.filter((r) => r.type === 'NON_FUNCTIONAL');
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">Project Requirements</h1>
-      <p className="text-gray-600 mb-6 text-sm">
+    <div className="max-w-5xl mx-auto p-10 bg-white rounded-2xl shadow-xl border border-gray-100 text-sm">
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent">
+        Project Requirements
+      </h1>
+      <p className="text-gray-600 mb-8 text-base leading-relaxed">
         Define your project's functional and non-functional requirements.
       </p>
 
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-semibold text-gray-800">Functional Requirements</h2>
           <button
             type="button"
             onClick={() => addRequirement('FUNCTIONAL')}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
           >
             + Add functional
           </button>
         </div>
-        <div className="space-y-4">{functional.map(renderRequirementInput)}</div>
+        <div className="space-y-6">{functional.map(renderRequirementInput)}</div>
       </div>
 
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-3">
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-5">
           <h2 className="text-lg font-semibold text-gray-800">Non-Functional Requirements</h2>
           <button
             type="button"
             onClick={() => addRequirement('NON_FUNCTIONAL')}
-            className="text-blue-600 hover:underline text-sm"
+            className="text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
           >
             + Add non-functional
           </button>
         </div>
-        <div className="space-y-4">{nonFunctional.map(renderRequirementInput)}</div>
+        <div className="space-y-6">{nonFunctional.map(renderRequirementInput)}</div>
       </div>
 
       <div className="flex justify-between mt-10">
-        <button onClick={onBack} className="px-4 py-2 text-sm border rounded hover:bg-gray-100">
+        <button
+          onClick={onBack}
+          className="px-6 py-3 text-sm text-gray-600 hover:text-gray-800 font-medium underline transition"
+        >
           Back
         </button>
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-8 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl text-sm"
         >
           Next
         </button>
@@ -355,4 +355,4 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
   );
 };
 
-export default RequirementsForm; 
+export default RequirementsForm;

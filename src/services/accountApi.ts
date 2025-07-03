@@ -19,6 +19,26 @@ interface GetProjectsResponse {
   message: string;
 }
 
+interface Account {
+  id: number;
+  username: string;
+  fullName: string;
+  email: string;
+  gender: string;
+  position: string;
+  dateOfBirth: string | null;
+  status: string;
+  role: string;
+  picture: string;
+}
+
+interface GetAccountResponse {
+  isSuccess: boolean;
+  code: number;
+  data: Account | null;
+  message: string;
+}
+
 export const accountApi = createApi({
   reducerPath: 'accountApi',
   baseQuery: fetchBaseQuery({
@@ -44,8 +64,13 @@ export const accountApi = createApi({
         },
       }),
     }),
-
+    getAccountByEmail: builder.query<GetAccountResponse, string>({
+      query: (email) => ({
+        url: `account/${encodeURIComponent(email)}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery,useGetProjectsByAccountQuery } = accountApi;
+export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery } = accountApi;

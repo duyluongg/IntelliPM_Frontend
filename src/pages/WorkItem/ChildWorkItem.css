@@ -83,9 +83,9 @@
 }
 
 .child-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  flex: 2;
+  padding-right: 15px;
+  overflow-y: auto;
 }
 
 .field-group label {
@@ -204,13 +204,14 @@
 }
 
 .details-panel {
-  border-top: 1px solid #dfe1e6;
-  padding-top: 16px;
+  flex: 1;
+  border-left: 1px solid #dfe1e6;
+  padding: 15px;
+  background: #f4f5f7;
 }
 
-.details-panel h4 {
-  font-size: 15px;
-  margin-bottom: 12px;
+.details-content {
+  margin-top: 10px;
 }
 
 .detail-item {

@@ -311,10 +311,15 @@ input {
   margin-right: 5px;
 }
 
+.issue-work-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .issue-table table {
-  width: 100%; 
+  width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; 
+  table-layout: fixed;
 }
 
 .issue-table th,
@@ -325,6 +330,11 @@ input {
   word-wrap: break-word;
 }
 
+.scrollable-work-table-wrapper {
+  max-height: 300px;    
+  overflow: auto;    
+  border: 1px solid #DFE1E6; 
+}
 
 .assignee {
     font-weight: bold;

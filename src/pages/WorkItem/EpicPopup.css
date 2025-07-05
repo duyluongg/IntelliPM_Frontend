@@ -18,6 +18,18 @@
   flex-direction: column;
 }
 
+.work-item-detail-page {
+  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  background-color: #f4f5f7;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
 .modal-header {  }
 .modal-content {
   display: flex;

@@ -1,5 +1,6 @@
 import React from 'react';
 import './EpicPopup.css';
+import { useNavigate } from 'react-router-dom';
 import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
@@ -17,11 +18,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [status, setStatus] = React.useState("");
     const [updateEpicStatus] = useUpdateEpicStatusMutation();
     const [updateTaskStatus] = useUpdateTaskStatusMutation();
+    const navigate = useNavigate();
 
     const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
         try {
             await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
-            await refetch(); 
+            await refetch();
         } catch (error) {
             console.error('❌ Error update task status', error);
         }
@@ -99,7 +101,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <span className="issue-icon-wrapper">
                                 <img src={epicIcon} alt="Epic" />
                             </span>
-                            <span className="issue-key">{epic.id}</span>
+                            <span
+                                className="issue-key"
+                                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                onClick={() => navigate(`/project/epic/${epic.id}`)}
+                            >
+                                {epic.id}
+                            </span>
                         </span>
                         <input
                             type="text"
@@ -169,7 +177,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         <td><img
                                                             src={getTypeIcon(task.type)}
                                                             alt={task.type}
-                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()} 
+                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
                                                         />
                                                         </td>
                                                         <td>{task.id}</td>

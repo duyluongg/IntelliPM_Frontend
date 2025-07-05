@@ -323,7 +323,7 @@ const WorkItemDetail: React.FC = () => {
                 {isLoading ? (
                   <p>Loading subtasks...</p>
                 ) : (
-                  <div className="scrollable-table-wrapper">
+                  <div className="scrollable-work-table-wrapper">
                     <table>
                       <thead>
                         <tr>

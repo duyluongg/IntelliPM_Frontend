@@ -1,0 +1,245 @@
+.epic-page-container {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    background: #f4f5f7;
+}
+
+/* Full-width content */
+.epic-item-modal {
+    width: 100%;
+    height: 100%;
+    flex-grow: 1;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+
+/* Header */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #fff;
+}
+
+.issue-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.issue-type {
+    display: flex;
+    align-items: center;
+}
+
+.issue-icon-wrapper {
+    background: #dfe1e6;
+    border-radius: 4px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.issue-icon-wrapper img {
+    width: 16px;
+    height: 16px;
+}
+
+.issue-key {
+    font-weight: bold;
+    color: #172b4d;
+    margin-left: 6px;
+}
+
+.issue-summary {
+    font-size: 16px;
+    font-weight: 500;
+    padding: 6px 8px;
+    border: 1px solid #dfe1e6;
+    border-radius: 3px;
+    flex: 1;
+}
+
+/* Content layout */
+.modal-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 16px;
+    gap: 16px;
+}
+
+/* Left section */
+.main-section {
+    flex: 2;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Right section */
+.details-panel {
+    flex: 1;
+    background-color: #f4f5f7;
+    border-left: 1px solid #dfe1e6;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.panel-header {
+    margin-bottom: 12px;
+}
+
+.details-content .detail-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.details-content .detail-item label {
+    font-weight: bold;
+    color: #172b4d;
+}
+
+.details-content .detail-item span {
+    color: #6b778c;
+}
+
+/* Common Fields */
+.field-group {
+    margin-bottom: 20px;
+}
+
+.field-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 6px;
+    color: #172b4d;
+}
+
+textarea,
+input[type="text"] {
+    width: 100%;
+    border: 1px solid #dfe1e6;
+    border-radius: 3px;
+    padding: 8px;
+    font-size: 14px;
+    resize: vertical;
+}
+
+/* Table */
+.issue-epic-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.issue-epic-table table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.issue-epic-table th {
+    position: relative;
+    background-color: #F4F5F7;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 10px;
+    user-select: none;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    min-width: 120px;
+    border: 1px solid #dfe1e6;
+}
+
+.issue-epic-table td {
+    border: 1px solid #dfe1e6;
+    padding: 8px 10px;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    min-width: 120px;
+}
+
+.scrollable-epic-table-wrapper {
+    max-height: 300px;
+    overflow: auto;
+    border: 1px solid #DFE1E6;
+}
+
+/* Dropdown */
+.custom-status-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    width: fit-content;
+    min-width: 105px;
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 10px;
+    color: inherit;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%236B778C' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    margin-top: 10px;
+}
+
+.custom-status-select.status-to_do {
+    background-color: #dddee1;
+    color: #6B778C;
+}
+
+.custom-status-select.status-in_progress {
+    background-color: #87b1e1;
+    color: #0747A6;
+}
+
+.custom-status-select.status-done {
+    background-color: #b2da73;
+    color: #006644;
+}
+
+/* Tabs + comment input */
+.activity-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.tab {
+    padding: 6px 12px;
+    border: 1px solid #dfe1e6;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+}
+
+.tab.active {
+    background-color: #4c9aff;
+    color: #fff;
+    border-color: #4c9aff;
+}
+
+.activity-input {
+    width: 100%;
+    height: 100px;
+    padding: 8px;
+    border: 1px solid #dfe1e6;
+    border-radius: 4px;
+    font-size: 14px;
+}

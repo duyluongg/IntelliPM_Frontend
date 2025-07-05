@@ -178,7 +178,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const navigate = useNavigate();
 
   const handleKeyClick = () => {
-    navigate(`/work-item-detail?taskId=${taskId}`);
+    navigate(`/project/work-item-detail?taskId=${taskId}`);
   };
 
   if (!isOpen) return null;
@@ -328,12 +328,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         </div>
                       </a>
 
-                      {/* Nút xóa file */}
                       {hoveredFileId === file.id && (
                         <button
                           onClick={() => handleDeleteFile(file.id)}
                           className="delete-file-btn"
-                          title="Xoá file"
+                          title="Delete file"
                         >
                           🗑️
                         </button>
@@ -355,27 +354,27 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     <table>
                       <thead>
                         <tr>
-                          <th>
+                          <th style={{ width: '50px' }}>
                             Type
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 0)} />
                           </th>
-                          <th>
+                          <th style={{ width: '80px' }}>
                             Key
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 1)} />
                           </th>
-                          <th>
+                          <th style={{ width: '150px' }}>
                             Summary
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 2)} />
                           </th>
-                          <th>
+                          <th style={{ width: '100px' }}>
                             Priority
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 3)} />
                           </th>
-                          <th>
+                          <th style={{ width: '100px' }}>
                             Assignee
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 4)} />
                           </th>
-                          <th>
+                          <th style={{ width: '80px' }}>
                             Status
                             <div className="resizer" onMouseDown={(e) => handleResize(e, 5)} />
                           </th>
@@ -521,6 +520,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </select>
             </div>
             <div className="details-content">
+              <h4>Details</h4>
               <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>

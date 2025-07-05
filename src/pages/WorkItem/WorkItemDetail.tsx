@@ -15,6 +15,7 @@ import {
   useUpdateTaskStatusMutation,
   useUpdateTaskTypeMutation,
 } from '../../services/taskApi';
+import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -32,7 +33,27 @@ const WorkItemDetail: React.FC = () => {
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [createSubtask] = useCreateSubtaskMutation();
   const [title, setTitle] = React.useState('');
-  
+  const [uploadTaskFile] = useUploadTaskFileMutation();
+  const subtaskInputRef = React.useRef<HTMLTableRowElement>(null);
+  const [deleteTaskFile] = useDeleteTaskFileMutation();
+  const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
+
+  const { data: attachments = [], isLoading: isAttachmentsLoading } = useGetTaskFilesByTaskIdQuery(taskId, {
+    skip: !taskId,
+  });
+
+  const handleDeleteFile = async (id: number) => {
+    if (!window.confirm('Bạn có chắc muốn xoá file này?')) return;
+    try {
+      await deleteTaskFile(id).unwrap();
+      alert('✅ Delete file successfully!');
+      await refetchSubtask();
+    } catch (error) {
+      console.error('❌ Error delete file:', error);
+      alert('❌ Delete file failed');
+    }
+  };
+
   const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
     const startX = e.clientX;
     const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;
@@ -110,14 +131,14 @@ const WorkItemDetail: React.FC = () => {
       setWorkType(type);
       setIsDropdownOpen(false);
       await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
-      await refetchTask(); 
+      await refetchTask();
     } catch (err) {
-      console.error('❌ Lỗi cập nhật work type:', err);
+      console.error('❌ Error update work type:', err);
     }
   };
 
   const handleDropdownClick = (e: React.MouseEvent) => e.stopPropagation();
-  
+
 
   const handleIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -132,18 +153,10 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      alert(`📁 File "${file.name}" đã được upload giả lập.`);
-    }
-    setIsAddDropdownOpen(false);
-  };
-
-  const handleAddSubtask = () => {
-    setShowSubtaskInput(true);
-    setIsAddDropdownOpen(false);
-  };
+  // const handleAddSubtask = () => {
+  //   setShowSubtaskInput(true);
+  //   setIsAddDropdownOpen(false);
+  // };
 
   const handleKeyClick = () => {
     navigate(`/work-item-detail?taskId=${taskId}`);
@@ -211,6 +224,10 @@ const WorkItemDetail: React.FC = () => {
                     onClick={() => {
                       setShowSubtaskInput(true);
                       setIsAddDropdownOpen(false);
+
+                      setTimeout(() => {
+                        subtaskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
                     }}
                     style={{ display: 'flex', alignItems: 'center' }}
                   >
@@ -223,7 +240,24 @@ const WorkItemDetail: React.FC = () => {
                 type="file"
                 ref={fileInputRef}
                 style={{ display: 'none' }}
-                onChange={handleFileUpload}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    try {
+                      await uploadTaskFile({
+                        taskId,
+                        title: file.name,
+                        file: file,
+                      }).unwrap();
+                      alert(`✅ Uploaded: ${file.name}`);
+                      await refetchSubtask();
+                    } catch (err) {
+                      console.error('❌ Upload failed:', err);
+                      alert('❌ Upload failed.');
+                    }
+                  }
+                  setIsAddDropdownOpen(false);
+                }}
               />
             </div>
 
@@ -234,6 +268,53 @@ const WorkItemDetail: React.FC = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+              <div className="attachments-section">
+                <label>Attachments {attachments.length > 0 && <span>({attachments.length})</span>}</label>
+                <div className="attachments-grid">
+                  {attachments.map(file => (
+                    <div
+                      className="attachment-card"
+                      key={file.id}
+                      onMouseEnter={() => setHoveredFileId(file.id)}
+                      onMouseLeave={() => setHoveredFileId(null)}
+                    >
+                      <a
+                        href={file.urlFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="thumbnail">
+                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                            <img src={file.urlFile} alt={file.title} />
+                          ) : (
+                            <div className="doc-thumbnail">
+                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="file-meta">
+                          <div className="file-name" title={file.title}>{file.title}</div>
+                          <div className="file-date">
+                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                          </div>
+                        </div>
+                      </a>
+
+                      {/* Nút xóa file */}
+                      {hoveredFileId === file.id && (
+                        <button
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="delete-file-btn"
+                          title="Xoá file"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="field-group">
@@ -296,7 +377,7 @@ const WorkItemDetail: React.FC = () => {
                           </tr>
                         ))}
                         {showSubtaskInput && (
-                          <tr>
+                          <tr ref={subtaskInputRef}>
                             <td><img src={subtaskIcon} alt="Subtask" /></td>
                             <td colSpan={5}>
                               <input
@@ -317,16 +398,16 @@ const WorkItemDetail: React.FC = () => {
                                   try {
                                     try {
                                       await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-                                      console.log("✅ Tạo thành công");
+                                      console.log("✅ Create successfully");
                                     } catch (err) {
-                                      console.error("❌ Lỗi khi gọi createSubtask:", err);
+                                      console.error("❌ Error to call createSubtask:", err);
                                     }
 
                                     setNewSubtaskTitle('');
                                     setShowSubtaskInput(false);
-                                    await refetchSubtask(); 
+                                    await refetchSubtask();
                                   } catch (err) {
-                                    console.error('Lỗi khi tạo subtask:', err);
+                                    console.error('Error create subtask:', err);
                                   }
                                 }}
                                 disabled={!newSubtaskTitle.trim()}
@@ -385,16 +466,16 @@ const WorkItemDetail: React.FC = () => {
           <div className="details-panel">
             <div className="details-content">
               <div className="panel-header">
-              <select
-                value={status}
-                onChange={(e) => handleTaskStatusChange(e.target.value)}
-                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
-              >
-                <option value="TO_DO">To Do</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="DONE">Done</option>
-              </select>
-            </div>
+                <select
+                  value={status}
+                  onChange={(e) => handleTaskStatusChange(e.target.value)}
+                  className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                >
+                  <option value="TO_DO">To Do</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="DONE">Done</option>
+                </select>
+              </div>
               <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>

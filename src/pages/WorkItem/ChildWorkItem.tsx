@@ -34,7 +34,7 @@ const ChildWorkItem: React.FC = () => {
           setSubtaskDetail(json.data);
         }
       } catch (error) {
-        console.error('Lỗi khi gọi API subtask:', error);
+        console.error('Error:', error);
       }
     };
 
@@ -66,7 +66,7 @@ const ChildWorkItem: React.FC = () => {
       setSubtaskDetail({ ...subtaskDetail, status: newStatus });
       console.log(`✅ Updated ${subtaskDetail.id} to ${newStatus}`);
     } catch (err) {
-      console.error('❌ Lỗi cập nhật trạng thái:', err);
+      console.error('❌ Error update subtask status:', err);
     }
   };
 

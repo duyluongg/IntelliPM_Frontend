@@ -136,14 +136,11 @@ import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeeti
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
-import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskList';
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
-//import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-//import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 
 export const router = createBrowserRouter([
   {
@@ -222,13 +219,23 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage />,
       },
+
       {
         path: `/project?:projectKey`,
         element: <ProjectTaskList />,
       },
       {
+        path: `introduction`,
+        element: <ProjectIntroduction />,
+      },
+      {
         path: `createform`,
         element: <ProjectCreation />,
+      },
+
+      {
+        path: `:projectKey/task-setup`,
+        element: <TaskSetup />,
       },
 
       {
@@ -239,6 +246,7 @@ export const router = createBrowserRouter([
         path: 'meeting-management',
         element: <MeetingManagementPage />,
       },
+
       {
         path: `introduction`,
         element: <ProjectIntroduction />,
@@ -288,5 +296,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-
 ]);

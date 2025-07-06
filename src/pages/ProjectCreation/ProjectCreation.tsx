@@ -1,8 +1,10 @@
+// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectCreation\ProjectCreation.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProjectDetailsForm from './ProjectDetailsForm/ProjectDetailsForm';
 import RequirementsForm from './RequirementsForm/RequirementsForm';
 import InviteesForm from './InviteesForm/InviteesForm';
+import ProjectOverview from './ProjectOverview/ProjectOverview';
 
 interface ProjectFormData {
   name: string;
@@ -19,7 +21,7 @@ interface RequirementRequest {
   priority: string;
 }
 
-const steps = ['Project Details', 'Requirements', 'Invite Members'];
+const steps = ['Project Details', 'Requirements', 'Invite Members', 'Project Overview'];
 
 const ProjectCreation: React.FC = () => {
   const [step, setStep] = useState(0);
@@ -32,13 +34,7 @@ const ProjectCreation: React.FC = () => {
   });
   const navigate = useNavigate();
 
-  const handleNext = (data: Partial<ProjectFormData> | RequirementRequest[]) => {
-    if (Array.isArray(data)) {
-      const simplifiedRequirements = data.map(req => req.title);
-      setFormData((prev) => ({ ...prev, requirements: simplifiedRequirements }));
-    } else {
-      setFormData((prev) => ({ ...prev, ...data }));
-    }
+  const handleNext = async () => {
     setStep((prev) => prev + 1);
   };
 
@@ -47,8 +43,7 @@ const ProjectCreation: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-
-    navigate(`/`);
+    navigate(`/projects?projectKey=${formData.projectKey}`);
   };
 
   const renderStep = () => {
@@ -64,7 +59,9 @@ const ProjectCreation: React.FC = () => {
         }));
         return <RequirementsForm initialData={{ requirements: initialRequirements }} onNext={handleNext} onBack={handleBack} />;
       case 2:
-        return <InviteesForm initialData={formData} onNext={handleSubmit} onBack={handleBack} />;
+        return <InviteesForm initialData={formData} onNext={handleNext} onBack={handleBack} />;
+      case 3:
+        return <ProjectOverview />;
       default:
         return null;
     }

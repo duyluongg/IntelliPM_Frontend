@@ -20,7 +20,9 @@ import projectCreationReducer  from '../components/slices/Project/projectCreatio
 import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
 import { projectMemberApi } from '../services/projectMemberApi';
+import { taskFileApi } from '../services/taskFileApi';
 import { aiApi } from '../services/aiApi';
+
 export const store = configureStore({
   reducer: {
     [api.reducerPath]: api.reducer,
@@ -42,6 +44,7 @@ export const store = configureStore({
     [requirementApi.reducerPath]: requirementApi.reducer,
     [epicApi.reducerPath]: epicApi.reducer,
     [projectMemberApi.reducerPath]: projectMemberApi.reducer,
+    [taskFileApi.reducerPath]: taskFileApi.reducer,
     [aiApi.reducerPath]: aiApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
@@ -68,6 +71,7 @@ export const store = configureStore({
       requirementApi.middleware,
       epicApi.middleware,
       projectMemberApi.middleware,
+      taskFileApi.middleware,
       aiApi.middleware,
     ),
 });

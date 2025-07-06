@@ -1,12 +1,12 @@
 import React from 'react';
 import './EpicPopup.css';
-import { useGetEpicByIdQuery } from '../../services/epicApi';
-import subtaskIcon from '../../assets/icon/type_subtask.svg';
-import epicIcon from '../../assets/icon/type_epic.svg'; // hoặc icon epic riêng
+import { useNavigate } from 'react-router-dom';
+import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
+import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
-import { useGetTasksByEpicIdQuery } from '../../services/taskApi';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -14,7 +14,55 @@ interface EpicPopupProps {
 
 const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
-    const { data: tasks = [], isLoading: loadingTasks } = useGetTasksByEpicIdQuery(id);
+    const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
+    const [status, setStatus] = React.useState("");
+    const [updateEpicStatus] = useUpdateEpicStatusMutation();
+    const [updateTaskStatus] = useUpdateTaskStatusMutation();
+    const navigate = useNavigate();
+
+    const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+        try {
+            await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+            await refetch();
+        } catch (error) {
+            console.error('❌ Error update task status', error);
+        }
+    };
+
+    const handleStatusChange = async (newStatus: string) => {
+        try {
+            await updateEpicStatus({ id, status: newStatus }).unwrap();
+            setStatus(newStatus);
+        } catch (error) {
+            console.error('❌ Error update epic status', error);
+        }
+    };
+
+    React.useEffect(() => {
+        if (epic) {
+            setStatus(epic.status);
+        }
+    }, [epic]);
+
+
+    const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
+        const startX = e.clientX;
+        const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;
+        const startWidth = th.offsetWidth;
+
+        const onMouseMove = (e: MouseEvent) => {
+            const newWidth = startWidth + (e.clientX - startX);
+            th.style.width = `${newWidth}px`;
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
 
     const formatDate = (iso: string | null | undefined) => {
         if (!iso) return 'None';
@@ -53,7 +101,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <span className="issue-icon-wrapper">
                                 <img src={epicIcon} alt="Epic" />
                             </span>
-                            <span className="issue-key">{epic.id}</span>
+                            <span
+                                className="issue-key"
+                                style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                                onClick={() => navigate(`/project/epic/${epic.id}`)}
+                            >
+                                {epic.id}
+                            </span>
                         </span>
                         <input
                             type="text"
@@ -86,12 +140,30 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th>Type</th>
-                                                <th>Key</th>
-                                                <th>Summary</th>
-                                                <th>Priority</th>
-                                                <th>Assignee</th>
-                                                <th>Status</th>
+                                                <th>
+                                                    Type
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 0)} />
+                                                </th>
+                                                <th>
+                                                    Key
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 1)} />
+                                                </th>
+                                                <th>
+                                                    Summary
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 2)} />
+                                                </th>
+                                                <th>
+                                                    Priority
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 3)} />
+                                                </th>
+                                                <th>
+                                                    Assignee
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 4)} />
+                                                </th>
+                                                <th>
+                                                    Status
+                                                    <div className="resizer" onMouseDown={(e) => handleResize(e, 5)} />
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -105,7 +177,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         <td><img
                                                             src={getTypeIcon(task.type)}
                                                             alt={task.type}
-                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()} // Ví dụ: BUG → Bug
+                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
                                                         />
                                                         </td>
                                                         <td>{task.id}</td>
@@ -114,10 +186,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         <td>{task.reporterId}</td>
                                                         <td>
                                                             <select
-                                                                className={`custom-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
-                                                                disabled
+                                                                className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                                                value={task.status}
+                                                                onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
                                                             >
-                                                                <option>{task.status}</option>
+                                                                <option value="TO_DO">To Do</option>
+                                                                <option value="IN_PROGRESS">In Progress</option>
+                                                                <option value="DONE">Done</option>
                                                             </select>
                                                         </td>
                                                     </tr>
@@ -145,14 +220,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     <div className="details-panel">
                         <div className="panel-header">
                             <select
-                                defaultValue={epic.status}
-                                className={`custom-status-select status-${epic.status.toLowerCase()}`}
+                                value={status}
+                                onChange={(e) => handleStatusChange(e.target.value)}
+                                className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
                             >
                                 <option value="TO_DO">To Do</option>
                                 <option value="IN_PROGRESS">In Progress</option>
                                 <option value="DONE">Done</option>
                             </select>
                         </div>
+
                         <div className="details-content">
                             <div className="detail-item"><label>Assignee</label><span>{epic.assignedById ?? 'None'}</span></div>
                             <div className="detail-item"><label>Labels</label><span>None</span></div>

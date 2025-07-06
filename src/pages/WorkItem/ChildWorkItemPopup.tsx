@@ -95,7 +95,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             <span
               className="child-popup-key"
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={() => navigate(`/child-work/${subtaskDetail.id}`)}
+              onClick={() => navigate(`/project/child-work/${subtaskDetail.id}`)}
             >
               {subtaskDetail.id}
             </span>
@@ -145,11 +145,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             </div>
           </div>
 
-          <div className="child-popup-sidebar">
-            <div className="status-section">
+          <div className="details-panel">
+            <div className="panel-header">
               <select
                 value={subtaskDetail.status}
-                className={`status-dropdown ${subtaskDetail.status.toLowerCase().replace('_', '-')}`}
+                className={`status-dropdown-select status-${subtaskDetail.status.toLowerCase().replace('_', '-')}`}
                 onChange={handleStatusChange}
               >
                 <option value="TO_DO">To Do</option>
@@ -158,7 +158,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               </select>
             </div>
 
-            <div className="details-panel">
+            <div className="details-content">
               <h4>Details</h4>
               <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
               <div className="detail-item"><label>Labels</label><span>None</span></div>

@@ -129,6 +129,7 @@ import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFor
 // import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
 import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
 import WorkItemDetail from '../pages/WorkItem/WorkItemDetail';
+import EpicDetail from '../pages/WorkItem/EpicDetail';
 import ChildWorkItem from '../pages/WorkItem/ChildWorkItem';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
@@ -172,18 +173,6 @@ export const router = createBrowserRouter([
       //   path: 'project-dashboard',
       //   element: <ProjectDashboard />,
       // },
-      // // {
-      // //   path: 'work-item',
-      // //   element: <WorkItemPage />,
-      // // },
-      // {
-      //   path: 'work-item-detail',
-      //   element: <WorkItemDetail />,
-      // },
-      // {
-      //   path: 'child-work/:key',
-      //   element: <ChildWorkItem />,
-      // },
       // {
       //   path: 'projects',
       //   element: <ProjectDetail />,
@@ -214,14 +203,6 @@ export const router = createBrowserRouter([
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
-      {
-        path: 'work-item-detail',
-        element: <WorkItemDetail />,
-      },
-      {
-        path: 'child-work/:key',
-        element: <ChildWorkItem />,
-      },
     ],
   },
 
@@ -251,10 +232,12 @@ export const router = createBrowserRouter([
         path: `createform`,
         element: <ProjectCreation />,
       },
+
       {
         path: `:projectKey/task-setup`,
         element: <TaskSetup />,
       },
+
       {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,
@@ -262,6 +245,24 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-management',
         element: <MeetingManagementPage />,
+      },
+
+      {
+        path: `introduction`,
+        element: <ProjectIntroduction />,
+
+      },
+      {
+        path: 'work-item-detail',
+        element: <WorkItemDetail />,
+      },
+      {
+        path: 'child-work/:key',
+        element: <ChildWorkItem />,
+      },
+      {
+        path: 'epic/:epicId',
+        element: <EpicDetail/>,
       },
     ],
   },

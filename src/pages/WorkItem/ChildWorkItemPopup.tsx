@@ -2,11 +2,14 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
 import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useGetTaskByIdQuery } from '../../services/taskApi';
+import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
 
 interface SubtaskDetail {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedByName: string;
   title: string;
   description: string;
   status: string;
@@ -14,6 +17,7 @@ interface SubtaskDetail {
   startDate: string;
   endDate: string;
   reporterId: number;
+  reporterName: string;
 }
 
 interface ChildWorkItemPopupProps {
@@ -78,6 +82,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     }
   };
 
+  const { data: parentTask } = useGetTaskByIdQuery(subtaskDetail?.taskId || '', {
+    skip: !subtaskDetail?.taskId,
+  });
+
+  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(item.key, {
+    skip: !item.key,
+  });
 
   if (!subtaskDetail)
     return (
@@ -91,7 +102,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       <div className="child-work-item-popup-container" onClick={(e) => e.stopPropagation()}>
         <div className="child-popup-header">
           <div className="breadcrumb">
-            Projects / OnlineFlowerShop / <span>{subtaskDetail.taskId}</span> /{' '}
+            Projects / <span>{parentTask?.projectName || '...'}</span> / <span>{subtaskDetail.taskId}</span> /{' '}
             <span
               className="child-popup-key"
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
@@ -160,12 +171,19 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
             <div className="details-content">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
+              <div className="detail-item"><label>Assignee</label><span>{subtaskDetail.assignedByName}</span></div>
+              <div className="detail-item">
+                <label>Labels</label>
+                <span>
+                  {subtaskLabels.length === 0
+                    ? 'None'
+                    : subtaskLabels.map((label) => label.labelName).join(', ')}
+                </span>
+              </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
               <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
               <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>
-              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.reporterId}</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.assignedByName}</span></div>
             </div>
           </div>
         </div>

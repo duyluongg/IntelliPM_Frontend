@@ -18,6 +18,7 @@ interface ProjectPositionResponse {
 interface ProjectMemberWithPositionsResponse {
   id: number;
   accountId: number;
+  accountName: string;
   projectId: number;
   joinedAt: string | null;
   invitedAt: string;
@@ -66,7 +67,20 @@ export const projectMemberApi = createApi({
         return response;
       },
     }),
+
+    getProjectMembers: builder.query<ProjectMemberWithPositionsResponse[], number>({
+      query: (projectId) => `project/${projectId}/projectmember`,
+      transformResponse: (response: any) => {
+        if (response?.isSuccess && Array.isArray(response.data)) {
+          return response.data.filter((member: any) => member.status === 'IN_PROGRESS');
+        }
+        return [];
+      },
+    }),
   }),
 });
 
-export const { useCreateBulkProjectMembersWithPositionsMutation } = projectMemberApi;
+export const {
+  useCreateBulkProjectMembersWithPositionsMutation,
+  useGetProjectMembersQuery, 
+} = projectMemberApi;

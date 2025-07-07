@@ -21,6 +21,7 @@ import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
 import { projectMemberApi } from '../services/projectMemberApi';
 import { taskFileApi } from '../services/taskFileApi';
+import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
 
 export const store = configureStore({
@@ -45,6 +46,7 @@ export const store = configureStore({
     [epicApi.reducerPath]: epicApi.reducer,
     [projectMemberApi.reducerPath]: projectMemberApi.reducer,
     [taskFileApi.reducerPath]: taskFileApi.reducer,
+    [workItemLabelApi.reducerPath]: workItemLabelApi.reducer,
     [aiApi.reducerPath]: aiApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
@@ -72,6 +74,7 @@ export const store = configureStore({
       epicApi.middleware,
       projectMemberApi.middleware,
       taskFileApi.middleware,
+      workItemLabelApi.middleware,
       aiApi.middleware,
     ),
 });

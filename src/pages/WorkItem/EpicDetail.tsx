@@ -2,13 +2,14 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
+import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
 
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 
-import './EpicDetail.css'; 
+import './EpicDetail.css';
 
 const EpicDetail: React.FC = () => {
   const { epicId } = useParams();
@@ -48,6 +49,10 @@ const EpicDetail: React.FC = () => {
       default: return taskIcon;
     }
   };
+
+  const { data: epicLabels = [] } = useGetWorkItemLabelsByEpicQuery(epicId ?? '', {
+    skip: !epicId,
+  });
 
   const formatDate = (iso: string | null | undefined) => {
     if (!iso) return 'None';
@@ -158,7 +163,15 @@ const EpicDetail: React.FC = () => {
             </div>
             <div className="details-content">
               <div className="detail-item"><label>Assignee</label><span>{epic.assignedById ?? 'None'}</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
+              <div className="detail-item">
+                <label>Labels</label>
+                <span>
+                  {epicLabels.length === 0
+                    ? 'None'
+                    : epicLabels.map((label) => label.labelName).join(', ')}
+                </span>
+              </div>
+
               <div className="detail-item"><label>Start date</label><span>{formatDate(epic.startDate)}</span></div>
               <div className="detail-item"><label>Due date</label><span>{formatDate(epic.endDate)}</span></div>
             </div>

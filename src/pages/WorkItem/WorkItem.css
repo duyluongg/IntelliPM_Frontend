@@ -679,3 +679,140 @@ input {
   color: #888;
   font-size: 11px;
 }
+
+.activity-section {
+  margin-top: 24px;
+}
+
+.activity-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.activity-tab-btn {
+  background: none;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #172b4d;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.activity-tab-btn.active {
+  border: 1px solid #2684FF;
+  background-color: #DEEBFF;
+  color: #0747A6;
+  font-weight: 500;
+}
+
+.activity-tab-btn:hover {
+  background-color: #f4f5f7;
+}
+
+.simple-comment {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.avatar-circle {
+  width: 32px;
+  height: 32px;
+  background-color: #0052cc;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.avatar-img {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) invert(1); /* trắng icon */
+}
+
+.comment-content {
+  flex: 1;
+}
+
+.comment-header {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #888;
+  font-weight: normal;
+  margin-left: 6px;
+}
+
+.comment-text {
+  font-size: 14px;
+}
+
+.simple-comment-input {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.simple-comment-input textarea {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: 8px;
+}
+
+.simple-comment-input button {
+  align-self: flex-end;
+  padding: 6px 12px;
+  background-color: #0052cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.simple-comment-input button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.comment-actions {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #555;
+}
+
+.comment-actions button {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.comment-actions button:hover {
+  text-decoration: underline;
+}
+
+.assignee-dropdown {
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  width: 220px;
+}
+
+.dropdown-wrapper {
+  display: flex;
+  align-items: center;
+}

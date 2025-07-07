@@ -7,6 +7,8 @@ import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
+import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
+
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -43,6 +45,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             setStatus(epic.status);
         }
     }, [epic]);
+
+    const { data: epicLabels = [] } = useGetWorkItemLabelsByEpicQuery(id, {
+        skip: !id,
+    });
 
 
     const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
@@ -232,7 +238,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
 
                         <div className="details-content">
                             <div className="detail-item"><label>Assignee</label><span>{epic.assignedById ?? 'None'}</span></div>
-                            <div className="detail-item"><label>Labels</label><span>None</span></div>
+                            <div className="detail-item">
+                                <label>Labels</label>
+                                <span>
+                                    {epicLabels.length === 0
+                                        ? 'None'
+                                        : epicLabels.map((label) => label.labelName).join(', ')}
+                                </span>
+                            </div>
+
                             <div className="detail-item"><label>Start date</label><span>{formatDate(epic.startDate)}</span></div>
                             <div className="detail-item"><label>Due date</label><span>{formatDate(epic.endDate)}</span></div>
                         </div>

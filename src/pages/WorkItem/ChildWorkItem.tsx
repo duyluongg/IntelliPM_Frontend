@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ChildWorkItem.css';
 import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useGetTaskByIdQuery } from '../../services/taskApi';
+import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
 
 interface SubtaskDetail {
   id: string;
@@ -57,6 +59,10 @@ const ChildWorkItem: React.FC = () => {
     return date.toLocaleDateString('vi-VN');
   };
 
+  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(subtaskId ?? '', {
+      skip: !subtaskId,
+    });
+
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     if (!subtaskDetail) return;
@@ -70,6 +76,10 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
+  const { data: parentTask } = useGetTaskByIdQuery(subtaskDetail?.taskId || '', {
+    skip: !subtaskDetail?.taskId,
+  });
+
   if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
 
   return (
@@ -77,7 +87,7 @@ const ChildWorkItem: React.FC = () => {
       <div className="child-work-item-container">
         <div className="child-header">
           <div className="breadcrumb">
-            Projects / SEP_Agile_Scrum / <span>{subtaskDetail.taskId}</span> / <span className="child-key">{subtaskDetail.id}</span>
+            Projects / <span>{parentTask?.projectName || '...'}</span> / <span>{subtaskDetail.taskId}</span> / <span className="child-key">{subtaskDetail.id}</span>
           </div>
         </div>
 
@@ -139,7 +149,14 @@ const ChildWorkItem: React.FC = () => {
             <div className="details-content">
               <h4>Details</h4>
               <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
+              <div className="detail-item">
+                <label>Labels</label>
+                <span>
+                  {subtaskLabels.length === 0
+                    ? 'None'
+                    : subtaskLabels.map((label) => label.labelName).join(', ')}
+                </span>
+              </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
               <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
               <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>

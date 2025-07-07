@@ -444,3 +444,11 @@ input {
   color: #888;
   font-size: 11px;
 }
+
+.hover-underline {
+  text-decoration: none;
+}
+
+.hover-underline:hover {
+  text-decoration: underline;
+}

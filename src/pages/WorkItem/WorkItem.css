@@ -91,8 +91,9 @@
 .modal-content {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  overflow: visible;
   padding: 15px;
+  overflow-y: auto;
 }
 
 .main-section {
@@ -291,7 +292,7 @@ input {
 
 .dropdown-item input[type="radio"] {
   margin-right: 8px;
-  accent-color: #2684ff; /* Màu xanh Jira */
+  accent-color: #2684ff;
 }
 
 .dropdown-icon {
@@ -447,4 +448,371 @@ input {
   color: black;
 }
 
+.issue-table table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
 
+.issue-table th {
+  position: relative;
+  background-color: #F4F5F7;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  user-select: none;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  min-width: 120px;
+}
+
+.issue-table td {
+  padding: 8px 10px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+  min-width: 120px;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background-color: transparent;
+}
+
+.resizer:hover {
+  background-color: #4C9AFF;
+}
+
+.status-label {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-block;
+  width: fit-content;
+}
+
+.status-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.status-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 120px;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  border-radius: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.status-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.status-option:hover {
+  background-color: #F4F5F7;
+}
+
+.status-option.view-workflow {
+  color: #888;
+  font-size: 12px;
+}
+
+.to_do {
+  background-color: #DFE1E6;
+  color: #6B778C;
+}
+
+.in_progress {
+  background-color: #B3D4FF;
+  color: #0747A6;
+}
+
+.done {
+  background-color: #C3FBCB;
+  color: #006644;
+}
+
+.scrollable-table-wrapper {
+  max-height: 300px; 
+  max-width: 900px;   
+  overflow: auto;    
+  border: 1px solid #DFE1E6; 
+}
+
+.scrollable-table-wrapper table {
+  min-width: 900px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.custom-status-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-weight: 600;
+  font-size: 0.85rem;  
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  width: fit-content;
+  min-width: 105px;
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  color: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%236B778C' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  margin-top: 10px;
+}
+
+.custom-status-select option {
+  background-color: #ffffff !important;
+  color: #172B4D !important;
+}
+
+
+/* Màu theo status */
+.status-to-do {
+  background-color: #dddee1;
+  color: #6B778C;
+}
+
+.status-in-progress {
+  background-color: #87b1e1;
+  color: #0747A6;
+}
+
+.status-done {
+  background-color: #b2da73;
+  color: #006644;
+}
+
+.attachments-section {
+  margin-top: 12px;
+}
+
+.attachments-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.attachment-card {
+  width: 140px;
+  border-radius: 8px;
+  background: #f4f5f7;
+  padding: 8px;
+  text-decoration: none;
+  color: #172b4d;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.attachment-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.thumbnail {
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin-bottom: 6px;
+  background: white;
+  border-radius: 4px;
+}
+
+.thumbnail img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.doc-thumbnail {
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  background-color: #e0e0e0;
+  padding: 8px;
+  text-align: center;
+}
+
+.file-meta {
+  font-size: 12px;
+}
+
+.file-name {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-date {
+  color: #888;
+  font-size: 11px;
+}
+
+.activity-section {
+  margin-top: 24px;
+}
+
+.activity-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.activity-tab-btn {
+  background: none;
+  border: 1px solid transparent;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #172b4d;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.activity-tab-btn.active {
+  border: 1px solid #2684FF;
+  background-color: #DEEBFF;
+  color: #0747A6;
+  font-weight: 500;
+}
+
+.activity-tab-btn:hover {
+  background-color: #f4f5f7;
+}
+
+.simple-comment {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.avatar-circle {
+  width: 32px;
+  height: 32px;
+  background-color: #0052cc;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.avatar-img {
+  width: 20px;
+  height: 20px;
+  filter: brightness(0) invert(1); /* trắng icon */
+}
+
+.comment-content {
+  flex: 1;
+}
+
+.comment-header {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #888;
+  font-weight: normal;
+  margin-left: 6px;
+}
+
+.comment-text {
+  font-size: 14px;
+}
+
+.simple-comment-input {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.simple-comment-input textarea {
+  padding: 8px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  resize: vertical;
+  min-height: 60px;
+  margin-bottom: 8px;
+}
+
+.simple-comment-input button {
+  align-self: flex-end;
+  padding: 6px 12px;
+  background-color: #0052cc;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.simple-comment-input button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.comment-actions {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #555;
+}
+
+.comment-actions button {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.comment-actions button:hover {
+  text-decoration: underline;
+}
+
+.assignee-dropdown {
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  width: 220px;
+}
+
+.dropdown-wrapper {
+  display: flex;
+  align-items: center;
+}

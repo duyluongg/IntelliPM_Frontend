@@ -2,11 +2,14 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
 import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useGetTaskByIdQuery } from '../../services/taskApi';
+import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
 
 interface SubtaskDetail {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedByName: string;
   title: string;
   description: string;
   status: string;
@@ -14,6 +17,7 @@ interface SubtaskDetail {
   startDate: string;
   endDate: string;
   reporterId: number;
+  reporterName: string;
 }
 
 interface ChildWorkItemPopupProps {
@@ -24,6 +28,7 @@ interface ChildWorkItemPopupProps {
     parent: string;
     status: string;
   };
+  taskId: string;
   onClose: () => void;
 }
 
@@ -70,30 +75,38 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
     try {
       await updateSubtaskStatus({ id: subtaskDetail.id, status: newStatus }).unwrap();
-      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // cập nhật UI
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // cập nhật UI ngay
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
     }
   };
 
+  const { data: parentTask } = useGetTaskByIdQuery(subtaskDetail?.taskId || '', {
+    skip: !subtaskDetail?.taskId,
+  });
+
+  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(item.key, {
+    skip: !item.key,
+  });
+
   if (!subtaskDetail)
     return (
       <div className="modal-overlay">
-        <div className="child-work-item-container">Loading...</div>
+        <div className="child-work-item-popup-container">Loading...</div>
       </div>
     );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="child-work-item-container" onClick={(e) => e.stopPropagation()}>
-        <div className="child-header">
+      <div className="child-work-item-popup-container" onClick={(e) => e.stopPropagation()}>
+        <div className="child-popup-header">
           <div className="breadcrumb">
-            Projects / OnlineFlowerShop / <span>{subtaskDetail.taskId}</span> /{' '}
+            Projects / <span>{parentTask?.projectName || '...'}</span> / <span>{subtaskDetail.taskId}</span> /{' '}
             <span
-              className="child-key"
+              className="child-popup-key"
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={() => navigate(`/child-work/${subtaskDetail.id}`)}
+              onClick={() => navigate(`/project/child-work/${subtaskDetail.id}`)}
             >
               {subtaskDetail.id}
             </span>
@@ -101,10 +114,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
           <button className="btn-close" onClick={onClose}>✖</button>
         </div>
 
-        <div className="child-content">
-          <div className="child-main">
-            <div className="child-header-row">
-              <h2 className="child-title">{subtaskDetail.title}</h2>
+        <div className="child-popup-content">
+          <div className="child-popup-main">
+            <div className="child-popup-header-row">
+              <h2 className="child-popup-title">{subtaskDetail.title}</h2>
               <div className="add-menu-wrapper">
                 <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
                 {isAddDropdownOpen && (
@@ -143,11 +156,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             </div>
           </div>
 
-          <div className="child-sidebar">
-            <div className="status-section">
+          <div className="details-panel">
+            <div className="panel-header">
               <select
                 value={subtaskDetail.status}
-                className="status-dropdown"
+                className={`status-dropdown-select status-${subtaskDetail.status.toLowerCase().replace('_', '-')}`}
                 onChange={handleStatusChange}
               >
                 <option value="TO_DO">To Do</option>
@@ -156,14 +169,21 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               </select>
             </div>
 
-            <div className="details-panel">
+            <div className="details-content">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
-            <div className="detail-item"><label>Labels</label><span>None</span></div>
-            <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
-            <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
-            <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>
-            <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.reporterId}</span></div>
+              <div className="detail-item"><label>Assignee</label><span>{subtaskDetail.assignedByName}</span></div>
+              <div className="detail-item">
+                <label>Labels</label>
+                <span>
+                  {subtaskLabels.length === 0
+                    ? 'None'
+                    : subtaskLabels.map((label) => label.labelName).join(', ')}
+                </span>
+              </div>
+              <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
+              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
+              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.assignedByName}</span></div>
             </div>
           </div>
         </div>

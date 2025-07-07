@@ -4,23 +4,27 @@ import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
+import accountIcon from '../../assets/account.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
-import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation } from '../../services/subtaskApi';
+import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGetCommentsByTaskIdQuery } from '../../services/taskCommentApi';
+import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
+import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
+import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
+import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 
 interface WorkItemProps {
   isOpen: boolean;
   onClose: () => void;
-  taskId?: string | null; // Add taskId as an optional prop
+  taskId?: string | null;
 }
 
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
   const [searchParams] = useSearchParams();
-  // Prefer the propTaskId if provided, fallback to searchParams
   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
-
+  const [plannedStartDate, setPlannedStartDate] = React.useState('');
+  const [plannedEndDate, setPlannedEndDate] = React.useState('');
   const [status, setStatus] = React.useState('');
   const [workType, setWorkType] = React.useState('Task');
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
@@ -33,23 +37,70 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [createSubtask] = useCreateSubtaskMutation();
   const [showSubtaskInput, setShowSubtaskInput] = React.useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
+  const [uploadTaskFile] = useUploadTaskFileMutation();
+  const subtaskInputRef = React.useRef<HTMLTableRowElement>(null);
+  const [deleteTaskFile] = useDeleteTaskFileMutation();
+  const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
+  const [createTaskComment] = useCreateTaskCommentMutation();
+  const [commentContent, setCommentContent] = React.useState('');
+  const accountId = parseInt(localStorage.getItem("accountId") || "0");
+  const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
+  const [updateTaskComment] = useUpdateTaskCommentMutation();
+  const [deleteTaskComment] = useDeleteTaskCommentMutation();
+  const [projectName, setProjectName] = React.useState('');
+  const [projectId, setProjectId] = React.useState('');
+  const [reporterName, setReporterName] = React.useState('');
+  const [selectedAssignees, setSelectedAssignees] = React.useState<{ [key: string]: string }>({});
+  const [updateSubtask] = useUpdateSubtaskMutation();
+  const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
+  const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
 
-
-  const { data: comments = [], isLoading: isCommentsLoading } = useGetCommentsByTaskIdQuery(taskId, {
+  const { data: attachments = [], isLoading: isAttachmentsLoading } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
 
-  const handleCreateSubtask = async () => {
-    if (!newSubtaskTitle.trim()) return;
+  const handleDeleteFile = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-      setNewSubtaskTitle('');
-      setShowSubtaskInput(false); // ẩn form sau khi tạo
-      await refetch(); // cập nhật lại danh sách
+      await deleteTaskFile(id).unwrap();
+      alert('✅ Delete file successfully!');
+      await refetch();
     } catch (error) {
-      console.error('Lỗi tạo subtask:', error);
+      console.error('❌ Error delete file:', error);
+      alert('❌ Delete file failed');
     }
   };
+
+  const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
+    const startX = e.clientX;
+    const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;
+    const startWidth = th.offsetWidth;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = startWidth + (e.clientX - startX);
+      th.style.width = `${newWidth}px`;
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  // const handleCreateSubtask = async () => {
+  //   if (!newSubtaskTitle.trim()) return;
+  //   try {
+  //     await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+  //     setNewSubtaskTitle('');
+  //     setShowSubtaskInput(false);
+  //     await refetch();
+  //   } catch (error) {
+  //     console.error('Erroe create subtask:', error);
+  //   }
+  // };
 
   const {
     data: subtaskData = [],
@@ -63,12 +114,30 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
+  const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
+
+  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
+    skip: !taskId,
+  });
+
+  const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByTaskIdQuery(taskId, {
+    skip: !isOpen || !taskId,
+  });
+
+
   React.useEffect(() => {
     if (taskData) {
       setStatus(taskData.status);
       setDescription(taskData.description ?? '');
       setTitle(taskData.title ?? '');
       setWorkType(taskData.type ?? 'Task');
+      setPlannedStartDate(taskData.plannedStartDate);
+      setPlannedEndDate(taskData.plannedEndDate);
+      setProjectName(taskData.projectName ?? '');
+      setReporterName(taskData.reporterName ?? '');
+      setProjectId(String(taskData.projectId));
     }
   }, [taskData]);
 
@@ -80,6 +149,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     summary: item.title,
     priority: item.priority,
     assignee: item.assignedByName ?? 'Unassigned',
+    assigneeId: item.assignedBy ?? '0',
     status: item.status,
   }));
 
@@ -113,9 +183,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setWorkType(type);
       setIsDropdownOpen(false);
       await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
-      await refetchTask(); // Cập nhật lại dữ liệu task sau khi đổi type
+      await refetchTask();
     } catch (err) {
-      console.error('❌ Lỗi cập nhật work type:', err);
+      console.error('❌ Error update work type:', err);
     }
   };
 
@@ -137,7 +207,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const navigate = useNavigate();
 
   const handleKeyClick = () => {
-    navigate(`/work-item-detail?taskId=${taskId}`);
+    navigate(`/project/work-item-detail?taskId=${taskId}`);
   };
 
   if (!isOpen) return null;
@@ -210,6 +280,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     onClick={() => {
                       setShowSubtaskInput(true);
                       setIsAddDropdownOpen(false);
+
+                      setTimeout(() => {
+                        subtaskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 100);
                     }}
                     style={{ display: 'flex', alignItems: 'center' }}
                   >
@@ -222,14 +296,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 type="file"
                 ref={fileInputRef}
                 style={{ display: 'none' }}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    alert(`📁 File "${file.name}" đã được upload giả lập.`);
+                    try {
+                      await uploadTaskFile({
+                        taskId,
+                        title: file.name,
+                        file: file,
+                      }).unwrap();
+                      alert(`✅ Uploaded: ${file.name}`);
+                      await refetch();
+                    } catch (err) {
+                      console.error('❌ Upload failed:', err);
+                      alert('❌ Upload failed.');
+                    }
                   }
                   setIsAddDropdownOpen(false);
                 }}
               />
+
             </div>
             <div className="field-group">
               <label>Description</label>
@@ -238,143 +324,423 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+              <div className="attachments-section">
+                <label>Attachments {attachments.length > 0 && <span>({attachments.length})</span>}</label>
+                <div className="attachments-grid">
+                  {attachments.map(file => (
+                    <div
+                      className="attachment-card"
+                      key={file.id}
+                      onMouseEnter={() => setHoveredFileId(file.id)}
+                      onMouseLeave={() => setHoveredFileId(null)}
+                    >
+                      <a
+                        href={file.urlFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="thumbnail">
+                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                            <img src={file.urlFile} alt={file.title} />
+                          ) : (
+                            <div className="doc-thumbnail">
+                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="file-meta">
+                          <div className="file-name" title={file.title}>{file.title}</div>
+                          <div className="file-date">
+                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                          </div>
+                        </div>
+                      </a>
+
+                      {hoveredFileId === file.id && (
+                        <button
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="delete-file-btn"
+                          title="Delete file"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                </div>
+              </div>
+
             </div>
             <div className="field-group">
-              <label>Child work items</label>
+              <label>Subtasks</label>
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading...</p>
                 ) : (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Type</th>
-                        <th>Key</th>
-                        <th>Summary</th>
-                        <th>Priority</th>
-                        <th>Assignee</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {childWorkItems.map((item, index) => (
-                        <tr key={index}>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td><a onClick={() => setSelectedChild(item)}>{item.key}</a></td>
-                          <td><a onClick={() => setSelectedChild(item)}>{item.summary}</a></td>
-                          <td>{item.priority}</td>
-                          <td className="assignee">{item.assignee}</td>
-                          <td>
-                            <select
-                              value={item.status}
-                              onChange={(e) => handleStatusChange(item.key, e.target.value)}
-                            >
-                              <option value="TO_DO">To Do</option>
-                              <option value="IN_PROGRESS">In Progress</option>
-                              <option value="DONE">Done</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                      {showSubtaskInput && (
+                  <div className="scrollable-table-wrapper">
+                    <table>
+                      <thead>
                         <tr>
-                          <td><img src={subtaskIcon} alt="Subtask" /></td>
-                          <td colSpan={5}>
-                            <input
-                              type="text"
-                              placeholder="Enter subtask title..."
-                              value={newSubtaskTitle}
-                              onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                              style={{
-                                width: '70%',
-                                padding: '6px',
-                                border: '1px solid #ccc',
-                                borderRadius: '4px',
-                                marginRight: '8px',
-                              }}
-                            />
-                            <button
-                              onClick={async () => {
-                                try {
-                                  try {
-                                    await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-                                    console.log("✅ Tạo thành công");
-                                  } catch (err) {
-                                    console.error("❌ Lỗi khi gọi createSubtask:", err);
-                                  }
-
-                                  setNewSubtaskTitle('');
-                                  setShowSubtaskInput(false);
-                                  await refetch(); // lấy lại danh sách subtask mới nhất
-                                } catch (err) {
-                                  console.error('Lỗi khi tạo subtask:', err);
-                                }
-                              }}
-                              disabled={!newSubtaskTitle.trim()}
-                              style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#0052cc',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
-                              }}
-                            >
-                              Create
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowSubtaskInput(false);
-                                setNewSubtaskTitle('');
-                              }}
-                              style={{
-                                marginLeft: '8px',
-                                padding: '6px 12px',
-                                backgroundColor: '#ccc',
-                                color: 'black',
-                                border: 'none',
-                                borderRadius: '4px',
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </td>
+                          <th>
+                            Type
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 0)} />
+                          </th>
+                          <th>
+                            Key
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 1)} />
+                          </th>
+                          <th>
+                            Summary
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 2)} />
+                          </th>
+                          <th>
+                            Priority
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 3)} />
+                          </th>
+                          <th>
+                            Assignee
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 4)} />
+                          </th>
+                          <th>
+                            Status
+                            <div className="resizer" onMouseDown={(e) => handleResize(e, 5)} />
+                          </th>
                         </tr>
-                      )}
+                      </thead>
 
-                    </tbody>
-                  </table>
+                      <tbody>
+                        {childWorkItems.map((item, index) => (
+                          <tr key={index}>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
+                            <td onClick={() => setEditingSummaryId(item.key)} style={{ cursor: 'pointer' }}>
+                              {editingSummaryId === item.key ? (
+                                <input
+                                  type="text"
+                                  value={editableSummaries[item.key] ?? item.summary}
+                                  onChange={(e) =>
+                                    setEditableSummaries((prev) => ({ ...prev, [item.key]: e.target.value }))
+                                  }
+                                  onBlur={async () => {
+                                    const newTitle = editableSummaries[item.key]?.trim();
+                                    if (newTitle && newTitle !== item.summary) {
+                                      try {
+                                        await updateSubtask({
+                                          id: item.key,
+                                          assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
+                                          title: newTitle,
+                                          description: taskData?.description ?? '',
+                                          priority: item.priority,
+                                        }).unwrap();
+                                        alert('✅ Updated summary');
+                                        console.log('✅ Updated summary');
+                                        await refetch();
+                                      } catch (err) {
+                                        console.error('❌ Failed to update summary:', err);
+                                        alert('❌ Failed to update summary');
+                                      }
+                                    }
+                                    setEditingSummaryId(null);
+                                  }}
+                                  onKeyDown={async (e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      (e.target as HTMLInputElement).blur(); // Gọi blur để tái sử dụng logic lưu ở onBlur
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                              ) : (
+                                item.summary
+                              )}
+                            </td>
+
+                            <td>
+                              <select
+                                value={item.priority}
+                                onChange={async (e) => {
+                                  const newPriority = e.target.value;
+                                  try {
+                                    await updateSubtask({
+                                      id: item.key,
+                                      assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
+                                      title: editableSummaries[item.key] ?? item.summary,
+                                      description: taskData?.description ?? '',
+                                      priority: newPriority,
+                                    }).unwrap();
+                                    console.log('✅ Updated priority');
+                                    await refetch();
+                                  } catch (err) {
+                                    console.error('❌ Failed to update priority:', err);
+                                    alert('❌ Failed to update priority');
+                                  }
+                                }}
+                                style={{ padding: '4px 8px' }}
+                              >
+                                <option value="HIGHEST">Highest</option>
+                                <option value="HIGH">High</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="LOW">Low</option>
+                                <option value="LOWEST">Lowest</option>
+                              </select>
+                            </td>
+
+                            <td>
+                              <div className="dropdown-wrapper">
+                                <select
+                                  value={selectedAssignees[item.key] || item.assigneeId}
+                                  onChange={async (e) => {
+                                    const newAssigneeId = parseInt(e.target.value);
+                                    setSelectedAssignees((prev) => ({ ...prev, [item.key]: newAssigneeId.toString() }));
+
+                                    try {
+                                      await updateSubtask({
+                                        id: item.key,
+                                        assignedBy: newAssigneeId,
+                                        priority: item.priority,
+                                        title: item.summary,
+                                        description: taskData?.description ?? '', // giữ nguyên
+                                      }).unwrap();
+                                      alert('✅ Updated subtask assignee');
+                                      console.log('✅ Updated subtask assignee');
+                                      await refetch();
+                                    } catch (err) {
+                                      console.error('❌ Failed to update subtask:', err);
+                                      alert('❌ Failed to update subtask');
+                                    }
+                                  }}
+                                >
+                                  <option value="0">Unassigned</option>
+                                  {projectMembers.map((member) => (
+                                    <option key={member.accountId} value={member.accountId}>
+                                      {member.accountName}
+                                    </option>
+                                  ))}
+
+                                </select>
+                              </div>
+                            </td>
+
+                            <td>
+                              <select
+                                value={item.status}
+                                onChange={(e) => handleStatusChange(item.key, e.target.value)}
+                                className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                              >
+                                <option value="TO_DO">To Do</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="DONE">Done</option>
+                              </select>
+                            </td>
+
+                          </tr>
+                        ))}
+                        {showSubtaskInput && (
+                          <tr ref={subtaskInputRef}>
+                            <td><img src={subtaskIcon} alt="Subtask" /></td>
+                            <td colSpan={5}>
+                              <input
+                                type="text"
+                                placeholder="Enter subtask title..."
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                style={{
+                                  width: '45%',
+                                  padding: '6px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  marginRight: '8px',
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    try {
+                                      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                      console.log("✅ Create successfully");
+                                    } catch (err) {
+                                      console.error("❌ Error to call createSubtask:", err);
+                                    }
+
+                                    setNewSubtaskTitle('');
+                                    setShowSubtaskInput(false);
+                                    await refetch();
+                                  } catch (err) {
+                                    console.error('Error create subtask:', err);
+                                  }
+                                }}
+                                disabled={!newSubtaskTitle.trim()}
+                                style={{
+                                  padding: '6px 12px',
+                                  backgroundColor: '#0052cc',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                  cursor: newSubtaskTitle.trim() ? 'pointer' : 'not-allowed',
+                                }}
+                              >
+                                Create
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowSubtaskInput(false);
+                                  setNewSubtaskTitle('');
+                                }}
+                                style={{
+                                  marginLeft: '8px',
+                                  padding: '6px 12px',
+                                  backgroundColor: '#ccc',
+                                  color: 'black',
+                                  border: 'none',
+                                  borderRadius: '4px',
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
-            <div className="field-group">
+            <div className="activity-section">
+              <h4 style={{ marginBottom: '8px' }}>Activity</h4>
+
+              {/* Tabs */}
               <div className="activity-tabs">
-                <button className="tab active">All</button>
-                <button className="tab">Comments</button>
-                <button className="tab">History</button>
-                <button className="tab">Work log</button>
+                <button
+                  className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('COMMENTS')}
+                >
+                  Comments
+                </button>
+                <button
+                  className={`activity-tab-btn ${activeTab === 'HISTORY' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('HISTORY')}
+                >
+                  History
+                </button>
               </div>
-              <div className="comment-list" style={{ marginBottom: '12px' }}>
-                {isCommentsLoading ? (
-                  <p>Loading comments...</p>
-                ) : comments.length === 0 ? (
-                  <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
-                ) : (
-                  comments.map((comment: any) => (
-                    <div key={comment.id} style={{ marginBottom: '12px' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
-                        User #{comment.accountId}{' '}
-                        <span style={{ fontWeight: 'normal', color: '#888', fontSize: '12px' }}>
-                          {new Date(comment.createdAt).toLocaleString('vi-VN')}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '14px', marginTop: '4px' }}>{comment.content}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <textarea className="activity-input" placeholder="Add a comment...\nCan I get more info..? Status update... Thanks..." />
-              <p className="pro-tip">Pro tip: Press <strong>M</strong> to comment</p>
+
+              {/* Tab Content */}
+              {activeTab === 'COMMENTS' ? (
+                <>
+                  <div className="comment-list">
+                    {isCommentsLoading ? (
+                      <p>Loading comments...</p>
+                    ) : comments.length === 0 ? (
+                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
+                    ) : (
+                      comments
+                        .slice()
+                        .reverse()
+                        .map((comment: any) => (
+                          <div key={comment.id} className="simple-comment">
+                            <div className="avatar-circle">
+                              <img src={accountIcon} alt="avatar" className="avatar-img" />
+                            </div>
+                            <div className="comment-content">
+                              <div className="comment-header">
+                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
+                                <span className="comment-time">
+                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                </span>
+                              </div>
+                              <div className="comment-text">{comment.content}</div>
+                              {comment.accountId === accountId && (
+                                <div className="comment-actions">
+                                  <button
+                                    className="edit-btn"
+                                    onClick={async () => {
+                                      const newContent = prompt("✏ Edit your comment:", comment.content);
+                                      if (newContent && newContent !== comment.content) {
+                                        try {
+                                          await updateTaskComment({
+                                            id: comment.id,
+                                            taskId,
+                                            accountId,
+                                            content: newContent,
+                                          }).unwrap();
+                                          alert("✅ Comment updated");
+                                          await refetchComments();
+                                        } catch (err) {
+                                          console.error("❌ Failed to update comment", err);
+                                          alert("❌ Update failed");
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    ✏ Edit
+                                  </button>
+                                  <button
+                                    className="delete-btn"
+                                    onClick={async () => {
+                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                        try {
+                                          await deleteTaskComment(comment.id).unwrap();
+                                          alert("🗑️ Deleted successfully");
+                                          await refetchComments();
+                                        } catch (err) {
+                                          console.error("❌ Failed to delete comment", err);
+                                          alert("❌ Delete failed");
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    🗑 Delete
+                                  </button>
+                                </div>
+                              )}
+
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+
+                  {/* Comment Input */}
+                  <div className="simple-comment-input">
+                    <textarea
+                      placeholder="Add a comment..."
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                    />
+                    <button
+                      disabled={!commentContent.trim()}
+                      onClick={async () => {
+                        try {
+                          if (!accountId || isNaN(accountId)) {
+                            alert('❌ User not identified. Please log in again.');
+                            return;
+                          }
+                          createTaskComment({
+                            taskId,
+                            accountId,
+                            content: commentContent.trim(),
+                          }).unwrap();
+                          alert("✅ Comment posted");
+                          setCommentContent('');
+                          await refetchComments();
+                        } catch (err: any) {
+                          console.error('❌ Failed to post comment:', err);
+                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                        }
+                      }}
+                    >
+                      Comment
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="activity-placeholder">
+                  Chưa có nhật ký hoạt động.
+                </div>
+              )}
             </div>
           </div>
 
@@ -384,6 +750,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <select
                 value={status}
                 onChange={(e) => handleTaskStatusChange(e.target.value)}
+                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
               >
                 <option value="TO_DO">To Do</option>
                 <option value="IN_PROGRESS">In Progress</option>
@@ -391,12 +758,22 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </select>
             </div>
             <div className="details-content">
-              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
-              <div className="detail-item"><label>Labels</label><span>None</span></div>
+              <h4>Details</h4>
+              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? taskData?.projectName ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Labels</label>
+                <span>
+                  {isLabelLoading
+                    ? 'Loading...'
+                    : workItemLabels.length === 0
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                </span>
+              </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
-              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskData[0]?.endDate)}</span></div>
-              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskData[0]?.startDate)}</span></div>
-              <div className="detail-item"><label>Reporter</label><span>{subtaskData[0]?.reporterId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Due date</label><span>{formatDate(taskData?.plannedEndDate)}</span></div>
+              <div className="detail-item"><label>Start date</label><span>{formatDate(taskData?.plannedStartDate)}</span></div>
+              <div className="detail-item"><label>Reporter</label><span>{taskData?.reporterName ?? 'None'}</span></div>
             </div>
           </div>
         </div>
@@ -406,6 +783,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         <ChildWorkItemPopup
           item={selectedChild}
           onClose={() => setSelectedChild(null)}
+          taskId={taskId}
         />
       )}
     </div>

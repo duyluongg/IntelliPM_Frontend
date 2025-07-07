@@ -4,7 +4,9 @@ import { API_BASE_URL } from '../constants/api';
 export interface TaskResponseDTO {
   id: string;
   reporterId: number;
+  reporterName: string;
   projectId: number;
+  projectName: string;
   epicId: number;
   sprintId: number;
   milestoneId: number;
@@ -87,6 +89,13 @@ export const taskApi = createApi({
         body: JSON.stringify(type), // Gửi "TASK", "BUG", "STORY"
       }),
     }),
+    getTasksByEpicId: builder.query<TaskResponseDTO[], string>({
+      query: (epicId) => ({
+        url: 'task/by-epic-id',
+        params: { epicId },
+      }),
+      transformResponse: (response: TaskListResponse) => response.data,
+    }),
   }),
 });
 
@@ -94,5 +103,6 @@ export const {
   useGetTasksByProjectIdQuery,
   useUpdateTaskStatusMutation,
   useGetTaskByIdQuery,
-  useUpdateTaskTypeMutation
+  useUpdateTaskTypeMutation,
+  useGetTasksByEpicIdQuery
 } = taskApi;

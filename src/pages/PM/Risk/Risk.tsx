@@ -4,12 +4,14 @@ import './Risk.css';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
 import RiskDetail from './RiskDetail';
+import ManualRiskModal from './ManualRiskModal';
 
 const Risk = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, error } = useGetRisksByProjectKeyQuery(projectKey);
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if (isLoading) return <div className='text-sm text-gray-500'>Loading risks...</div>;
   if (error || !data?.data) return <div>Error loading risks</div>;
@@ -114,8 +116,34 @@ const Risk = () => {
     );
   };
 
+  const openCreateRiskModal = () => {
+    console.log('Open create risk modal');
+    setShowCreateModal(true);
+  };
+
+  const closeCreateRiskModal = () => {
+    setShowCreateModal(false);
+  };
+
+  const handleSaveRisk = (newRisk: any) => {
+    console.log('Saving risk:', newRisk);
+  };
+
+  const openSuggestedRisks = () => {
+    console.log('Open suggested risks');
+  };
+
   return (
     <div className='risk-page-wrapper'>
+      <div className='risk-toolbar'>
+        <button className='btn btn-primary' onClick={() => openCreateRiskModal()}>
+          + Add Risk
+        </button>
+        <button className='btn btn-secondary' onClick={() => openSuggestedRisks()}>
+          🤖 Suggest by AI
+        </button>
+      </div>
+
       <div className='risk-table-container'>
         <table className='risk-table'>
           <thead>
@@ -166,6 +194,9 @@ const Risk = () => {
         </table>
       </div>
       {selectedRisk && <RiskDetail risk={selectedRisk} onClose={() => setSelectedRisk(null)} />}
+      {showCreateModal && (
+        <ManualRiskModal onClose={closeCreateRiskModal} onSave={handleSaveRisk} />
+      )}
     </div>
   );
 };

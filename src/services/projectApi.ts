@@ -93,6 +93,15 @@ interface CheckProjectKeyResponse {
   message: string;
 }
 
+interface CheckProjectNameResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    exists: boolean;
+  };
+  message: string;
+}
+
 interface TaskItem {
   id: string | null;
   reporterId: number;
@@ -175,7 +184,6 @@ interface GetProjectDetailsFullResponse {
   message: string;
 }
 
-// ➕ Bổ sung các interface mới dựa trên API /project/{id}/details
 interface ProjectRequirement {
   id: number;
   projectId: number;
@@ -237,7 +245,11 @@ export const projectApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
       headers.set('accept', '*/*');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),
@@ -260,16 +272,21 @@ export const projectApi = createApi({
         method: 'GET',
       }),
     }),
+    checkProjectName: builder.query<CheckProjectNameResponse, string>({
+      query: (projectName) => ({
+        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}`,
+        method: 'GET',
+      }),
+    }),
     createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
       query: (body) => {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const accessToken = user?.accessToken || '';
+        const token = localStorage.getItem('accessToken');
         return {
           url: 'project',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body,
         };
@@ -281,7 +298,6 @@ export const projectApi = createApi({
         method: 'GET',
       }),
     }),
-    
     getProjectDetailsById: builder.query<GetProjectDetailsByIdResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/details`,
@@ -295,6 +311,7 @@ export const {
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,
+  useCheckProjectNameQuery,
   useCreateProjectMutation,
   useGetFullProjectDetailsByKeyQuery,
   useGetProjectDetailsByIdQuery,

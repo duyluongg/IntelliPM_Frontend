@@ -643,3 +643,26 @@
   background-color: #000000;
   color: white;
 }
+
+.risk-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+}
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+

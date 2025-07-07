@@ -17,6 +17,7 @@ export interface SubtaskResponseDTO {
   startDate: string;
   endDate: string;
   reporterId: number;
+  reporterName: string;
 }
 
 interface ApiResponse<T> {
@@ -44,6 +45,7 @@ export const subtaskApi = createApi({
       query: (taskId) => `subtask/by-task/${taskId}`,
       transformResponse: (response: ApiResponse<SubtaskResponseDTO[]>) => response.data,
     }),
+
     updateSubtaskStatus: builder.mutation<void, { id: string; status: string }>({
       query: ({ id, status }) => ({
         url: `subtask/${id}/status`,
@@ -66,6 +68,13 @@ export const subtaskApi = createApi({
       }),
     }),
 
+    updateSubtask: builder.mutation<any, { id: string; assignedBy: number; priority: string; title: string; description: string }>({
+      query: ({ id, ...body }) => ({
+        url: `subtask/${id}`,
+        method: 'PUT',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -73,4 +82,5 @@ export const {
   useGetSubtasksByTaskIdQuery,
   useUpdateSubtaskStatusMutation,
   useCreateSubtaskMutation,
+  useUpdateSubtaskMutation
 } = subtaskApi;

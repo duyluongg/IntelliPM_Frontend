@@ -4,7 +4,9 @@ import { API_BASE_URL } from '../constants/api';
 export interface TaskResponseDTO {
   id: string;
   reporterId: number;
+  reporterName: string;
   projectId: number;
+  projectName: string;
   epicId: number;
   sprintId: number;
   milestoneId: number;

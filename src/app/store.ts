@@ -15,7 +15,7 @@ import { meetingParticipantApi } from '../services/ProjectManagement/MeetingServ
 import { documentApi } from '../services/Document/documentAPI';
 import docReducer from '../components/slices/Document/documentSlice';
 import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
-
+import { riskApi } from '../services/riskApi';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +34,7 @@ export const store = configureStore({
     [meetingParticipantApi.reducerPath]: meetingParticipantApi.reducer,
     [documentApi.reducerPath]: documentApi.reducer,
     [meetingFeedbackApi.reducerPath]: meetingFeedbackApi.reducer,
+    [riskApi.reducerPath]: riskApi.reducer,
     doc: docReducer,
   },
 
@@ -54,6 +55,7 @@ export const store = configureStore({
       meetingParticipantApi.middleware,
       documentApi.middleware,
       meetingFeedbackApi.middleware,
+      riskApi.middleware,
     ),
 });
 

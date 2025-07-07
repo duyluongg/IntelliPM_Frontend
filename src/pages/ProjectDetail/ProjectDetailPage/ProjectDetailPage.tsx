@@ -6,6 +6,7 @@ import ProjectTaskList from '../ProjectTaskList/ProjectTaskList';
 import ProjectDetailHeader from '../ProjectDetailHeader/ProjectDetailHeader';
 import Gantt from '../../PM/Gantt/Gantt';
 import ProjectDashboard from '../../PM/Dashboard/ProjectDashboard';
+import Risk from '../../PM/Risk/Risk';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -26,6 +27,7 @@ const ProjectDetailPage = () => {
         {activeTab === 'list' && <ProjectTaskList />}
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
+        {activeTab === 'risk' && <Risk />}
       </div>
     </div>
   );

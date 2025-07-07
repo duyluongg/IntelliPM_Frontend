@@ -37,6 +37,13 @@ interface BulkCreateResponse {
   message: string;
 }
 
+interface GetProjectMembersWithPositionsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectMemberWithPositionsResponse[];
+  message: string;
+}
+
 export const projectMemberApi = createApi({
   reducerPath: 'projectMemberApi',
   baseQuery: fetchBaseQuery({
@@ -59,7 +66,6 @@ export const projectMemberApi = createApi({
         method: 'POST',
         body: requests,
       }),
-      // Thêm transformResponse để xử lý response không hợp lệ
       transformResponse: (response: any, meta, arg) => {
         if (typeof response === 'string' || !response) {
           return { isSuccess: false, code: 500, data: null, message: 'Invalid server response' };
@@ -77,10 +83,17 @@ export const projectMemberApi = createApi({
         return [];
       },
     }),
+    getProjectMembersWithPositions: builder.query<GetProjectMembersWithPositionsResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/projectmember/with-positions`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
 export const {
   useCreateBulkProjectMembersWithPositionsMutation,
-  useGetProjectMembersQuery, 
+  useGetProjectMembersQuery,
+  useGetProjectMembersWithPositionsQuery,
 } = projectMemberApi;

@@ -32,13 +32,11 @@ export interface CreateProjectResponse {
   message: string;
 }
 
-// Interface cho Assignee dựa trên response mới
 interface Assignee {
   fullname: string;
   picture: string | null;
 }
 
-// Interface cho WorkItem dựa trên response từ /api/project/{id}/workitems
 interface WorkItem {
   type: string;
   key: string;
@@ -63,7 +61,6 @@ export interface GetWorkItemsResponse {
   message: string;
 }
 
-// Interface cho ProjectDetails dựa trên response từ /api/project/view-by-key
 interface ProjectDetails {
   id: number;
   name: string;
@@ -87,7 +84,6 @@ interface GetProjectDetailsResponse {
   message: string;
 }
 
-// Interface cho CheckProjectKeyResponse dựa trên response từ /api/project/check-project-key
 interface CheckProjectKeyResponse {
   isSuccess: boolean;
   code: number;
@@ -153,7 +149,6 @@ interface MilestoneItem {
   status: string;
 }
 
-// Full Project Details
 interface ProjectDetailsFull {
   id: number;
   name: string;
@@ -180,6 +175,63 @@ interface GetProjectDetailsFullResponse {
   message: string;
 }
 
+// ➕ Bổ sung các interface mới dựa trên API /project/{id}/details
+interface ProjectRequirement {
+  id: number;
+  projectId: number;
+  title: string;
+  type: string;
+  description: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProjectPosition {
+  id: number;
+  projectMemberId: number;
+  position: string;
+  assignedAt: string;
+}
+
+interface ProjectMember {
+  id: number;
+  accountId: number;
+  projectId: number;
+  joinedAt: string | null;
+  invitedAt: string;
+  status: string;
+  email: string | null;
+  fullName: string;
+  username: string;
+  picture: string | null;
+  projectPositions: ProjectPosition[];
+}
+
+interface ProjectDetailsById {
+  id: number;
+  projectKey: string;
+  name: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+  requirements: ProjectRequirement[];
+  projectMembers: ProjectMember[];
+}
+
+interface GetProjectDetailsByIdResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetailsById;
+  message: string;
+}
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -202,14 +254,12 @@ export const projectApi = createApi({
         method: 'GET',
       }),
     }),
-
     checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
       query: (projectKey) => ({
         url: `project/check-project-key?projectKey=${projectKey}`,
         method: 'GET',
       }),
     }),
-
     createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
       query: (body) => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -225,10 +275,16 @@ export const projectApi = createApi({
         };
       },
     }),
-
     getFullProjectDetailsByKey: builder.query<GetProjectDetailsFullResponse, string>({
       query: (projectKey) => ({
         url: `project/by-project-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+    
+    getProjectDetailsById: builder.query<GetProjectDetailsByIdResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/details`,
         method: 'GET',
       }),
     }),
@@ -241,4 +297,5 @@ export const {
   useCheckProjectKeyQuery,
   useCreateProjectMutation,
   useGetFullProjectDetailsByKeyQuery,
+  useGetProjectDetailsByIdQuery,
 } = projectApi;

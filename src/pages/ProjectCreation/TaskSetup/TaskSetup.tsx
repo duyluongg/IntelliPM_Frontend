@@ -4,6 +4,9 @@ import { Pencil, Trash2, Brain, X, Plus, Minus, Calendar } from 'lucide-react';
 import { useGetTaskPlanningMutation, type TaskState } from '../../../services/aiApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
+import { useCreateEpicWithTasksMutation } from '../../../services/epicApi'; 
+import { type EpicWithTaskRequestDTO } from '../../../services/epicApi';
+
 import galaxyaiIcon from '../../../assets/galaxyai.gif';
 
 interface EpicState {
@@ -25,9 +28,11 @@ const TaskSetup: React.FC = () => {
   const { data: membersData, isLoading: isMembersLoading, error: membersError } = useGetProjectMembersWithPositionsQuery(projectId || 0, {
     skip: !projectId,
   });
+  const [createEpic, { isLoading: isCreatingEpic, error: createEpicError }] = useCreateEpicWithTasksMutation(); // Add mutation hook
   const [epics, setEpics] = useState<EpicState[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null); // Add success message
   const [getTaskPlanning] = useGetTaskPlanningMutation();
   const [editingTask, setEditingTask] = useState<{ epicId: string; task: TaskState } | null>(null);
   const [editingDateTask, setEditingDateTask] = useState<{ epicId: string; task: TaskState; field: 'startDate' | 'endDate' } | null>(null);
@@ -123,14 +128,14 @@ const TaskSetup: React.FC = () => {
       epicId: epics.length > 0 ? epics[0].epicId : '',
       title: '',
       description: '',
-      startDate: '',
-      endDate: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0], // Default to next day
       suggestedRole: 'Developer',
       assignedMembers: [],
       newEpicTitle: '',
       newEpicDescription: 'No description',
-      newEpicStartDate: '',
-      newEpicEndDate: '',
+      newEpicStartDate: new Date().toISOString().split('T')[0],
+      newEpicEndDate: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split('T')[0], // Default to one week later
     });
   };
 
@@ -141,18 +146,18 @@ const TaskSetup: React.FC = () => {
 
   const handleCreateTask = () => {
     if (!newTask.title.trim()) {
-      alert('Title is required');
+      alert('Task title is required');
       return;
     }
-    if (newTask.startDate && newTask.endDate && new Date(newTask.endDate) < new Date(newTask.startDate)) {
-      alert('End Date must be after Start Date');
+    if (newTask.startDate && newTask.endDate && new Date(newTask.endDate) <= new Date(newTask.startDate)) {
+      alert('Task End Date must be after Start Date');
       return;
     }
     if (epics.length === 0 && (!newTask.newEpicTitle || !newTask.newEpicStartDate || !newTask.newEpicEndDate)) {
       alert('New epic requires title, start date, and end date');
       return;
     }
-    if (newTask.newEpicEndDate && newTask.newEpicStartDate && new Date(newTask.newEpicEndDate) < new Date(newTask.newEpicStartDate)) {
+    if (newTask.newEpicEndDate && newTask.newEpicStartDate && new Date(newTask.newEpicEndDate) <= new Date(newTask.newEpicStartDate)) {
       alert('Epic End Date must be after Epic Start Date');
       return;
     }
@@ -162,8 +167,8 @@ const TaskSetup: React.FC = () => {
       taskId: `TASK-${Math.random().toString(36).substr(2, 9)}`,
       title: newTask.title,
       description: newTask.description || 'No description',
-      startDate: newTask.startDate || new Date().toISOString().split('T')[0],
-      endDate: newTask.endDate || new Date().toISOString().split('T')[0],
+      startDate: newTask.startDate,
+      endDate: newTask.endDate,
       suggestedRole: newTask.suggestedRole,
       assignedMembers: newTask.assignedMembers,
     };
@@ -216,6 +221,62 @@ const TaskSetup: React.FC = () => {
     });
   };
 
+  const handleSaveAndProceed = async () => {
+    if (!projectId) {
+      setErrorMessage('Project ID is not available.');
+      return;
+    }
+    if (epics.length === 0) {
+      setErrorMessage('No epics to save.');
+      return;
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      for (const epic of epics) {
+        // Validate dates
+        if (new Date(epic.endDate) <= new Date(epic.startDate)) {
+          setErrorMessage(`Epic ${epic.title} (${epic.epicId}) has invalid dates: End Date must be after Start Date.`);
+          return;
+        }
+        for (const task of epic.tasks) {
+          if (new Date(task.endDate) <= new Date(task.startDate)) {
+            setErrorMessage(`Task ${task.title} (${task.taskId}) in epic ${epic.epicId} has invalid dates: End Date must be after Start Date.`);
+            return;
+          }
+        }
+
+        // Format request payload
+        const requestPayload: EpicWithTaskRequestDTO = {
+          epicId: epic.epicId,
+          title: epic.title,
+          description: epic.description,
+          startDate: new Date(epic.startDate).toISOString(),
+          endDate: new Date(epic.endDate).toISOString(),
+          tasks: epic.tasks.map(task => ({
+            id: task.id,
+            taskId: task.taskId,
+            title: task.title,
+            description: task.description,
+            startDate: new Date(task.startDate).toISOString(),
+            endDate: new Date(task.endDate).toISOString(),
+            suggestedRole: task.suggestedRole,
+            assignedMembers: task.assignedMembers,
+          })),
+        };
+
+        const response = await createEpic({ projectId, data: requestPayload }).unwrap();
+        console.log(`Epic ${epic.epicId} created:`, response);
+      }
+      setSuccessMessage('All epics and tasks saved successfully!');
+      setTimeout(() => navigate('/project-tasks'), 1000); // Navigate after showing success
+    } catch (error: any) {
+      console.error('Error saving epics:', error);
+      setErrorMessage(error.data?.message || 'Failed to save epics and tasks. Please try again.');
+    }
+  };
+
   const handleOpenEditPopup = (epicId: string, task: TaskState) => {
     setEditingTask({ epicId, task });
     setDropdownTaskId(null);
@@ -248,7 +309,7 @@ const TaskSetup: React.FC = () => {
       alert('Epic title is required');
       return;
     }
-    if (editingEpic.startDate && editingEpic.endDate && new Date(editingEpic.endDate) < new Date(editingEpic.startDate)) {
+    if (editingEpic.startDate && editingEpic.endDate && new Date(editingEpic.endDate) <= new Date(editingEpic.startDate)) {
       alert('Epic End Date must be after Epic Start Date');
       return;
     }
@@ -259,8 +320,8 @@ const TaskSetup: React.FC = () => {
               ...epic,
               title: editingEpic.title,
               description: editingEpic.description || 'No description',
-              startDate: editingEpic.startDate || new Date().toISOString().split('T')[0],
-              endDate: editingEpic.endDate || new Date().toISOString().split('T')[0],
+              startDate: editingEpic.startDate,
+              endDate: editingEpic.endDate,
             }
           : epic
       )
@@ -269,8 +330,8 @@ const TaskSetup: React.FC = () => {
   };
 
   const handleEditTask = (epicId: string, taskId: string, updatedTask: Partial<TaskState>) => {
-    if (updatedTask.endDate && updatedTask.startDate && new Date(updatedTask.endDate) < new Date(updatedTask.startDate)) {
-      alert('End Date must be after Start Date');
+    if (updatedTask.endDate && updatedTask.startDate && new Date(updatedTask.endDate) <= new Date(updatedTask.startDate)) {
+      alert('Task End Date must be after Start Date');
       return;
     }
     setEpics(prev =>
@@ -370,7 +431,7 @@ const TaskSetup: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (isProjectLoading || isMembersLoading) {
+  if (isProjectLoading || isMembersLoading || isCreatingEpic) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-[#1c73fd]"></div>
@@ -436,6 +497,7 @@ const TaskSetup: React.FC = () => {
         </div>
       </div>
       {errorMessage && <p className="text-red-500 mb-4 font-medium">{errorMessage}</p>}
+      {successMessage && <p className="text-green-500 mb-4 font-medium">{successMessage}</p>}
 
       <div className="mb-8">
         <h2 className="text-2xl font-semibold text-gray-800 mb-5">Epics & Tasks</h2>
@@ -444,7 +506,6 @@ const TaskSetup: React.FC = () => {
             <div className="flex justify-center items-center py-8 bg-white/50 rounded-2xl shadow-md">
               <div className="flex flex-col items-center gap-4">
                 <Brain className="w-8 h-8 text-[#1c73fd] animate-scale-pulse" />
-                 {/* <img src={galaxyaiIcon} alt="AI Processing" className="w-8 h-8 object-contain animate-scale-pulse" /> */}
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#1c73fd] to-[#4a90e2]">
                     Processing with AI
@@ -800,7 +861,7 @@ const TaskSetup: React.FC = () => {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={handleCloseEditPopup}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200"
+                className="px-4 py-2 bg-gray-200/70 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200"
               >
                 Cancel
               </button>
@@ -890,6 +951,7 @@ const TaskSetup: React.FC = () => {
                     onChange={(e) => setNewTask({ ...newTask, epicId: e.target.value })}
                     className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200"
                   >
+                    <option value="">Select an Epic</option>
                     {epics.map(epic => (
                       <option key={epic.epicId} value={epic.epicId}>
                         {epic.title} ({epic.epicId})
@@ -1075,10 +1137,15 @@ const TaskSetup: React.FC = () => {
           Back to Overview
         </button>
         <button
-          onClick={() => navigate('/project-tasks')}
-          className="px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#155ac7] hover:to-[#3e7ed1] shadow-md hover:shadow-lg transition-all duration-200"
+          onClick={handleSaveAndProceed}
+          disabled={isCreatingEpic}
+          className={`px-6 py-3 rounded-xl text-white font-semibold transition-all duration-300 ${
+            isCreatingEpic
+              ? 'bg-gray-500 opacity-70 cursor-not-allowed'
+              : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] shadow-md hover:shadow-lg'
+          }`}
         >
-          Save & Proceed
+          {isCreatingEpic ? 'Saving...' : 'Save & Proceed'}
         </button>
       </div>
     </div>

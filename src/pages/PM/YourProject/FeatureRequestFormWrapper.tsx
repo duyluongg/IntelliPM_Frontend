@@ -11,6 +11,8 @@ export default function FeatureRequestFormWrapper() {
   const [doc, setDoc] = useState<DocumentType | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  console.log(id);
+  
 
   useEffect(() => {
     const fetchDoc = async () => {

@@ -7,4 +7,5 @@ export type DocumentType = {
   content: string;
   updatedAt: string;
   createdBy: number;
+  template: string;
 };

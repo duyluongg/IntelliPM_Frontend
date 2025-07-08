@@ -39,6 +39,7 @@ export const documentApi = createApi({
     }),
     getMyDocuments: builder.query<DocumentType[], void>({
       query: () => 'documents/created-by-me',
+      
     }),
   }),
 });

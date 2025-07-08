@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   FileText,
@@ -19,6 +19,7 @@ import {
 } from '../../../services/Document/documentAPI';
 import { useDispatch } from 'react-redux';
 import { setDoc } from '../../../components/slices/Document/documentSlice';
+import TextareaAutosize from 'react-textarea-autosize';
 
 type Props = {
   doc?: DocumentType;
@@ -29,11 +30,20 @@ function extractBodyContent(html: string): string {
   return match ? match[1] : html;
 }
 
+function isContentEmpty(html: string): boolean {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent?.trim() === '';
+}
+
 export default function DocBlank({ doc }: Props) {
   const [formData, setFormData] = useState({
     title: doc?.title || '',
     content: doc?.content || '',
   });
+  const [touched, setTouched] = useState(false);
+  const [readyToSave, setReadyToSave] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [aiInput, setAiInput] = useState('');
   const { user } = useAuth();
   const { formId } = useParams<{ formId?: string }>();
@@ -48,7 +58,8 @@ export default function DocBlank({ doc }: Props) {
   const [updateDocument] = useUpdateDocumentMutation();
 
   const submitDocument = async () => {
-    if (!user || !formData.content.trim()) return;
+    if (!user) return;
+    if (isContentEmpty(formData.content)) return;
 
     const payload = {
       projectId: doc?.projectId ?? 1,
@@ -115,6 +126,9 @@ export default function DocBlank({ doc }: Props) {
       }
 
       skipAutosaveRef.current = true;
+      setTouched(true);
+      setReadyToSave(true);
+      setHasInteracted(true);
 
       setFormData({
         title: res.title || '',
@@ -133,29 +147,88 @@ export default function DocBlank({ doc }: Props) {
 
   useDebouncedEffect(
     () => {
-      if (skipAutosaveRef.current) {
+      if (!hasInteracted || !readyToSave || !touched || skipAutosaveRef.current) {
         skipAutosaveRef.current = false;
         return;
       }
 
-      if (!aiInput.trim()) {
+      if (!aiInput.trim() && !isContentEmpty(formData.content)) {
         submitDocument();
       }
     },
-    [formData.title, formData.content],
+    [formData.title, formData.content, touched, readyToSave, hasInteracted],
     500
   );
 
+useEffect(() => {
+  const savedDocId = sessionStorage.getItem(`docId-${formId}`);
+  if (!docId && savedDocId) {
+    setDocId(Number(savedDocId));
+    setIsNewDoc(false);
+    dispatch(setDoc({ id: Number(savedDocId) }));
+  }
+
+  const autoCreateDocument = async () => {
+    if (!user || !isNewDoc || docId) return;
+    const createdFlag = sessionStorage.getItem(`createdDoc-${formId}`);
+    if (createdFlag === 'true') return;
+
+    if (isCreatingRef.current) return;
+    isCreatingRef.current = true;
+
+    const payload = {
+      projectId: doc?.projectId ?? 1,
+      taskId: doc?.taskId ?? 'PROJA-3',
+      title: 'Untitled Document',
+      type: formId,
+      template: 'blank',
+      content: '',
+      fileUrl: '',
+      createdBy: user.id,
+    };
+
+    try {
+      setLoading(true);
+      const res = await createDocument(payload).unwrap();
+      if (res?.id) {
+        setDocId(res.id);
+        setIsNewDoc(false);
+        dispatch(setDoc({ id: res.id }));
+        sessionStorage.setItem(`createdDoc-${formId}`, 'true');
+        sessionStorage.setItem(`docId-${formId}`, res.id.toString());
+      }
+    } catch (err) {
+      console.error('[Auto Create] Failed ❌', err);
+    } finally {
+      isCreatingRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  autoCreateDocument();
+}, [user, formId, isNewDoc, docId, createDocument, dispatch]);
+
+
+
+
   return (
     <div className='max-w-4xl mx-auto p-8 space-y-8 bg-white'>
-      <input
-        type='text'
-        name='title'
-        value={formData.title}
-        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-        className='w-full text-4xl font-bold outline-none bg-transparent placeholder-gray-400'
-        placeholder='New Doc'
-      />
+      <div
+        contentEditable
+        suppressContentEditableWarning
+        onInput={(e) => {
+          const newTitle = e.currentTarget.textContent || '';
+          if (newTitle.trim() !== formData.title.trim()) {
+            setTouched(true);
+            setReadyToSave(true);
+            setHasInteracted(true);
+            setFormData({ ...formData, title: newTitle });
+          }
+        }}
+        className='text-3xl font-bold text-gray-400 placeholder-gray-400 w-full focus:outline-none'
+      >
+        {formData.title || 'Untitled'}
+      </div>
 
       <div className='text-sm text-gray-500 space-x-3'>
         <span>
@@ -167,7 +240,14 @@ export default function DocBlank({ doc }: Props) {
 
       <TiptapEditor
         content={extractBodyContent(formData.content)}
-        onChange={(value) => setFormData({ ...formData, content: value })}
+        onChange={(value) => {
+          if (value.trim() !== formData.content.trim()) {
+            setTouched(true);
+            setReadyToSave(true);
+            setHasInteracted(true);
+            setFormData({ ...formData, content: value });
+          }
+        }}
       />
 
       <div className='space-y-2'>
@@ -196,18 +276,18 @@ export default function DocBlank({ doc }: Props) {
               </div>
             </div>
 
-            <textarea
+            <TextareaAutosize
               value={aiInput}
               onChange={(e) => {
                 setAiInput(e.target.value);
-                e.target.style.height = 'auto';
-                e.target.style.height = `${e.target.scrollHeight}px`;
+                setTouched(true);
+                setReadyToSave(true);
+                setHasInteracted(true);
               }}
               placeholder='Describe the document you want to create...'
-              className='w-full border-none focus:outline-none resize-none text-sm text-gray-800 bg-transparent placeholder-gray-500 overflow-hidden'
-              rows={1}
+              className='w-full border-none focus:outline-none text-sm text-gray-800 bg-transparent placeholder-gray-500'
+              minRows={1}
             />
-
             <div className='flex justify-end mt-2'>
               <button
                 onClick={handleGenerateFromAI}
@@ -229,3 +309,4 @@ const BlockButton = ({ icon, label }: { icon: React.ReactNode; label: string }) 
     <span>{label}</span>
   </button>
 );
+

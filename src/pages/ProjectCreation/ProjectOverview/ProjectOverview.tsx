@@ -118,6 +118,14 @@ const ProjectOverview: React.FC = () => {
     </div>
   );
 
+  // Handle Save and Exit with confirmation
+  const handleSaveAndExit = () => {
+    const confirmExit = window.confirm('Are you sure you want to exit?');
+    if (confirmExit) {
+      window.history.back();
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto p-8 bg-white rounded-3xl shadow-2xl border border-gray-100">
       <h1 className="text-4xl font-bold text-[#1c73fd] mb-4">🎯 Project Overview</h1>
@@ -165,7 +173,7 @@ const ProjectOverview: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row gap-4 justify-end">
         <button
-          onClick={() => navigate('/create-task')}
+          onClick={() => navigate(`/project/${projectKey}/task-setup`)}
           className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-xl text-base font-medium"
         >
           <PlusCircle className="w-5 h-5" />
@@ -173,7 +181,7 @@ const ProjectOverview: React.FC = () => {
         </button>
 
         <button
-          onClick={() => window.history.back()}
+          onClick={handleSaveAndExit}
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all duration-300 shadow-md hover:shadow-xl text-base font-medium"
         >
           <CheckCircle className="w-5 h-5" />

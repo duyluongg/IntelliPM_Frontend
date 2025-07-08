@@ -10,7 +10,7 @@ interface ProjectFormData {
   name: string;
   projectKey: string;
   description: string;
-  requirements: string[]; // Local state uses string[] for simplicity
+  requirements: string[];
   invitees: string[];
 }
 
@@ -43,7 +43,7 @@ const ProjectCreation: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    navigate(`/projects?projectKey=${formData.projectKey}`);
+    navigate(`/project/${formData.projectKey}/task-setup`);
   };
 
   const renderStep = () => {

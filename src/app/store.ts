@@ -16,6 +16,7 @@ import { meetingParticipantApi } from '../services/ProjectManagement/MeetingServ
 import { documentApi } from '../services/Document/documentAPI';
 import docReducer from '../components/slices/Document/documentSlice';
 import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
+import { riskApi } from '../services/riskApi';
 import projectCreationReducer  from '../components/slices/Project/projectCreationSlice';
 import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
@@ -26,6 +27,7 @@ import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
+
 
 export const store = configureStore({
   reducer: {
@@ -44,6 +46,7 @@ export const store = configureStore({
     [meetingParticipantApi.reducerPath]: meetingParticipantApi.reducer,
     [documentApi.reducerPath]: documentApi.reducer,
     [meetingFeedbackApi.reducerPath]: meetingFeedbackApi.reducer,
+    [riskApi.reducerPath]: riskApi.reducer,
     [dynamicCategoryApi.reducerPath]: dynamicCategoryApi.reducer,
     [requirementApi.reducerPath]: requirementApi.reducer,
     [epicApi.reducerPath]: epicApi.reducer,
@@ -75,6 +78,7 @@ export const store = configureStore({
       meetingParticipantApi.middleware,
       documentApi.middleware,
       meetingFeedbackApi.middleware,
+      riskApi.middleware,
       dynamicCategoryApi.middleware,
       requirementApi.middleware,
       epicApi.middleware,

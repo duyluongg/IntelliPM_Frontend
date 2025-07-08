@@ -5,6 +5,7 @@ import { Check } from 'lucide-react';
 import { useState } from 'react';
 import RiskDetail from './RiskDetail';
 import ManualRiskModal from './ManualRiskModal';
+import SuggestedRisksModal from './SuggestedRisksModal';
 
 const Risk = () => {
   const [searchParams] = useSearchParams();
@@ -12,6 +13,7 @@ const Risk = () => {
   const { data, isLoading, error } = useGetRisksByProjectKeyQuery(projectKey);
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSuggestedModal, setShowSuggestedModal] = useState(false);
 
   if (isLoading) return <div className='text-sm text-gray-500'>Loading risks...</div>;
   if (error || !data?.data) return <div>Error loading risks</div>;
@@ -130,7 +132,16 @@ const Risk = () => {
   };
 
   const openSuggestedRisks = () => {
-    console.log('Open suggested risks');
+    setShowSuggestedModal(true);
+  };
+
+  const closeSuggestedRisks = () => {
+    setShowSuggestedModal(false);
+  };
+
+  const handleApproveSuggestedRisk = (risk: any) => {
+    console.log('Approved suggested risk:', risk);
+    // TODO: Gửi request API để lưu risk mới nếu cần
   };
 
   return (
@@ -196,6 +207,9 @@ const Risk = () => {
       {selectedRisk && <RiskDetail risk={selectedRisk} onClose={() => setSelectedRisk(null)} />}
       {showCreateModal && (
         <ManualRiskModal onClose={closeCreateRiskModal} onSave={handleSaveRisk} />
+      )}
+      {showSuggestedModal && (
+        <SuggestedRisksModal onClose={closeSuggestedRisks} onApprove={handleApproveSuggestedRisk} />
       )}
     </div>
   );

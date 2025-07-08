@@ -39,10 +39,27 @@ export const documentApi = createApi({
     }),
     getMyDocuments: builder.query<DocumentType[], void>({
       query: () => 'documents/created-by-me',
-      
+    }),
+    generateAIContent: builder.mutation<
+      { content: string },
+      { documentId: number; prompt: string }
+    >({
+      query: ({ documentId, prompt }) => ({
+        url: `documents/${documentId}/generate-ai-content`,
+        method: 'POST',
+        body: JSON.stringify(prompt),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
     }),
   }),
 });
 
-export const { useGetDocumentByIdQuery, useCreateDocumentMutation, useUpdateDocumentMutation,  useGetMyDocumentsQuery, } =
-  documentApi;
+export const {
+  useGetDocumentByIdQuery,
+  useCreateDocumentMutation,
+  useUpdateDocumentMutation,
+  useGetMyDocumentsQuery,
+  useGenerateAIContentMutation,
+} = documentApi;

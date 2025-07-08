@@ -5,6 +5,7 @@ import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
+import deleteIcon from '../../assets/delete.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useGetSubtasksByTaskIdQuery,
@@ -58,7 +59,7 @@ const WorkItemDetail: React.FC = () => {
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = React.useState<{ [key: string]: string }>({});
 
-  const { data: attachments = [], isLoading: isAttachmentsLoading } = useGetTaskFilesByTaskIdQuery(taskId, {
+  const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !taskId,
   });
 
@@ -75,7 +76,7 @@ const WorkItemDetail: React.FC = () => {
     try {
       await deleteTaskFile(id).unwrap();
       alert('✅ Delete file successfully!');
-      await refetchSubtask();
+      await refetchAttachments();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -289,7 +290,7 @@ const WorkItemDetail: React.FC = () => {
                         file: file,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
-                      await refetchSubtask();
+                      await refetchAttachments();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -307,53 +308,56 @@ const WorkItemDetail: React.FC = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
-              <div className="attachments-section">
-                <label>Attachments {attachments.length > 0 && <span>({attachments.length})</span>}</label>
-                <div className="attachments-grid">
-                  {attachments.map(file => (
-                    <div
-                      className="attachment-card"
-                      key={file.id}
-                      onMouseEnter={() => setHoveredFileId(file.id)}
-                      onMouseLeave={() => setHoveredFileId(null)}
-                    >
-                      <a
-                        href={file.urlFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
-                      >
-                        <div className="thumbnail">
-                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
-                          ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>{file.title}</div>
-                          <div className="file-date">
-                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
-                          </div>
-                        </div>
-                      </a>
 
-                      {/* Nút xóa file */}
-                      {hoveredFileId === file.id && (
-                        <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
-                          title="Xoá file"
+              {attachments.length > 0 && (
+                <div className="attachments-section">
+                  <label>Attachments <span>({attachments.length})</span></label>
+                  <div className="attachments-grid">
+                    {attachments.map(file => (
+                      <div
+                        className="attachment-card"
+                        key={file.id}
+                        onMouseEnter={() => setHoveredFileId(file.id)}
+                        onMouseLeave={() => setHoveredFileId(null)}
+                      >
+                        <a
+                          href={file.urlFile}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          <div className="thumbnail">
+                            {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                              <img src={file.urlFile} alt={file.title} />
+                            ) : (
+                              <div className="doc-thumbnail">
+                                <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="file-meta">
+                            <div className="file-name" title={file.title}>{file.title}</div>
+                            <div className="file-date">
+                              {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                            </div>
+                          </div>
+                        </a>
+
+                        {/* Nút xóa file */}
+                        {hoveredFileId === file.id && (
+                          <button
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="delete-file-btn"
+                            title="Xoá file"
+                          >
+                            <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="field-group">

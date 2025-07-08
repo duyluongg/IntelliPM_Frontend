@@ -4,11 +4,14 @@ import './ChildWorkItem.css';
 import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation } from '../../services/subtaskFileApi';
+import deleteIcon from '../../assets/delete.png';
 
 interface SubtaskDetail {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedByName: string;
   title: string;
   description: string;
   status: string;
@@ -24,8 +27,13 @@ const ChildWorkItem: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
-
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
+  const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
+  const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
+  const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
+  const { data: attachments = [], refetch: refetchAttachments } = useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
+    skip: !subtaskDetail?.id,
+  });
 
   useEffect(() => {
     const fetchSubtask = async () => {
@@ -45,12 +53,37 @@ const ChildWorkItem: React.FC = () => {
     }
   }, [subtaskId]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      alert(`📁 File "${file.name}" đã được upload (mock).`);
+    if (!file || !subtaskDetail) return;
+
+    try {
+      await uploadSubtaskFile({
+        subtaskId: subtaskDetail.id,
+        title: file.name,
+        file,
+      }).unwrap();
+
+      alert(`✅ Uploaded file "${file.name}" successfully!`);
+      refetchAttachments();
+    } catch (error) {
+      console.error('❌ Upload failed:', error);
+      alert('❌ Upload failed!');
+    } finally {
+      setIsAddDropdownOpen(false);
     }
-    setIsAddDropdownOpen(false);
+  };
+
+  const handleDeleteFile = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this file?')) return;
+    try {
+      await deleteSubtaskFile(id).unwrap();
+      alert('✅ File deleted!');
+      refetchAttachments();
+    } catch (error) {
+      console.error('❌ Delete failed:', error);
+      alert('❌ Delete failed!');
+    }
   };
 
   const formatDate = (isoString: string | undefined) => {
@@ -60,8 +93,8 @@ const ChildWorkItem: React.FC = () => {
   };
 
   const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(subtaskId ?? '', {
-      skip: !subtaskId,
-    });
+    skip: !subtaskId,
+  });
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
@@ -113,22 +146,69 @@ const ChildWorkItem: React.FC = () => {
               <textarea placeholder="Add a description..." defaultValue={subtaskDetail.description} />
             </div>
 
+            {attachments.length > 0 && (
+              <div className="attachments-section">
+                <label>
+                  Attachments <span>({attachments.length})</span>
+                </label>
+                <div className="attachments-grid">
+                  {attachments.map((file) => (
+                    <div
+                      className="attachment-card"
+                      key={file.id}
+                      onMouseEnter={() => setHoveredFileId(file.id)}
+                      onMouseLeave={() => setHoveredFileId(null)}
+                    >
+                      <a
+                        href={file.urlFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="thumbnail">
+                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                            <img src={file.urlFile} alt={file.title} />
+                          ) : (
+                            <div className="doc-thumbnail">
+                              <span className="doc-text">
+                                {file.title.length > 15 ? file.title.slice(0, 15) + '...' : file.title}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="file-meta">
+                          <div className="file-name" title={file.title}>
+                            {file.title}
+                          </div>
+                          <div className="file-date">
+                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                          </div>
+                        </div>
+                      </a>
+
+                      {hoveredFileId === file.id && (
+                        <button
+                          onClick={() => handleDeleteFile(file.id)}
+                          className="delete-file-btn"
+                          title="Delete file"
+                        >
+                          <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="activity-section">
               <h4>Activity</h4>
               <div className="activity-tabs">
-                <button className="tab active">All</button>
                 <button className="tab">Comments</button>
                 <button className="tab">History</button>
-                <button className="tab">Work log</button>
               </div>
               <div className="comment-box">
                 <textarea placeholder="Add a comment..." />
-                <div className="quick-comments">
-                  <button>Can I get more info...?</button>
-                  <button>Status update...</button>
-                  <button>Thanks...</button>
-                </div>
-                <p className="pro-tip">Pro tip: press <strong>M</strong> to comment</p>
               </div>
             </div>
           </div>
@@ -148,7 +228,7 @@ const ChildWorkItem: React.FC = () => {
 
             <div className="details-content">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>User ID: {subtaskDetail.assignedBy}</span></div>
+              <div className="detail-item"><label>Assignee</label><span>{subtaskDetail.assignedByName}</span></div>
               <div className="detail-item">
                 <label>Labels</label>
                 <span>

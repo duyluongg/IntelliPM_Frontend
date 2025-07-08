@@ -22,8 +22,11 @@ import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
 import { projectMemberApi } from '../services/projectMemberApi';
 import { taskFileApi } from '../services/taskFileApi';
+import { subtaskFileApi } from '../services/subtaskFileApi';
 import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
+import { subtaskCommentApi } from '../services/subtaskCommentApi';
+import { taskAssignmentApi } from '../services/taskAssignmentApi';
 
 
 export const store = configureStore({
@@ -49,8 +52,11 @@ export const store = configureStore({
     [epicApi.reducerPath]: epicApi.reducer,
     [projectMemberApi.reducerPath]: projectMemberApi.reducer,
     [taskFileApi.reducerPath]: taskFileApi.reducer,
+    [subtaskFileApi.reducerPath]: subtaskFileApi.reducer,
     [workItemLabelApi.reducerPath]: workItemLabelApi.reducer,
     [aiApi.reducerPath]: aiApi.reducer,
+    [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
+    [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -80,6 +86,9 @@ export const store = configureStore({
       taskFileApi.middleware,
       workItemLabelApi.middleware,
       aiApi.middleware,
+      subtaskFileApi.middleware,
+      subtaskCommentApi.middleware,
+      taskAssignmentApi.middleware,
     ),
 });
 

@@ -14,6 +14,7 @@ import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTas
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -55,6 +56,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
+
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
@@ -763,7 +766,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             </div>
             <div className="details-content">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? taskData?.projectName ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Assignee</label>
+                <span>
+                  {isAssigneeLoading
+                    ? 'Loading...'
+                    : assignees.length === 0
+                      ? 'None'
+                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
+                </span>
+              </div>
               <div className="detail-item">
                 <label>Labels</label>
                 <span>

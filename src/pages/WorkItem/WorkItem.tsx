@@ -5,6 +5,7 @@ import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
+import deleteIcon from '../../assets/delete.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation } from '../../services/taskApi';
@@ -13,6 +14,7 @@ import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTas
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -55,7 +57,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
 
-  const { data: attachments = [], isLoading: isAttachmentsLoading } = useGetTaskFilesByTaskIdQuery(taskId, {
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
+
+  const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
 
@@ -64,7 +68,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       await deleteTaskFile(id).unwrap();
       alert('✅ Delete file successfully!');
-      await refetch();
+      await refetchAttachments();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -306,7 +310,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         file: file,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
-                      await refetch();
+                      await refetchAttachments();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -324,53 +328,56 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
-              <div className="attachments-section">
-                <label>Attachments {attachments.length > 0 && <span>({attachments.length})</span>}</label>
-                <div className="attachments-grid">
-                  {attachments.map(file => (
-                    <div
-                      className="attachment-card"
-                      key={file.id}
-                      onMouseEnter={() => setHoveredFileId(file.id)}
-                      onMouseLeave={() => setHoveredFileId(null)}
-                    >
-                      <a
-                        href={file.urlFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+
+              {attachments.length > 0 && (
+                <div className="attachments-section">
+                  <label>Attachments <span>({attachments.length})</span></label>
+                  <div className="attachments-grid">
+                    {attachments.map(file => (
+                      <div
+                        className="attachment-card"
+                        key={file.id}
+                        onMouseEnter={() => setHoveredFileId(file.id)}
+                        onMouseLeave={() => setHoveredFileId(null)}
                       >
-                        <div className="thumbnail">
-                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
-                          ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>{file.title}</div>
-                          <div className="file-date">
-                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
-                          </div>
-                        </div>
-                      </a>
-
-                      {hoveredFileId === file.id && (
-                        <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
-                          title="Delete file"
+                        <a
+                          href={file.urlFile}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          <div className="thumbnail">
+                            {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                              <img src={file.urlFile} alt={file.title} />
+                            ) : (
+                              <div className="doc-thumbnail">
+                                <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="file-meta">
+                            <div className="file-name" title={file.title}>{file.title}</div>
+                            <div className="file-date">
+                              {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                            </div>
+                          </div>
+                        </a>
 
+                        {hoveredFileId === file.id && (
+                          <button
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="delete-file-btn"
+                            title="Delete file"
+                          >
+                            <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
             <div className="field-group">
@@ -759,7 +766,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             </div>
             <div className="details-content">
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? taskData?.projectName ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Assignee</label>
+                <span>
+                  {isAssigneeLoading
+                    ? 'Loading...'
+                    : assignees.length === 0
+                      ? 'None'
+                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
+                </span>
+              </div>
               <div className="detail-item">
                 <label>Labels</label>
                 <span>

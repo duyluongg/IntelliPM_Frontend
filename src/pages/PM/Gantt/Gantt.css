@@ -67,3 +67,27 @@ smart-menu {
   font-size: 16px;
 }
 
+/* Tuỳ chọn: gắn class này nếu cần xoá luôn phần background trắng */
+.no-smart-style {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Xử lý phần content SmartWindow */
+.smart-content {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Tùy chọn: căn giữa nội dung popup nếu cần */
+.smart-window[smart-id] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.smart-window .smart-content-container {
+  display: block !important;
+}

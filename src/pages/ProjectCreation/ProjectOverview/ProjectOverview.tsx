@@ -2,7 +2,6 @@ import React from 'react';
 import { useGetProjectDetailsByIdQuery } from '../../../services/projectApi';
 import { useSelector } from 'react-redux';
 import { selectProjectId } from '../../../components/slices/Project/projectCreationSlice';
-import { CheckCircle, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ProjectOverview: React.FC = () => {
@@ -118,7 +117,6 @@ const ProjectOverview: React.FC = () => {
     </div>
   );
 
-  // Handle Save and Exit with confirmation
   const handleSaveAndExit = () => {
     const confirmExit = window.confirm('Are you sure you want to exit?');
     if (confirmExit) {
@@ -128,43 +126,40 @@ const ProjectOverview: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-8 bg-white rounded-3xl shadow-2xl border border-gray-100">
-      <h1 className="text-4xl font-bold text-[#1c73fd] mb-4">🎯 Project Overview</h1>
+      <h1 className="text-4xl font-bold text-[#1c73fd] mb-4">Project Overview</h1>
       <p className="text-gray-600 mb-10 text-lg leading-relaxed">
         Let’s make sure everything looks sharp before the official launch.<br />
-        👥 Project Members ({projectMembers.length}) | 🧩 Requirements ({requirements.length})
+        Project Members ({projectMembers.length}) | Requirements ({requirements.length})
       </p>
 
-      {/* Section: Project Info */}
       <section className="mb-12">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6 flex items-center gap-2">
-          📁 <span className="border-b-2 border-[#1c73fd] pb-1">Project Information</span>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-6">
+          <span className="border-b-2 border-[#1c73fd] pb-1">Project Information</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-[#f0f6ff] border border-[#d0e3ff] p-6 rounded-2xl shadow-md space-y-3">
-            <p><strong className="text-[#1c73fd]">📌 Name:</strong> <span className="text-gray-800">{name}</span></p>
-            <p><strong className="text-[#1c73fd]">🆔 Key:</strong> <span className="text-gray-800">{projectKey}</span></p>
-            <p><strong className="text-[#1c73fd]">📝 Description:</strong> <span className="text-gray-800">{description}</span></p>
+            <p><strong className="text-[#1c73fd]">Name:</strong> <span className="text-gray-800">{name}</span></p>
+            <p><strong className="text-[#1c73fd]">Key:</strong> <span className="text-gray-800">{projectKey}</span></p>
+            <p><strong className="text-[#1c73fd]">Description:</strong> <span className="text-gray-800">{description}</span></p>
           </div>
           <div className="bg-[#f0f6ff] border border-[#d0e3ff] p-6 rounded-2xl shadow-md space-y-3">
-            <p><strong className="text-[#1c73fd]">💰 Budget:</strong> <span className="text-gray-800">{budget.toLocaleString()} VND</span></p>
-            <p><strong className="text-[#1c73fd]">📂 Type:</strong> <span className="text-gray-800">{projectType}</span></p>
-            <p><strong className="text-[#1c73fd]">📅 Start Date:</strong> <span className="text-gray-800">{new Date(startDate).toLocaleDateString()}</span></p>
-            <p><strong className="text-[#1c73fd]">📅 End Date:</strong> <span className="text-gray-800">{new Date(endDate).toLocaleDateString()}</span></p>
-            <p><strong className="text-[#1c73fd]">📌 Status:</strong> <span className="text-gray-800">{status}</span></p>
+            <p><strong className="text-[#1c73fd]">Budget:</strong> <span className="text-gray-800">{budget.toLocaleString()} VND</span></p>
+            <p><strong className="text-[#1c73fd]">Type:</strong> <span className="text-gray-800">{projectType}</span></p>
+            <p><strong className="text-[#1c73fd]">Start Date:</strong> <span className="text-gray-800">{new Date(startDate).toLocaleDateString()}</span></p>
+            <p><strong className="text-[#1c73fd]">End Date:</strong> <span className="text-gray-800">{new Date(endDate).toLocaleDateString()}</span></p>
+            <p><strong className="text-[#1c73fd]">Status:</strong> <span className="text-gray-800">{status}</span></p>
           </div>
         </div>
       </section>
 
-      {/* Section: Requirements */}
       <section className="mb-12">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2 border-[#1c73fd]/30">🧩 Requirements ({requirements.length})</h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2 border-[#1c73fd]/30">Requirements ({requirements.length})</h2>
         {renderRequirements('Functional Requirements', functionalReqs)}
         {renderRequirements('Non-Functional Requirements', nonFunctionalReqs)}
       </section>
 
-      {/* Section: Members */}
       <section className="mb-12">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2 border-[#1c73fd]/30">👥 Project Members ({projectMembers.length})</h2>
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2 border-[#1c73fd]/30">Project Members ({projectMembers.length})</h2>
         {renderSingleRowMembers('Project Manager', groupedMembers.Manager)}
         {renderSingleRowMembers('Team Leader', groupedMembers.Leader)}
         {renderSingleRowMembers('Client(s)', groupedMembers.Client)}
@@ -176,7 +171,6 @@ const ProjectOverview: React.FC = () => {
           onClick={() => navigate(`/project/${projectKey}/task-setup`)}
           className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-xl text-base font-medium"
         >
-          <PlusCircle className="w-5 h-5" />
           Create Task
         </button>
 
@@ -184,7 +178,6 @@ const ProjectOverview: React.FC = () => {
           onClick={handleSaveAndExit}
           className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all duration-300 shadow-md hover:shadow-xl text-base font-medium"
         >
-          <CheckCircle className="w-5 h-5" />
           Save and Exit
         </button>
       </div>

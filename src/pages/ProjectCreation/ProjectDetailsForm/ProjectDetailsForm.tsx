@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useCreateProjectMutation, useCheckProjectKeyQuery, useCheckProjectNameQuery } from '../../../services/projectApi';
+import {
+  useCreateProjectMutation,
+  useCheckProjectKeyQuery,
+  useCheckProjectNameQuery,
+} from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import type { CreateProjectRequest, CreateProjectResponse } from '../../../services/projectApi';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
@@ -26,7 +30,9 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   // Initialize endDate to one day after startDate
   const today = new Date();
   const defaultStartDate = initialData.startDate || today.toISOString().split('T')[0];
-  const defaultEndDate = initialData.endDate || new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const defaultEndDate =
+    initialData.endDate ||
+    new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const [form, setForm] = useState<Partial<ProjectFormData>>({
     name: initialData.name || '',
@@ -55,19 +61,31 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch project types
-  const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } = useGetCategoriesByGroupQuery('project_type');
+  const {
+    data: categoryData,
+    isLoading: isCategoryLoading,
+    error: categoryError,
+  } = useGetCategoriesByGroupQuery('project_type');
 
   // Regex for project key: starts with uppercase letter, followed by uppercase letters only, max 10 chars
   const projectKeyRegex = /^[A-Z][A-Z]{0,9}$/;
 
   // Fetch project key availability
-  const { data: keyCheckData, isFetching: isKeyChecking, error: keyCheckError } = useCheckProjectKeyQuery(
+  const {
+    data: keyCheckData,
+    isFetching: isKeyChecking,
+    error: keyCheckError,
+  } = useCheckProjectKeyQuery(
     debouncedProjectKey || '',
     { skip: !debouncedProjectKey || !projectKeyRegex.test(debouncedProjectKey) } // Skip if format is invalid
   );
 
   // Fetch project name availability
-  const { data: nameCheckData, isFetching: isNameChecking, error: nameCheckError } = useCheckProjectNameQuery(
+  const {
+    data: nameCheckData,
+    isFetching: isNameChecking,
+    error: nameCheckError,
+  } = useCheckProjectNameQuery(
     debouncedProjectName || '',
     { skip: !debouncedProjectName || debouncedProjectName.length < 3 } // Skip if name is too short
   );
@@ -170,7 +188,12 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]: name === 'projectKey' ? value.toUpperCase() : name === 'budget' ? parseFloat(value) || 0 : value,
+      [name]:
+        name === 'projectKey'
+          ? value.toUpperCase()
+          : name === 'budget'
+          ? parseFloat(value) || 0
+          : value,
     }));
     setTouched((prev) => ({ ...prev, [name]: true }));
     if (name === 'projectKey') {
@@ -182,7 +205,9 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     }
   };
 
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleBlur = (
+    e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
     const { name } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
@@ -234,7 +259,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     };
 
     try {
-      const response = await createProject(requestData).unwrap() as CreateProjectResponse;
+      const response = (await createProject(requestData).unwrap()) as CreateProjectResponse;
       dispatch(setProjectId(response.data.id));
       onNext(form);
     } catch (err) {
@@ -249,23 +274,26 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-10 bg-white rounded-2xl shadow-xl border border-gray-100 text-sm">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent">
+    <div className='max-w-5xl mx-auto p-10 bg-white rounded-2xl shadow-xl border border-gray-100 text-sm'>
+      <form onSubmit={handleSubmit} className='space-y-6'>
+        <h2 className='text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent'>
           Project Details
         </h2>
+        <p className='text-gray-600 mb-8 text-base leading-relaxed'>
+          Define the core details of your project to get started.
+        </p>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Project Name *</label>
+          <label className='block text-sm font-medium text-gray-700'>Project Name *</label>
           <input
             ref={nameInputRef}
-            name="name"
-            type="text"
+            name='name'
+            type='text'
             value={form.name}
             onChange={handleChange}
             onBlur={handleBlur}
             required
-            placeholder="Enter project name"
+            placeholder='Enter project name'
             className={`mt-2 block w-full border-2 ${
               touched.name && isNameUnique === false
                 ? 'border-red-500'
@@ -275,28 +303,30 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
           {touched.name && form.name && isNameChecking && (
-            <p className="mt-1 text-sm text-gray-500">Checking project name...</p>
+            <p className='mt-1 text-sm text-gray-500'>Checking project name...</p>
           )}
           {touched.name && form.name && isNameUnique === true && (
-            <p className="mt-1 text-sm text-green-500">Project name is available.</p>
+            <p className='mt-1 text-sm text-green-500'>Project name is available.</p>
           )}
           {touched.name && form.name && isNameUnique === false && (
-            <p className="mt-1 text-sm text-red-500">Project name is already taken.</p>
+            <p className='mt-1 text-sm text-red-500'>Project name is already taken.</p>
           )}
-          {touched.name && !form.name && <p className="mt-1 text-sm text-red-500">Project name is required.</p>}
+          {touched.name && !form.name && (
+            <p className='mt-1 text-sm text-red-500'>Project name is required.</p>
+          )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Project Key *</label>
+          <label className='block text-sm font-medium text-gray-700'>Project Key *</label>
           <input
-            name="projectKey"
-            type="text"
+            name='projectKey'
+            type='text'
             value={form.projectKey}
             onChange={handleChange}
             onBlur={handleBlur}
             required
             maxLength={10}
-            placeholder="E.g., PROJECT"
+            placeholder='E.g., PROJECT'
             className={`mt-2 block w-full border-2 ${
               touched.projectKey && (isKeyFormatValid === false || isKeyUnique === false)
                 ? 'border-red-500'
@@ -306,125 +336,133 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
           {touched.projectKey && form.projectKey && isKeyChecking && (
-            <p className="mt-1 text-sm text-gray-500">Checking project key...</p>
+            <p className='mt-1 text-sm text-gray-500'>Checking project key...</p>
           )}
           {touched.projectKey && form.projectKey && isKeyFormatValid === false && (
-            <p className="mt-1 text-sm text-red-500">
-              Project key must start with an uppercase letter, followed by uppercase letters only, max 10 characters.
+            <p className='mt-1 text-sm text-red-500'>
+              Project key must start with an uppercase letter, followed by uppercase letters only,
+              max 10 characters.
             </p>
           )}
           {touched.projectKey && form.projectKey && isKeyFormatValid && isKeyUnique === true && (
-            <p className="mt-1 text-sm text-green-500">Project key is available.</p>
+            <p className='mt-1 text-sm text-green-500'>Project key is available.</p>
           )}
           {touched.projectKey && form.projectKey && isKeyFormatValid && isKeyUnique === false && (
-            <p className="mt-1 text-sm text-red-500">Project key is already taken.</p>
+            <p className='mt-1 text-sm text-red-500'>Project key is already taken.</p>
           )}
           {touched.projectKey && !form.projectKey && (
-            <p className="mt-1 text-sm text-red-500">Project key is required.</p>
+            <p className='mt-1 text-sm text-red-500'>Project key is required.</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <label className='block text-sm font-medium text-gray-700'>Description</label>
           <textarea
-            name="description"
+            name='description'
             value={form.description}
             onChange={handleChange}
             onBlur={handleBlur}
             rows={4}
-            placeholder="Enter project description"
-            className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400"
+            placeholder='Enter project description'
+            className='mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400'
           />
         </div>
+
+        <div className='grid grid-cols-2 gap-6'>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Budget (VND) *</label>
-          <input
-            name="budget"
-            type="number"
-            value={form.budget === 0 ? '' : form.budget}
-            onChange={handleChange}
-            onBlur={handleBlur}
-            required
-            min={1}
-            placeholder="Enter budget in VND"
-            className={`mt-2 block w-full border-2 ${
-              touched.budget && isBudgetValid === false
-                ? 'border-red-500'
-                : touched.budget && isBudgetValid
-                ? 'border-gray-200'
-                : 'border-gray-200'
-            } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
-          />
-          {touched.budget && form.budget !== undefined && form.budget > 0 && (
-            <p className="mt-1 text-sm text-gray-500">{formatBudget(form.budget)}</p>
-          )}
-          {touched.budget && form.budget !== undefined && form.budget <= 0 && (
-            <p className="mt-1 text-sm text-red-500">Budget must be greater than 0 VND.</p>
-          )}
+            <label className='block text-sm font-medium text-gray-700'>Project Type</label>
+            {isCategoryLoading ? (
+              <p className='mt-1 text-sm text-gray-500'>Loading project types...</p>
+            ) : categoryError ? (
+              <p className='mt-1 text-sm text-red-500'>
+                Failed to load project types. Please try again.
+              </p>
+            ) : (
+              <select
+                name='projectType'
+                value={form.projectType}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className='mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all'
+              >
+                {categoryData?.data?.map((category: DynamicCategory) => (
+                  <option key={category.id} value={category.name}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className='block text-sm font-medium text-gray-700'>Budget (VND) *</label>
+            <input
+              name='budget'
+              type='number'
+              value={form.budget === 0 ? '' : form.budget}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              required
+              min={1}
+              placeholder='Enter budget in VND'
+              className={`mt-2 block w-full border-2 ${
+                touched.budget && isBudgetValid === false
+                  ? 'border-red-500'
+                  : touched.budget && isBudgetValid
+                  ? 'border-gray-200'
+                  : 'border-gray-200'
+              } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
+            />
+            {touched.budget && form.budget !== undefined && form.budget > 0 && (
+              <p className='mt-1 text-sm text-gray-500'>{formatBudget(form.budget)}</p>
+            )}
+            {touched.budget && form.budget !== undefined && form.budget <= 0 && (
+              <p className='mt-1 text-sm text-red-500'>Budget must be greater than 0 VND.</p>
+            )}
+          </div>
+
+      
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className='grid grid-cols-2 gap-6'>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <label className='block text-sm font-medium text-gray-700'>Start Date</label>
             <input
-              name="startDate"
-              type="date"
+              name='startDate'
+              type='date'
               value={form.startDate}
               onChange={handleChange}
               onBlur={handleBlur}
-              className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all"
+              className='mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all'
             />
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <label className='block text-sm font-medium text-gray-700'>End Date</label>
             <input
-              name="endDate"
-              type="date"
+              name='endDate'
+              type='date'
               value={form.endDate}
               onChange={handleChange}
               onBlur={handleBlur}
               min={form.startDate}
               className={`mt-2 block w-full border-2 ${
-                touched.endDate && isDateValid === false
-                  ? 'border-red-500'
-                  : 'border-gray-200'
+                touched.endDate && isDateValid === false ? 'border-red-500' : 'border-gray-200'
               } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all`}
             />
             {touched.endDate && form.startDate && form.endDate && isDateValid === false && (
-              <p className="mt-1 text-sm text-red-500">End date must be after start date.</p>
+              <p className='mt-1 text-sm text-red-500'>End date must be after start date.</p>
             )}
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Project Type</label>
-          {isCategoryLoading ? (
-            <p className="mt-1 text-sm text-gray-500">Loading project types...</p>
-          ) : categoryError ? (
-            <p className="mt-1 text-sm text-red-500">Failed to load project types. Please try again.</p>
-          ) : (
-            <select
-              name="projectType"
-              value={form.projectType}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all"
-            >
-              {categoryData?.data?.map((category: DynamicCategory) => (
-                <option key={category.id} value={category.name}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
+        {isError && <div className='text-red-500 text-sm'>{getErrorMessage()}</div>}
+        {isLoading && <div className='text-gray-600 text-sm'>Creating project...</div>}
 
-        {isLoading && <div className="text-gray-600 text-sm">Creating project...</div>}
-
-        <div className="pt-6">
+        <div className='pt-6 flex justify-end'>
           <button
-            type="submit"
+            type='submit'
             disabled={
               isLoading ||
               isKeyFormatValid === false ||
@@ -437,7 +475,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
               isCategoryLoading ||
               !!categoryError
             }
-            className={`w-full bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white px-8 py-4 rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:opacity-50 text-sm`}
+            className={`px-16 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:opacity-50 text-sm`}
           >
             {isLoading ? 'Creating...' : 'Next'}
           </button>

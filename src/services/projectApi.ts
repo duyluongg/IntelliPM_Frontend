@@ -292,6 +292,16 @@ export const projectApi = createApi({
         };
       },
     }),
+    updateProject: builder.mutation<CreateProjectResponse, { id: number; body: CreateProjectRequest }>({
+      query: ({ id, body }) => ({
+        url: `project/${id}`,
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body,
+      }),
+    }),
     getFullProjectDetailsByKey: builder.query<GetProjectDetailsFullResponse, string>({
       query: (projectKey) => ({
         url: `project/by-project-key?projectKey=${projectKey}`,
@@ -313,6 +323,7 @@ export const {
   useCheckProjectKeyQuery,
   useCheckProjectNameQuery,
   useCreateProjectMutation,
+  useUpdateProjectMutation,
   useGetFullProjectDetailsByKeyQuery,
   useGetProjectDetailsByIdQuery,
 } = projectApi;

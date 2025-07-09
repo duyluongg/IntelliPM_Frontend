@@ -5,33 +5,14 @@ import type {
   RequirementRequest,
   CreateRequirementsBulkResponse,
 } from '../../../services/requirementApi';
-import { ChevronDown, Trash2, FileText, Tag } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { selectProjectId } from '../../../components/slices/Project/projectCreationSlice';
+import RequirementInput from './RequirementInput';
 
 interface LocalRequirement extends RequirementRequest {
   uiId: string;
   expanded?: boolean;
-}
-
-interface DynamicCategory {
-  id: number;
-  categoryGroup: string;
-  name: string;
-  label: string;
-  description: string;
-  isActive: boolean;
-  orderIndex: number;
-  iconLink: string | null;
-  color: string | null;
-  createdAt: string;
-}
-
-interface DynamicCategoryResponse {
-  isSuccess: boolean;
-  code: number;
-  data: DynamicCategory[];
-  message: string;
+  titleError?: string;
 }
 
 interface RequirementsFormProps {
@@ -44,12 +25,12 @@ interface RequirementsFormProps {
 
 const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext, onBack }) => {
   const [requirements, setRequirements] = useState<LocalRequirement[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const { data: prioritiesResponse } = useGetCategoriesByGroupQuery('requirement_priority');
-  const [createRequirementsBulk, { error }] = useCreateRequirementsBulkMutation();
+  const [createRequirementsBulk] = useCreateRequirementsBulkMutation();
   const projectId = useSelector(selectProjectId);
-  const [selectedPriority, setSelectedPriority] = useState<string>('');
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<{ [key: string]: boolean }>({});
+  const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
     if (initialData?.requirements && initialData.requirements.length > 0) {
@@ -58,6 +39,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           ...req,
           uiId: crypto.randomUUID(),
           expanded: true,
+          titleError: '',
         }))
       );
     } else {
@@ -69,6 +51,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           description: '',
           priority: '',
           expanded: true,
+          titleError: '',
         },
         {
           uiId: crypto.randomUUID(),
@@ -77,15 +60,22 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           description: '',
           priority: '',
           expanded: true,
+          titleError: '',
         },
       ]);
     }
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+      Object.keys(dropdownRefs.current).forEach((uiId) => {
+        if (
+          dropdownRefs.current[uiId] &&
+          !dropdownRefs.current[uiId]!.contains(event.target as Node)
+        ) {
+          setDropdownOpen((prev) => ({ ...prev, [uiId]: false }));
+        }
+      });
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [initialData]);
@@ -100,201 +90,119 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
         description: '',
         priority: '',
         expanded: true,
+        titleError: '',
       },
     ]);
+    setErrorMessage('');
   };
 
   const updateRequirement = (id: string, field: keyof RequirementRequest, value: string) => {
-    setRequirements((prev) => prev.map((r) => (r.uiId === id ? { ...r, [field]: value } : r)));
+    setRequirements((prev) =>
+      prev.map((r) => {
+        if (r.uiId === id) {
+          const updated = { ...r, [field]: value };
+          if (field === 'title') {
+            const trimmedTitle = value.trim().toLowerCase();
+            const duplicates = prev
+              .filter((req) => req.uiId !== id && req.title.trim().toLowerCase() === trimmedTitle)
+              .map((req) => req.title.trim());
+            updated.titleError =
+              duplicates.length > 0
+                ? `Title must be unique (duplicates: ${duplicates.join(', ')})`
+                : '';
+          }
+          return updated;
+        }
+        return r;
+      })
+    );
+    setErrorMessage('');
   };
 
   const toggleExpand = (id: string) => {
-    setRequirements((prev) =>
-      prev.map((r) => (r.uiId === id ? { ...r, expanded: !r.expanded } : r))
-    );
+    setRequirements((prev) => {
+      return prev.map((r) => {
+        if (r.uiId === id) {
+          return { ...r, expanded: !r.expanded };
+        }
+        return r;
+      });
+    });
   };
 
   const removeRequirement = (id: string) => {
-    setRequirements((prev) => prev.filter((r) => r.uiId !== id));
+    setRequirements((prev) => {
+      const updated = prev.filter((r) => r.uiId !== id);
+      return updated.map((r) => {
+        const trimmedTitle = r.title.trim().toLowerCase();
+        const duplicates = updated
+          .filter((req) => req.uiId !== r.uiId && req.title.trim().toLowerCase() === trimmedTitle)
+          .map((req) => req.title.trim());
+        return {
+          ...r,
+          titleError:
+            duplicates.length > 0
+              ? `Title must be unique (duplicates: ${duplicates.join(', ')})`
+              : '',
+        };
+      });
+    });
+    setErrorMessage('');
   };
 
   const handleSubmit = async () => {
     const cleaned = requirements
-      .map(({ uiId, expanded, ...req }) => req)
+      .map(({ uiId, expanded, titleError, ...req }) => req)
       .filter((req) => req.title.trim().length > 0);
+
     if (cleaned.length === 0) {
-      console.error('No valid requirements to submit');
+      setErrorMessage('No valid requirements detected to submit. Please add at least one requirement.');
       return;
     }
 
     if (!projectId) {
-      console.error('Project ID is not set:', projectId);
+      setErrorMessage('Project ID is not set.');
       return;
     }
 
-    const validRequirements = cleaned.filter((req) => {
-      return req.title.trim() && req.type && req.description.trim() && req.priority;
-    });
+    const titles = cleaned.map((req) => req.title.trim().toLowerCase());
+    const duplicates = titles.filter((title, index) => titles.indexOf(title) !== index);
+    if (duplicates.length > 0) {
+      setErrorMessage(
+        `Duplicate requirement titles found: ${duplicates.join(', ')}. Titles must be unique.`
+      );
+      return;
+    }
+
+    const validRequirements = cleaned.filter(
+      (req) => req.title.trim() && req.type && req.description.trim() && req.priority
+    );
     if (validRequirements.length !== cleaned.length) {
-      console.error(
+      setErrorMessage(
         'Some requirements are incomplete. Ensure all fields (title, type, description, priority) are filled.'
       );
       return;
     }
 
-    console.log('Sending payload:', { projectId, requirements: cleaned });
     try {
       const result = await createRequirementsBulk({ projectId, requirements: cleaned }).unwrap();
-      console.log('API Response:', result);
+      setErrorMessage('');
       onNext(cleaned);
     } catch (err) {
       console.error('Failed to create requirements:', err);
       if (err && typeof err === 'object' && 'data' in err) {
         const errorData = err as { data?: CreateRequirementsBulkResponse };
         if (errorData.data) {
-          console.error('Server error details:', errorData.data);
+          setErrorMessage(
+            `Server error: ${errorData.data.message || 'Failed to create requirements.'}`
+          );
         } else {
-          console.error('No data in error response:', err);
+          setErrorMessage('Failed to create requirements due to an unknown server error.');
         }
       } else {
-        console.error('Unknown error structure:', err);
+        setErrorMessage('An unexpected error occurred.');
       }
     }
-  };
-
-  const renderRequirementInput = (req: LocalRequirement) => {
-    const selectedPriorityData = req.priority
-      ? prioritiesResponse?.data?.find((p) => p.name === req.priority)
-      : null;
-
-    return (
-      <div
-        key={req.uiId}
-        className="bg-white border-2 border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition space-y-4"
-      >
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={req.title}
-              onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
-              placeholder="Requirement title"
-              className="flex-1 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10"
-              required
-            />
-            {!req.expanded &&
-              req.priority &&
-              prioritiesResponse?.data &&
-              (() => {
-                const priority = prioritiesResponse.data.find((p) => p.name === req.priority);
-                if (!priority?.iconLink) return null;
-
-                return (
-                  <div
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
-                    style={{ borderColor: priority.color || '#1c73fd' }}
-                  >
-                    <img
-                      src={priority.iconLink}
-                      alt={`${priority.label} icon`}
-                      className="w-4 h-4"
-                    />
-                  </div>
-                );
-              })()}
-          </div>
-          <button
-            onClick={() => toggleExpand(req.uiId)}
-            type="button"
-            className="text-[#1c73fd] hover:text-[#155ac7] transition"
-            title="Toggle details"
-          >
-            <ChevronDown
-              className={`w-6 h-6 transform transition ${req.expanded ? 'rotate-180' : ''}`}
-            />
-          </button>
-          <button
-            onClick={() => removeRequirement(req.uiId)}
-            type="button"
-            className="text-[#1c73fd] hover:text-[#155ac7] transition"
-            title="Delete"
-          >
-            <Trash2 className="w-6 h-6" />
-          </button>
-        </div>
-
-        {req.expanded && (
-          <div className="grid grid-cols-4 gap-6">
-            <div>
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <Tag className="w-5 h-5" /> Priority
-              </label>
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(!isOpen)}
-                  className="w-[180px] mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] flex items-center justify-between"
-                >
-                  <span className="flex items-center">
-                    {req.priority &&
-                      prioritiesResponse?.data?.find((p) => p.name === req.priority)?.iconLink && (
-                        <img
-                          src={
-                            prioritiesResponse.data.find((p) => p.name === req.priority)
-                              ?.iconLink || undefined
-                          }
-                          alt={`${
-                            prioritiesResponse.data.find((p) => p.name === req.priority)?.label
-                          } icon`}
-                          className="w-5 h-5 mr-2"
-                        />
-                      )}
-                    {prioritiesResponse?.data?.find((p) => p.name === req.priority)?.label ||
-                      '- Select priority -'}
-                  </span>
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-                {isOpen && (
-                  <div className="absolute z-10 w-[180px] mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-lg">
-                    {prioritiesResponse?.data?.map((p) => (
-                      <div
-                        key={p.name}
-                        onClick={() => {
-                          updateRequirement(req.uiId, 'priority', p.name);
-                          setIsOpen(false);
-                        }}
-                        className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      >
-                        {p.iconLink && (
-                          <img
-                            src={p.iconLink || undefined}
-                            alt={`${p.label} icon`}
-                            className="w-5 h-5 mr-2"
-                          />
-                        )}
-                        {p.label}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="col-span-3">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                <FileText className="w-5 h-5" /> Description
-              </label>
-              <textarea
-                value={req.description}
-                onChange={(e) => updateRequirement(req.uiId, 'description', e.target.value)}
-                rows={5}
-                className="w-full mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd]"
-                required
-              ></textarea>
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   const functional = requirements.filter((r) => r.type === 'FUNCTIONAL');
@@ -309,44 +217,70 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
         Define your project's functional and non-functional requirements.
       </p>
 
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-lg font-semibold text-gray-800">Functional Requirements</h2>
-          <button
-            type="button"
-            onClick={() => addRequirement('FUNCTIONAL')}
-            className="text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
-          >
-            + Add functional
-          </button>
+      {errorMessage && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl">
+          {errorMessage}
         </div>
-        <div className="space-y-6">{functional.map(renderRequirementInput)}</div>
-      </div>
+      )}
 
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-5">
-          <h2 className="text-lg font-semibold text-gray-800">Non-Functional Requirements</h2>
-          <button
-            type="button"
-            onClick={() => addRequirement('NON_FUNCTIONAL')}
-            className="text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
-          >
-            + Add non-functional
-          </button>
+        <h2 className="text-lg font-semibold text-gray-800 mb-5">Functional Requirements</h2>
+        <div className="space-y-6">
+          {functional.map((req) => (
+            <RequirementInput
+              key={req.uiId}
+              req={req}
+              prioritiesResponse={prioritiesResponse}
+              dropdownOpen={dropdownOpen[req.uiId] || false}
+              setDropdownOpen={setDropdownOpen}
+              dropdownRefs={dropdownRefs}
+              updateRequirement={updateRequirement}
+              toggleExpand={toggleExpand}
+              removeRequirement={removeRequirement}
+            />
+          ))}
         </div>
-        <div className="space-y-6">{nonFunctional.map(renderRequirementInput)}</div>
-      </div>
-
-      <div className="flex justify-between mt-10">
         <button
-          onClick={onBack}
-          className="px-6 py-3 text-sm text-gray-600 hover:text-gray-800 font-medium underline transition"
+          type="button"
+          onClick={() => addRequirement('FUNCTIONAL')}
+          className="mt-4 text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
         >
-          Back
+          + Add functional
         </button>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-gray-800 mb-5">Non-Functional Requirements</h2>
+        <div className="space-y-6">
+          {nonFunctional.map((req) => (
+            <RequirementInput
+              key={req.uiId}
+              req={req}
+              prioritiesResponse={prioritiesResponse}
+              dropdownOpen={dropdownOpen[req.uiId] || false}
+              setDropdownOpen={setDropdownOpen}
+              dropdownRefs={dropdownRefs}
+              updateRequirement={updateRequirement}
+              toggleExpand={toggleExpand}
+              removeRequirement={removeRequirement}
+            />
+          ))}
+        </div>
         <button
+          type="button"
+          onClick={() => addRequirement('NON_FUNCTIONAL')}
+          className="mt-4 text-[#1c73fd] hover:text-[#155ac7] hover:underline text-sm"
+        >
+          + Add non-functional
+        </button>
+      </div>
+
+      <div className="flex justify-end mt-10">
+      
+        <button
+          type="button"
           onClick={handleSubmit}
-          className="px-8 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl text-sm"
+          className="px-16 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl text-sm"
         >
           Next
         </button>

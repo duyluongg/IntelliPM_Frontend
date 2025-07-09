@@ -131,6 +131,15 @@ interface TaskItem {
   evaluate: string | null;
   createdAt: string;
   updatedAt: string;
+  dependencies: TaskDependency[];
+}
+
+interface TaskDependency {
+  id: number;
+  taskId: string;
+  linkedFrom: string;
+  linkedTo: string;
+  type: string; 
 }
 
 interface SprintItem {

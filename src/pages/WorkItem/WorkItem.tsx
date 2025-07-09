@@ -32,6 +32,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
+  const [epicId, setEpicId] = React.useState('');
+  const [sprintId, setSprintId] = React.useState('');
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -59,7 +61,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateTask] = useUpdateTaskMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
-
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
   const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
 
@@ -102,9 +103,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
-    return date.toISOString(); // Ví dụ: 2025-07-09T08:47:00.000Z
+    return date.toISOString(); // 2025-07-09T08:47:00.000Z
   };
-
 
   const handlePlannedStartDateTaskChange = async () => {
     if (plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
@@ -162,6 +162,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
+  const totalSubtasks = subtaskData.length;
+  const completedSubtasks = subtaskData.filter((item) => item.status === 'DONE').length;
+  const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
+
   const { data: taskData, isLoading: isTaskLoading, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
@@ -189,6 +193,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectName(taskData.projectName ?? '');
       setReporterName(taskData.reporterName ?? '');
       setProjectId(String(taskData.projectId));
+      setEpicId(String(taskData.epicId));
+      setSprintId(String(taskData.sprintId));
     }
   }, [taskData]);
 
@@ -447,6 +453,55 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             </div>
             <div className="field-group">
               <label>Subtasks</label>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  margin: '8px 0',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+                  <span style={{ marginRight: '8px' }}>🧠</span> Create suggested work items
+                </div>
+                <button
+                  onClick={() => {
+                    alert("✨ Sẽ gọi API AI suggest subtasks sau");
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#f4f5f7',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Suggest
+                </button>
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{
+                  height: '8px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: '#4caf50',
+                    height: '100%',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
+                  {progressPercent}% Done
+                </div>
+              </div>
+
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading...</p>
@@ -851,7 +906,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       : workItemLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
-              <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Parent</label><span>{taskData?.epicId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintId ?? 'None'}</span></div>
               <div className="detail-item">
                 <label>Start date</label>
                 <input

@@ -3,7 +3,8 @@ import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryA
 import { useCreateRequirementsBulkMutation } from '../../../services/requirementApi';
 import type {
   RequirementRequest,
-  CreateRequirementsBulkResponse,
+  ApiResponse,
+  RequirementResponse,
 } from '../../../services/requirementApi';
 import { useSelector } from 'react-redux';
 import { selectProjectId } from '../../../components/slices/Project/projectCreationSlice';
@@ -191,7 +192,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
     } catch (err) {
       console.error('Failed to create requirements:', err);
       if (err && typeof err === 'object' && 'data' in err) {
-        const errorData = err as { data?: CreateRequirementsBulkResponse };
+        const errorData = err as { data?: ApiResponse<RequirementResponse[]> };
         if (errorData.data) {
           setErrorMessage(
             `Server error: ${errorData.data.message || 'Failed to create requirements.'}`
@@ -276,7 +277,13 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
       </div>
 
       <div className="flex justify-end mt-10">
-      
+        <button
+          type="button"
+          onClick={onBack}
+          className="mr-4 px-16 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl text-sm"
+        >
+          Back
+        </button>
         <button
           type="button"
           onClick={handleSubmit}

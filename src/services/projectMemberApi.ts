@@ -93,7 +93,7 @@ export const projectMemberApi = createApi({
         method: 'POST',
         body: requests,
       }),
-      transformResponse: (response: any, meta, arg) => {
+      transformResponse: (response: any) => {
         if (typeof response === 'string' || !response) {
           return { isSuccess: false, code: 500, data: null, message: 'Invalid server response' };
         }

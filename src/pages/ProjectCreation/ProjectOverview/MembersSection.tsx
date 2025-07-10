@@ -68,7 +68,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (positionRef.current && !positionRef.current.contains(event.target as Node)) {
-        setIsAddPositionOpen({});
+        setIsAddPositionOpen((prev) => ({ ...prev, 0: false }));
       }
       Object.entries(addPositionRef.current).forEach(([memberId, ref]) => {
         if (ref && !ref.contains(event.target as Node)) {
@@ -146,7 +146,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
   };
 
   const handleAddPosition = async (memberId: number, position: string) => {
-    if (members.find((m) => m.accountId === memberId)?.projectPositions.some((p) => p.position === position)) {
+    if (members.find((m) => m.id === memberId)?.projectPositions.some((p) => p.position === position)) {
       setMemberError('Position already assigned');
       return;
     }
@@ -173,7 +173,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
       await deleteProjectPosition({ projectMemberId: memberId, positionId }).unwrap();
       refetchMembers();
       refetch();
-    } catch (error) {
+    }catch (error) {
       setMemberError(getErrorMessage(error));
       console.error('Failed to delete position:', error);
     }
@@ -197,8 +197,8 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
             className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition w-full sm:w-auto relative"
           >
             <button
-              onClick={() => handleDeleteMember(member.accountId)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
+              onClick={() => handleDeleteMember(member.id)}
+              className="absolute -top-2 -right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
               title={`Remove ${member.fullName}`}
               aria-label={`Remove ${member.fullName}`}
             >
@@ -214,22 +214,22 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                 {member.fullName}{' '}
                 <span className="text-sm text-gray-500">(@{member.username})</span>
               </p>
-              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.accountId] = el; }}>
+              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (
                   member.projectPositions.map((pos) => (
                     <div
                       key={pos.id}
-                      className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
+                      className="relative flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
                     >
                       <span>{pos.position}</span>
                       {!PROTECTED_POSITIONS.includes(pos.position.toUpperCase()) && (
                         <button
-                          onClick={() => handleDeletePosition(member.accountId, pos.id, pos.position)}
-                          className="text-red-500 hover:text-red-600 transition-transform duration-200 hover:scale-110"
+                          onClick={() => handleDeletePosition(member.id, pos.id, pos.position)}
+                          className="absolute -top-1 -right-1 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110"
                           title={`Remove ${pos.position}`}
                           aria-label={`Remove ${pos.position}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </div>
@@ -238,20 +238,21 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   <span className="text-sm text-gray-600">No positions assigned</span>
                 )}
                 <button
-                  onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.accountId]: !prev[member.accountId] }))}
+                  onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
                   className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium hover:bg-[#1c73fd]/20"
                   disabled={isPositionsLoading}
-                  aria-expanded={isAddPositionOpen[member.accountId]}
+                  aria-expanded={isAddPositionOpen[member.id]}
                   aria-haspopup="listbox"
                 >
                   <Plus className="w-4 h-4" />
+                  Add Position
                 </button>
-                {isAddPositionOpen[member.accountId] && (
+                {isAddPositionOpen[member.id] && (
                   <ul className="absolute z-40 w-48 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-auto top-full left-0">
                     {positions.map((pos) => (
                       <li
                         key={pos.id}
-                        onClick={() => handleAddPosition(member.accountId, pos.name)}
+                        onClick={() => handleAddPosition(member.id, pos.name)}
                         className="px-3 py-1.5 text-sm hover:bg-[#1c73fd]/10 cursor-pointer flex items-center gap-2 text-gray-900"
                         role="option"
                       >
@@ -262,7 +263,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   </ul>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Status: {member.status}</p>
+          
             </div>
           </div>
         ))}
@@ -272,11 +273,11 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
 
   const renderGridMembers = (title: string, members: ProjectMember[]) => (
     <div className="mb-8">
-      <div className="flex justify-between items-center mb-3">
+      <div className="justify-start mb-3">
         <h3 className="text-xl font-semibold text-[#1c73fd] mb-3 border-l-4 border-[#1c73fd] pl-3">
           {title} ({members.length})
         </h3>
- 
+
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {members.map((member) => (
@@ -285,8 +286,8 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
             className="flex items-center gap-4 p-4 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl shadow hover:shadow-lg transition-all relative"
           >
             <button
-              onClick={() => handleDeleteMember(member.accountId)}
-              className="absolute top-2 right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
+              onClick={() => handleDeleteMember(member.id)}
+              className="absolute -top-2 -right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
               title={`Remove ${member.fullName}`}
               aria-label={`Remove ${member.fullName}`}
             >
@@ -302,22 +303,22 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                 <span className="font-medium text-gray-900">{member.fullName}</span>{' '}
                 <span className="text-sm text-gray-500">(@{member.username})</span>
               </p>
-              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.accountId] = el; }}>
+              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (
                   member.projectPositions.map((pos) => (
                     <div
                       key={pos.id}
-                      className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
+                      className="relative flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
                     >
                       <span>{pos.position}</span>
                       {!PROTECTED_POSITIONS.includes(pos.position.toUpperCase()) && (
                         <button
-                          onClick={() => handleDeletePosition(member.accountId, pos.id, pos.position)}
-                          className="text-red-500 hover:text-red-600 transition-transform duration-200 hover:scale-110"
+                          onClick={() => handleDeletePosition(member.id, pos.id, pos.position)}
+                          className="absolute -top-1 -right-1 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110"
                           title={`Remove ${pos.position}`}
                           aria-label={`Remove ${pos.position}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <X className="w-3 h-3" />
                         </button>
                       )}
                     </div>
@@ -326,20 +327,21 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   <span className="text-sm text-gray-600">No positions assigned</span>
                 )}
                 <button
-                  onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.accountId]: !prev[member.accountId] }))}
+                  onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
                   className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium hover:bg-[#1c73fd]/20"
                   disabled={isPositionsLoading}
-                  aria-expanded={isAddPositionOpen[member.accountId]}
+                  aria-expanded={isAddPositionOpen[member.id]}
                   aria-haspopup="listbox"
                 >
                   <Plus className="w-4 h-4" />
+                  Add Position
                 </button>
-                {isAddPositionOpen[member.accountId] && (
+                {isAddPositionOpen[member.id] && (
                   <ul className="absolute z-40 w-48 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-auto top-full left-0">
                     {positions.map((pos) => (
                       <li
                         key={pos.id}
-                        onClick={() => handleAddPosition(member.accountId, pos.name)}
+                        onClick={() => handleAddPosition(member.id, pos.name)}
                         className="px-3 py-1.5 text-sm hover:bg-[#1c73fd]/10 cursor-pointer flex items-center gap-2 text-gray-900"
                         role="option"
                       >
@@ -350,7 +352,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   </ul>
                 )}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Status: {member.status}</p>
+            
             </div>
           </div>
         ))}
@@ -447,7 +449,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                     aria-expanded={isAddPositionOpen[0]}
                     aria-haspopup="listbox"
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 flex-wrap">
                       {selectedPositions.length > 0 ? selectedPositions.join(', ') : 'Select Positions'}
                     </span>
                     <Plus className="w-4 h-4 text-[#1c73fd]" />

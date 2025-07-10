@@ -7,7 +7,7 @@ import {
 } from '../../../services/requirementApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import type { ProjectRequirement } from '../../../services/projectApi';
-import { Trash2, FileText, ChevronDown } from 'lucide-react';
+import { FileText, ChevronDown, X } from 'lucide-react';
 
 interface RequirementsSectionProps {
   requirements: ProjectRequirement[];
@@ -121,15 +121,15 @@ const RequirementItem: React.FC<RequirementItemProps> = ({ req, projectId, refet
   const selectedPriority = priorities?.data.find((p) => p.name === editedData.priority);
 
   return (
-    <div className="flex flex-col gap-4 p-4 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl shadow hover:shadow-lg transition-all">
+    <div className="flex flex-col gap-4 p-4 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl shadow hover:shadow-lg transition-all relative">
       <button
         onClick={handleDelete}
-        className="absolute top-2 right-2 text-red-500 hover:text-red-600 transition-transform duration-200 hover:scale-110"
+        className="absolute -top-1 -right-1 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 p-0.5 transition-all duration-200 hover:rotate-90 hover:opacity-75"
         disabled={isUpdating}
-        title="Delete requirement"
+        title={`Delete requirement ${req.title}`}
         aria-label={`Delete requirement ${req.title}`}
       >
-        <Trash2 className="w-4 h-4" />
+        <X className="w-4 h-4" />
       </button>
       {isUpdating && (
         <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 rounded-2xl">
@@ -345,7 +345,7 @@ const RequirementsSection: React.FC<RequirementsSectionProps> = ({ requirements,
   );
 
   return (
-    <section className="max-w-6xl mx-auto p-6 bg-white rounded-lg  mb-12">
+    <section className="max-w-6xl mx-auto p-6 bg-white rounded-lg mb-12">
       {(createError || updateError || deleteError) && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
           Error: {getErrorMessage(createError || updateError || deleteError)}

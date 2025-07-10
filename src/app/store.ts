@@ -27,7 +27,7 @@ import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
-
+import { meetingRescheduleRequestApi } from '../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
 
 export const store = configureStore({
   reducer: {
@@ -57,6 +57,7 @@ export const store = configureStore({
     [aiApi.reducerPath]: aiApi.reducer,
     [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
     [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
+    [meetingRescheduleRequestApi.reducerPath]: meetingRescheduleRequestApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -89,6 +90,7 @@ export const store = configureStore({
       subtaskFileApi.middleware,
       subtaskCommentApi.middleware,
       taskAssignmentApi.middleware,
+      meetingRescheduleRequestApi.middleware, 
     ),
 });
 

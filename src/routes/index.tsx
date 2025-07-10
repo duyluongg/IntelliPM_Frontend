@@ -141,6 +141,7 @@ import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectD
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
+import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleRequest';
 
 export const router = createBrowserRouter([
   {
@@ -192,6 +193,11 @@ export const router = createBrowserRouter([
       {
         path: 'meeting',
         element: <MeetingCore />,
+      },
+
+            {
+        path: 'meeting-reschedule-request',
+        element: <MeetingRescheduleRequest />,
       },
 
       {

@@ -33,6 +33,15 @@ export interface TaskResponseDTO {
   priority: string;
   evaluate: string | null;
   status: string;
+  dependencies: TaskDependency[];
+}
+
+interface TaskDependency {
+  id: number;
+  taskId: string;
+  linkedFrom: string;
+  linkedTo: string;
+  type: string;
 }
 
 interface TaskListResponse {
@@ -89,13 +98,24 @@ export const taskApi = createApi({
         body: JSON.stringify(type), // Gửi "TASK", "BUG", "STORY"
       }),
     }),
-    
+
     getTasksByEpicId: builder.query<TaskResponseDTO[], string>({
       query: (epicId) => ({
         url: 'task/by-epic-id',
         params: { epicId },
       }),
       transformResponse: (response: TaskListResponse) => response.data,
+    }),
+
+    updateTask: builder.mutation<
+      TaskResponseDTO, // response
+      { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
+    >({
+      query: ({ id, body }) => ({
+        url: `task/${id}`,
+        method: 'PUT',
+        body,
+      }),
     }),
   }),
 });
@@ -105,5 +125,6 @@ export const {
   useUpdateTaskStatusMutation,
   useGetTaskByIdQuery,
   useUpdateTaskTypeMutation,
-  useGetTasksByEpicIdQuery
+  useGetTasksByEpicIdQuery,
+  useUpdateTaskMutation,
 } = taskApi;

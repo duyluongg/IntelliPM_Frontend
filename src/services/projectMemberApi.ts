@@ -1,18 +1,32 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-// Request DTO interface
+// Request DTO interfaces
+interface ProjectMemberRequest {
+  accountId: number;
+}
+
 interface ProjectMemberWithPositionRequest {
   accountId: number;
   positions: string[];
 }
 
-// Response DTO interface
+// Response DTO interfaces
 interface ProjectPositionResponse {
   id: number;
   projectMemberId: number;
   position: string;
   assignedAt: string;
+}
+
+interface ProjectMemberResponse {
+  id: number;
+  accountId: number;
+  accountName: string | null;
+  projectId: number;
+  joinedAt: string | null;
+  invitedAt: string;
+  status: string | null;
 }
 
 interface ProjectMemberWithPositionsResponse {
@@ -30,10 +44,10 @@ interface ProjectMemberWithPositionsResponse {
   projectPositions: ProjectPositionResponse[];
 }
 
-interface BulkCreateResponse {
+interface ApiResponse<T> {
   isSuccess: boolean;
   code: number;
-  data: ProjectMemberWithPositionsResponse[] | null;
+  data: T | null;
   message: string;
 }
 
@@ -60,7 +74,20 @@ export const projectMemberApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    createBulkProjectMembersWithPositions: builder.mutation<BulkCreateResponse, { projectId: number; requests: ProjectMemberWithPositionRequest[] }>({
+    createProjectMember: builder.mutation<ApiResponse<ProjectMemberResponse>, { projectId: number; request: ProjectMemberRequest }>({
+      query: ({ projectId, request }) => ({
+        url: `project/${projectId}/projectmember`,
+        method: 'POST',
+        body: request,
+      }),
+    }),
+    deleteProjectMember: builder.mutation<ApiResponse<null>, { projectId: number; id: number }>({
+      query: ({ projectId, id }) => ({
+        url: `project/${projectId}/projectmember/${id}`,
+        method: 'DELETE',
+      }),
+    }),
+    createBulkProjectMembersWithPositions: builder.mutation<ApiResponse<ProjectMemberWithPositionsResponse[]>, { projectId: number; requests: ProjectMemberWithPositionRequest[] }>({
       query: ({ projectId, requests }) => ({
         url: `project/${projectId}/projectmember/bulk-with-positions`,
         method: 'POST',
@@ -73,7 +100,6 @@ export const projectMemberApi = createApi({
         return response;
       },
     }),
-
     getProjectMembers: builder.query<ProjectMemberWithPositionsResponse[], number>({
       query: (projectId) => `project/${projectId}/projectmember`,
       transformResponse: (response: any) => {
@@ -93,6 +119,8 @@ export const projectMemberApi = createApi({
 });
 
 export const {
+  useCreateProjectMemberMutation,
+  useDeleteProjectMemberMutation,
   useCreateBulkProjectMembersWithPositionsMutation,
   useGetProjectMembersQuery,
   useGetProjectMembersWithPositionsQuery,

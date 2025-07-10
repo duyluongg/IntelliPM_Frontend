@@ -13,6 +13,8 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import DocBlank from '../../PM/YourProject/DocBlank';
+import { FileText } from 'lucide-react';
 
 // Interface Reporter
 interface Reporter {
@@ -234,17 +236,31 @@ const ProjectTaskList: React.FC = () => {
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
-  const [selectedTaskType, setSelectedTaskType] = useState<'epic' | 'task' | 'bug' | 'subtask' | 'story' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<
+    'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
+  >(null);
   //const selectedItem = tasks.find((t) => t.key === selectedTaskId);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const shouldShowWorkItem =
-  isPopupOpen &&
-  selectedTaskId &&
-  selectedTaskType !== null &&
-  ['task', 'bug', 'story'].includes(selectedTaskType);
+    isPopupOpen &&
+    selectedTaskId &&
+    selectedTaskType !== null &&
+    ['task', 'bug', 'story'].includes(selectedTaskType);
 
   console.log('🧩 ProjectTaskList rendered');
+
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docTaskId, setDocTaskId] = useState<string | null>(null);
+  const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
+  const [docMode, setDocMode] = useState<'create' | 'view'>('create');
+
+  const handleOpenDocumentModal = (taskId: string, type: 'task' | 'epic' | 'subtask', mode: 'create' | 'view') => {
+    setDocTaskId(taskId);
+    setDocTaskType(type);
+    setDocMode(mode);
+    setIsDocModalOpen(true);
+  };
 
   const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
@@ -335,45 +351,44 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item) => ({
-        id: item.key || '',
-        type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-        key: item.key || '',
-        taskId: item.taskId || null,
-        summary: item.summary || '',
-        status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
-        comments: item.commentCount || 0,
-        sprint: item.sprintId || null,
-        assignees: item.assignees.map((assignee) => ({
-          fullName: assignee.fullname || 'Unknown',
-          initials:
-            assignee.fullname
-              ?.split(' ')
-              .map((n) => n[0])
-              .join('')
-              .substring(0, 2) || '',
-          avatarColor: '#f3eded',
-          picture: assignee.picture || undefined,
-        })),
-        dueDate: item.dueDate || null,
-        labels: item.labels || [],
-        created: item.createdAt || '',
-        updated: item.updatedAt || '',
-        reporter: {
-          fullName: item.reporterFullname || 'Unknown',
-          initials:
-            item.reporterFullname
-              ?.split(' ')
-              .map((n) => n[0])
-              .join('')
-              .substring(0, 2) || '',
-          avatarColor: '#f3eded',
-          picture: item.reporterPicture || undefined,
-        },
-      }));
+          id: item.key || '',
+          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+          key: item.key || '',
+          taskId: item.taskId || null,
+          summary: item.summary || '',
+          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
+          comments: item.commentCount || 0,
+          sprint: item.sprintId || null,
+          assignees: item.assignees.map((assignee) => ({
+            fullName: assignee.fullname || 'Unknown',
+            initials:
+              assignee.fullname
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: assignee.picture || undefined,
+          })),
+          dueDate: item.dueDate || null,
+          labels: item.labels || [],
+          created: item.createdAt || '',
+          updated: item.updatedAt || '',
+          reporter: {
+            fullName: item.reporterFullname || 'Unknown',
+            initials:
+              item.reporterFullname
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: item.reporterPicture || undefined,
+          },
+        }));
 
   return (
     <div className=' '>
-
       <HeaderBar />
       <div className='task-table-container '>
         <table className='task-table' ref={tableRef}>
@@ -425,6 +440,10 @@ const ProjectTaskList: React.FC = () => {
               </th>
               <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                 Reporter
+                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+              </th>
+              <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+                Document
                 <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
               </th>
             </tr>
@@ -479,7 +498,10 @@ const ProjectTaskList: React.FC = () => {
                             fill='none'
                           />
                         </svg>
-                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key, task.type)}>
+                        <span
+                          className='subtask-id'
+                          onClick={() => handleOpenPopup(task.key, task.type)}
+                        >
                           {task.key}
                         </span>
                       </div>
@@ -487,7 +509,10 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div className='task-key-wrapper'>
                       <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => handleOpenPopup(task.key, task.type)}>
+                      <span
+                        className='task-key'
+                        onClick={() => handleOpenPopup(task.key, task.type)}
+                      >
                         {task.key}
                       </span>
                     </div>
@@ -546,10 +571,10 @@ const ProjectTaskList: React.FC = () => {
                 <td className='w-24' style={{ width: `${columnWidths.labels}px` }}>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                      <span key={index} className='label-tag'>
-                        {label}
-                      </span>
-                    ))
+                        <span key={index} className='label-tag'>
+                          {label}
+                        </span>
+                      ))
                     : ''}
                 </td>
                 <td className='w-28' style={{ width: `${columnWidths.created}px` }}>
@@ -569,11 +594,53 @@ const ProjectTaskList: React.FC = () => {
                 <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                   <Avatar person={task.reporter} />
                 </td>
+                <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+                  {sessionStorage.getItem(`docId-${task.key}`) ? (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
+                      onClick={() => {
+                        handleOpenDocumentModal(task.key, task.type, 'view');
+                      }}
+                    >
+                      <FileText size={16} className='text-blue-500' />
+                      View Document
+                    </button>
+                  ) : (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm'
+                      onClick={() => {
+                        handleOpenDocumentModal(task.key, task.type, 'create');
+                      }}
+                    >
+                      Add/View
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {isDocModalOpen && docTaskId && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+          <div className='bg-white rounded-xl w-[100vw] max-w-screen-xl max-h-[96vh] overflow-y-auto shadow-2xl relative p-6'>
+            <button
+              onClick={() => setIsDocModalOpen(false)}
+              className='absolute top-3 right-3 text-gray-500 hover:text-black text-xl'
+            >
+              ✕
+            </button>
+            <DocBlank
+              key={docTaskId}
+              projectId={projectId}
+              keyId={docTaskId}
+              taskType={docTaskType}
+              onClose={() => setIsDocModalOpen(false)}
+              mode={docMode}
+            />
+          </div>
+        </div>
+      )}
 
       {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (
         <EpicPopup id={selectedTaskId} onClose={handleClosePopup} />
@@ -594,11 +661,7 @@ const ProjectTaskList: React.FC = () => {
       )}
 
       {shouldShowWorkItem && (
-        <WorkItem
-          isOpen={true}
-          onClose={handleClosePopup}
-          taskId={selectedTaskId as string}
-        />
+        <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId as string} />
       )}
     </div>
   );

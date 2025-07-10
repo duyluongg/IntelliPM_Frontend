@@ -24,6 +24,9 @@
 
 // type Props = {
 //   doc?: DocumentType;
+//   keyId?: string;
+//   projectId?: number; // Thêm projectId nếu cần
+//   taskType?: string; // Thêm taskType nếu cần
 // };
 
 // function extractBodyContent(html: string): string {
@@ -37,7 +40,32 @@
 //   return div.textContent?.trim() === '';
 // }
 
-// export default function DocBlank({ doc }: Props) {
+// function sanitizeAIHtmlContent(raw: string): string {
+//   try {
+//     const cleaned = raw
+//       .replace(/^```html\s*/i, '')
+//       .replace(/```$/i, '')
+//       .trim();
+
+//     const parser = new DOMParser();
+//     const doc = parser.parseFromString(cleaned, 'text/html');
+
+//     doc.querySelectorAll('table thead th').forEach((th) => {
+//       if (!th.hasAttribute('colwidth')) {
+//         th.setAttribute('colwidth', '200');
+//       }
+//     });
+
+//     return doc.body.innerHTML;
+//   } catch (err) {
+//     console.error('❌ Lỗi xử lý nội dung AI:', err);
+//     return raw;
+//   }
+// }
+
+// export default function DocBlank({ doc,projectId, keyId, taskType }: Props) {
+//   console.log(keyId, projectId, taskType);
+
 //   const [formData, setFormData] = useState({
 //     title: doc?.title || '',
 //     content: doc?.content || '',
@@ -103,34 +131,36 @@
 //     }
 //   };
 
-//   const handleGenerateFromAI = async () => {
-//     if (!user || !aiInput.trim() || !docId) return;
+// const handleGenerateFromAI = async () => {
+//   if (!user || !aiInput.trim() || !docId) return;
 
-//     try {
-//       setLoading(true);
-//       const res = await generateAIContent({
-//         documentId: docId,
-//         prompt: aiInput,
-//       }).unwrap();
+//   try {
+//     setLoading(true);
+//     const res = await generateAIContent({
+//       documentId: docId,
+//       prompt: aiInput,
+//     }).unwrap();
 
-//       setTouched(true);
-//       setReadyToSave(true);
-//       setHasInteracted(true);
+//     const sanitized = sanitizeAIHtmlContent(res.content || '');
 
-//       setFormData((prev) => ({
-//         ...prev,
-//         content: res.content || '',
-//       }));
+//     setTouched(true);
+//     setReadyToSave(true);
+//     setHasInteracted(true);
 
-//       setAiInput('');
-//       setAiGenerated(true);
-//     } catch (err) {
-//       console.error('[AI] Failed to generate content ❌', err);
-//       alert('Tạo nội dung bằng AI thất bại.');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
+//     setFormData((prev) => ({
+//       ...prev,
+//       content: sanitized,
+//     }));
+
+//     setAiInput('');
+//     setAiGenerated(true);
+//   } catch (err) {
+//     console.error('[AI] Failed to generate content ❌', err);
+//     alert('Tạo nội dung bằng AI thất bại.');
+//   } finally {
+//     setLoading(false);
+//   }
+// };
 
 //   useDebouncedEffect(
 //     () => {
@@ -312,15 +342,22 @@ import type { DocumentType } from '../../../types/DocumentType';
 import { useParams } from 'react-router-dom';
 import {
   useCreateDocumentMutation,
+  useGetDocumentByIdQuery,
   useUpdateDocumentMutation,
 } from '../../../services/Document/documentAPI';
 import { useDispatch } from 'react-redux';
 import { setDoc } from '../../../components/slices/Document/documentSlice';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useGenerateAIContentMutation } from '../../../services/Document/documentAPI';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 type Props = {
   doc?: DocumentType;
+  keyId?: string;
+  projectId?: number; // Thêm projectId nếu cần
+  taskType?: string; // Thêm taskType nếu cần
+  onClose?: () => void;
+  mode?: 'create' | 'view';
 };
 
 function extractBodyContent(html: string): string {
@@ -357,8 +394,7 @@ function sanitizeAIHtmlContent(raw: string): string {
   }
 }
 
-
-export default function DocBlank({ doc }: Props) {
+export default function DocBlank({ doc, projectId, keyId, taskType, onClose, mode }: Props) {
   const [formData, setFormData] = useState({
     title: doc?.title || '',
     content: doc?.content || '',
@@ -380,6 +416,27 @@ export default function DocBlank({ doc }: Props) {
   const [createDocument] = useCreateDocumentMutation();
   const [updateDocument] = useUpdateDocumentMutation();
   const [generateAIContent] = useGenerateAIContentMutation();
+
+  const docIdFromSession = keyId ? sessionStorage.getItem(`docId-${keyId}`) : null;
+  const parsedDocId = docIdFromSession ? Number(docIdFromSession) : null;
+
+  const {
+    data: fetchedDoc,
+    isSuccess,
+    refetch,
+  } = useGetDocumentByIdQuery(mode === 'view' && parsedDocId !== null ? parsedDocId : skipToken);
+
+  useEffect(() => {
+    console.log(mode);
+
+    if (mode === 'view' && isSuccess && fetchedDoc) {
+      setFormData({
+        title: fetchedDoc.title || 'Untitled Document',
+        content: fetchedDoc.content || '',
+      });
+      setDocId(fetchedDoc.id);
+    }
+  }, [mode, isSuccess, fetchedDoc]);
 
   const submitDocument = async () => {
     if (!user) return;
@@ -414,7 +471,10 @@ export default function DocBlank({ doc }: Props) {
         }
       } else {
         await updateDocument({ id: docId!, data: payload }).unwrap();
-        console.log('✅ Cập nhật document bằng RTK Query');
+        if (mode === 'view') {
+          refetch();
+          console.log('dang view lai ne');
+        }
       }
     } catch (err) {
       console.error('[AutoSave] Error ❌', err);
@@ -424,38 +484,36 @@ export default function DocBlank({ doc }: Props) {
     }
   };
 
-const handleGenerateFromAI = async () => {
-  if (!user || !aiInput.trim() || !docId) return;
+  const handleGenerateFromAI = async () => {
+    if (!user || !aiInput.trim() || !docId) return;
 
-  try {
-    setLoading(true);
-    const res = await generateAIContent({
-      documentId: docId,
-      prompt: aiInput,
-    }).unwrap();
+    try {
+      setLoading(true);
+      const res = await generateAIContent({
+        documentId: docId,
+        prompt: aiInput,
+      }).unwrap();
 
-    const sanitized = sanitizeAIHtmlContent(res.content || '');
+      const sanitized = sanitizeAIHtmlContent(res.content || '');
 
-    setTouched(true);
-    setReadyToSave(true);
-    setHasInteracted(true);
+      setTouched(true);
+      setReadyToSave(true);
+      setHasInteracted(true);
 
-    setFormData((prev) => ({
-      ...prev,
-      content: sanitized,
-    }));
+      setFormData((prev) => ({
+        ...prev,
+        content: sanitized,
+      }));
 
-    setAiInput('');
-    setAiGenerated(true);
-  } catch (err) {
-    console.error('[AI] Failed to generate content ❌', err);
-    alert('Tạo nội dung bằng AI thất bại.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+      setAiInput('');
+      setAiGenerated(true);
+    } catch (err) {
+      console.error('[AI] Failed to generate content ❌', err);
+      alert('Tạo nội dung bằng AI thất bại.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useDebouncedEffect(
     () => {
@@ -473,32 +531,39 @@ const handleGenerateFromAI = async () => {
   );
 
   useEffect(() => {
-    const savedDocId = sessionStorage.getItem(`docId-${formId}`);
+    if (!keyId || !projectId || !taskType) return;
+
+    const docKey = `docId-${keyId}`;
+    const createdKey = `createdDoc-${keyId}`;
+
+    const savedDocId = sessionStorage.getItem(docKey);
     if (!docId && savedDocId) {
       setDocId(Number(savedDocId));
       setIsNewDoc(false);
       dispatch(setDoc({ id: Number(savedDocId) }));
     }
-
+    if (mode !== 'create') return;
     const autoCreateDocument = async () => {
       if (!user || !isNewDoc || docId) return;
-      const createdFlag = sessionStorage.getItem(`createdDoc-${formId}`);
+
+      const createdFlag = sessionStorage.getItem(createdKey);
       if (createdFlag === 'true') return;
 
       if (isCreatingRef.current) return;
       isCreatingRef.current = true;
 
-      const payload = {
-        projectId: doc?.projectId ?? 1,
-        taskId: doc?.taskId ?? 'PROJA-3',
+      const payload: Partial<DocumentType> = {
+        projectId,
         title: 'Untitled Document',
-        type: formId,
+        type: taskType,
         template: 'blank',
         content: '',
-        fileUrl: '',
-        createdBy: user.id,
+        ...(taskType === 'task' && { taskId: keyId }),
+        ...(taskType === 'epic' && { epicId: keyId }),
+        ...(taskType === 'subtask' && { subTaskId: keyId }),
       };
 
+      console.log('📤 Payload gửi lên:', payload);
       try {
         setLoading(true);
         const res = await createDocument(payload).unwrap();
@@ -506,8 +571,8 @@ const handleGenerateFromAI = async () => {
           setDocId(res.id);
           setIsNewDoc(false);
           dispatch(setDoc({ id: res.id }));
-          sessionStorage.setItem(`createdDoc-${formId}`, 'true');
-          sessionStorage.setItem(`docId-${formId}`, res.id.toString());
+          sessionStorage.setItem(createdKey, 'true');
+          sessionStorage.setItem(docKey, res.id.toString());
         }
       } catch (err) {
         console.error('[Auto Create] Failed ❌', err);
@@ -518,7 +583,7 @@ const handleGenerateFromAI = async () => {
     };
 
     autoCreateDocument();
-  }, [user, formId, isNewDoc, docId, createDocument, dispatch]);
+  }, [user, keyId, projectId, taskType, isNewDoc, docId, createDocument, dispatch]);
 
   return (
     <div className='max-w-4xl mx-auto p-8 space-y-8 bg-white'>

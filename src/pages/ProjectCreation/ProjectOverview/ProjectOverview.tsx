@@ -1,4 +1,3 @@
-// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectCreation\ProjectOverview\ProjectOverview.tsx
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { selectProjectId } from '../../../components/slices/Project/projectCreationSlice';
@@ -46,7 +45,11 @@ const ProjectOverview: React.FC = () => {
         refetch={refetch}
       />
 
-      <MembersSection projectMembers={projectMembers} />
+      <MembersSection
+        projectMembers={projectMembers}
+        projectId={projectId!}
+        refetch={refetch}
+      />
 
       <ActionButtons projectKey={projectKey} isFormValid={!!projectId && !!name && !!projectKey} />
     </div>

@@ -367,10 +367,6 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               <p className="mt-1 text-sm text-red-500">End date must be after start date.</p>
             )}
           </div>
-          <p>
-            <strong className="text-[#1c73fd] text-sm">Status:</strong>{' '}
-            <span className="text-gray-800 text-sm">{formData.status || 'N/A'}</span>
-          </p>
         </div>
       </div>
     </section>

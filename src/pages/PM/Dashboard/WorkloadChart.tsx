@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useGetWorkloadDashboardQuery } from '../../../services/projectMetricApi';
+import { useSearchParams } from 'react-router-dom';
 
 // interface WorkloadChartProps {
 //   projectId: number;
@@ -17,8 +18,9 @@ import { useGetWorkloadDashboardQuery } from '../../../services/projectMetricApi
 
 // const WorkloadChart: React.FC<WorkloadChartProps> = ({ projectId }) => {
 const WorkloadChart = () => {
-  const projectId = 1;
-  const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectId);
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectKey);
 
   if (isLoading) return <div>Loading workload chart...</div>;
   if (isError || !data?.data) return <div>Failed to load workload chart</div>;

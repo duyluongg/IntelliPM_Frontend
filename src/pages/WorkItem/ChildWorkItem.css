@@ -1,9 +1,23 @@
+.child-work-item-page {
+  width: 100%; 
+  height: 100%;
+  background: #f9fafb;
+  display: flex;
+  justify-content: stretch;   /* ✅ hoặc: space-between, flex-start */
+  align-items: stretch;       /* ✅ giúp container kéo full chiều cao */
+  padding: 0;                 /* ✅ bỏ padding nếu muốn full sát */
+  margin: 0;
+}
+
 .child-work-item-container {
+  width: 100%; 
+  height: 100%;
+  background: white;
   padding: 24px 32px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #fff;
-  color: #172b4d;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .child-header {
@@ -69,9 +83,9 @@
 }
 
 .child-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  flex: 2;
+  padding-right: 15px;
+  overflow-y: auto;
 }
 
 .field-group label {
@@ -190,13 +204,14 @@
 }
 
 .details-panel {
-  border-top: 1px solid #dfe1e6;
-  padding-top: 16px;
+  flex: 1;
+  border-left: 1px solid #dfe1e6;
+  padding: 15px;
+  background: #f4f5f7;
 }
 
-.details-panel h4 {
-  font-size: 15px;
-  margin-bottom: 12px;
+.details-content {
+  margin-top: 10px;
 }
 
 .detail-item {

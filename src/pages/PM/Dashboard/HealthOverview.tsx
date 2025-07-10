@@ -1,33 +1,10 @@
-// import { useGetHealthDashboardQuery } from "../../../services/projectMetricApi";
-
-// const HealthOverview = () => {
-//   const projectId = 1; // hoặc lấy từ props / context / route params
-//   const { data, isLoading, error } = useGetHealthDashboardQuery(projectId);
-
-//   if (isLoading) return <div>Loading...</div>;
-//   if (error || !data || !data.data) return <div>Error fetching health data</div>;
-
-//   const { timeStatus, tasksToBeCompleted, overdueTasks, progressPercent, costStatus } = data.data;
-
-//   return (
-//     <div>
-//       <h2 className="text-lg font-semibold mb-2">Health Overview</h2>
-//       <p>Status: {timeStatus}</p>
-//       <p>SPI: {tasksToBeCompleted}</p>
-//       <p>CPI: {overdueTasks}</p>
-//       <p>Delay (days): {progressPercent}</p>
-//       <p>Budget Overrun: {costStatus}</p>
-//     </div>
-//   );
-// };
-
-// export default HealthOverview;
-
 import { useGetHealthDashboardQuery } from '../../../services/projectMetricApi';
+import { useSearchParams } from 'react-router-dom';
 
 const HealthOverview = () => {
-  const projectId = 1;
-  const { data, isLoading, error } = useGetHealthDashboardQuery(projectId);
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { data, isLoading, error } = useGetHealthDashboardQuery(projectKey);
 
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (error || !data || !data.data)

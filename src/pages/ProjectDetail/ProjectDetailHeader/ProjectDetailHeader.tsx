@@ -242,8 +242,7 @@ import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import projectIcon from '../../../assets/projectManagement.png';
 
 import {
-  Users2,
-  
+  Users2,  
   Globe,
   CalendarDays,
   List as ListIcon,
@@ -254,6 +253,9 @@ import {
   Archive,
   FileText,
   PackagePlus,
+  ChartNoAxesGantt,
+  ChartNoAxesCombined,
+  FileWarning,
   Link as LucideLink,
 } from 'lucide-react';
 
@@ -265,6 +267,9 @@ const navItems = [
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
   { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
+  { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
+  { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
+  { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
   { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
   { label: 'All work', icon: <Users2 className='w-4 h-4' />, path: 'all-work' },
   { label: 'Code', icon: <Code2 className='w-4 h-4' />, path: 'code' },

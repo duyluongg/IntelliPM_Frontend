@@ -7,10 +7,12 @@ import ProgressPerSprint from './ProgressPerSprint';
 import TimeComparisonChart from './TimeComparisonChart';
 import CostBarChart from './CostBarChart';
 import WorkloadChart from './WorkloadChart';
+import { useSearchParams } from 'react-router-dom';
 
 const ProjectDashboard = () => {
   const [calculate] = useCalculateProjectMetricsMutation();
-  const projectId = 1;
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
 
   // useEffect(() => {
   //   calculate({ projectId }).catch((err) => {
@@ -21,14 +23,14 @@ const ProjectDashboard = () => {
   useEffect(() => {
     const doCalculation = async () => {
       try {
-        await calculate({ projectId }).unwrap();
+        await calculate({ projectKey }).unwrap();
       } catch (err) {
         console.error('Error calculating project metrics:', err);
       }
     };
 
     doCalculation();
-  }, [calculate, projectId]);
+  }, [calculate, projectKey]);
 
   return (
     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4'>

@@ -129,20 +129,18 @@ import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFor
 // import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
 import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
 import WorkItemDetail from '../pages/WorkItem/WorkItemDetail';
+import EpicDetail from '../pages/WorkItem/EpicDetail';
 import ChildWorkItem from '../pages/WorkItem/ChildWorkItem';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
 import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
-import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskList';
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
-//import ProjectDetailsForm from '../pages/ProjectCreation/ProjectDetailsForm/ProjectDetailsForm';
-//import InviteesForm from '../pages/ProjectCreation/InviteesForm/InviteesForm';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 
 export const router = createBrowserRouter([
   {
@@ -175,18 +173,6 @@ export const router = createBrowserRouter([
       //   path: 'project-dashboard',
       //   element: <ProjectDashboard />,
       // },
-      // // {
-      // //   path: 'work-item',
-      // //   element: <WorkItemPage />,
-      // // },
-      // {
-      //   path: 'work-item-detail',
-      //   element: <WorkItemDetail />,
-      // },
-      // {
-      //   path: 'child-work/:key',
-      //   element: <ChildWorkItem />,
-      // },
       // {
       //   path: 'projects',
       //   element: <ProjectDetail />,
@@ -205,7 +191,7 @@ export const router = createBrowserRouter([
       // },
       {
         path: 'meeting',
-        element: <MeetingCore />, 
+        element: <MeetingCore />,
       },
 
       {
@@ -213,7 +199,7 @@ export const router = createBrowserRouter([
         element: <MeetingRoom />,
       },
 
-            {
+      {
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
@@ -225,7 +211,7 @@ export const router = createBrowserRouter([
     path: '/project',
     element: (
       <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
-        <RootLayout />
+        <PMLayout />
       </ProtectedRoute>
     ),
     children: [
@@ -233,29 +219,50 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage />,
       },
-      
 
       {
         path: `/project?:projectKey`,
         element: <ProjectTaskList />,
       },
       {
+        path: `introduction`,
+        element: <ProjectIntroduction />,
+      },
+      {
         path: `createform`,
         element: <ProjectCreation />,
       },
 
-            {
+      {
+        path: `:projectKey/task-setup`,
+        element: <TaskSetup />,
+      },
+
+      {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,
       },
       {
         path: 'meeting-management',
         element: <MeetingManagementPage />,
+      },
 
       {
         path: `introduction`,
         element: <ProjectIntroduction />,
 
+      },
+      {
+        path: 'work-item-detail',
+        element: <WorkItemDetail />,
+      },
+      {
+        path: 'child-work/:key',
+        element: <ChildWorkItem />,
+      },
+      {
+        path: 'epic/:epicId',
+        element: <EpicDetail/>,
       },
     ],
   },
@@ -289,5 +296,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-
 ]);

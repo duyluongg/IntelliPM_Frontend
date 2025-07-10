@@ -5,6 +5,7 @@ import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
+import deleteIcon from '../../assets/delete.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useGetSubtasksByTaskIdQuery,
@@ -16,11 +17,16 @@ import {
   useGetTaskByIdQuery,
   useUpdateTaskStatusMutation,
   useUpdateTaskTypeMutation,
+  useUpdateTaskTitleMutation,
+  useUpdateTaskDescriptionMutation,
+  useUpdatePlannedStartDateMutation,
+  useUpdatePlannedEndDateMutation
 } from '../../services/taskApi';
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -57,8 +63,14 @@ const WorkItemDetail: React.FC = () => {
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = React.useState<{ [key: string]: string }>({});
+  const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
+  const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
+  const [updateTaskTitle] = useUpdateTaskTitleMutation();
+  const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
 
-  const { data: attachments = [], isLoading: isAttachmentsLoading } = useGetTaskFilesByTaskIdQuery(taskId, {
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
+
+  const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !taskId,
   });
 
@@ -70,12 +82,65 @@ const WorkItemDetail: React.FC = () => {
     skip: !taskId,
   });
 
+  const toISO = (localDate: string) => {
+    const date = new Date(localDate);
+    return date.toISOString(); // 2025-07-09T08:47:00.000Z
+  };
+
+  const handlePlannedStartDateTaskChange = async () => {
+    if (plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    try {
+      await updatePlannedStartDate({
+        id: taskId,
+        plannedStartDate: toISO(plannedStartDate),
+      }).unwrap();
+      console.log('✅ Start date updated');
+    } catch (err) {
+      console.error('❌ Failed to update start date', err);
+    }
+  };
+
+  const handlePlannedEndDateTaskChange = async () => {
+    if (plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    try {
+      await updatePlannedEndDate({
+        id: taskId,
+        plannedEndDate: toISO(plannedEndDate),
+      }).unwrap();
+      console.log('✅ End date updated');
+    } catch (err) {
+      console.error('❌ Failed to update end date', err);
+    }
+  };
+
+  const handleTitleTaskChange = async () => {
+    try {
+      await updateTaskTitle({ id: taskId, title }).unwrap();
+      alert('✅ Update title task successfully!');
+      console.log('Update title task successfully');
+    } catch (err) {
+      alert('✅ Error update task title!');
+      console.error('Error update task title:', err);
+    }
+  };
+
+  const handleDescriptionTaskChange = async () => {
+    if (description === taskData?.description) return;
+
+    try {
+      await updateTaskDescription({ id: taskId, description }).unwrap();
+      console.log('Update description task successfully!');
+    } catch (err) {
+      console.error('Error update task description:', err);
+    }
+  };
+
   const handleDeleteFile = async (id: number) => {
     if (!window.confirm('Bạn có chắc muốn xoá file này?')) return;
     try {
       await deleteTaskFile(id).unwrap();
       alert('✅ Delete file successfully!');
-      await refetchSubtask();
+      await refetchAttachments();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -116,6 +181,10 @@ const WorkItemDetail: React.FC = () => {
   } = useGetSubtasksByTaskIdQuery(taskId, {
     skip: !taskId,
   });
+
+  const totalSubtasks = subtaskData.length;
+  const completedSubtasks = subtaskData.filter((item) => item.status === 'DONE').length;
+  const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
 
@@ -244,6 +313,7 @@ const WorkItemDetail: React.FC = () => {
               placeholder="Enter summary"
               defaultValue={title}
               onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleTitleTaskChange}
             />
           </div>
         </div>
@@ -289,7 +359,7 @@ const WorkItemDetail: React.FC = () => {
                         file: file,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
-                      await refetchSubtask();
+                      await refetchAttachments();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -306,58 +376,80 @@ const WorkItemDetail: React.FC = () => {
                 placeholder="Add a description..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onBlur={() => handleDescriptionTaskChange()}
               />
-              <div className="attachments-section">
-                <label>Attachments {attachments.length > 0 && <span>({attachments.length})</span>}</label>
-                <div className="attachments-grid">
-                  {attachments.map(file => (
-                    <div
-                      className="attachment-card"
-                      key={file.id}
-                      onMouseEnter={() => setHoveredFileId(file.id)}
-                      onMouseLeave={() => setHoveredFileId(null)}
-                    >
-                      <a
-                        href={file.urlFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
-                      >
-                        <div className="thumbnail">
-                          {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
-                          ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>{file.title}</div>
-                          <div className="file-date">
-                            {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
-                          </div>
-                        </div>
-                      </a>
 
-                      {/* Nút xóa file */}
-                      {hoveredFileId === file.id && (
-                        <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
-                          title="Xoá file"
+              {attachments.length > 0 && (
+                <div className="attachments-section">
+                  <label>Attachments <span>({attachments.length})</span></label>
+                  <div className="attachments-grid">
+                    {attachments.map(file => (
+                      <div
+                        className="attachment-card"
+                        key={file.id}
+                        onMouseEnter={() => setHoveredFileId(file.id)}
+                        onMouseLeave={() => setHoveredFileId(null)}
+                      >
+                        <a
+                          href={file.urlFile}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: 'none', color: 'inherit' }}
                         >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          <div className="thumbnail">
+                            {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                              <img src={file.urlFile} alt={file.title} />
+                            ) : (
+                              <div className="doc-thumbnail">
+                                <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="file-meta">
+                            <div className="file-name" title={file.title}>{file.title}</div>
+                            <div className="file-date">
+                              {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                            </div>
+                          </div>
+                        </a>
+
+                        {/* Nút xóa file */}
+                        {hoveredFileId === file.id && (
+                          <button
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="delete-file-btn"
+                            title="Xoá file"
+                          >
+                            <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="field-group">
               <label>Subtasks</label>
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{
+                  height: '8px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: '#4caf50',
+                    height: '100%',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
+                  {progressPercent}% Done
+                </div>
+              </div>
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading subtasks...</p>
@@ -752,7 +844,16 @@ const WorkItemDetail: React.FC = () => {
                   <option value="DONE">Done</option>
                 </select>
               </div>
-              <div className="detail-item"><label>Assignee</label><span>{selectedChild?.assignee ?? subtaskData[0]?.assignedBy ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Assignee</label>
+                <span>
+                  {isAssigneeLoading
+                    ? 'Loading...'
+                    : assignees.length === 0
+                      ? 'None'
+                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
+                </span>
+              </div>
               <div className="detail-item">
                 <label>Labels</label>
                 <span>
@@ -764,8 +865,36 @@ const WorkItemDetail: React.FC = () => {
                 </span>
               </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
-              <div className="detail-item"><label>Due date</label><span>{formatDate(taskData?.plannedEndDate)}</span></div>
-              <div className="detail-item"><label>Start date</label><span>{formatDate(taskData?.plannedStartDate)}</span></div>
+              <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintId ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Start date</label>
+                <input
+                  type="date"
+                  value={plannedStartDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const fullDate = `${selectedDate}T00:00:00.000Z`;
+                    setPlannedStartDate(fullDate);
+                  }}
+                  onBlur={() => handlePlannedStartDateTaskChange()}
+                  style={{ width: '150px' }}
+                />
+              </div>
+
+              <div className="detail-item">
+                <label>Due date</label>
+                <input
+                  type="date"
+                  value={plannedEndDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const fullDate = `${selectedDate}T00:00:00.000Z`;
+                    setPlannedEndDate(fullDate);
+                  }}
+                  onBlur={() => handlePlannedEndDateTaskChange()}
+                  style={{ width: '150px' }}
+                />
+              </div>
               <div className="detail-item"><label>Reporter</label><span>{taskData?.reporterName ?? 'None'}</span></div>
             </div>
           </div>

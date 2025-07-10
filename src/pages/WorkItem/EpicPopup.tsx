@@ -49,8 +49,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const { data: epicLabels = [] } = useGetWorkItemLabelsByEpicQuery(id, {
         skip: !id,
     });
-
-
+      
     const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
         const startX = e.clientX;
         const th = document.querySelectorAll('.issue-table th')[colIndex] as HTMLElement;

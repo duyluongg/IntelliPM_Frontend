@@ -8,7 +8,7 @@ import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
-import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation } from '../../services/taskApi';
+import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation, useUpdateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskDescriptionMutation, useUpdatePlannedStartDateMutation, useUpdatePlannedEndDateMutation } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
@@ -32,6 +32,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
+  const [epicId, setEpicId] = React.useState('');
+  const [sprintId, setSprintId] = React.useState('');
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -56,6 +58,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
+  const [updateTask] = useUpdateTaskMutation();
+  const [updateTaskTitle] = useUpdateTaskTitleMutation();
+  const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
+  const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
+  const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
 
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
@@ -94,17 +101,58 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  // const handleCreateSubtask = async () => {
-  //   if (!newSubtaskTitle.trim()) return;
-  //   try {
-  //     await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
-  //     setNewSubtaskTitle('');
-  //     setShowSubtaskInput(false);
-  //     await refetch();
-  //   } catch (error) {
-  //     console.error('Erroe create subtask:', error);
-  //   }
-  // };
+  const toISO = (localDate: string) => {
+    const date = new Date(localDate);
+    return date.toISOString(); // 2025-07-09T08:47:00.000Z
+  };
+
+  const handlePlannedStartDateTaskChange = async () => {
+    if (plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    try {
+      await updatePlannedStartDate({
+        id: taskId,
+        plannedStartDate: toISO(plannedStartDate),
+      }).unwrap();
+      console.log('✅ Start date updated');
+    } catch (err) {
+      console.error('❌ Failed to update start date', err);
+    }
+  };
+
+  const handlePlannedEndDateTaskChange = async () => {
+    if (plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    try {
+      await updatePlannedEndDate({
+        id: taskId,
+        plannedEndDate: toISO(plannedEndDate),
+      }).unwrap();
+      console.log('✅ End date updated');
+    } catch (err) {
+      console.error('❌ Failed to update end date', err);
+    }
+  };
+
+  const handleTitleTaskChange = async () => {
+    try {
+      await updateTaskTitle({ id: taskId, title }).unwrap();
+      alert('✅ Update title task successfully!');
+      console.log('Update title task successfully');
+    } catch (err) {
+      alert('✅ Error update task title!');
+      console.error('Error update task title:', err);
+    }
+  };
+
+  const handleDescriptionTaskChange = async () => {
+    if (description === taskData?.description) return;
+
+    try {
+      await updateTaskDescription({ id: taskId, description }).unwrap();
+      console.log('Update description task successfully!');
+    } catch (err) {
+      console.error('Error update task description:', err);
+    }
+  };
 
   const {
     data: subtaskData = [],
@@ -113,6 +161,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   } = useGetSubtasksByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
+
+  const totalSubtasks = subtaskData.length;
+  const completedSubtasks = subtaskData.filter((item) => item.status === 'DONE').length;
+  const progressPercent = totalSubtasks > 0 ? Math.round((completedSubtasks / totalSubtasks) * 100) : 0;
 
   const { data: taskData, isLoading: isTaskLoading, refetch: refetchTask } = useGetTaskByIdQuery(taskId, {
     skip: !isOpen || !taskId,
@@ -130,7 +182,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
-
   React.useEffect(() => {
     if (taskData) {
       setStatus(taskData.status);
@@ -142,11 +193,29 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectName(taskData.projectName ?? '');
       setReporterName(taskData.reporterName ?? '');
       setProjectId(String(taskData.projectId));
+      setEpicId(String(taskData.epicId));
+      setSprintId(String(taskData.sprintId));
     }
   }, [taskData]);
 
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
+
+  const handleUpdateField = async (field: string, value: any) => {
+    if (!taskData?.id) return;
+
+    try {
+      await updateTask({
+        id: taskData.id,
+        body: {
+          [field]: value,
+        },
+      }).unwrap();
+      console.log(`${field} updated`);
+    } catch (err) {
+      console.error(`Failed to update ${field}`, err);
+    }
+  };
 
   const childWorkItems = subtaskData.map((item) => ({
     key: item.id,
@@ -261,6 +330,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               placeholder="Enter summary"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleTitleTaskChange}
             />
           </div>
           <div className="header-actions">
@@ -327,6 +397,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 placeholder="Add a description..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onBlur={() => handleDescriptionTaskChange()}
               />
 
               {attachments.length > 0 && (
@@ -382,6 +453,55 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             </div>
             <div className="field-group">
               <label>Subtasks</label>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  margin: '8px 0',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
+                  <span style={{ marginRight: '8px' }}>🧠</span> Create suggested work items
+                </div>
+                <button
+                  onClick={() => {
+                    alert("✨ Sẽ gọi API AI suggest subtasks sau");
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#f4f5f7',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Suggest
+                </button>
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{
+                  height: '8px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: '#4caf50',
+                    height: '100%',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
+                  {progressPercent}% Done
+                </div>
+              </div>
+
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading...</p>
@@ -786,9 +906,37 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       : workItemLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
-              <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
-              <div className="detail-item"><label>Due date</label><span>{formatDate(taskData?.plannedEndDate)}</span></div>
-              <div className="detail-item"><label>Start date</label><span>{formatDate(taskData?.plannedStartDate)}</span></div>
+              <div className="detail-item"><label>Parent</label><span>{taskData?.epicId ?? 'None'}</span></div>
+              <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintId ?? 'None'}</span></div>
+              <div className="detail-item">
+                <label>Start date</label>
+                <input
+                  type="date"
+                  value={plannedStartDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const fullDate = `${selectedDate}T00:00:00.000Z`;
+                    setPlannedStartDate(fullDate);
+                  }}
+                  onBlur={() => handlePlannedStartDateTaskChange()}
+                  style={{ width: '150px' }}
+                />
+              </div>
+
+              <div className="detail-item">
+                <label>Due date</label>
+                <input
+                  type="date"
+                  value={plannedEndDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => {
+                    const selectedDate = e.target.value;
+                    const fullDate = `${selectedDate}T00:00:00.000Z`;
+                    setPlannedEndDate(fullDate);
+                  }}
+                  onBlur={() => handlePlannedEndDateTaskChange()}
+                  style={{ width: '150px' }}
+                />
+              </div>
               <div className="detail-item"><label>Reporter</label><span>{taskData?.reporterName ?? 'None'}</span></div>
             </div>
           </div>

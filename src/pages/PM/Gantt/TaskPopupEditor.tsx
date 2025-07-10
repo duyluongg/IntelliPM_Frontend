@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
+import { useGetTaskByIdQuery } from '../../../services/taskApi';
 
-type TaskType = {
+type TaskGanttType = {
+  id?: string;
   label: string;
   description?: string;
   dateStart?: Date;
@@ -10,14 +12,55 @@ type TaskType = {
   connections?: any[];
 };
 
+type TaskType = {
+  id: string | null;
+  reporterId: number;
+  projectId: number;
+  epicId: string;
+  sprintId: number;
+  type: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  // duration: string | null;
+  percentComplete: number | null;
+  plannedHours: number | null;
+  actualHours: number | null;
+  remainingHours: number | null;
+  plannedCost: number | null;
+  plannedResourceCost: number | null;
+  actualCost: number | null;
+  actualResourceCost: number | null;
+  priority: string;
+  status: string;
+  evaluate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dependencies: TaskDependency[];
+};
+
+interface TaskDependency {
+  id: number;
+  taskId: string;
+  linkedFrom: string;
+  linkedTo: string;
+  type: string;
+}
+
 type Props = {
   task: TaskType;
+  type: 'task' | 'project' | 'milestone';
   onSave: (updatedTask: Partial<TaskType>) => void;
   onCancel: () => void;
   onDelete: () => void;
 };
 
-const TaskPopupEditor = ({ task, onSave, onCancel, onDelete }: Props) => {
+const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
   const labelRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
   const startRef = useRef<HTMLInputElement>(null);
@@ -29,57 +72,69 @@ const TaskPopupEditor = ({ task, onSave, onCancel, onDelete }: Props) => {
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('📦 Task passed from Gantt:', task);
     if (task) {
-      if (labelRef.current) labelRef.current.value = task.label || '';
+      if (labelRef.current) labelRef.current.value = task.title || '';
       if (descRef.current) descRef.current.value = task.description || '';
-      if (startRef.current)
-        startRef.current.value = task.dateStart?.toISOString().split('T')[0] || '';
-      if (endRef.current) endRef.current.value = task.dateEnd?.toISOString().split('T')[0] || '';
-      if (durationRef.current) durationRef.current.value = task.duration?.toString() || '';
-      if (progressRef.current) progressRef.current.value = task.progress?.toString() || '0';
-      if (predecessorsRef.current)
-        predecessorsRef.current.value =
-          task.connections
-            ?.filter((c: any) => c.type === 'from')
-            .map((c: any) => c.target)
-            .join(',') || '';
-      if (successorsRef.current)
-        successorsRef.current.value =
-          task.connections
-            ?.filter((c: any) => c.type === 'to')
-            .map((c: any) => c.target)
-            .join(',') || '';
+      if (startRef.current) startRef.current.value = task.plannedStartDate?.split('T')[0] || '';
+      if (endRef.current) endRef.current.value = task.plannedEndDate?.split('T')[0] || '';
+      // if (durationRef.current) durationRef.current.value = task.duration?.toString() || '';
+      if (progressRef.current) progressRef.current.value = task.percentComplete?.toString() || '0';
+
+      const predecessors =
+        task.dependencies
+          ?.filter((d) => d.linkedTo === task.id)
+          .map((d) => d.linkedFrom)
+          .join(',') || '';
+      const successors =
+        task.dependencies
+          ?.filter((d) => d.linkedFrom === task.id)
+          .map((d) => d.linkedTo)
+          .join(',') || '';
+
+      if (predecessorsRef.current) predecessorsRef.current.value = predecessors;
+      if (successorsRef.current) successorsRef.current.value = successors;
     }
   }, [task]);
 
+  // const toLocalDate = (dateStr: string | null | undefined): Date | undefined => {
+  //   if (!dateStr) return undefined;
+  //   const d = new Date(dateStr);
+  //   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  // };
+
+  const parseDateToUTC = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day));
+  };
+
   const handleSave = () => {
-    const updatedTask: Partial<TaskType> = {
+    const updatedTask: TaskGanttType = {
+      id: task.id ? `task-${task.id}` : undefined,
       label: labelRef.current?.value || '',
       description: descRef.current?.value || '',
-      dateStart: startRef.current?.value ? new Date(startRef.current.value) : undefined,
-      dateEnd: endRef.current?.value ? new Date(endRef.current.value) : undefined,
-      duration: parseInt(durationRef.current?.value || '0'),
+      // dateStart: startRef.current?.value ? toLocalDate(startRef.current.value) : undefined,
+      // dateEnd: endRef.current?.value ? new Date(endRef.current.value) : undefined,
+      dateStart: startRef.current?.value ? parseDateToUTC(startRef.current.value) : undefined,
+      dateEnd: endRef.current?.value ? parseDateToUTC(endRef.current.value) : undefined,
+      // duration: durationRef.current?.value || null,
       progress: parseInt(progressRef.current?.value || '0'),
-      connections: [],
+      connections:
+        task.dependencies?.map((dep) => ({
+          target: `task-${dep.linkedTo}`,
+          type: 1,
+        })) || [],
     };
 
     onSave(updatedTask);
   };
 
   return (
-    <div
-      ref={popupRef}
-      className='flex items-center justify-center'
-    >
+    <div ref={popupRef} className='flex items-center justify-center'>
       <div className='w-full max-w-md max-h-[90vh] overflow-y-auto bg-white border rounded shadow px-2 py-2'>
         <div className='bg-blue-600 text-white px-4 py-2 rounded-t font-semibold'>Edit Task</div>
 
         <div className='p-4 space-y-3'>
-          <div className='flex flex-col'>
-            <label className='text-sm font-semibold mb-1'>Name</label>
-            <input ref={labelRef} className='border p-2 rounded' />
-          </div>
-
           <div className='flex flex-col'>
             <label className='text-sm font-semibold mb-1'>Name</label>
             <input ref={labelRef} className='border p-2 rounded' />
@@ -117,7 +172,7 @@ const TaskPopupEditor = ({ task, onSave, onCancel, onDelete }: Props) => {
             <label className='text-sm font-semibold mb-1'>Progress</label>
             <input ref={progressRef} type='range' min='0' max='100' className='w-full' />
             <div className='text-right text-xs text-gray-500'>
-              {progressRef.current?.value || task.progress || 0}%
+              {progressRef.current?.value || 0}%
             </div>
           </div>
 
@@ -153,5 +208,24 @@ const TaskPopupEditor = ({ task, onSave, onCancel, onDelete }: Props) => {
     </div>
   );
 };
+
+// const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
+//   if (!task) return null;
+
+//   switch (type) {
+//     case 'project':
+//       return (
+//         <SprintEditor
+//           task={task}
+//           onSave={onSave}
+//           onCancel={onCancel}
+//           onDelete={onDelete}
+//         />
+//       );
+//     default:
+//       return null;
+//   }
+// };
+
 
 export default TaskPopupEditor;

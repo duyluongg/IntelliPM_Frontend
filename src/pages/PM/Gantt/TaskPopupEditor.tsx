@@ -1,5 +1,4 @@
-import React, { useEffect, useRef } from 'react';
-import { useGetTaskByIdQuery } from '../../../services/taskApi';
+import React, { useEffect, useRef, useState } from 'react';
 
 type TaskGanttType = {
   id?: string;
@@ -70,6 +69,7 @@ const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
   const predecessorsRef = useRef<HTMLInputElement>(null);
   const successorsRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const [localSuccessors, setLocalSuccessors] = useState<TaskDependency[]>([]);
 
   useEffect(() => {
     console.log('📦 Task passed from Gantt:', task);
@@ -94,14 +94,38 @@ const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
 
       if (predecessorsRef.current) predecessorsRef.current.value = predecessors;
       if (successorsRef.current) successorsRef.current.value = successors;
+      // setLocalSuccessors(task.dependencies.filter((d) => d.linkedFrom === task.id));
     }
   }, [task]);
 
-  // const toLocalDate = (dateStr: string | null | undefined): Date | undefined => {
-  //   if (!dateStr) return undefined;
-  //   const d = new Date(dateStr);
-  //   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // };
+  useEffect(() => {
+    if (task) {
+      setLocalSuccessors(task.dependencies.filter((d) => d.linkedFrom === task.id));
+    }
+  }, [task]);
+
+  const convertDependencyTypeToNumber = (type: string): number => {
+    switch (type) {
+      case 'START_START':
+        return 0;
+      case 'FINISH_START':
+        return 1;
+      case 'FINISH_FINISH':
+        return 2;
+      case 'START_FINISH':
+        return 3;
+      default:
+        return 4;
+    }
+  };
+
+  const handleChangeSuccessorType = (index: number, newType: string) => {
+    setLocalSuccessors((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], type: newType };
+      return updated;
+    });
+  };
 
   const parseDateToUTC = (dateStr: string): Date => {
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -113,20 +137,26 @@ const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
       id: task.id ? `task-${task.id}` : undefined,
       label: labelRef.current?.value || '',
       description: descRef.current?.value || '',
-      // dateStart: startRef.current?.value ? toLocalDate(startRef.current.value) : undefined,
-      // dateEnd: endRef.current?.value ? new Date(endRef.current.value) : undefined,
       dateStart: startRef.current?.value ? parseDateToUTC(startRef.current.value) : undefined,
       dateEnd: endRef.current?.value ? parseDateToUTC(endRef.current.value) : undefined,
       // duration: durationRef.current?.value || null,
       progress: parseInt(progressRef.current?.value || '0'),
-      connections:
-        task.dependencies?.map((dep) => ({
-          target: `task-${dep.linkedTo}`,
-          type: 1,
-        })) || [],
+      // connections:
+      //   task.dependencies?.map((dep) => ({
+      //     target: `task-${dep.linkedTo}`,
+      //     type: convertDependencyTypeToNumber(dep.type),
+      //   })) || [],
+      connections: localSuccessors.map((dep) => ({
+        target: `task-${dep.linkedTo}`,
+        type: convertDependencyTypeToNumber(dep.type),
+      })),
     };
 
-    onSave(updatedTask);
+    // onSave(updatedTask);
+    onSave({
+      ...updatedTask,
+      dependencies: localSuccessors, // 👈 Gửi dependencies mới về luôn nếu cần lưu DB
+    });
   };
 
   return (
@@ -176,14 +206,46 @@ const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
             </div>
           </div>
 
-          <div className='flex flex-col'>
-            <label className='text-sm font-semibold mb-1'>Predecessors</label>
-            <input ref={predecessorsRef} className='border p-2 rounded' />
-          </div>
+          {/* <div className='flex flex-col'>
+            <label className='text-sm font-semibold mb-1'>Successors</label>
+            {task.dependencies
+              .filter((d) => d.linkedFrom === task.id)
+              .map((dep, index) => (
+                <div key={index} className='flex items-center gap-2 mb-2'>
+                  <span className='text-sm w-2/5'>{dep.linkedTo}</span>
+                  <select value={dep.type} className='border p-2 rounded w-1/2'>
+                    <option value='FINISH_START'>End-to-start</option>
+                    <option value='START_START'>Start-to-start</option>
+                    <option value='FINISH_FINISH'>End-to-end</option>
+                    <option value='START_FINISH'>Start-to-end</option>
+                  </select>
+                  <button disabled className='text-gray-400 cursor-pointer w-6 flex justify-center'>
+                    🗑️
+                  </button>
+                </div>
+              ))}
+          </div> */}
 
           <div className='flex flex-col'>
             <label className='text-sm font-semibold mb-1'>Successors</label>
-            <input ref={successorsRef} className='border p-2 rounded' />
+            {localSuccessors.map((dep, index) => (
+              <div key={index} className='flex items-center gap-2 mb-2'>
+                <span className='text-sm w-2/5'>{dep.linkedTo}</span>
+                <select
+                  value={dep.type}
+                  onChange={(e) => handleChangeSuccessorType(index, e.target.value)}
+                  className='border p-2 rounded w-1/2'
+                >
+                  <option value='FINISH_START'>End-to-start</option>
+                  <option value='START_START'>Start-to-start</option>
+                  <option value='FINISH_FINISH'>End-to-end</option>
+                  <option value='START_FINISH'>Start-to-end</option>
+                </select>
+                <button disabled className='text-gray-400 cursor-pointer w-6 flex justify-center'>
+                  🗑️
+                </button>
+              </div>
+            ))}
           </div>
 
           <div className='flex justify-end gap-2 pt-4'>
@@ -208,24 +270,5 @@ const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
     </div>
   );
 };
-
-// const TaskPopupEditor = ({ task, type, onSave, onCancel, onDelete }: Props) => {
-//   if (!task) return null;
-
-//   switch (type) {
-//     case 'project':
-//       return (
-//         <SprintEditor
-//           task={task}
-//           onSave={onSave}
-//           onCancel={onCancel}
-//           onDelete={onDelete}
-//         />
-//       );
-//     default:
-//       return null;
-//   }
-// };
-
 
 export default TaskPopupEditor;

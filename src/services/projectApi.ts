@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
+// Project-related interfaces
 export interface CreateProjectRequest {
   name: string;
   projectKey: string;
@@ -11,27 +12,72 @@ export interface CreateProjectRequest {
   endDate: string;
 }
 
-export interface CreateProjectResponse {
-  isSuccess: boolean;
-  code: number;
-  data: {
-    id: number;
-    name: string;
-    projectKey: string;
-    description: string;
-    budget: number;
-    projectType: string;
-    createdBy: number;
-    startDate: string;
-    endDate: string;
-    createdAt: string;
-    updatedAt: string;
-    iconUrl: string;
-    status: string;
-  };
-  message: string;
+export interface ProjectDetails {
+  id: number;
+  name: string;
+  projectKey: string;
+  iconUrl: string | null;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
 }
 
+export interface ProjectRequirement {
+  id: number;
+  projectId: number;
+  title: string;
+  type: string;
+  description: string;
+  priority: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectPosition {
+  id: number;
+  projectMemberId: number;
+  position: string;
+  assignedAt: string;
+}
+
+export interface ProjectMember {
+  id: number;
+  accountId: number;
+  projectId: number;
+  joinedAt: string | null;
+  invitedAt: string;
+  status: string;
+  email: string | null;
+  fullName: string;
+  username: string;
+  picture: string | null;
+  projectPositions: ProjectPosition[];
+}
+
+export interface ProjectDetailsById {
+  id: number;
+  projectKey: string;
+  name: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+  requirements: ProjectRequirement[];
+  projectMembers: ProjectMember[];
+}
+
+// Work Item-related interfaces
 interface Assignee {
   fullname: string;
   picture: string | null;
@@ -54,54 +100,7 @@ interface WorkItem {
   reporterPicture: string | null;
 }
 
-export interface GetWorkItemsResponse {
-  isSuccess: boolean;
-  code: number;
-  data: WorkItem[];
-  message: string;
-}
-
-interface ProjectDetails {
-  id: number;
-  name: string;
-  projectKey: string;
-  iconUrl: string | null;
-  description: string;
-  budget: number;
-  projectType: string;
-  createdBy: number;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-}
-
-interface GetProjectDetailsResponse {
-  isSuccess: boolean;
-  code: number;
-  data: ProjectDetails;
-  message: string;
-}
-
-interface CheckProjectKeyResponse {
-  isSuccess: boolean;
-  code: number;
-  data: {
-    exists: boolean;
-  };
-  message: string;
-}
-
-interface CheckProjectNameResponse {
-  isSuccess: boolean;
-  code: number;
-  data: {
-    exists: boolean;
-  };
-  message: string;
-}
-
+// Task, Sprint, and Milestone interfaces
 interface TaskItem {
   id: string | null;
   reporterId: number;
@@ -186,67 +185,65 @@ interface ProjectDetailsFull {
   milestones: MilestoneItem[];
 }
 
-interface GetProjectDetailsFullResponse {
+// Response interfaces
+export interface CreateProjectResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails;
+  message: string;
+  error?: string;
+}
+
+export interface GetWorkItemsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: WorkItem[];
+  message: string;
+  error?: string;
+}
+
+export interface GetProjectDetailsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails;
+  message: string;
+  error?: string;
+}
+
+export interface CheckProjectKeyResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    exists: boolean;
+  };
+  message: string;
+  error?: string;
+}
+
+export interface CheckProjectNameResponse {
+  isSuccess: boolean;
+  code: number;
+  data: {
+    exists: boolean;
+  };
+  message: string;
+  error?: string;
+}
+
+export interface GetProjectDetailsFullResponse {
   isSuccess: boolean;
   code: number;
   data: ProjectDetailsFull;
   message: string;
+  error?: string;
 }
 
-interface ProjectRequirement {
-  id: number;
-  projectId: number;
-  title: string;
-  type: string;
-  description: string;
-  priority: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ProjectPosition {
-  id: number;
-  projectMemberId: number;
-  position: string;
-  assignedAt: string;
-}
-
-interface ProjectMember {
-  id: number;
-  accountId: number;
-  projectId: number;
-  joinedAt: string | null;
-  invitedAt: string;
-  status: string;
-  email: string | null;
-  fullName: string;
-  username: string;
-  picture: string | null;
-  projectPositions: ProjectPosition[];
-}
-
-interface ProjectDetailsById {
-  id: number;
-  projectKey: string;
-  name: string;
-  description: string;
-  budget: number;
-  projectType: string;
-  createdBy: number;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  requirements: ProjectRequirement[];
-  projectMembers: ProjectMember[];
-}
-
-interface GetProjectDetailsByIdResponse {
+export interface GetProjectDetailsByIdResponse {
   isSuccess: boolean;
   code: number;
   data: ProjectDetailsById;
   message: string;
+  error?: string;
 }
 
 export const projectApi = createApi({
@@ -259,21 +256,25 @@ export const projectApi = createApi({
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
+  tagTypes: ['Project', 'WorkItem', 'ProjectDetails'],
   endpoints: (builder) => ({
     getWorkItemsByProjectId: builder.query<GetWorkItemsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/workitems`,
         method: 'GET',
       }),
+      providesTags: (result, error, projectId) => [{ type: 'WorkItem', id: projectId }],
     }),
     getProjectDetailsByKey: builder.query<GetProjectDetailsResponse, string>({
       query: (projectKey) => ({
         url: `project/view-by-key?projectKey=${projectKey}`,
         method: 'GET',
       }),
+      providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
     checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
       query: (projectKey) => ({
@@ -288,40 +289,37 @@ export const projectApi = createApi({
       }),
     }),
     createProject: builder.mutation<CreateProjectResponse, CreateProjectRequest>({
-      query: (body) => {
-        const token = localStorage.getItem('accessToken');
-        return {
-          url: 'project',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body,
-        };
-      },
+      query: (body) => ({
+        url: 'project',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Project', 'ProjectDetails'],
     }),
     updateProject: builder.mutation<CreateProjectResponse, { id: number; body: CreateProjectRequest }>({
       query: ({ id, body }) => ({
         url: `project/${id}`,
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body,
       }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'Project', id },
+        { type: 'ProjectDetails', id },
+      ],
     }),
     getFullProjectDetailsByKey: builder.query<GetProjectDetailsFullResponse, string>({
       query: (projectKey) => ({
         url: `project/by-project-key?projectKey=${projectKey}`,
         method: 'GET',
       }),
+      providesTags: (result, error, projectKey) => [{ type: 'ProjectDetails', id: projectKey }],
     }),
     getProjectDetailsById: builder.query<GetProjectDetailsByIdResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/details`,
         method: 'GET',
       }),
+      providesTags: (result, error, projectId) => [{ type: 'ProjectDetails', id: projectId }],
     }),
   }),
 });

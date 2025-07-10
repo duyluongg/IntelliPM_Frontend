@@ -94,7 +94,7 @@ const ProjectCreation: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg p-6">{renderStep()}</div>
+        <div className="bg-white">{renderStep()}</div>
       </div>
     </div>
   );

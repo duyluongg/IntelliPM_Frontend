@@ -4,7 +4,7 @@ import { useCreateProjectMemberMutation, useDeleteProjectMemberMutation, useGetP
 import { useCreateProjectPositionMutation, useDeleteProjectPositionMutation } from '../../../services/projectPositionApi';
 import { useGetAccountByEmailQuery } from '../../../services/accountApi';
 import type { ProjectMember } from '../../../services/projectApi';
-import { Trash2, UserPlus, Plus, X } from 'lucide-react';
+import { UserPlus, Plus, X } from 'lucide-react';
 
 interface MembersSectionProps {
   projectMembers: ProjectMember[];
@@ -173,7 +173,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
       await deleteProjectPosition({ projectMemberId: memberId, positionId }).unwrap();
       refetchMembers();
       refetch();
-    }catch (error) {
+    } catch (error) {
       setMemberError(getErrorMessage(error));
       console.error('Failed to delete position:', error);
     }
@@ -186,46 +186,46 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
   };
 
   const renderSingleRowMembers = (title: string, members: ProjectMember[]) => (
-    <div className="mb-6">
-      <h3 className="text-lg font-semibold text-[#1c73fd] mb-2 border-l-4 border-[#1c73fd] pl-3">
+    <div className="mb-8">
+      <h3 className="text-lg font-semibold text-gray-900 mb-3 border-l-4 border-blue-500 pl-4">
         {title} ({members.length})
       </h3>
       <div className="flex flex-wrap gap-4">
         {members.map((member) => (
           <div
             key={member.id}
-            className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition w-full sm:w-auto relative"
+            className="relative flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1rem)]"
           >
             <button
               onClick={() => handleDeleteMember(member.id)}
-              className="absolute -top-2 -right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
+              className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full p-1.5 transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
               title={`Remove ${member.fullName}`}
               aria-label={`Remove ${member.fullName}`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
             <img
               src={member.picture || 'https://i.pravatar.cc/40'}
               alt={member.fullName}
-              className="w-14 h-14 rounded-full object-cover border-2 border-[#1c73fd]/20"
+              className="w-12 h-12 rounded-full object-cover border-2 border-blue-100"
             />
             <div className="flex flex-col flex-grow">
-              <p className="font-medium text-gray-800">
+              <p className="font-semibold text-gray-900 text-base">
                 {member.fullName}{' '}
-                <span className="text-sm text-gray-500">(@{member.username})</span>
+                <span className="text-sm text-gray-500 font-normal">(@{member.username})</span>
               </p>
-              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.id] = el; }}>
+              <div className="relative flex flex-wrap gap-2 mt-2" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (
                   member.projectPositions.map((pos) => (
                     <div
                       key={pos.id}
-                      className="relative flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
+                      className="relative flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium"
                     >
                       <span>{pos.position}</span>
                       {!PROTECTED_POSITIONS.includes(pos.position.toUpperCase()) && (
                         <button
                           onClick={() => handleDeletePosition(member.id, pos.id, pos.position)}
-                          className="absolute -top-1 -right-1 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110"
+                          className="absolute -top-1 -right-1 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full p-0.5 transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
                           title={`Remove ${pos.position}`}
                           aria-label={`Remove ${pos.position}`}
                         >
@@ -235,25 +235,25 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                     </div>
                   ))
                 ) : (
-                  <span className="text-sm text-gray-600">No positions assigned</span>
+                  <span className="text-sm text-gray-500">No positions assigned</span>
                 )}
                 <button
                   onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
-                  className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium hover:bg-[#1c73fd]/20"
+                  className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium hover:bg-blue-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   disabled={isPositionsLoading}
                   aria-expanded={isAddPositionOpen[member.id]}
                   aria-haspopup="listbox"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3 h-3" />
                   Add Position
                 </button>
                 {isAddPositionOpen[member.id] && (
-                  <ul className="absolute z-40 w-48 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-auto top-full left-0">
+                  <ul className="absolute z-50 w-48 bg-white border border-gray-100 rounded-xl mt-2 shadow-lg max-h-60 overflow-auto top-full left-0">
                     {positions.map((pos) => (
                       <li
                         key={pos.id}
                         onClick={() => handleAddPosition(member.id, pos.name)}
-                        className="px-3 py-1.5 text-sm hover:bg-[#1c73fd]/10 cursor-pointer flex items-center gap-2 text-gray-900"
+                        className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-gray-900 transition-colors duration-200 focus:outline-none focus:bg-blue-50"
                         role="option"
                       >
                         {pos.iconLink && <img src={pos.iconLink} alt="" className="w-4 h-4" />}
@@ -263,7 +263,6 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   </ul>
                 )}
               </div>
-          
             </div>
           </div>
         ))}
@@ -273,48 +272,45 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
 
   const renderGridMembers = (title: string, members: ProjectMember[]) => (
     <div className="mb-8">
-      <div className="justify-start mb-3">
-        <h3 className="text-xl font-semibold text-[#1c73fd] mb-3 border-l-4 border-[#1c73fd] pl-3">
-          {title} ({members.length})
-        </h3>
-
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-3 border-l-4 border-blue-500 pl-4">
+        {title} ({members.length})
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {members.map((member) => (
           <div
             key={member.id}
-            className="flex items-center gap-4 p-4 bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-2xl shadow hover:shadow-lg transition-all relative"
+            className="relative flex items-center gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300"
           >
             <button
               onClick={() => handleDeleteMember(member.id)}
-              className="absolute -top-2 -right-2 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-1 transition-all duration-200 hover:scale-110"
+              className="absolute top-3 right-3 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full p-1.5 transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
               title={`Remove ${member.fullName}`}
               aria-label={`Remove ${member.fullName}`}
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
             <img
               src={member.picture || 'https://i.pravatar.cc/40'}
               alt={member.fullName}
-              className="w-14 h-14 rounded-full object-cover border-2 border-[#1c73fd]/20"
+              className="w-12 h-12 rounded-full object-cover border-2 border-blue-100"
             />
             <div className="flex flex-col gap-1 flex-grow">
-              <p>
-                <span className="font-medium text-gray-900">{member.fullName}</span>{' '}
-                <span className="text-sm text-gray-500">(@{member.username})</span>
+              <p className="font-semibold text-gray-900 text-base">
+                {member.fullName}{' '}
+                <span className="text-sm text-gray-500 font-normal">(@{member.username})</span>
               </p>
-              <div className="relative flex flex-wrap gap-2 mt-1" ref={(el) => { addPositionRef.current[member.id] = el; }}>
+              <div className="relative flex flex-wrap gap-2 mt-2" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (
                   member.projectPositions.map((pos) => (
                     <div
                       key={pos.id}
-                      className="relative flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium"
+                      className="relative flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium"
                     >
                       <span>{pos.position}</span>
                       {!PROTECTED_POSITIONS.includes(pos.position.toUpperCase()) && (
                         <button
                           onClick={() => handleDeletePosition(member.id, pos.id, pos.position)}
-                          className="absolute -top-1 -right-1 text-red-500 hover:text-red-600 bg-red-100 hover:bg-red-200 rounded-full p-0.5 transition-all duration-200 hover:scale-110"
+                          className="absolute -top-1 -right-1 text-gray-400 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-full p-0.5 transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-300"
                           title={`Remove ${pos.position}`}
                           aria-label={`Remove ${pos.position}`}
                         >
@@ -324,25 +320,25 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                     </div>
                   ))
                 ) : (
-                  <span className="text-sm text-gray-600">No positions assigned</span>
+                  <span className="text-sm text-gray-500">No positions assigned</span>
                 )}
                 <button
                   onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, [member.id]: !prev[member.id] }))}
-                  className="flex items-center gap-1 bg-[#1c73fd]/10 text-[#1c73fd] px-2 py-0.5 rounded-full text-xs font-medium hover:bg-[#1c73fd]/20"
+                  className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-xs font-medium hover:bg-blue-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   disabled={isPositionsLoading}
                   aria-expanded={isAddPositionOpen[member.id]}
                   aria-haspopup="listbox"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3 h-3" />
                   Add Position
                 </button>
                 {isAddPositionOpen[member.id] && (
-                  <ul className="absolute z-40 w-48 bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-auto top-full left-0">
+                  <ul className="absolute z-50 w-48 bg-white border border-gray-100 rounded-xl mt-2 shadow-lg max-h-60 overflow-auto top-full left-0">
                     {positions.map((pos) => (
                       <li
                         key={pos.id}
                         onClick={() => handleAddPosition(member.id, pos.name)}
-                        className="px-3 py-1.5 text-sm hover:bg-[#1c73fd]/10 cursor-pointer flex items-center gap-2 text-gray-900"
+                        className="px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-gray-900 transition-colors duration-200 focus:outline-none focus:bg-blue-50"
                         role="option"
                       >
                         {pos.iconLink && <img src={pos.iconLink} alt="" className="w-4 h-4" />}
@@ -352,7 +348,6 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   </ul>
                 )}
               </div>
-            
             </div>
           </div>
         ))}
@@ -361,19 +356,22 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
   );
 
   return (
-    <section className="max-w-6xl mx-auto p-6 bg-white rounded-lg ">
+    <section className="max-w-7xl mx-auto p-6 bg-white rounded-2xl shadow-sm">
       {memberError && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
           Error: {memberError}
         </div>
       )}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-gray-800 border-b pb-2 border-[#1c73fd]/30">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100">
           Project Members ({projectMembers.length})
         </h2>
         <button
           onClick={() => setIsAddMemberPopupOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all duration-200 text-sm font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
           disabled={isAddingMember}
         >
           {isAddingMember ? (
@@ -397,11 +395,11 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
       {renderGridMembers('Team Members', groupedMembers.Member)}
 
       {isAddMemberPopupOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 p-6 rounded-2xl shadow-md w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-xl w-full max-w-md relative">
             {isAddingMember && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 rounded-2xl">
-                <svg className="animate-spin h-4 w-4 text-[#1c73fd]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 rounded-2xl">
+                <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path
                     className="opacity-75"
@@ -411,13 +409,13 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                 </svg>
               </div>
             )}
-            <h3 className="text-xl font-semibold text-[#1c73fd] mb-4 border-l-4 border-[#1c73fd] pl-3">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4 border-l-4 border-blue-500 pl-4">
               Add New Project Member
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-[#1c73fd]" /> Email *
+                  <UserPlus className="w-4 h-4 text-blue-600" /> Email *
                 </label>
                 <input
                   ref={emailInputRef}
@@ -425,25 +423,25 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   placeholder="Enter email"
                   value={newMemberEmail}
                   onChange={(e) => setNewMemberEmail(e.target.value)}
-                  className={`mt-1 block w-full border border-gray-200 px-3 py-1.5 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#1c73fd]/30 focus:border-[#1c73fd] ${
-                    memberError ? 'border-red-400' : 'border-gray-200'
+                  className={`mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 ${
+                    memberError ? 'border-red-300' : 'border-gray-200'
                   }`}
                   aria-describedby="email-error"
                 />
                 {memberError && (
-                  <p id="email-error" className="text-red-600 text-xs mt-1">{memberError}</p>
+                  <p id="email-error" className="text-red-600 text-xs mt-1.5">{memberError}</p>
                 )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-[#1c73fd]" /> Positions
+                  <UserPlus className="w-4 h-4 text-blue-600" /> Positions
                 </label>
                 <div className="relative mt-1" ref={positionRef}>
                   <button
                     type="button"
                     onClick={() => setIsAddPositionOpen((prev) => ({ ...prev, 0: !prev[0] }))}
-                    className={`w-full border border-gray-200 px-3 py-1.5 rounded-lg text-sm text-gray-900 text-left flex items-center justify-between bg-white ${
-                      isPositionsLoading ? 'opacity-50 cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-[#1c73fd]/30 focus:border-[#1c73fd]'
+                    className={`w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 text-left flex items-center justify-between bg-white ${
+                      isPositionsLoading ? 'opacity-50 cursor-not-allowed' : 'focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500'
                     }`}
                     disabled={isPositionsLoading}
                     aria-expanded={isAddPositionOpen[0]}
@@ -452,17 +450,17 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                     <span className="flex items-center gap-2 flex-wrap">
                       {selectedPositions.length > 0 ? selectedPositions.join(', ') : 'Select Positions'}
                     </span>
-                    <Plus className="w-4 h-4 text-[#1c73fd]" />
+                    <Plus className="w-4 h-4 text-blue-600" />
                   </button>
                   {isAddPositionOpen[0] && (
-                    <ul className="absolute z-40 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg max-h-60 overflow-auto">
+                    <ul className="absolute z-50 w-full bg-white border border-gray-100 rounded-xl mt-2 shadow-lg max-h-60 overflow-auto">
                       {positions.map((pos) => (
                         <li
                           key={pos.id}
                           onClick={() => handleTogglePosition(pos.name)}
-                          className={`px-3 py-1.5 text-sm hover:bg-[#1c73fd]/10 cursor-pointer flex items-center gap-2 text-gray-900 ${
-                            selectedPositions.includes(pos.name) ? 'bg-[#1c73fd]/10' : ''
-                          }`}
+                          className={`px-4 py-2 text-sm hover:bg-blue-50 cursor-pointer flex items-center gap-2 text-gray-900 transition-colors duration-200 ${
+                            selectedPositions.includes(pos.name) ? 'bg-blue-50' : ''
+                          } focus:outline-none focus:bg-blue-50`}
                           role="option"
                           aria-selected={selectedPositions.includes(pos.name)}
                         >
@@ -475,7 +473,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                 </div>
               </div>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setIsAddMemberPopupOpen(false);
@@ -483,14 +481,14 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
                   setSelectedPositions([]);
                   setMemberError(null);
                 }}
-                className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 text-sm font-medium"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gray-300"
                 disabled={isAccountLoading || isPositionsLoading || isAddingMember}
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddMember}
-                className="px-3 py-1.5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all duration-200 text-sm font-medium"
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-300"
                 disabled={isAccountLoading || isPositionsLoading || !newMemberEmail || isAddingMember}
               >
                 {isAddingMember ? (

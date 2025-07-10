@@ -276,25 +276,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
         <h3 className="text-xl font-semibold text-[#1c73fd] mb-3 border-l-4 border-[#1c73fd] pl-3">
           {title} ({members.length})
         </h3>
-        <button
-          onClick={() => setIsAddMemberPopupOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all duration-200 text-sm font-medium"
-          disabled={isAddingMember}
-        >
-          {isAddingMember ? (
-            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          ) : (
-            <UserPlus className="w-4 h-4" />
-          )}
-          Add Member
-        </button>
+ 
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {members.map((member) => (

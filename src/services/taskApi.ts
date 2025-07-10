@@ -33,6 +33,15 @@ export interface TaskResponseDTO {
   priority: string;
   evaluate: string | null;
   status: string;
+  dependencies: TaskDependency[];
+}
+
+interface TaskDependency {
+  id: number;
+  taskId: string;
+  linkedFrom: string;
+  linkedTo: string;
+  type: string;
 }
 
 interface TaskListResponse {
@@ -98,7 +107,7 @@ export const taskApi = createApi({
       transformResponse: (response: TaskListResponse) => response.data,
     }),
 
-    updateTask: builder.mutation<void, { id: string; body: Partial<TaskResponseDTO> }>({
+    updateTasks: builder.mutation<void, { id: string; body: Partial<TaskResponseDTO> }>({
       query: ({ id, body }) => ({
         url: `task/${id}`,
         method: 'PUT',
@@ -152,6 +161,16 @@ export const taskApi = createApi({
         body: JSON.stringify(plannedEndDate),
       }),
     }),
+    updateTask: builder.mutation<
+      TaskResponseDTO, // response
+      { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
+    >({
+      query: ({ id, body }) => ({
+        url: `task/${id}`,
+        method: 'PUT',
+        body,
+      }),
+    }),
   }),
 });
 
@@ -165,5 +184,6 @@ export const {
   useUpdateTaskTitleMutation,
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
-  useUpdatePlannedEndDateMutation
+  useUpdatePlannedEndDateMutation, 
+  useUpdateTasksMutation
 } = taskApi;

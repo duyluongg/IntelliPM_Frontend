@@ -1,9 +1,9 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import ProjectTabs from '../../../components/PM/ProjectTabs';
 import { FileText, Zap, Bug, AlertTriangle, Shuffle, SlidersHorizontal } from 'lucide-react';
 import FeatureRequestForm from './FeatureRequestForm';
 import RecentForm from './RecentForm';
 import DocBlank from './DocBlank';
+import { useRef } from 'react';
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
@@ -20,11 +20,13 @@ export default function Form() {
   const { formId } = useParams();
   const navigate = useNavigate();
 
-  const handleSelect = (templateId: string) => {
-    console.log(`Selected template: ${templateId}`);
-    
-    navigate(`/projects/form/${templateId}`);
-  };
+ const handleSelect = (templateId: string) => {
+  console.log(`Selected template: ${templateId}`);
+  sessionStorage.removeItem(`createdDoc-${templateId}`);
+  sessionStorage.removeItem(`docId-${templateId}`);
+  navigate(`/project/projects/form/${templateId}`);
+};
+
 
   const handleBack = () => {
     navigate('/projects/form');
@@ -60,7 +62,7 @@ export default function Form() {
       ) : (
         <div className='mt-6 max-w-5xl mx-auto'>
           {formId === 'feature' && <FeatureRequestForm onBack={handleBack} />}
-          {formId === 'doc' && <DocBlank  />}
+          {formId === 'doc' && <DocBlank />}
 
           {/* {formId === 'bug' && <BugReportForm onBack={handleBack} />} */}
           {/* ... */}

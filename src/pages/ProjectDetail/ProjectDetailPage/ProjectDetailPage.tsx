@@ -7,6 +7,7 @@ import ProjectDetailHeader from '../ProjectDetailHeader/ProjectDetailHeader';
 import Gantt from '../../PM/Gantt/Gantt';
 import ProjectDashboard from '../../PM/Dashboard/ProjectDashboard';
 import Risk from '../../PM/Risk/Risk';
+import Doc from '../../PM/YourProject/Doc';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -28,6 +29,8 @@ const ProjectDetailPage = () => {
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
+        {activeTab === 'risk' && <Risk />}
+        {activeTab === 'tests' && <Doc/>}
       </div>
     </div>
   );

@@ -127,7 +127,6 @@ import ListItem from '@tiptap/extension-list-item';
 import Bold from '@tiptap/extension-bold';
 import Italic from '@tiptap/extension-italic';
 
-
 const CustomHeading = Heading.extend({
   addAttributes() {
     return {
@@ -227,6 +226,7 @@ export const CustomExtensions = [
   }),
   TableRow,
   CustomTableHeader,
+  // BaseTableCell,
   CustomTableCell,
   Bold,
   Italic,

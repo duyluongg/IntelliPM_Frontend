@@ -17,7 +17,6 @@ type MenuBarProps = {
 
 const MenuBar = ({ editor }: MenuBarProps) => {
   if (!editor) return null;
-  console.log(editor.getJSON());
 
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
@@ -286,13 +285,16 @@ export default function RichTextEditor({ value, onChange }: Props) {
     extensions,
     content: cleanedValue,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+      const html = editor.getHTML();
+      if (html !== value) {
+        onChange(html);
+      }
     },
   });
 
   useEffect(() => {
-    if (editor && editor.getHTML() !== cleanedValue) {
-      editor.commands.setContent(cleanedValue, 'html');
+    if (editor && cleanedValue && editor.getHTML() !== cleanedValue) {
+      editor.commands.setContent(cleanedValue, false);
     }
   }, [value, editor]);
 

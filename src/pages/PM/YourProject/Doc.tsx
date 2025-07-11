@@ -28,24 +28,25 @@ export default function Doc({ docId }: Props) {
   }, [docId]);
 
   useEffect(() => {
-    if (docData?.content) {
+    if (docData && typeof docData.content === 'string' && docData.content !== content) {
       setContent(docData.content);
       console.log('[GET] docData:', docData);
     }
   }, [docData]);
 
-  const handleContentChange = async (newContent: string) => {
-    setContent(newContent);
-    if (!docId || isUpdatingRef.current) return;
 
+
+  const handleContentChange = async (newContent: string) => {
+    if (!docId || isUpdatingRef.current || newContent === content) return;
+
+    setContent(newContent);
     try {
       isUpdatingRef.current = true;
-
       await updateDocument({
         id: docId,
         data: { content: newContent, updatedBy: user?.id },
       }).unwrap();
-      console.log('[PUT] success');
+      console.log('[PUT] success', newContent);
     } catch (err) {
       console.error('Update doc failed:', err);
     } finally {

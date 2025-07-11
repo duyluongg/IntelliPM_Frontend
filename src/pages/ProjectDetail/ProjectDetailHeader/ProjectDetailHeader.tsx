@@ -277,6 +277,8 @@ const navItems = [
   { label: 'Pages', icon: <FileText className='w-4 h-4' />, path: 'pages' },
   { label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   { label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
+  { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
+
 ];
 
 const ProjectDetailHeader: React.FC = () => {

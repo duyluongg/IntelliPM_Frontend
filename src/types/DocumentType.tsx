@@ -10,4 +10,5 @@ export type DocumentType = {
   content: string;
   updatedAt: string;
   template: string;
+  updatedBy: number;
 };

@@ -13,8 +13,13 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import DocBlank from '../../PM/YourProject/DocBlank';
 import { FileText } from 'lucide-react';
+import Doc from '../../PM/YourProject/Doc';
+import {
+  useCreateDocumentMutation,
+  useGetDocumentMappingQuery,
+} from '../../../services/Document/documentAPI';
+import { useAuth } from '../../../services/AuthContext';
 
 // Interface Reporter
 interface Reporter {
@@ -248,18 +253,60 @@ const ProjectTaskList: React.FC = () => {
     selectedTaskType !== null &&
     ['task', 'bug', 'story'].includes(selectedTaskType);
 
-  console.log('🧩 ProjectTaskList rendered');
-
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [docTaskId, setDocTaskId] = useState<string | null>(null);
   const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
   const [docMode, setDocMode] = useState<'create' | 'view'>('create');
 
-  const handleOpenDocumentModal = (taskId: string, type: 'task' | 'epic' | 'subtask', mode: 'create' | 'view') => {
-    setDocTaskId(taskId);
-    setDocTaskType(type);
-    setDocMode(mode);
-    setIsDocModalOpen(true);
+  const [createDocument] = useCreateDocumentMutation();
+  const { user } = useAuth();
+  const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
+
+  const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery({
+    projectId,
+    userId: user?.id,
+  });
+
+  useEffect(() => {
+    if (docMapping) {
+      setCreatedDocIds(docMapping);
+    }
+  }, [docMapping]);
+
+  const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
+    if (!user || !projectId) return;
+
+    if (createdDocIds[taskKey]) {
+      // Nếu đã có → View
+      setDocTaskId(taskKey);
+      setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+      setDocMode('view');
+      setIsDocModalOpen(true);
+    } else {
+      try {
+        const payload = {
+          projectId: projectId,
+          taskId: taskType === 'task' ? taskKey : null,
+          epicId: taskType === 'epic' ? taskKey : null,
+          subTaskId: taskType === 'subtask' ? taskKey : null,
+          type: taskType,
+          title: 'Untitled Document',
+          template: 'blank',
+          content: '',
+          createdBy: user.id,
+        };
+
+        const res = await createDocument(payload).unwrap();
+        setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
+
+        setDocTaskId(taskKey);
+        setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+        setDocMode('view');
+        setIsDocModalOpen(true);
+      } catch (error) {
+        console.error('Error creating document:', error);
+      }
+    }
   };
 
   const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
@@ -594,13 +641,11 @@ const ProjectTaskList: React.FC = () => {
                 <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                   <Avatar person={task.reporter} />
                 </td>
-                <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
-                  {sessionStorage.getItem(`docId-${task.key}`) ? (
+                <td className='w-32'>
+                  {createdDocIds[task.key] ? (
                     <button
                       className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
-                      onClick={() => {
-                        handleOpenDocumentModal(task.key, task.type, 'view');
-                      }}
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
                       <FileText size={16} className='text-blue-500' />
                       View Document
@@ -608,9 +653,7 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <button
                       className='text-blue-600 underline hover:text-blue-800 text-sm'
-                      onClick={() => {
-                        handleOpenDocumentModal(task.key, task.type, 'create');
-                      }}
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
                       Add/View
                     </button>
@@ -623,21 +666,25 @@ const ProjectTaskList: React.FC = () => {
       </div>
       {isDocModalOpen && docTaskId && (
         <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
-          <div className='bg-white rounded-xl w-[100vw] max-w-screen-xl max-h-[96vh] overflow-y-auto shadow-2xl relative p-6'>
+          <div
+            className='
+    bg-white rounded-xl
+    w-full h-full
+    sm:w-[95vw] sm:h-[90vh]
+    md:w-[90vw] md:h-[90vh]
+    lg:w-[90vw] lg:h-[90vh]
+    xl:w-[98vw] xl:h-[95vh]
+    2xl:w-[85vw] 2xl:h-[90vh]
+    overflow-y-auto shadow-2xl relative p-6
+  '
+          >
             <button
               onClick={() => setIsDocModalOpen(false)}
               className='absolute top-3 right-3 text-gray-500 hover:text-black text-xl'
             >
               ✕
             </button>
-            <DocBlank
-              key={docTaskId}
-              projectId={projectId}
-              keyId={docTaskId}
-              taskType={docTaskType}
-              onClose={() => setIsDocModalOpen(false)}
-              mode={docMode}
-            />
+            <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} />
           </div>
         </div>
       )}

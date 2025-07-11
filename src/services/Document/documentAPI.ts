@@ -40,18 +40,43 @@ export const documentApi = createApi({
     getMyDocuments: builder.query<DocumentType[], void>({
       query: () => 'documents/created-by-me',
     }),
-    generateAIContent: builder.mutation<
-      { content: string },
-      { documentId: number; prompt: string }
-    >({
-      query: ({ documentId, prompt }) => ({
-        url: `documents/${documentId}/generate-ai-content`,
+
+    generateAIContent: builder.mutation<string, { id: number; prompt: string }>({
+      query: ({ id, prompt }) => ({
+        url: `/documents/${id}/generate-ai-content`,
         method: 'POST',
         body: JSON.stringify(prompt),
         headers: {
           'Content-Type': 'application/json',
         },
       }),
+    }),
+
+    findDocumentByKey: builder.query<
+      DocumentType,
+      {
+        projectId: number;
+        taskId?: string;
+        epicId?: string;
+        subTaskId?: string;
+      }
+    >({
+      query: ({ projectId, taskId, epicId, subTaskId }) => {
+        const params = new URLSearchParams();
+        params.append('projectId', projectId.toString());
+        if (taskId) params.append('taskId', taskId);
+        if (epicId) params.append('epicId', epicId);
+        if (subTaskId) params.append('subTaskId', subTaskId);
+        return `documents/find-by-key?${params.toString()}`;
+      },
+    }),
+
+    getDocumentMapping: builder.query<
+      Record<string, number>,
+      { projectId: number; userId: number }
+    >({
+      query: ({ projectId, userId }) =>
+        `/documents/mapping?projectId=${projectId}&userId=${userId}`,
     }),
   }),
 });
@@ -62,4 +87,6 @@ export const {
   useUpdateDocumentMutation,
   useGetMyDocumentsQuery,
   useGenerateAIContentMutation,
+  useFindDocumentByKeyQuery,
+  useGetDocumentMappingQuery,
 } = documentApi;

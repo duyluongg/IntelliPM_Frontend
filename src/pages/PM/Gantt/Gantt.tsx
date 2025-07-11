@@ -24,6 +24,16 @@ const Gantt = () => {
     const rawTask = selectedTaskRef.current?.rawData;
     if (!rawTask?.id) return;
 
+    const dependencies = updatedTask.connections?.map((conn: any) => {
+      const linkedToId = conn.target.replace('task-', '');
+      return {
+        taskId: rawTask.id,
+        linkedFrom: rawTask.id,
+        linkedTo: linkedToId,
+        type: mapConnectionTypeToString(conn.type),
+      };
+    });
+
     const taskForUpdate = {
       id: rawTask.id,
       body: {
@@ -37,6 +47,7 @@ const Gantt = () => {
         plannedStartDate: updatedTask.dateStart?.toISOString(),
         plannedEndDate: updatedTask.dateEnd?.toISOString(),
         status: rawTask.status,
+        dependencies,
       },
     };
 
@@ -57,6 +68,21 @@ const Gantt = () => {
   const handleDelete = () => {
     ganttRef.current?.removeTask(selectedTaskRef.current);
     ganttRef.current?.closeWindow();
+  };
+
+  const mapConnectionTypeToString = (type: number): string => {
+    switch (type) {
+      case 0:
+        return 'START_START';
+      case 1:
+        return 'FINISH_START';
+      case 2:
+        return 'FINISH_FINISH';
+      case 3:
+        return 'START_FINISH';
+      default:
+        return 'UNKNOWN';
+    }
   };
 
   const popupWindowCustomizationFunction = (target: any, type: any, taskObj: any) => {

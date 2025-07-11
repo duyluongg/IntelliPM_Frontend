@@ -657,6 +657,25 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 )}
               </div>
 
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{
+                  height: '8px',
+                  backgroundColor: '#e0e0e0',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: '#4caf50',
+                    height: '100%',
+                    transition: 'width 0.3s ease',
+                  }} />
+                </div>
+                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
+                  {progressPercent}% Done
+                </div>
+              </div>
+
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading...</p>

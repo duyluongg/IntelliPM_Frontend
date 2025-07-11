@@ -5,12 +5,13 @@ import ListItem from '@tiptap/extension-list-item';
 import TextStyle from '@tiptap/extension-text-style';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { Sparkles } from 'lucide-react';
+import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -18,7 +19,7 @@ type MenuBarProps = {
 
 const MenuBar = ({ editor }: MenuBarProps) => {
   if (!editor) return null;
-
+  const [showAIOptions, setShowAIOptions] = useState(false);
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
       <div className='flex flex-wrap gap-2'>
@@ -238,15 +239,15 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
+        <div className='relative'>
           <button
-            onClick={() => editor.chain().focus().setColor('#958DF1').run()}
+            onClick={() => setShowAIOptions((prev) => !prev)}
             className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
               editor.isActive('textStyle', { color: '#958DF1' })
                 ? 'bg-purple-50 text-purple-600 border-purple-200'
                 : 'text-gray-700 hover:text-gray-900'
             }`}
-            title='Purple color'
+            title='AI Assistant'
           >
             <div className='flex items-center gap-2'>
               <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-400 to-purple-400 rounded-lg'>
@@ -255,6 +256,12 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               <span>AI Assistant</span>
             </div>
           </button>
+
+          {showAIOptions && (
+            <div className='absolute top-full mt-2 right-0 z-50'>
+              <WriteWithAIModal editor={editor} onClose={() => setShowAIOptions(false)} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -313,7 +320,8 @@ export default function RichTextEditor({ value, onChange }: Props) {
 
   return (
     <div>
-      {editor && <MenuBar editor={editor} />}
+      <div className='sticky top-0 z-10 bg-white'>{editor && <MenuBar editor={editor} />}</div>
+
       <div className='prose max-w-none'>
         <EditorContent editor={editor} />
       </div>

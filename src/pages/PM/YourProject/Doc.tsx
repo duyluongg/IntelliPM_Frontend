@@ -61,7 +61,7 @@ export default function Doc({ docId }: Props) {
       <RichTextEditor value={content} onChange={handleContentChange} />
 
       {isEmptyContent(content) && (
-        <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50'>
+        <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full '>
           <StartWithAI
             docId={docId}
             onGenerated={() => {

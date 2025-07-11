@@ -666,25 +666,47 @@ const ProjectTaskList: React.FC = () => {
       </div>
       {isDocModalOpen && docTaskId && (
         <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+          {/* Modal box */}
           <div
             className='
-    bg-white rounded-xl
-    w-full h-full
-    sm:w-[95vw] sm:h-[90vh]
-    md:w-[90vw] md:h-[90vh]
-    lg:w-[90vw] lg:h-[90vh]
-    xl:w-[98vw] xl:h-[95vh]
-    2xl:w-[85vw] 2xl:h-[90vh]
-    overflow-y-auto shadow-2xl relative p-6
-  '
+        bg-white rounded-xl relative
+        w-full h-full
+        sm:w-[95vw] sm:h-[90vh]
+        md:w-[90vw] md:h-[90vh]
+        lg:w-[90vw] lg:h-[90vh]
+        xl:w-[98vw] xl:h-[95vh]
+        2xl:w-[85vw] 2xl:h-[90vh]
+        shadow-2xl
+        flex flex-col
+      '
           >
-            <button
-              onClick={() => setIsDocModalOpen(false)}
-              className='absolute top-3 right-3 text-gray-500 hover:text-black text-xl'
-            >
-              ✕
-            </button>
-            <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} />
+          
+            <div className='flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100'>
+              <button
+                onClick={() => setIsDocModalOpen(false)}
+                className='
+            absolute top-3 right-3 z-[999] 
+            w-8 h-8 
+            sm:w-10 sm:h-10 
+            md:w-12 md:h-12
+            sm:top-4 sm:right-4
+            md:top-5 md:right-5
+            flex items-center justify-center
+            text-gray-500 hover:text-black hover:bg-gray-100 
+            rounded-full transition-colors duration-200
+            text-lg sm:text-xl md:text-2xl
+            shadow-sm hover:shadow-md
+          '
+                aria-label='Đóng modal'
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content container có thể cuộn */}
+            <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
+              <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} />
+            </div>
           </div>
         </div>
       )}

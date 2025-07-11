@@ -78,6 +78,17 @@ export const documentApi = createApi({
       query: ({ projectId, userId }) =>
         `/documents/mapping?projectId=${projectId}&userId=${userId}`,
     }),
+
+    askAI: builder.mutation<{ content: string }, string>({
+      query: (prompt) => ({
+        url: '/documents/ask-ai',
+        method: 'POST',
+        body: JSON.stringify(prompt),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
   }),
 });
 
@@ -89,4 +100,5 @@ export const {
   useGenerateAIContentMutation,
   useFindDocumentByKeyQuery,
   useGetDocumentMappingQuery,
+  useAskAIMutation,
 } = documentApi;

@@ -19,6 +19,29 @@ interface ProjectMetric {
   updatedAt: string;
 }
 
+interface ProjectMetricResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    id: number;
+    projectId: number;
+    calculatedBy: string;
+    isApproved: boolean;
+    plannedValue: number;
+    earnedValue: number;
+    actualCost: number;
+    spi: number;
+    cpi: number;
+    delayDays: number;
+    budgetOverrun: number;
+    projectedFinishDate: string;
+    projectTotalCost: number | null;
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
 interface HealthDashboardResponse {
   isSuccess: boolean;
   code: number;
@@ -32,17 +55,6 @@ interface HealthDashboardResponse {
     cost: ProjectMetric;
   };
 }
-
-// interface TaskStatusDashboardResponse {
-//   isSuccess: boolean;
-//   code: number;
-//   message: string;
-//   data: {
-//     notStarted: number;
-//     inProgress: number;
-//     completed: number;
-//   };
-// }
 
 interface TaskStatusItem {
   key: number;
@@ -126,22 +138,8 @@ export const projectMetricApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    // calculateProjectMetrics: builder.mutation<any, { projectId: number; calculatedBy: string }>({
-    //   query: ({ projectId, calculatedBy }) => ({
-    //     url: `projectmetric/calculate?projectId=${projectId}&calculatedBy=${calculatedBy}`,
-    //     method: 'POST',
-    //   }),
-    // }),
-
-    // calculateProjectMetrics: builder.mutation<any, { projectId: number }>({
-    //   query: ({ projectId }) => ({
-    //     url: `projectmetric/calculate-and-save?projectId=${projectId}`,
-    //     method: 'POST',
-    //   }),
-    // }),
-
-    calculateProjectMetrics: builder.mutation<any, { projectKey: string }>({
-      query: (projectKey) => ({
+    calculateProjectMetrics: builder.mutation({
+      query: ({ projectKey }) => ({
         url: `projectmetric/calculate-metrics-by-ai?projectKey=${projectKey}`,
         method: 'POST',
       }),
@@ -188,6 +186,13 @@ export const projectMetricApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getProjectMetricByProjectKey: builder.query<ProjectMetricResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/by-project-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -199,4 +204,5 @@ export const {
   useGetTimeDashboardQuery,
   useGetCostDashboardQuery,
   useGetWorkloadDashboardQuery,
+  useGetProjectMetricByProjectKeyQuery,
 } = projectMetricApi;

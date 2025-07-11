@@ -7,6 +7,7 @@ import {
 } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import type { DynamicCategory } from '../../../services/dynamicCategoryApi';
+import { AlertCircle } from 'lucide-react';
 
 interface TouchedFields {
   name: boolean;
@@ -193,19 +194,22 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
   };
 
   return (
-    <section className="mb-12">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-        <span className="border-b-2 border-[#1c73fd] pb-1">Project Information</span>
+    <section className="max-w-7xl mx-auto p-6 bg-white rounded-2xl shadow-sm mb-12">
+      <h2 className="text-2xl font-semibold text-gray-900 mb-6 border-b-2 pb-2 border-blue-100">
+        Project Information
       </h2>
       {updateError && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
           Error updating project: {(updateError as any)?.data?.message || 'Unknown error'}
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-[#f0f6ff] border border-[#d0e3ff] p-6 rounded-2xl shadow-md space-y-3">
+        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Project Name *</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Project Name *</span>
+            </label>
             <input
               ref={nameInputRef}
               name="name"
@@ -215,29 +219,28 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               onBlur={handleFieldBlur}
               required
               placeholder="Enter project name"
-              className={`mt-2 block w-full border-2 ${
-                touched.name && isNameUnique === false
-                  ? 'border-red-500'
-                  : touched.name && isNameUnique
-                  ? 'border-green-500'
-                  : 'border-gray-200'
-              } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400 text-sm`}
+              className={`mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${
+                touched.name && isNameUnique === false ? 'border-red-300' : touched.name && isNameUnique ? 'border-blue-500' : 'border-gray-200'
+              }`}
+              aria-describedby="name-error"
             />
             {touched.name && formData.name && isNameChecking && (
-              <p className="mt-1 text-sm text-gray-500">Checking project name...</p>
+              <p className="mt-1.5 text-sm text-gray-500">Checking project name...</p>
             )}
             {touched.name && formData.name && isNameUnique === true && (
-              <p className="mt-1 text-sm text-green-500">Project name is available.</p>
+              <p className="mt-1.5 text-sm text-green-600">Project name is available.</p>
             )}
             {touched.name && formData.name && isNameUnique === false && (
-              <p className="mt-1 text-sm text-red-500">Project name is already taken.</p>
+              <p className="mt-1.5 text-sm text-red-600">Project name is already taken.</p>
             )}
             {touched.name && !formData.name && (
-              <p className="mt-1 text-sm text-red-500">Project name is required.</p>
+              <p className="mt-1.5 text-sm text-red-600">Project name is required.</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Project Key *</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Project Key *</span>
+            </label>
             <input
               name="projectKey"
               type="text"
@@ -247,34 +250,37 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               required
               maxLength={10}
               placeholder="E.g., PROJECT"
-              className={`mt-2 block w-full border-2 ${
+              className={`mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${
                 touched.projectKey && (isKeyFormatValid === false || isKeyUnique === false)
-                  ? 'border-red-500'
+                  ? 'border-red-300'
                   : touched.projectKey && isKeyFormatValid && isKeyUnique !== false
-                  ? 'border-green-500'
+                  ? 'border-blue-500'
                   : 'border-gray-200'
-              } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400 text-sm`}
+              }`}
+              aria-describedby="projectKey-error"
             />
             {touched.projectKey && formData.projectKey && isKeyChecking && (
-              <p className="mt-1 text-sm text-gray-500">Checking project key...</p>
+              <p className="mt-1.5 text-sm text-gray-500">Checking project key...</p>
             )}
             {touched.projectKey && formData.projectKey && isKeyFormatValid === false && (
-              <p className="mt-1 text-sm text-red-500">
+              <p className="mt-1.5 text-sm text-red-600">
                 Project key must start with an uppercase letter, followed by uppercase letters only, max 10 characters.
               </p>
             )}
             {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === true && (
-              <p className="mt-1 text-sm text-green-500">Project key is available.</p>
+              <p className="mt-1.5 text-sm text-green-600">Project key is available.</p>
             )}
             {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === false && (
-              <p className="mt-1 text-sm text-red-500">Project key is already taken.</p>
+              <p className="mt-1.5 text-sm text-red-600">Project key is already taken.</p>
             )}
             {touched.projectKey && !formData.projectKey && (
-              <p className="mt-1 text-sm text-red-500">Project key is required.</p>
+              <p className="mt-1.5 text-sm text-red-600">Project key is required.</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Description</span>
+            </label>
             <textarea
               name="description"
               value={formData.description}
@@ -282,13 +288,15 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               onBlur={handleFieldBlur}
               rows={4}
               placeholder="Enter project description"
-              className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400 text-sm"
+              className="mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200"
             />
           </div>
         </div>
-        <div className="bg-[#f0f6ff] border border-[#d0e3ff] p-6 rounded-2xl shadow-md space-y-3">
+        <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Budget (VND) *</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Budget (VND) *</span>
+            </label>
             <input
               name="budget"
               type="number"
@@ -298,35 +306,35 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               required
               min={1}
               placeholder="Enter budget in VND"
-              className={`mt-2 block w-full border-2 ${
-                touched.budget && isBudgetValid === false
-                  ? 'border-red-500'
-                  : touched.budget && isBudgetValid
-                  ? 'border-gray-200'
-                  : 'border-gray-200'
-              } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400 text-sm`}
+              className={`mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${
+                touched.budget && isBudgetValid === false ? 'border-red-300' : 'border-gray-200'
+              }`}
+              aria-describedby="budget-error"
             />
             {touched.budget && formData.budget !== undefined && formData.budget > 0 && (
-              <p className="mt-1 text-sm text-gray-500">{formatBudget(formData.budget)}</p>
+              <p className="mt-1.5 text-sm text-gray-500">{formatBudget(formData.budget)}</p>
             )}
             {touched.budget && formData.budget !== undefined && formData.budget <= 0 && (
-              <p className="mt-1 text-sm text-red-500">Budget must be greater than 0 VND.</p>
+              <p className="mt-1.5 text-sm text-red-600">Budget must be greater than 0 VND.</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Project Type</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Project Type</span>
+            </label>
             {isCategoryLoading ? (
-              <p className="mt-1 text-sm text-gray-500">Loading project types...</p>
+              <p className="mt-1.5 text-sm text-gray-500">Loading project types...</p>
             ) : categoryError ? (
-              <p className="mt-1 text-sm text-red-500">Failed to load project types. Please try again.</p>
+              <p className="mt-1.5 text-sm text-red-600">Failed to load project types. Please try again.</p>
             ) : (
               <select
                 name="projectType"
                 value={formData.projectType}
                 onChange={handleFieldChange}
                 onBlur={handleFieldBlur}
-                className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all text-sm"
+                className="mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200"
                 disabled={isUpdating || !projectId || !categoryData?.isSuccess}
+                aria-describedby="projectType-error"
               >
                 <option value="">Select Project Type</option>
                 {categoryData?.data?.map((category: DynamicCategory) => (
@@ -338,19 +346,23 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
             )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>Start Date</span>
+            </label>
             <input
               name="startDate"
               type="date"
               value={formData.startDate}
               onChange={handleFieldChange}
               onBlur={handleFieldBlur}
-              className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all text-sm"
+              className="mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200"
               disabled={isUpdating || !projectId}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <label className="block text-sm font-medium text-gray-900 flex items-center gap-2">
+              <span>End Date</span>
+            </label>
             <input
               name="endDate"
               type="date"
@@ -358,19 +370,16 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
               onChange={handleFieldChange}
               onBlur={handleFieldBlur}
               min={formData.startDate}
-              className={`mt-2 block w-full border-2 ${
-                touched.endDate && isDateValid === false ? 'border-red-500' : 'border-gray-200'
-              } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all text-sm`}
+              className={`mt-1 block w-full border border-gray-200 px-4 py-2 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-all duration-200 ${
+                touched.endDate && isDateValid === false ? 'border-red-300' : 'border-gray-200'
+              }`}
               disabled={isUpdating || !projectId}
+              aria-describedby="endDate-error"
             />
             {touched.endDate && formData.startDate && formData.endDate && isDateValid === false && (
-              <p className="mt-1 text-sm text-red-500">End date must be after start date.</p>
+              <p className="mt-1.5 text-sm text-red-600">End date must be after start date.</p>
             )}
           </div>
-          <p>
-            <strong className="text-[#1c73fd] text-sm">Status:</strong>{' '}
-            <span className="text-gray-800 text-sm">{formData.status || 'N/A'}</span>
-          </p>
         </div>
       </div>
     </section>

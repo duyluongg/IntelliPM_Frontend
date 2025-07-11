@@ -468,7 +468,7 @@ const TaskSetup: React.FC = () => {
           }
         `}
       </style>
-      <h1 className="text-4xl font-extrabold text-[#1c73fd] mb-3 tracking-tight">🎯 AI-Powered Task Setup</h1>
+      <h1 className="text-4xl font-extrabold text-[#1c73fd] mb-3 tracking-tight">AI-Powered Task Setup</h1>
       <p className="text-gray-600 mb-8 text-lg font-medium leading-relaxed">
         Streamline your project planning for <span className="font-semibold">{projectData?.data?.name}</span> ({projectKey}) with AI-generated tasks and epics.
       </p>

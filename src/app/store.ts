@@ -27,6 +27,7 @@ import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
+import { subtaskAiApi } from '../services/subtaskAiApi';
 
 
 export const store = configureStore({
@@ -57,6 +58,7 @@ export const store = configureStore({
     [aiApi.reducerPath]: aiApi.reducer,
     [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
     [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
+    [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -89,6 +91,7 @@ export const store = configureStore({
       subtaskFileApi.middleware,
       subtaskCommentApi.middleware,
       taskAssignmentApi.middleware,
+      subtaskAiApi.middleware,
     ),
 });
 

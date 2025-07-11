@@ -15,6 +15,8 @@ import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskF
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
+import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉnh lại path cho đúng
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -63,6 +65,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
   const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
+  const [showSuggestionList, setShowSuggestionList] = React.useState(false);
+  const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
+  const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
 
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
@@ -331,6 +337,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
+              style={{ width: '500px' }}
             />
           </div>
           <div className="header-actions">
@@ -456,50 +463,198 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   border: '1px solid #ddd',
                   borderRadius: '6px',
-                  padding: '8px 12px',
-                  margin: '8px 0',
+                  padding: '16px',
+                  margin: '12px 0',
                   backgroundColor: '#fff',
+                  fontSize: '14px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-                  <span style={{ marginRight: '8px' }}>🧠</span> Create suggested work items
-                </div>
-                <button
-                  onClick={() => {
-                    alert("✨ Sẽ gọi API AI suggest subtasks sau");
-                  }}
+                {/* Header */}
+                <div
                   style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#f4f5f7',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                   }}
                 >
-                  Suggest
-                </button>
-              </div>
-              <div style={{ marginBottom: '8px' }}>
-                <div style={{
-                  height: '8px',
-                  backgroundColor: '#e0e0e0',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    width: `${progressPercent}%`,
-                    backgroundColor: '#4caf50',
-                    height: '100%',
-                    transition: 'width 0.3s ease',
-                  }} />
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '15px', fontWeight: '500' }}>
+                    <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
+                    Create suggested work items
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await generateSubtasksByAI(taskId).unwrap();
+                        setAiSuggestions(result);
+                        setShowSuggestionList(true);
+                        setSelectedSuggestions([]);
+                      } catch (err) {
+                        alert('❌ Failed to get suggestions');
+                        console.error(err);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#f4f5f7',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {loadingSuggest ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span role="img" style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}>🧠</span>
+                        <div className="dot-loader">
+                          <span>.</span><span>.</span><span>.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      'Suggest'
+                    )}
+
+                  </button>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
-                  {progressPercent}% Done
-                </div>
+
+                {/* Suggestions */}
+                {showSuggestionList && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.4)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 1000,
+                    }}
+                    onClick={() => setShowSuggestionList(false)}
+                  >
+                    <div
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: '8px',
+                        width: '480px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        padding: '20px',
+                        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '15px', fontWeight: '500' }}>
+                          <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
+                          AI Suggested Subtasks
+                        </div>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                          }}
+                          title="Close"
+                        >
+                          ✖
+                        </button>
+                      </div>
+
+                      {/* Suggestion List */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          padding: '4px 8px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        {aiSuggestions.map((item, idx) => (
+                          <label
+                            key={idx}
+                            style={{
+                              display: 'flex !important',
+                              alignItems: 'flex-start',
+                              gap: '8px',
+                              lineHeight: '1.4',
+                              wordBreak: 'break-word',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSuggestions.includes(item.title)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedSuggestions((prev) =>
+                                  checked ? [...prev, item.title] : prev.filter((t) => t !== item.title)
+                                );
+                              }}
+                              style={{ display: 'flex !important', marginTop: '3px' }}
+                            />
+                            <span>{item.title}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Create Button */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <button
+                          onClick={async () => {
+                            for (const title of selectedSuggestions) {
+                              try {
+                                await createSubtask({ taskId, title }).unwrap();
+                              } catch (err) {
+                                console.error(`❌ Failed to create: ${title}`, err);
+                              }
+                            }
+                            alert('✅ Created selected subtasks');
+                            setShowSuggestionList(false);
+                            setSelectedSuggestions([]);
+                            await refetch();
+                          }}
+                          disabled={selectedSuggestions.length === 0}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontWeight: 500,
+                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Create Selected
+                        </button>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#eee',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="issue-table">

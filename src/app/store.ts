@@ -28,6 +28,7 @@ import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
 import { projectPositionApi } from '../services/projectPositionApi';
+import { projectRecommendationApi } from '../services/projectRecommendationApi';
 
 
 export const store = configureStore({
@@ -59,6 +60,7 @@ export const store = configureStore({
     [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
     [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
     [projectPositionApi.reducerPath]: projectPositionApi.reducer,
+    [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -92,6 +94,7 @@ export const store = configureStore({
       subtaskCommentApi.middleware,
       taskAssignmentApi.middleware,
       projectPositionApi.middleware,
+      projectRecommendationApi.middleware,
     ),
 });
 

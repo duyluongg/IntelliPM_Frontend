@@ -10,6 +10,7 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+import { Sparkles } from 'lucide-react';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -21,7 +22,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
       <div className='flex flex-wrap gap-2'>
-        {/* Text formatting group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
@@ -81,7 +81,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        {/* Clear formatting group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().unsetAllMarks().run()}
@@ -99,7 +98,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        {/* Paragraph and headings group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().setParagraph().run()}
@@ -128,7 +126,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           ))}
         </div>
 
-        {/* Lists group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -158,7 +155,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        {/* Block elements group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -202,7 +198,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        {/* Undo/Redo group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().undo().run()}
@@ -226,7 +221,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        {/* Color group */}
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
           <button
             onClick={() => editor.chain().focus().setColor('#958DF1').run()}
@@ -240,6 +234,25 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             <div className='flex items-center gap-2'>
               <div className='w-4 h-4 rounded-full bg-purple-400'></div>
               <span>A</span>
+            </div>
+          </button>
+        </div>
+
+        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
+          <button
+            onClick={() => editor.chain().focus().setColor('#958DF1').run()}
+            className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
+              editor.isActive('textStyle', { color: '#958DF1' })
+                ? 'bg-purple-50 text-purple-600 border-purple-200'
+                : 'text-gray-700 hover:text-gray-900'
+            }`}
+            title='Purple color'
+          >
+            <div className='flex items-center gap-2'>
+              <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-400 to-purple-400 rounded-lg'>
+                <Sparkles className='w-5 h-5 text-white' />
+              </div>
+              <span>AI Assistant</span>
             </div>
           </button>
         </div>

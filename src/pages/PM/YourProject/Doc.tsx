@@ -19,6 +19,7 @@ export default function Doc({ docId }: Props) {
   const [content, setContent] = useState('');
   const [updateDocument] = useUpdateDocumentMutation();
   const { data: docData, refetch } = useGetDocumentByIdQuery(docId);
+
   const isUpdatingRef = useRef(false);
 
   useEffect(() => {
@@ -33,8 +34,6 @@ export default function Doc({ docId }: Props) {
       console.log('[GET] docData:', docData);
     }
   }, [docData]);
-
-
 
   const handleContentChange = async (newContent: string) => {
     if (!docId || isUpdatingRef.current || newContent === content) return;
@@ -53,19 +52,24 @@ export default function Doc({ docId }: Props) {
       isUpdatingRef.current = false;
     }
   };
+  const isEmptyContent = (html: string) => {
+    return html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
+  };
 
   return (
     <div>
       <RichTextEditor value={content} onChange={handleContentChange} />
 
-      <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50'>
-        <StartWithAI
-          docId={docId}
-          onGenerated={() => {
-            refetch();
-          }}
-        />
-      </div>
+      {isEmptyContent(content) && (
+        <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50'>
+          <StartWithAI
+            docId={docId}
+            onGenerated={() => {
+              refetch();
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

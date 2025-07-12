@@ -25,6 +25,7 @@ import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeed
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 import DocBlank from '../pages/PM/YourProject/DocBlank';
+import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
 
 export const router = createBrowserRouter([
   {
@@ -121,7 +122,10 @@ export const router = createBrowserRouter([
         path: `:projectKey/task-setup`,
         element: <TaskSetup />,
       },
-
+      {
+        path: `:projectKey/overviewpm`,
+        element: <ProjectOverviewPM />,
+      },
       {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,

@@ -246,6 +246,43 @@ export interface GetProjectDetailsByIdResponse {
   error?: string;
 }
 
+export interface SendEmailToPMResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+  error?: string;
+}
+
+export interface SendInvitationsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+  error?: string;
+}
+
+export interface SendEmailRejectToLeaderResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+  error?: string;
+}
+
+export interface RejectProjectResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+  error?: string;
+}
+
+export interface SendEmailRejectToLeaderRequest {
+  projectId: number;
+  reason: string;
+}
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -321,6 +358,35 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectId) => [{ type: 'ProjectDetails', id: projectId }],
     }),
+    sendEmailToPM: builder.mutation<SendEmailToPMResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/send-email-to-pm`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
+    }),
+    sendInvitations: builder.mutation<SendInvitationsResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/send-invitations`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
+    }),
+    sendEmailRejectToLeader: builder.mutation<SendEmailRejectToLeaderResponse, SendEmailRejectToLeaderRequest>({
+      query: ({ projectId, reason }) => ({
+        url: `project/${projectId}/send-email-reject-to-leader`,
+        method: 'POST',
+        body: { reason },
+      }),
+      invalidatesTags: (result, error, { projectId }) => [{ type: 'Project', id: projectId }],
+    }),
+    rejectProject: builder.mutation<RejectProjectResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}/reject`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
+    }),
   }),
 });
 
@@ -333,4 +399,8 @@ export const {
   useUpdateProjectMutation,
   useGetFullProjectDetailsByKeyQuery,
   useGetProjectDetailsByIdQuery,
+  useSendEmailToPMMutation,
+  useSendInvitationsMutation,
+  useSendEmailRejectToLeaderMutation,
+  useRejectProjectMutation,
 } = projectApi;

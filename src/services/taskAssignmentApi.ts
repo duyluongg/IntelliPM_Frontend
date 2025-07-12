@@ -10,7 +10,7 @@ export interface TaskAssignmentDTO {
   completedAt: string | null;
   hourlyRate: number | null;
   accountFullname: string;
-  accountPicture: string;
+  accountPicture: string | null;
 }
 
 interface ApiResponse<T> {
@@ -50,6 +50,19 @@ export const taskAssignmentApi = createApi({
       }),
       invalidatesTags: ['TaskAssignment'],
     }),
+    createTaskAssignmentQuick: builder.mutation<TaskAssignmentDTO, { taskId: string; accountId: number }>({
+      query: ({ taskId, accountId }) => ({
+        url: `task/${taskId}/taskassignment/quick`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': '*/*',
+        },
+        body: { accountId },
+      }),
+      transformResponse: (response: ApiResponse<TaskAssignmentDTO>) => response.data,
+      invalidatesTags: ['TaskAssignment'],
+    }),
   }),
 });
 
@@ -57,4 +70,5 @@ export const {
   useGetTaskAssignmentsByTaskIdQuery,
   useLazyGetTaskAssignmentsByTaskIdQuery,
   useDeleteTaskAssignmentMutation,
+  useCreateTaskAssignmentQuickMutation,
 } = taskAssignmentApi;

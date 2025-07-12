@@ -1,12 +1,25 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useGetTasksByProjectIdQuery, type TaskResponseDTO, useUpdateTaskMutation } from '../../../services/taskApi';
 import { useGetEpicsByProjectIdQuery, type EpicResponseDTO, useUpdateEpicMutation } from '../../../services/epicApi';
+import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import {
   useLazyGetTaskAssignmentsByTaskIdQuery,
   type TaskAssignmentDTO,
+  useDeleteTaskAssignmentMutation,
+  useCreateTaskAssignmentQuickMutation,
 } from '../../../services/taskAssignmentApi';
 import taskIcon from '../../../assets/icon/type_task.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
+
+// Hàm formatDate được khai báo ở phạm vi cao hơn
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const month = date.toLocaleString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${month} ${day}, ${year}`;
+};
 
 interface TableRow {
   id: string;
@@ -15,13 +28,21 @@ interface TableRow {
   description: string;
   startDate: string;
   endDate: string;
-  reporter: { name: string; picture: string | null };
-  assignees: { name: string; picture: string | null }[];
+  reporter: { name: string; picture: string | null; id?: number | null };
+  assignees: { name: string; picture: string | null; id?: number | null }[];
   status: string;
   reporterId?: number; // For task
   projectId?: number; // For task
   epicId?: number | null; // For task
   sprintId?: number | null; // For task
+}
+
+interface ProjectMember {
+  id: number;
+  accountId: number;
+  fullName: string;
+  picture: string | null;
+  status: string;
 }
 
 interface TasksAndEpicsTableProps {
@@ -38,15 +59,6 @@ const DateWithIcon = ({
   status: string;
   isDueDate?: boolean;
 }) => {
-  const formatDate = (dateStr?: string | null) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const month = date.toLocaleString('en-US', { month: 'short' });
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month} ${day}, ${year}`;
-  };
-
   const today = new Date();
   const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const dueDate = date
@@ -112,9 +124,21 @@ const DateWithIcon = ({
 };
 
 // Component Avatar
-const Avatar = ({ person }: { person: { name: string; picture: string | null } }) =>
-  person.name !== '' ? (
-    <div className='flex items-center gap-1.5'>
+const Avatar = ({
+  person,
+  onDelete,
+}: {
+  person: { name: string; picture: string | null; id?: number | null };
+  onDelete?: () => Promise<void>; // Thêm prop onDelete tùy chọn
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return person.name !== '' ? (
+    <div
+      className='flex items-center gap-1.5 relative'
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {person.picture ? (
         <img
           src={person.picture}
@@ -135,8 +159,18 @@ const Avatar = ({ person }: { person: { name: string; picture: string | null } }
         </div>
       )}
       <span className='text-xs text-gray-800'>{person.name}</span>
+      {onDelete && isHovered && (
+        <button
+          onClick={onDelete}
+          className='absolute -top-1 -right-1 text-red-600 hover:text-red-800 text-xs bg-white rounded-full w-4 h-4 flex items-center justify-center'
+          title={`Remove ${person.name}`}
+        >
+          ✕
+        </button>
+      )}
     </div>
   ) : null;
+};
 
 const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) => {
   const {
@@ -151,17 +185,37 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
     data: epics = [],
     isLoading: isEpicsLoading,
     error: epicsError,
+    refetch: refetchEpics,
   } = useGetEpicsByProjectIdQuery(projectId, {
     skip: !projectId,
   });
 
+  const {
+    data: projectMembersResponse,
+    isLoading: isMembersLoading,
+    error: membersError,
+  } = useGetProjectMembersWithPositionsQuery(projectId, {
+    skip: !projectId,
+  });
+
+  const projectMembers = projectMembersResponse?.data ?? [];
+
   const [fetchAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
   const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskMutation();
+  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
+    useDeleteTaskAssignmentMutation();
+  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] =
+    useCreateTaskAssignmentQuickMutation();
   const [assignmentsMap, setAssignmentsMap] = useState<Record<string, TaskAssignmentDTO[]>>({});
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
+  const [showMemberDropdown, setShowMemberDropdown] = useState<{
+    id: string;
+    field: 'reporter' | 'assignees';
+    type: 'TASK' | 'EPIC';
+  } | null>(null);
 
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({
     id: 80,
@@ -171,13 +225,28 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
     startDate: 130,
     endDate: 130,
     reporter: 180,
-    assignees: 180,
+    assignees: 250,
   });
   const tableRef = useRef<HTMLTableElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startWidth, setStartWidth] = useState(0);
   const [currentColumn, setCurrentColumn] = useState<string | null>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowMemberDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -270,7 +339,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
     let formattedDate = editValue;
     if (isDateField && editValue) {
       try {
-        formattedDate = new Date(editValue).toISOString(); // Convert YYYY-MM-DD to ISO 8601
+        formattedDate = new Date(editValue).toISOString();
       } catch (error) {
         alert('Invalid date format. Please use a valid date.');
         setEditingCell(null);
@@ -327,25 +396,174 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       setEditValue('');
     } catch (err: any) {
       console.error(`Error updating ${item.type.toLowerCase()}:`, err);
+      console.log(JSON.stringify(err, null, 2));
       const errorMessage =
         err?.data?.message || err?.error || err?.message || 'Unknown error';
       alert(`Failed to update ${item.type.toLowerCase()}: ${errorMessage}`);
     }
   };
 
-  if (isTasksLoading || isEpicsLoading || loadingAssignments) {
+  const handleMemberSelect = async (
+    item: TableRow,
+    field: 'reporter' | 'assignees',
+    member: ProjectMember
+  ) => {
+    if (field === 'assignees') {
+      const isAlreadyAssigned = item.assignees.some((assignee) => assignee.id === member.id);
+      if (isAlreadyAssigned && item.type === 'TASK') {
+        alert('This member is already assigned.');
+        return;
+      }
+    }
+
+    try {
+      if (item.type === 'EPIC') {
+        const epicData = {
+          projectId,
+          name: item.title,
+          description: item.description,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          status: item.status,
+          assignedBy: member.id,
+        };
+        const response = await updateEpic({
+          id: item.id,
+          data: epicData,
+        }).unwrap();
+        // Cập nhật trạng thái cục bộ dựa trên phản hồi từ API
+        const epicIndex = normalizedEpics.findIndex((e) => e.id === item.id);
+        if (epicIndex !== -1) {
+          normalizedEpics[epicIndex].assignees = [
+            { id: member.id, name: member.fullName, picture: member.picture },
+          ];
+          normalizedEpics[epicIndex].reporter = { id: member.id, name: member.fullName, picture: member.picture };
+        }
+        refetchEpics(); // Làm mới dữ liệu từ server
+      } else if (item.type === 'TASK' && field === 'reporter') {
+        const taskData = {
+          reporterId: member.id,
+          projectId: item.projectId || projectId,
+          epicId: item.epicId || null,
+          sprintId: item.sprintId || null,
+          type: item.type || 'TASK',
+          title: item.title,
+          description: item.description,
+          plannedStartDate: item.startDate,
+          plannedEndDate: item.endDate,
+          status: item.status,
+        };
+        await updateTask({
+          id: item.id,
+          body: taskData,
+        }).unwrap();
+      } else if (item.type === 'TASK' && field === 'assignees') {
+        const response = await createTaskAssignment({
+          taskId: item.id,
+          accountId: member.id,
+        }).unwrap();
+
+        const newAssignment: TaskAssignmentDTO = {
+          id: response.id,
+          taskId: response.taskId,
+          accountId: response.accountId,
+          status: response.status,
+          assignedAt: response.assignedAt,
+          completedAt: response.completedAt ?? null,
+          hourlyRate: response.hourlyRate ?? null,
+          accountFullname: response.accountFullname || member.fullName,
+          accountPicture: response.accountPicture || member.picture,
+        };
+
+        setAssignmentsMap((prev) => ({
+          ...prev,
+          [item.id]: [...(prev[item.id] || []), newAssignment],
+        }));
+      }
+      setShowMemberDropdown(null);
+    } catch (err: any) {
+      console.error(`Error updating ${item.type.toLowerCase()}:`, err);
+      const errorMessage =
+        err?.data?.message || err?.error || err?.message || 'Unknown error';
+      alert(`Failed to update ${item.type.toLowerCase()}: ${errorMessage}`);
+    }
+  };
+
+  const handleDeleteAssignment = async (itemId: string, assigneeId: number, itemType: 'TASK' | 'EPIC') => {
+    console.log(`Attempting to delete assignment ID ${assigneeId} for ${itemType} ${itemId}`);
+    try {
+      if (itemType === 'TASK') {
+        setAssignmentsMap((prev) => ({
+          ...prev,
+          [itemId]: (prev[itemId] || []).filter((assignment) => assignment.id !== assigneeId),
+        }));
+        await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
+        console.log(`Successfully deleted assignment ID ${assigneeId} for task ${itemId}`);
+      } else if (itemType === 'EPIC') {
+        const epicIndex = normalizedEpics.findIndex((e) => e.id === itemId);
+        if (epicIndex !== -1) {
+          const epicData = {
+            projectId,
+            name: normalizedEpics[epicIndex].title,
+            description: normalizedEpics[epicIndex].description,
+            startDate: normalizedEpics[epicIndex].startDate,
+            endDate: normalizedEpics[epicIndex].endDate,
+            status: normalizedEpics[epicIndex].status,
+            assignedBy: null,
+          };
+          const response = await updateEpic({
+            id: itemId,
+            data: epicData,
+          }).unwrap();
+          normalizedEpics[epicIndex].assignees = [];
+          normalizedEpics[epicIndex].reporter = { name: '', picture: null, id: null };
+          refetchEpics(); // Làm mới dữ liệu từ server
+        }
+      }
+    } catch (err: any) {
+      console.error(`Error deleting assignment for ${itemType} ${itemId}:`, err);
+      console.log(JSON.stringify(err, null, 2));
+      const errorMessage =
+        err?.data?.message || err?.error || err?.message || 'Unknown error';
+      alert(`Failed to delete assignment: ${errorMessage}`);
+      if (itemType === 'TASK') {
+        const result = await fetchAssignments(itemId).unwrap();
+        setAssignmentsMap((prev) => ({
+          ...prev,
+          [itemId]: result || [],
+        }));
+      }
+    }
+  };
+
+  const handleShowMemberDropdown = (id: string, field: 'reporter' | 'assignees', type: 'TASK' | 'EPIC') => {
+    setShowMemberDropdown({ id, field, type });
+  };
+
+  if (isTasksLoading || isEpicsLoading || loadingAssignments || isMembersLoading) {
     return (
-      <div className='text-center py-10 text-gray-600'>Loading tasks, epics, or assignments...</div>
+      <div className='text-center py-10 text-gray-600'>Loading tasks, epics, assignments, or members...</div>
     );
   }
 
-  if (tasksError || epicsError || updateEpicError || updateTaskError) {
-    console.error('Error:', { tasksError, epicsError, updateEpicError, updateTaskError });
+  if (tasksError || epicsError || updateEpicError || updateTaskError || membersError || deleteAssignmentError || createAssignmentError) {
+    console.error('Error:', {
+      tasksError,
+      epicsError,
+      updateEpicError,
+      updateTaskError,
+      membersError,
+      deleteAssignmentError,
+      createAssignmentError,
+    });
     return <div className='text-center py-10 text-red-500'>Error loading or updating data.</div>;
   }
 
   const normalizedTasks: TableRow[] = tasks.map((task) => {
-    const assignees = (assignmentsMap[task.id] || []).map((assignment) => ({
+    const assignees = (assignmentsMap[task.id] || []).filter(
+      (assignment) => typeof assignment.id === 'number'
+    ).map((assignment) => ({
+      id: assignment.id,
       name: assignment.accountFullname,
       picture: assignment.accountPicture,
     }));
@@ -358,11 +576,12 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       startDate: task.plannedStartDate,
       endDate: task.plannedEndDate,
       reporter: {
+        id: task.reporterId,
         name: task.reporterName,
         picture: task.reporterPicture ?? null,
       },
       assignees,
-      status: task.status || 'to_do',
+      status: task.status || 'TO_DO',
       reporterId: task.reporterId,
       projectId: task.projectId,
       epicId: task.epicId,
@@ -378,14 +597,14 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
     startDate: epic.startDate,
     endDate: epic.endDate,
     reporter: {
+      id: epic.assignedBy ?? null,
       name: epic.assignedByFullname || '',
       picture: epic.assignedByPicture || null,
     },
-    assignees:
-      epic.assignedBy && epic.assignedByFullname
-        ? [{ name: epic.assignedByFullname, picture: epic.assignedByPicture }]
-        : [],
-    status: epic.status || 'to_do',
+    assignees: epic.assignedBy && epic.assignedByFullname
+      ? [{ id: epic.assignedBy ?? null, name: epic.assignedByFullname, picture: epic.assignedByPicture }]
+      : [],
+    status: epic.status || 'TO_DO',
   }));
 
   const combinedData: TableRow[] = [...normalizedTasks, ...normalizedEpics].sort((a, b) =>
@@ -395,61 +614,129 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
       <div className='overflow-x-auto bg-white w-full block'>
-        {(isUpdatingEpic || isUpdatingTask) && (
-          <div className='text-center py-4 text-blue-500'>Updating...</div>
+        {(isUpdatingEpic || isUpdatingTask || isDeletingAssignment || isCreatingAssignment) && (
+          <div className='text-center py-4 text-blue-500'>Processing...</div>
         )}
-        <table className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed' ref={tableRef}>
+        <table
+          className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
+          ref={tableRef}
+        >
           <thead>
             <tr>
-              <th style={{ width: `${columnWidths.type}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.type}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Type
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'type')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'type')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.id}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.id}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 ID
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'id')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'id')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.title}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.title}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Title
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'title')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'title')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.description}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.description}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Description
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'description')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'description')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.startDate}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.startDate}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Start Date
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'startDate')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'startDate')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.endDate}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.endDate}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 End Date
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'endDate')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'endDate')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.reporter}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.reporter}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Reporter
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'reporter')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.assignees}px` }} className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'>
+              <th
+                style={{ width: `${columnWidths.assignees}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
                 Assignees
-                <div className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500' onMouseDown={(e) => handleMouseDown(e, 'assignees')} />
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'assignees')}
+                />
               </th>
             </tr>
           </thead>
           <tbody>
             {combinedData.map((item) => (
               <tr key={item.id} className='hover:bg-gray-100'>
-                <td style={{ width: `${columnWidths.type}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.type}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {item.type === 'TASK' && (
-                    <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5 bg-blue-500' />
+                    <img
+                      src={taskIcon}
+                      alt='Task'
+                      className='w-5 h-5 rounded p-0.5 bg-blue-500'
+                    />
                   )}
                   {item.type === 'EPIC' && (
-                    <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5 bg-purple-500' />
+                    <img
+                      src={epicIcon}
+                      alt='Epic'
+                      className='w-5 h-5 rounded p-0.5 bg-purple-500'
+                    />
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.id}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.id}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {item.id}
                 </td>
-                <td style={{ width: `${columnWidths.title}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.title}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {editingCell?.id === item.id && editingCell?.field === 'title' ? (
                     <input
                       type='text'
@@ -465,7 +752,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     </span>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.description}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.description}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {editingCell?.id === item.id && editingCell?.field === 'description' ? (
                     <input
                       type='text'
@@ -481,7 +771,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     </span>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.startDate}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.startDate}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {editingCell?.id === item.id && editingCell?.field === 'startDate' ? (
                     <input
                       type='date'
@@ -497,7 +790,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     </span>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.endDate}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
+                <td
+                  style={{ width: `${columnWidths.endDate}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                >
                   {editingCell?.id === item.id && editingCell?.field === 'endDate' ? (
                     <input
                       type='date'
@@ -513,18 +809,123 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     </span>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.reporter}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
-                  <Avatar person={item.reporter} />
-                </td>
-                <td style={{ width: `${columnWidths.assignees}px` }} className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'>
-                  {item.assignees.length ? (
-                    <div className='flex flex-wrap gap-2'>
-                      {item.assignees.map((a, i) => (
-                        <Avatar key={i} person={a} />
+                <td
+                  style={{ width: `${columnWidths.reporter}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                >
+                  {showMemberDropdown?.id === item.id && showMemberDropdown?.field === 'reporter' ? (
+                    <div
+                      ref={dropdownRef}
+                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-80 overflow-y-auto w-40 p-1 top-8 left-0'
+                    >
+                      {projectMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          className='flex items-center gap-2 px-2 py-1 hover:bg-gray-100 cursor-pointer rounded text-sm transition-colors duration-150'
+                          onClick={() => handleMemberSelect(item, 'reporter', member)}
+                        >
+                          {member.picture ? (
+                            <img
+                              src={member.picture}
+                              alt={`${member.fullName}'s avatar`}
+                              className='w-6 h-6 rounded-full object-cover'
+                            />
+                          ) : (
+                            <div
+                              className='w-6 h-6 rounded-full flex justify-center items-center text-white text-xs font-bold'
+                              style={{ backgroundColor: '#4a90e2' }}
+                            >
+                              {member.fullName
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')
+                                .substring(0, 2)}
+                            </div>
+                          )}
+                          <span className='text-gray-800 truncate'>{member.fullName}</span>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    '-'
+                    <div onClick={() => handleShowMemberDropdown(item.id, 'reporter', item.type)}>
+                      <Avatar person={item.reporter} />
+                    </div>
+                  )}
+                </td>
+                <td
+                  style={{ width: `${columnWidths.assignees}px` }}
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                >
+                  {showMemberDropdown?.id === item.id && showMemberDropdown?.field === 'assignees' ? (
+                    <div
+                      ref={dropdownRef}
+                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                    >
+                      {projectMembers.map((member) => (
+                        <div
+                          key={member.id}
+                          className='flex items-center gap-3 px-3 py-2 hover:bg-gray-100 cursor-pointer rounded-md transition-all duration-200 hover:shadow-sm'
+                          onClick={() => handleMemberSelect(item, 'assignees', member)}
+                        >
+                          <div className='relative'>
+                            {member.picture ? (
+                              <img
+                                src={member.picture}
+                                alt={`${member.fullName}'s avatar`}
+                                className='w-8 h-8 rounded-full object-cover border border-gray-200'
+                              />
+                            ) : (
+                              <div
+                                className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
+                                style={{ backgroundColor: '#6b7280' }}
+                              >
+                                {member.fullName
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .substring(0, 2)}
+                              </div>
+                            )}
+                            <span className='absolute -bottom-1 right-0 text-[10px] text-gray-500 bg-white px-1 rounded-full'>
+                              {formatDate(new Date().toISOString())}
+                            </span>
+                          </div>
+                          <div className='flex-1'>
+                            <span className='text-gray-900 font-medium truncate'>{member.fullName}</span>
+                            <p className='text-xs text-gray-500'>{member.status}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : item.assignees.length ? (
+                    <div onClick={() => handleShowMemberDropdown(item.id, 'assignees', item.type)} className='flex flex-wrap gap-2'>
+                      {item.type === 'TASK' ? (
+                        item.assignees.map((assignee, index) => (
+                          <Avatar
+                            key={assignee.id ?? index}
+                            person={assignee}
+                            onDelete={
+                              item.type === 'TASK' && assignee.id != null
+                                ? () => handleDeleteAssignment(item.id, assignee.id as number, item.type)
+                                : undefined
+                            }
+                          />
+                        ))
+                      ) : (
+                        <Avatar
+                          person={item.assignees[0]}
+                          onDelete={
+                            item.type === 'EPIC' && item.assignees[0].id != null
+                              ? () => handleDeleteAssignment(item.id, item.assignees[0].id as number, item.type)
+                              : undefined
+                          }
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <div onClick={() => handleShowMemberDropdown(item.id, 'assignees', item.type)}>
+                      <span className='text-gray-500 text-xs'>-</span>
+                    </div>
                   )}
                 </td>
               </tr>

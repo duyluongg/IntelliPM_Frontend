@@ -6,6 +6,7 @@ import {
 import RichTextEditor from '../../../components/PM/RichTextEditor/Editor';
 import { useAuth } from '../../../services/AuthContext';
 import StartWithAI from '../../../components/PM/AI/StartWithAI';
+import { DocumentContext } from '../../../components/context/DocumentContext';
 
 type Props = {
   docId: number;
@@ -58,7 +59,9 @@ export default function Doc({ docId }: Props) {
 
   return (
     <div>
-      <RichTextEditor value={content} onChange={handleContentChange} />
+      <DocumentContext.Provider value={{ documentId: docId }}>
+        <RichTextEditor value={content} onChange={handleContentChange} />
+      </DocumentContext.Provider>
 
       {isEmptyContent(content) && (
         <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full '>

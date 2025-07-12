@@ -10,7 +10,7 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import { Sparkles } from 'lucide-react';
+import { Edit3, FileText, Sparkles, X } from 'lucide-react';
 import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
 
 type MenuBarProps = {
@@ -20,6 +20,9 @@ type MenuBarProps = {
 const MenuBar = ({ editor }: MenuBarProps) => {
   if (!editor) return null;
   const [showAIOptions, setShowAIOptions] = useState(false);
+  const [showWriteModal, setShowWriteModal] = useState(false);
+  const [showSummarizeModal, setShowSummarizeModal] = useState(false);
+
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
       <div className='flex flex-wrap gap-2'>
@@ -239,7 +242,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           </button>
         </div>
 
-        <div className='relative'>
+        {/* <div className='relative'>
           <button
             onClick={() => setShowAIOptions((prev) => !prev)}
             className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
@@ -260,6 +263,89 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           {showAIOptions && (
             <div className='absolute top-full mt-2 right-0 z-50'>
               <WriteWithAIModal editor={editor} onClose={() => setShowAIOptions(false)} />
+            </div>
+          )}
+        </div> */}
+
+        <div className='relative'>
+          {/* Nút chính */}
+          <button
+            onClick={() => setShowAIOptions((prev) => !prev)}
+            className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
+              editor.isActive('textStyle', { color: '#958DF1' })
+                ? 'bg-purple-50 text-purple-600 border-purple-200'
+                : 'text-gray-700 hover:text-gray-900'
+            }`}
+            title='AI Assistant'
+          >
+            <div className='flex items-center gap-2'>
+              <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-400 to-purple-400 rounded-lg'>
+                <Sparkles className='w-5 h-5 text-white' />
+              </div>
+              <span>AI Assistant</span>
+            </div>
+          </button>
+
+          {/* Menu Option */}
+          {showAIOptions && (
+            <div className='absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px] overflow-hidden'>
+              <div className='p-2'>
+                <div className='flex items-center justify-between mb-2'>
+                  <h3 className='text-sm font-medium text-gray-800'>AI Assistant</h3>
+                  <button
+                    onClick={() => setShowAIOptions(false)}
+                    className='p-1 hover:bg-gray-100 rounded transition-colors'
+                  >
+                    <X className='w-3 h-3 text-gray-500' />
+                  </button>
+                </div>
+
+                <div className='space-y-1'>
+                  <button
+                    onClick={() => {
+                      setShowAIOptions(false);
+                      setShowWriteModal(true);
+                    }}
+                    className='w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors'
+                  >
+                    <Edit3 className='w-4 h-4 text-blue-500' />
+                    <span>Write with AI</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowAIOptions(false);
+                      setShowSummarizeModal(true);
+                    }}
+                    className='w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors'
+                  >
+                    <FileText className='w-4 h-4 text-green-500' />
+                    <span>Summarize</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal viết AI */}
+          {showWriteModal && (
+            <div className='absolute top-full mt-2 right-0 z-50'>
+              <WriteWithAIModal
+                editor={editor}
+                onClose={() => setShowWriteModal(false)}
+                form='write_with_ai'
+            
+              />
+            </div>
+          )}
+
+          {showSummarizeModal && (
+            <div className='absolute top-full mt-2 right-0 z-50'>
+              <WriteWithAIModal
+                editor={editor}
+                onClose={() => setShowSummarizeModal(false)}
+                form='summarize'
+              />
             </div>
           )}
         </div>

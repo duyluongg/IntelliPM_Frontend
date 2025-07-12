@@ -89,6 +89,10 @@ export const documentApi = createApi({
         },
       }),
     }),
+
+    summarizeAI: builder.query<{summary: string}, number>({
+      query: (id) => `documents/${id}/summary`,
+    }),
   }),
 });
 
@@ -101,4 +105,5 @@ export const {
   useFindDocumentByKeyQuery,
   useGetDocumentMappingQuery,
   useAskAIMutation,
+  useSummarizeAIQuery,
 } = documentApi;

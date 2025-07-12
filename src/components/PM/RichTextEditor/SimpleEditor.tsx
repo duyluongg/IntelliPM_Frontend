@@ -56,7 +56,7 @@ export default function SimpleEditor({ content, onChange }: Props) {
 
 
   return (
-    <div className='prose'>
+    <div className='prose '>
       <EditorContent editor={editor} />
     </div>
   );

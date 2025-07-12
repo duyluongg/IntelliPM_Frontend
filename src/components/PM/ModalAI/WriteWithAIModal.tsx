@@ -1,30 +1,42 @@
 import { Sparkles, X, RotateCcw, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
-import { useAskAIMutation } from '../../../services/Document/documentAPI';
+import { useAskAIMutation, useSummarizeAIQuery } from '../../../services/Document/documentAPI';
 import type { Editor } from '@tiptap/react';
 import SimpleEditor from '../RichTextEditor/SimpleEditor';
+import { useDocumentId } from '../../context/DocumentContext';
 
 type Props = {
   editor: Editor;
   onClose: () => void;
+  form?: 'write_with_ai' | 'summarize';
 };
 
-export default function WriteWithAIModal({ editor, onClose }: Props) {
+export default function WriteWithAIModal({ editor, onClose, form }: Props) {
+  const documentId = useDocumentId();
+
   const [prompt, setPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [mode, setMode] = useState<'prompt' | 'result'>('prompt');
 
-  const [askAi, { isLoading }] = useAskAIMutation();
+  const [askAi, { isLoading: isGenerating }] = useAskAIMutation();
+  const { data: summaryData, isLoading: isSummarizing } = useSummarizeAIQuery(documentId);
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+  const handleAskAI = async () => {
+    if (!prompt.trim() && form !== 'summarize') return;
 
     try {
-      const result = await askAi(prompt).unwrap();
-      setAiResponse(result.content);
+      if (form === 'write_with_ai') {
+        const result = await askAi(prompt).unwrap();
+        setAiResponse(result.content);
+      } else if (form === 'summarize' && summaryData?.summary) {
+        console.log(summaryData);
+
+        setAiResponse(summaryData.summary);
+      }
+
       setMode('result');
     } catch (error) {
-      console.error('❌ Error calling ask-ai:', error);
+      console.error('❌ Error calling AI:', error);
     }
   };
 
@@ -49,12 +61,12 @@ export default function WriteWithAIModal({ editor, onClose }: Props) {
   };
 
   return (
-    <div className='absolute top-full mt-2 right-0 w-[420px] z-50'>
+    <div className='absolute top-full mt-2 right-0 w-[420px] z-50 '>
       <div className='bg-white rounded-xl shadow-xl p-4 border'>
         <div className='flex items-center justify-between pb-2 border-b'>
           <div className='flex items-center gap-2 text-gray-700 font-semibold text-sm'>
-            <Sparkles className='w-4 h-4 text-purple-500' />
-            Write with AI
+            <Sparkles className='w-4 h-4 text-blue-500' />
+            {form === 'summarize' ? 'Summarize with AI' : 'Write with AI'}
           </div>
           <button onClick={onClose} className='text-gray-500 hover:text-gray-700'>
             <X className='w-4 h-4' />
@@ -63,35 +75,47 @@ export default function WriteWithAIModal({ editor, onClose }: Props) {
 
         {mode === 'prompt' ? (
           <>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className='w-full mt-3 h-32 p-3 border border-gray-200 rounded-lg resize-none text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300'
-              placeholder='Write me something like: "Give me steps to write a project plan"'
-              disabled={isLoading}
-            />
+            {form === 'write_with_ai' && (
+              <>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className='w-full mt-3 h-32 p-3 border border-gray-200 rounded-lg resize-none text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300'
+                  placeholder='Write me something like: "Give me steps to write a project plan"'
+                  disabled={isGenerating}
+                />
 
-            <div className='flex gap-2 mt-3 flex-wrap'>
-              <button
-                onClick={() => handleSuggestion('Steps to achieve project success')}
-                className='px-3 py-1 bg-gray-100 text-sm rounded-lg hover:bg-gray-200'
-              >
-                Steps to achieve...
-              </button>
-              <button
-                onClick={() => handleSuggestion('Pros and cons of using AI in project management')}
-                className='px-3 py-1 bg-gray-100 text-sm rounded-lg hover:bg-gray-200'
-              >
-                Pros and cons of...
-              </button>
-            </div>
+                <div className='flex gap-2 mt-3 flex-wrap'>
+                  <button
+                    onClick={() => handleSuggestion('Steps to achieve project success')}
+                    className='px-3 py-1 bg-gray-100 text-sm rounded-lg hover:bg-gray-200'
+                  >
+                    Steps to achieve...
+                  </button>
+                  <button
+                    onClick={() =>
+                      handleSuggestion('Pros and cons of using AI in project management')
+                    }
+                    className='px-3 py-1 bg-gray-100 text-sm rounded-lg hover:bg-gray-200'
+                  >
+                    Pros and cons of...
+                  </button>
+                </div>
+              </>
+            )}
           </>
         ) : (
-          <>
-            <div className='mt-3'>
-              <SimpleEditor content={aiResponse} onChange={(html) => setAiResponse(html)} />
-            </div>
-          </>
+          <div className='mt-3'>
+            {form === 'summarize' ? (
+              <div className='max-h-72 overflow-y-auto border border-gray-200 rounded-md p-3 bg-gray-50'>
+                <p className='text-sm text-gray-800 whitespace-pre-line'>{aiResponse}</p>
+              </div>
+            ) : (
+              <div className='max-h-72 overflow-y-auto border border-gray-200 rounded-md p-3 bg-gray-50'>
+                <SimpleEditor content={aiResponse} onChange={(html) => setAiResponse(html)} />
+              </div>
+            )}
+          </div>
         )}
 
         {/* Action buttons */}
@@ -103,7 +127,7 @@ export default function WriteWithAIModal({ editor, onClose }: Props) {
                 setPrompt('');
                 setAiResponse('');
               }}
-              disabled={isLoading}
+              disabled={isGenerating || isSummarizing}
             >
               <RotateCcw className='w-4 h-4' />
               Cancel
@@ -127,11 +151,19 @@ export default function WriteWithAIModal({ editor, onClose }: Props) {
             </button>
           ) : (
             <button
-              disabled={!prompt.trim() || isLoading}
-              onClick={handleGenerate}
-              className='px-4 py-2 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed'
+              disabled={
+                (form === 'write_with_ai' && !prompt.trim()) || isGenerating || isSummarizing
+              }
+              onClick={handleAskAI}
+              className='px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed'
             >
-              {isLoading ? 'Generating...' : 'Generate'}
+              {isGenerating || isSummarizing
+                ? form === 'summarize'
+                  ? 'Summarizing...'
+                  : 'Generating...'
+                : form === 'summarize'
+                ? 'Summarize'
+                : 'Generate'}
             </button>
           )}
         </div>

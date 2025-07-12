@@ -279,7 +279,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
             title='AI Assistant'
           >
             <div className='flex items-center gap-2'>
-              <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-400 to-purple-400 rounded-lg'>
+              <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg'>
                 <Sparkles className='w-5 h-5 text-white' />
               </div>
               <span>AI Assistant</span>

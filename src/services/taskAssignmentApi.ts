@@ -24,15 +24,37 @@ export const taskAssignmentApi = createApi({
   reducerPath: 'taskAssignmentApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      headers.set('accept', '*/*');
+      return headers;
+    },
   }),
+  tagTypes: ['TaskAssignment'],
   endpoints: (builder) => ({
     getTaskAssignmentsByTaskId: builder.query<TaskAssignmentDTO[], string>({
       query: (taskId) => `task/${taskId}/taskassignment`,
       transformResponse: (response: ApiResponse<TaskAssignmentDTO[]>) => response.data,
+      providesTags: ['TaskAssignment'],
+    }),
+    deleteTaskAssignment: builder.mutation<void, { taskId: string; assignmentId: number }>({
+      query: ({ taskId, assignmentId }) => ({
+        url: `task/${taskId}/taskassignment/${assignmentId}`,
+        method: 'DELETE',
+        headers: {
+          'accept': '*/*',
+        },
+      }),
+      invalidatesTags: ['TaskAssignment'],
     }),
   }),
 });
 
 export const {
-  useGetTaskAssignmentsByTaskIdQuery
+  useGetTaskAssignmentsByTaskIdQuery,
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  useDeleteTaskAssignmentMutation,
 } = taskAssignmentApi;

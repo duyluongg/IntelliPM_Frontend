@@ -65,7 +65,7 @@ export default function WriteWithAIModal({ editor, onClose, form }: Props) {
       <div className='bg-white rounded-xl shadow-xl p-4 border'>
         <div className='flex items-center justify-between pb-2 border-b'>
           <div className='flex items-center gap-2 text-gray-700 font-semibold text-sm'>
-            <Sparkles className='w-4 h-4 text-purple-500' />
+            <Sparkles className='w-4 h-4 text-blue-500' />
             {form === 'summarize' ? 'Summarize with AI' : 'Write with AI'}
           </div>
           <button onClick={onClose} className='text-gray-500 hover:text-gray-700'>
@@ -80,7 +80,7 @@ export default function WriteWithAIModal({ editor, onClose, form }: Props) {
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className='w-full mt-3 h-32 p-3 border border-gray-200 rounded-lg resize-none text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-300'
+                  className='w-full mt-3 h-32 p-3 border border-gray-200 rounded-lg resize-none text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300'
                   placeholder='Write me something like: "Give me steps to write a project plan"'
                   disabled={isGenerating}
                 />
@@ -155,7 +155,7 @@ export default function WriteWithAIModal({ editor, onClose, form }: Props) {
                 (form === 'write_with_ai' && !prompt.trim()) || isGenerating || isSummarizing
               }
               onClick={handleAskAI}
-              className='px-4 py-2 bg-purple-500 text-white text-sm font-medium rounded-lg hover:bg-purple-600 disabled:opacity-40 disabled:cursor-not-allowed'
+              className='px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed'
             >
               {isGenerating || isSummarizing
                 ? form === 'summarize'

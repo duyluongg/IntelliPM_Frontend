@@ -171,3 +171,21 @@
   border-radius: 4px;
   border: 1px solid #ccc;
 }
+
+.selected-tag {
+  background-color: #e6f0ff;
+  border-radius: 16px;
+  padding: 4px 10px;
+  margin: 2px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+}
+
+.remove-tag {
+  background: none;
+  border: none;
+  margin-left: 6px;
+  cursor: pointer;
+}

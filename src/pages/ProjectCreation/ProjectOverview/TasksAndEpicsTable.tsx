@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useGetTasksByProjectIdQuery, type TaskResponseDTO, useUpdateTaskMutation } from '../../../services/taskApi';
+import { useGetTasksByProjectIdQuery, type TaskResponseDTO, useUpdateTaskDatMutation } from '../../../services/taskApi';
 import { useGetEpicsByProjectIdQuery, type EpicResponseDTO, useUpdateEpicMutation } from '../../../services/epicApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import {
@@ -206,7 +206,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   const [fetchAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
-  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskMutation();
+  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskDatMutation();
   const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
     useDeleteTaskAssignmentMutation();
   const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] =

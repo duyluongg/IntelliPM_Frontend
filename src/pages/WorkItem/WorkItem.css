@@ -572,7 +572,7 @@ input {
   appearance: none;
   font-weight: 600;
   font-size: 0.85rem;  
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   border: none;
   cursor: pointer;
@@ -583,7 +583,6 @@ input {
   background-size: 10px;
   color: inherit;
   background-image: url("data:image/svg+xml;utf8,<svg fill='%236B778C' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-  margin-top: 10px;
 }
 
 .custom-status-select option {
@@ -813,6 +812,7 @@ input {
 }
 
 .dropdown-wrapper {
+  
   display: flex;
   align-items: center;
 }

@@ -8,6 +8,7 @@ export interface TaskResponseDTO {
   reporterPicture: string | null;
   projectId: number;
   projectName: string;
+
   epicId: number | null;
   sprintId: number | null;
   milestoneId: number | null;
@@ -146,6 +147,7 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+
     updateTaskTitle: builder.mutation<void, { id: string; title: string }>({
       query: ({ id, title }) => ({
         url: `task/${id}/title`,
@@ -194,7 +196,19 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTask: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
+    updateTask: builder.mutation<
+      TaskResponseDTO,
+      { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
+    >({
+      query: ({ id, body }) => ({
+        url: `task/${id}`,
+        method: 'PUT',
+        body,
+      }),
+    }),
+
+
+    updateTaskDat: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
       query: ({ id, body }) => ({
         url: `task/${id}/dat`,
         method: 'PUT',
@@ -206,6 +220,16 @@ export const taskApi = createApi({
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
     }),
+
+    createTask: builder.mutation<TaskResponseDTO, Partial<TaskResponseDTO>>({
+      query: (newTask) => ({
+        url: 'task',
+        method: 'POST',
+        body: newTask,
+      }),
+    }),
+
+
   }),
 });
 
@@ -220,5 +244,9 @@ export const {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
+
   useUpdateTaskMutation,
+  useUpdateTaskDatMutation,
+  useCreateTaskMutation,
 } = taskApi;
+

@@ -7,7 +7,7 @@ import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 import Gantt from '../pages/PM/Gantt/Gantt';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Form from '../pages/PM/YourProject/Form';
-import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFormWrapper';
+// import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFormWrapper';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
 // import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
 import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
@@ -26,6 +26,8 @@ import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 import DocBlank from '../pages/PM/YourProject/DocBlank';
 import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
+import Doc from '../pages/PM/YourProject/Doc';
+import DocWrapper from '../pages/PM/YourProject/DocWrapper';
 
 export const router = createBrowserRouter([
   {
@@ -155,12 +157,11 @@ export const router = createBrowserRouter([
         path: 'projects/form/:formId',
         element: <Form />,
       },
+
       {
-        path: 'projects/form/:formId',
-        element: <Form />,
+        path: 'projects/form/:type/:id',
+        element: <DocWrapper />,
       },
-      { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
-    
     ],
   },
 

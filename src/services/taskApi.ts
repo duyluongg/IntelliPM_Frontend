@@ -107,17 +107,6 @@ export const taskApi = createApi({
       transformResponse: (response: TaskListResponse) => response.data,
     }),
 
-    updateTasks: builder.mutation<void, { id: string; body: Partial<TaskResponseDTO> }>({
-      query: ({ id, body }) => ({
-        url: `task/${id}`,
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body,
-      }),
-    }),
-
     updateTaskTitle: builder.mutation<void, { id: string; title: string }>({
       query: ({ id, title }) => ({
         url: `task/${id}/title`,
@@ -195,6 +184,5 @@ export const {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
-  useUpdateTasksMutation,
   useCreateTaskMutation,
 } = taskApi;

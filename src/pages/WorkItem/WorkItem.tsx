@@ -8,7 +8,7 @@ import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
-import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation, useUpdateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskDescriptionMutation, useUpdatePlannedStartDateMutation, useUpdatePlannedEndDateMutation } from '../../services/taskApi';
+import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation, useUpdateTaskTitleMutation, useUpdateTaskDescriptionMutation, useUpdatePlannedStartDateMutation, useUpdatePlannedEndDateMutation } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
@@ -60,7 +60,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
-  const [updateTask] = useUpdateTaskMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
@@ -206,22 +205,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
-
-  const handleUpdateField = async (field: string, value: any) => {
-    if (!taskData?.id) return;
-
-    try {
-      await updateTask({
-        id: taskData.id,
-        body: {
-          [field]: value,
-        },
-      }).unwrap();
-      console.log(`${field} updated`);
-    } catch (err) {
-      console.error(`Failed to update ${field}`, err);
-    }
-  };
 
   const childWorkItems = subtaskData.map((item) => ({
     key: item.id,

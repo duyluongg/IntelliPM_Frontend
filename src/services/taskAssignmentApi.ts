@@ -34,5 +34,6 @@ export const taskAssignmentApi = createApi({
 });
 
 export const {
-  useGetTaskAssignmentsByTaskIdQuery
+  useGetTaskAssignmentsByTaskIdQuery,
+  useLazyGetTaskAssignmentsByTaskIdQuery
 } = taskAssignmentApi;

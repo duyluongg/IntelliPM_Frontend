@@ -7,7 +7,7 @@ export interface TaskResponseDTO {
   reporterName: string;
   projectId: number;
   projectName: string;
-  epicId: number;
+  epicId: string;
   sprintId: number;
   milestoneId: number;
   type: string;
@@ -161,8 +161,9 @@ export const taskApi = createApi({
         body: JSON.stringify(plannedEndDate),
       }),
     }),
+
     updateTask: builder.mutation<
-      TaskResponseDTO, // response
+      TaskResponseDTO,
       { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
     >({
       query: ({ id, body }) => ({
@@ -171,6 +172,15 @@ export const taskApi = createApi({
         body,
       }),
     }),
+
+    createTask: builder.mutation<TaskResponseDTO, Partial<TaskResponseDTO>>({
+      query: (newTask) => ({
+        url: 'task',
+        method: 'POST',
+        body: newTask,
+      }),
+    }),
+
   }),
 });
 
@@ -184,6 +194,7 @@ export const {
   useUpdateTaskTitleMutation,
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
-  useUpdatePlannedEndDateMutation, 
-  useUpdateTasksMutation
+  useUpdatePlannedEndDateMutation,
+  useUpdateTasksMutation,
+  useCreateTaskMutation,
 } = taskApi;

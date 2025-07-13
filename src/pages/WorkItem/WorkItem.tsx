@@ -748,7 +748,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   onKeyDown={async (e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      (e.target as HTMLInputElement).blur(); // Gọi blur để tái sử dụng logic lưu ở onBlur
+                                      (e.target as HTMLInputElement).blur(); 
                                     }
                                   }}
                                   autoFocus
@@ -812,6 +812,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       alert('❌ Failed to update subtask');
                                     }
                                   }}
+                                  style={{ padding: '4px 8px' }}
+                      
                                 >
                                   <option value="0">Unassigned</option>
                                   {projectMembers.map((member) => (
@@ -829,6 +831,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 value={item.status}
                                 onChange={(e) => handleStatusChange(item.key, e.target.value)}
                                 className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                                  
                               >
                                 <option value="TO_DO">To Do</option>
                                 <option value="IN_PROGRESS">In Progress</option>

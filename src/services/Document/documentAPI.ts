@@ -90,9 +90,25 @@ export const documentApi = createApi({
       }),
     }),
 
-    summarizeAI: builder.query<{summary: string}, number>({
+    summarizeAI: builder.query<{ summary: string }, number>({
       query: (id) => `documents/${id}/summary`,
     }),
+    documentStatus: builder.query<DocumentType[], string>({
+      query: (status) => `documents/status/${status}`,
+    }),
+
+    approveDocument: builder.mutation<DocumentType, { documentId: number; status: string; comment: string }>(
+      {
+        query: ({ documentId, status, comment }) => ({
+          url: `documents/${documentId}/approve`,
+          method: 'POST',
+          body: {
+            status,
+            comment,
+          },
+        }),
+      }
+    ),
   }),
 });
 
@@ -106,4 +122,6 @@ export const {
   useGetDocumentMappingQuery,
   useAskAIMutation,
   useSummarizeAIQuery,
+  useDocumentStatusQuery,
+  useApproveDocumentMutation
 } = documentApi;

@@ -28,6 +28,7 @@ import DocBlank from '../pages/PM/YourProject/DocBlank';
 import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
 import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
+import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
 
 export const router = createBrowserRouter([
   {
@@ -192,6 +193,8 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage />,
       },
+
+      { path: 'all-request-form', element: <AllRequestForm /> },
     ],
   },
 ]);

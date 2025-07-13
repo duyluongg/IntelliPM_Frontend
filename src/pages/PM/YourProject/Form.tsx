@@ -3,7 +3,8 @@ import { FileText, Zap, Bug, AlertTriangle, Shuffle, SlidersHorizontal } from 'l
 import FeatureRequestForm from './FeatureRequestForm';
 import RecentForm from './RecentForm';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
-
+import DocWrapper from './DocWrapper';
+import { useAuth } from '../../../services/AuthContext';
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
@@ -39,10 +40,22 @@ export default function Form() {
   const handleBack = () => {
     navigate('/projects/form');
   };
+  const { user } = useAuth();
+  const userRole = user?.role;
+  console.log(userRole, 'userRole');
 
   return (
     <div className='min-h-screen bg-white'>
       {/* <ProjectTabs /> */}
+
+      {userRole === 'TEAM_LEADER' && (
+        <button
+          onClick={() => navigate(`/team-leader/all-request-form`)}
+          className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-indigo-700 transition duration-200'
+        >
+          All Request Form
+        </button>
+      )}
 
       {!formId || formId === 'blank' ? (
         <div className='p-4 space-y-3  '>
@@ -69,8 +82,8 @@ export default function Form() {
         </div>
       ) : (
         <div className='mt-6 max-w-5xl mx-auto'>
-          {formId === 'feature' && <FeatureRequestForm onBack={handleBack} />}
-          {formId === 'doc' && <DocCreator projectId={projectId} />}
+          {formId === 'feature' && <FeatureRequestForm />}
+          {formId === 'doc' && <DocWrapper />}
         </div>
       )}
     </div>

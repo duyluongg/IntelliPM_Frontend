@@ -11,8 +11,9 @@ import deleteIcon from '../../assets/delete.png';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
-import { useLazyGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
+import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 
 interface EpicPopupProps {
     id: string;
@@ -48,58 +49,40 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [deleteEpicFile] = useDeleteEpicFileMutation();
     const accountId = parseInt(localStorage.getItem("accountId") || "0");
     const [createTask] = useCreateTaskMutation();
-    const [getAssignees] = useLazyGetTaskAssignmentsByTaskIdQuery();
-    const [taskAssignees, setTaskAssignees] = React.useState<Record<string, string>>({});
     const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
     const [editableTitles, setEditableTitles] = React.useState<Record<string, string>>({});
     const [updateTaskTitle] = useUpdateTaskTitleMutation();
     const [selectedAssignees, setSelectedAssignees] = React.useState<Record<string, number[]>>({});
-
+    const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
+    const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter((item) => item.status === 'DONE').length;
     const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+    const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
 
     React.useEffect(() => {
-        const fetchAssignees = async () => {
-            try {
-                const results = await Promise.all(
-                    tasks.map(async (task) => {
-                        const result = await getAssignees(task.id).unwrap();
-                        const first = result[0];
-                        return {
-                            taskId: task.id,
-                            assignee: first?.accountFullname || 'Unassigned',
-                        };
-                    })
-                );
+        const fetchAllTaskAssignments = async () => {
+            const result: Record<string, TaskAssignmentDTO[]> = {};
 
-                const assigneeMap: Record<string, string> = {};
-                results.forEach(({ taskId, assignee }) => {
-                    assigneeMap[taskId] = assignee;
-                });
-                setTaskAssignees(assigneeMap);
-            } catch (err) {
-                console.error('❌ Error fetching task assignees:', err);
+            for (const t of tasks) {
+                try {
+                    const data = await getTaskAssignments(t.id).unwrap();
+                    result[t.id] = data;
+                } catch (err) {
+                    console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
+                }
             }
+
+            setTaskAssignmentMap(result);
         };
 
-        if (tasks.length > 0) {
-            fetchAssignees();
-        }
+        if (tasks.length > 0) fetchAllTaskAssignments();
     }, [tasks]);
 
     const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
         skip: !epic?.projectId,
     });
-
-    const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-        try {
-            await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
-            await refetch();
-        } catch (error) {
-            console.error('❌ Error update task status', error);
-        }
-    };
 
     const handleDeleteFile = async (fileId: number) => {
         try {
@@ -224,7 +207,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         📁 Attachment
                                     </div>
                                     <div className="add-item" onClick={() => {
-                                        //navigate(`/project/task/create?epicId=${epic.id}`);
                                         setShowTaskInput(true);
                                         setIsAddDropdownOpen(false);
 
@@ -461,44 +443,65 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             <div className="multi-select-dropdown">
                                                                 {/* Hiển thị danh sách đã chọn */}
                                                                 <div className="selected-list">
-                                                                    {(selectedAssignees[task.id] ?? []).map((id) => {
-                                                                        const member = projectMembers.find((m) => m.accountId === id);
-                                                                        return member ? (
-                                                                            <span className="selected-tag" key={id}>
-                                                                                {member.accountName}
-                                                                                <button
-                                                                                    className="remove-tag"
-                                                                                    onClick={() => {
-                                                                                        setSelectedAssignees((prev) => ({
-                                                                                            ...prev,
-                                                                                            [task.id]: prev[task.id].filter((mid) => mid !== id),
-                                                                                        }));
-                                                                                    }}
-                                                                                >
-                                                                                    ✖
-                                                                                </button>
-                                                                            </span>
-                                                                        ) : null;
-                                                                    })}
-                                                                </div>
+                                                                    {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
+                                                                        <span className="selected-tag" key={assignment.accountId}>
+                                                                            {assignment.accountFullname ?? 'Unknown'}
+                                                                            <button
+                                                                                className="remove-tag"
+                                                                                onClick={async () => {
+                                                                                    try {
+                                                                                        await deleteTaskAssignment({
+                                                                                            taskId: task.id,
+                                                                                            assignmentId: assignment.id,
+                                                                                        }).unwrap();
 
-                                                                {/* Dropdown chọn thêm */}
+                                                                                        setTaskAssignmentMap((prev) => ({
+                                                                                            ...prev,
+                                                                                            [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
+                                                                                        }));
+                                                                                    } catch (err) {
+                                                                                        console.error('❌ Failed to delete assignee:', err);
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                ✖
+                                                                            </button>
+                                                                        </span>
+                                                                    ))}
+
+                                                                </div>                                              {/* Dropdown chọn thêm */}
                                                                 <div className="dropdown-select-wrapper">
                                                                     <select
-                                                                        onChange={(e) => {
+                                                                        onChange={async (e) => {
                                                                             const selectedId = parseInt(e.target.value);
                                                                             if (!selectedAssignees[task.id]?.includes(selectedId)) {
-                                                                                setSelectedAssignees((prev) => ({
-                                                                                    ...prev,
-                                                                                    [task.id]: [...(prev[task.id] ?? []), selectedId],
-                                                                                }));
+                                                                                try {
+                                                                                    await createTaskAssignment({ taskId: task.id, accountId: selectedId }).unwrap();
+
+                                                                                    // Gọi lại API để lấy thông tin đầy đủ bao gồm fullname
+                                                                                    const data = await getTaskAssignments(task.id).unwrap();
+
+                                                                                    setTaskAssignmentMap((prev) => ({
+                                                                                        ...prev,
+                                                                                        [task.id]: data, // cập nhật lại danh sách mới
+                                                                                    }));
+
+                                                                                    setSelectedAssignees((prev) => ({
+                                                                                        ...prev,
+                                                                                        [task.id]: [...(prev[task.id] ?? []), selectedId],
+                                                                                    }));
+
+                                                                                } catch (err) {
+                                                                                    console.error('❌ Failed to create assignee:', err);
+                                                                                    alert('❌ Error adding assignee');
+                                                                                }
                                                                             }
                                                                         }}
                                                                         value=""
                                                                     >
                                                                         <option value="" disabled hidden>+ Add assignee</option>
                                                                         {projectMembers
-                                                                            .filter((m) => !(selectedAssignees[task.id] ?? []).includes(m.accountId))
+                                                                            .filter((m) => !(taskAssignmentMap[task.id] ?? []).some((a) => a.accountId === m.accountId))
                                                                             .map((member) => (
                                                                                 <option key={member.accountId} value={member.accountId}>
                                                                                     {member.accountName}
@@ -708,7 +711,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         </div>
 
                         <div className="details-content">
-                            <div className="detail-item"><label>Assignee</label><span>{epic.assignedById ?? 'None'}</span></div>
+                            <div className="detail-item"><label>Assignee</label><span>{epic.assignedByFullname ?? 'None'}</span></div>
                             <div className="detail-item">
                                 <label>Labels</label>
                                 <span>

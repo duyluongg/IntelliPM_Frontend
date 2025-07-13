@@ -6,6 +6,7 @@ import ProjectInfoForm from './ProjectInfoForm';
 import RequirementsSection from './RequirementsSection';
 import MembersSection from './MembersSection';
 import ActionButtonsPM from './ActionButtonsPM';
+import TasksAndEpicsTable from './TasksAndEpicsTable';
 
 const ProjectReviewPM: React.FC = () => {
   const { projectKey } = useParams<{ projectKey: string }>();
@@ -76,6 +77,8 @@ const ProjectReviewPM: React.FC = () => {
         projectId={projectId}
         refetch={refetch}
       />
+
+      <TasksAndEpicsTable projectId={projectId} />
 
       <ActionButtonsPM projectKey={key} projectId={projectId} isFormValid={!!projectId && !!name && !!key} />
     </div>

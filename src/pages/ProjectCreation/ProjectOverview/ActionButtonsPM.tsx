@@ -97,7 +97,7 @@ const ActionButtonsPM: React.FC<ActionButtonsProps> = ({ projectKey, projectId, 
         disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         <XCircle className="w-4 h-4 mr-2" />
-        {isSendingRejection ? 'Processing...' : 'Reject'}
+        {isSendingRejection ? 'Processing...' : 'Reject Send to Team Leader'}
       </button>
 
       {/* Accept and Send Button */}

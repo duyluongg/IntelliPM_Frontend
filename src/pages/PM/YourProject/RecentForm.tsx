@@ -1,14 +1,20 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Lock, MoreHorizontal, CheckSquare } from 'lucide-react';
 import { useGetMyDocumentsQuery } from '../../../services/Document/documentAPI';
 import { useEffect } from 'react';
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 
 export default function RecentForm() {
   const navigate = useNavigate();
   const { data: documents = [], isLoading, isError, refetch } = useGetMyDocumentsQuery();
+
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey');
+
   useEffect(() => {
     refetch();
   }, []);
+
   if (isLoading) {
     return <p className='text-sm text-gray-500 p-4'>Loading recent forms...</p>;
   }
@@ -26,7 +32,19 @@ export default function RecentForm() {
           <div
             key={doc.id}
             className='w-full border rounded-lg shadow-sm bg-white p-3 cursor-pointer hover:shadow-md transition'
-            onClick={() => navigate(`/project/projects/form/${doc.type.toLowerCase()}/${doc.id}`)}
+            onClick={() => {
+              console.log(
+                'NAVIGATE TO:',
+                `/project/projects/form/${doc.type.toLowerCase()}/${
+                  doc.id
+                }?projectKey=${projectKey}`
+              );
+              navigate(
+                `/project/projects/form/${doc.type.toLowerCase()}/${
+                  doc.id
+                }?projectKey=${projectKey}`
+              );
+            }}
           >
             <div className='bg-purple-400 h-32 rounded-lg flex items-center justify-center'>
               <FileText size={48} className='text-white' />

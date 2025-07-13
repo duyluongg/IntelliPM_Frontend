@@ -31,11 +31,11 @@ interface TableRow {
   reporter: { name: string | null | undefined; picture: string | null; id?: number | null };
   assignees: { name: string; picture: string | null; id?: number | null }[];
   status: string;
-  reporterId?: number | null; // For task and epic
-  assignedBy?: number | null; // For epic
-  projectId?: number; // For task
-  epicId?: number | null; // For task
-  sprintId?: number | null; // For task
+  reporterId?: number | null; 
+  assignedBy?: number | null; 
+  projectId?: number; 
+  epicId?: string | null; 
+  sprintId?: number | null; 
 }
 
 interface ProjectMember {
@@ -577,7 +577,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   const normalizedTasks: TableRow[] = tasks.map((task) => {
     const assignees = (assignmentsMap[task.id] || []).filter(
-      (assignment) => typeof assignment.id === 'number'
+      (assignment) => typeof assignment.id === 'string'
     ).map((assignment) => ({
       id: assignment.accountId,
       name: assignment.accountFullname || '',

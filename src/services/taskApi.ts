@@ -8,8 +8,7 @@ export interface TaskResponseDTO {
   reporterPicture: string | null;
   projectId: number;
   projectName: string;
-
-  epicId: number | null;
+  epicId: string | null;
   sprintId: number | null;
   milestoneId: number | null;
   type: string;
@@ -63,7 +62,7 @@ interface TaskDetailResponse {
 export interface UpdateTaskRequestDTO {
   reporterId: number | null;
   projectId: number;
-  epicId: number | null;
+  epicId: string | null;
   sprintId: number | null;
   type: string;
   title: string;
@@ -244,7 +243,6 @@ export const {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
-
   useUpdateTaskMutation,
   useUpdateTaskDatMutation,
   useCreateTaskMutation,

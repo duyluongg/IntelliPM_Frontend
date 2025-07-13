@@ -31,11 +31,11 @@ interface TableRow {
   reporter: { name: string | null | undefined; picture: string | null; id?: number | null };
   assignees: { name: string; picture: string | null; id?: number | null }[];
   status: string;
-  reporterId?: number | null; // For task and epic
-  assignedBy?: number | null; // For epic
-  projectId?: number; // For task
-  epicId?: number | null; // For task
-  sprintId?: number | null; // For task
+  reporterId?: number | null; 
+  assignedBy?: number | null; 
+  projectId?: number; 
+  epicId?: string | null; 
+  sprintId?: number | null; 
 }
 
 interface ProjectMember {
@@ -577,7 +577,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   const normalizedTasks: TableRow[] = tasks.map((task) => {
     const assignees = (assignmentsMap[task.id] || []).filter(
-      (assignment) => typeof assignment.id === 'number'
+      (assignment) => typeof assignment.id === 'string'
     ).map((assignment) => ({
       id: assignment.accountId,
       name: assignment.accountFullname || '',
@@ -631,6 +631,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
+        <h2 className="text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100">
+          Tasks and Epics
+        </h2>
+
       <div className='overflow-x-auto bg-white w-full block'>
         {(isUpdatingEpic || isUpdatingTask || isDeletingAssignment || isCreatingAssignment) && (
           <div className='text-center py-4 text-blue-500'>Processing...</div>
@@ -735,14 +739,14 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                       <img
                         src={taskIcon}
                         alt='Task'
-                        className='w-5 h-5 rounded p-0.5 bg-blue-500'
+                        className='w-5 h-5 rounded p-0.5'
                       />
                     )}
                     {item.type === 'EPIC' && (
                       <img
                         src={epicIcon}
                         alt='Epic'
-                        className='w-5 h-5 rounded p-0.5 bg-purple-500'
+                        className='w-5 h-5 rounded p-0.5'
                       />
                     )}
                   </td>

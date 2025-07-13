@@ -12,7 +12,7 @@ export interface EpicResponseDTO {
   createdAt: string;
   updatedAt: string;
   status: string;
-  reporterId: number;
+  reporterId: number  | null;
   assignedBy: number | null;
   assignedByFullname: string | null;
   assignedByPicture: string | null;
@@ -28,6 +28,8 @@ export interface UpdateEpicRequestDTO {
   startDate: string;
   endDate: string;
   status: string;
+  reporterId?: number | null;
+  assignedBy?: number | null;
 }
 
 interface EpicListResponse {
@@ -118,7 +120,10 @@ export const epicApi = createApi({
       invalidatesTags: ['Epic'],
     }),
 
-    createEpicWithTasks: builder.mutation<CreateEpicResponse, { projectId: number; data: EpicWithTaskRequestDTO }>({
+    createEpicWithTasks: builder.mutation<
+      CreateEpicResponse,
+      { projectId: number; data: EpicWithTaskRequestDTO }
+    >({
       query: ({ projectId, data }) => ({
         url: `epic/with-tasks/${projectId}`,
         method: 'POST',

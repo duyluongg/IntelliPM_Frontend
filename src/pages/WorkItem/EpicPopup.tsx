@@ -1,13 +1,18 @@
 import React from 'react';
 import './EpicPopup.css';
+import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
 import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
-import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation } from '../../services/taskApi';
+import deleteIcon from '../../assets/delete.png';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
+import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 
 interface EpicPopupProps {
     id: string;
@@ -18,9 +23,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
     const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
     const [status, setStatus] = React.useState("");
+    const [projectId, setProjectId] = React.useState("");
+    const [epicId, setEpicId] = React.useState("");
     const [updateEpicStatus] = useUpdateEpicStatusMutation();
     const [updateTaskStatus] = useUpdateTaskStatusMutation();
     const navigate = useNavigate();
+    const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const [showTaskInput, setShowTaskInput] = React.useState(false);
@@ -33,7 +41,56 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         { label: 'Bug', value: 'BUG', icon: bugIcon },
         { label: 'Story', value: 'STORY', icon: storyIcon },
     ];
+    const [description, setDescription] = React.useState('');
+    const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
+    const { data: attachments = [], refetch: refetchAttachments } = useGetEpicFilesByEpicIdQuery(id);
+    const [uploadEpicFile] = useUploadEpicFileMutation();
+    const [deleteEpicFile] = useDeleteEpicFileMutation();
+    const accountId = parseInt(localStorage.getItem("accountId") || "0");
+    const [createTask] = useCreateTaskMutation();
+    const [getAssignees] = useLazyGetTaskAssignmentsByTaskIdQuery();
+    const [taskAssignees, setTaskAssignees] = React.useState<Record<string, string>>({});
+    const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
+    const [editableTitles, setEditableTitles] = React.useState<Record<string, string>>({});
+    const [updateTaskTitle] = useUpdateTaskTitleMutation();
+    const [selectedAssignees, setSelectedAssignees] = React.useState<Record<string, number[]>>({});
 
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((item) => item.status === 'DONE').length;
+    const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    React.useEffect(() => {
+        const fetchAssignees = async () => {
+            try {
+                const results = await Promise.all(
+                    tasks.map(async (task) => {
+                        const result = await getAssignees(task.id).unwrap();
+                        const first = result[0];
+                        return {
+                            taskId: task.id,
+                            assignee: first?.accountFullname || 'Unassigned',
+                        };
+                    })
+                );
+
+                const assigneeMap: Record<string, string> = {};
+                results.forEach(({ taskId, assignee }) => {
+                    assigneeMap[taskId] = assignee;
+                });
+                setTaskAssignees(assigneeMap);
+            } catch (err) {
+                console.error('❌ Error fetching task assignees:', err);
+            }
+        };
+
+        if (tasks.length > 0) {
+            fetchAssignees();
+        }
+    }, [tasks]);
+
+    const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
 
     const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
         try {
@@ -41,6 +98,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             await refetch();
         } catch (error) {
             console.error('❌ Error update task status', error);
+        }
+    };
+
+    const handleDeleteFile = async (fileId: number) => {
+        try {
+            await deleteEpicFile(fileId).unwrap();
+            alert('✅ Delete file successfully!');
+            await refetchAttachments();
+        } catch (error) {
+            console.error('❌ Failed to delete file:', error);
         }
     };
 
@@ -55,7 +122,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
 
     React.useEffect(() => {
         if (epic) {
+            setEpicId(epic.id);
             setStatus(epic.status);
+            setDescription(epic.description);
+            setProjectId(String(epic.projectId));
         }
     }, [epic]);
 
@@ -175,10 +245,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         try {
-                                            // Gọi API upload file cho Epic tại đây
-                                            //await uploadEpicFile({ epicId: epic.id, file });
+                                            await uploadEpicFile({ epicId: id, title: file.name, file }).unwrap();
                                             alert(`✅ Uploaded: ${file.name}`);
-                                            await refetch(); // Nếu cần cập nhật attachment
+                                            await refetchAttachments();
                                         } catch (err) {
                                             console.error('❌ Upload failed:', err);
                                             alert('❌ Upload failed.');
@@ -197,8 +266,76 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             />
                         </div>
 
+                        {attachments.length > 0 && (
+                            <div className="attachments-section">
+                                <label>Attachments <span>({attachments.length})</span></label>
+                                <div className="attachments-grid">
+                                    {attachments.map(file => (
+                                        <div
+                                            className="attachment-card"
+                                            key={file.id}
+                                            onMouseEnter={() => setHoveredFileId(file.id)}
+                                            onMouseLeave={() => setHoveredFileId(null)}
+                                        >
+                                            <a
+                                                href={file.urlFile}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ textDecoration: 'none', color: 'inherit' }}
+                                            >
+                                                <div className="thumbnail">
+                                                    {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                                                        <img src={file.urlFile} alt={file.title} />
+                                                    ) : (
+                                                        <div className="doc-thumbnail">
+                                                            <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="file-meta">
+                                                    <div className="file-name" title={file.title}>{file.title}</div>
+                                                    <div className="file-date">
+                                                        {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                                                    </div>
+                                                </div>
+                                            </a>
+
+                                            {hoveredFileId === file.id && (
+                                                <button
+                                                    onClick={() => handleDeleteFile(file.id)}
+                                                    className="delete-file-btn"
+                                                    title="Delete file"
+                                                >
+                                                    <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="field-group">
                             <label>Child Work Items</label>
+
+                            <div style={{ marginBottom: '8px' }}>
+                                <div style={{
+                                    height: '8px',
+                                    backgroundColor: '#e0e0e0',
+                                    borderRadius: '4px',
+                                    overflow: 'hidden',
+                                }}>
+                                    <div style={{
+                                        width: `${progressPercent}%`,
+                                        backgroundColor: '#4caf50',
+                                        height: '100%',
+                                        transition: 'width 0.3s ease',
+                                    }} />
+                                </div>
+                                <div style={{ textAlign: 'right', fontSize: '13px', color: '#555' }}>
+                                    {progressPercent}% Done
+                                </div>
+                            </div>
                             <div className="issue-table">
                                 <div className="scrollable-table-wrapper">
                                     <table>
@@ -244,162 +381,305 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
                                                         />
                                                         </td>
-                                                        <td>{task.id}</td>
-                                                        <td>{task.title}</td>
-                                                        <td>{task.priority}</td>
-                                                        <td>{task.reporterId}</td>
+                                                        <td>
+                                                            <a onClick={() => setSelectedTaskId(task.id)} style={{ cursor: 'pointer' }}>
+                                                                {task.id}
+                                                            </a>
+                                                        </td>
+
+                                                        <td onClick={() => setEditingTaskId(task.id)} style={{ cursor: 'pointer' }}>
+                                                            {editingTaskId === task.id ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={editableTitles[task.id] ?? task.title}
+                                                                    onChange={(e) =>
+                                                                        setEditableTitles((prev) => ({ ...prev, [task.id]: e.target.value }))
+                                                                    }
+                                                                    onBlur={async () => {
+                                                                        const newTitle = editableTitles[task.id]?.trim();
+                                                                        if (newTitle && newTitle !== task.title) {
+                                                                            try {
+                                                                                await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                                                                await refetch();
+                                                                            } catch (err) {
+                                                                                console.error('❌ Failed to update title:', err);
+                                                                            }
+                                                                        }
+                                                                        setEditingTaskId(null);
+                                                                    }}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            (e.target as HTMLInputElement).blur();
+                                                                        }
+                                                                    }}
+                                                                    autoFocus
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '4px 6px',
+                                                                        border: '1px solid #ccc',
+                                                                        borderRadius: 4,
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                task.title
+                                                            )}
+                                                        </td>
+
+
+                                                        <td>
+                                                            <select
+                                                                value={task.priority}
+                                                                onChange={async (e) => {
+                                                                    const newPriority = e.target.value;
+                                                                    // try {
+                                                                    //     await updateTaskStatus({
+                                                                    //         id: task.id,
+                                                                    //         priority: newPriority,
+                                                                    //     }).unwrap();
+                                                                    //     await refetch(); // refresh task list
+                                                                    // } catch (err) {
+                                                                    //     console.error('❌ Error updating priority:', err);
+                                                                    // }
+                                                                }}
+                                                                style={{
+                                                                    padding: '4px 8px',
+                                                                    borderRadius: '4px',
+                                                                    border: '1px solid #ccc',
+                                                                    backgroundColor: 'white',
+                                                                }}
+                                                            >
+                                                                <option value="HIGHEST">Highest</option>
+                                                                <option value="HIGH">High</option>
+                                                                <option value="MEDIUM">Medium</option>
+                                                                <option value="LOW">Low</option>
+                                                                <option value="LOWEST">Lowest</option>
+                                                            </select>
+                                                        </td>
+
+                                                        <td>
+                                                            <div className="multi-select-dropdown">
+                                                                {/* Hiển thị danh sách đã chọn */}
+                                                                <div className="selected-list">
+                                                                    {(selectedAssignees[task.id] ?? []).map((id) => {
+                                                                        const member = projectMembers.find((m) => m.accountId === id);
+                                                                        return member ? (
+                                                                            <span className="selected-tag" key={id}>
+                                                                                {member.accountName}
+                                                                                <button
+                                                                                    className="remove-tag"
+                                                                                    onClick={() => {
+                                                                                        setSelectedAssignees((prev) => ({
+                                                                                            ...prev,
+                                                                                            [task.id]: prev[task.id].filter((mid) => mid !== id),
+                                                                                        }));
+                                                                                    }}
+                                                                                >
+                                                                                    ✖
+                                                                                </button>
+                                                                            </span>
+                                                                        ) : null;
+                                                                    })}
+                                                                </div>
+
+                                                                {/* Dropdown chọn thêm */}
+                                                                <div className="dropdown-select-wrapper">
+                                                                    <select
+                                                                        onChange={(e) => {
+                                                                            const selectedId = parseInt(e.target.value);
+                                                                            if (!selectedAssignees[task.id]?.includes(selectedId)) {
+                                                                                setSelectedAssignees((prev) => ({
+                                                                                    ...prev,
+                                                                                    [task.id]: [...(prev[task.id] ?? []), selectedId],
+                                                                                }));
+                                                                            }
+                                                                        }}
+                                                                        value=""
+                                                                    >
+                                                                        <option value="" disabled hidden>+ Add assignee</option>
+                                                                        {projectMembers
+                                                                            .filter((m) => !(selectedAssignees[task.id] ?? []).includes(m.accountId))
+                                                                            .map((member) => (
+                                                                                <option key={member.accountId} value={member.accountId}>
+                                                                                    {member.accountName}
+                                                                                </option>
+                                                                            ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+
                                                         <td>
                                                             <select
                                                                 className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
                                                                 value={task.status}
-                                                                onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
+                                                                onChange={async (e) => {
+                                                                    try {
+                                                                        await updateTaskStatus({
+                                                                            id: task.id,
+                                                                            status: e.target.value,
+                                                                        }).unwrap();
+                                                                        await refetch();
+                                                                    } catch (err) {
+                                                                        console.error('❌ Error updating status:', err);
+                                                                    }
+                                                                }}
                                                             >
                                                                 <option value="TO_DO">To Do</option>
                                                                 <option value="IN_PROGRESS">In Progress</option>
                                                                 <option value="DONE">Done</option>
                                                             </select>
                                                         </td>
+
                                                     </tr>
                                                 ))
                                             )}
                                         </tbody>
 
-                                        {showTaskInput && (
-                                            <tr ref={taskInputRef}>
-                                                <td>
-                                                    <div className="task-type-selector" style={{ position: 'relative' }}>
-                                                        <button
-                                                            className="task-type-button"
-                                                            onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                padding: '4px 8px',
-                                                                border: '1px solid #ccc',
-                                                                borderRadius: '4px',
-                                                                background: 'white',
-                                                                cursor: 'pointer',
-                                                            }}
-                                                        >
-                                                            <img
-                                                                src={
-                                                                    newTaskType === 'BUG'
-                                                                        ? bugIcon
-                                                                        : newTaskType === 'STORY'
-                                                                            ? storyIcon
-                                                                            : taskIcon
-                                                                }
-                                                                alt={newTaskType}
-                                                                style={{ width: 16, marginRight: 6 }}
-                                                            />
-                                                            {newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
-                                                        
-                                                        </button>
-
-                                                        {showTypeDropdown && (
-                                                            <div
-                                                                className="dropdown-menu"
-                                                                style={{
-                                                                    position: 'absolute',
-                                                                    top: '110%',
-                                                                    left: 0,
-                                                                    backgroundColor: '#fff',
-                                                                    border: '1px solid #ddd',
-                                                                    borderRadius: 4,
-                                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                                                    zIndex: 1000,
-                                                                    width: 120,
-                                                                }}
-                                                            >
-                                                                {taskTypes.map((type) => (
-                                                                    <div
-                                                                        key={type.value}
-                                                                        className="dropdown-item"
-                                                                        onClick={() => {
-                                                                            setNewTaskType(type.value as 'TASK' | 'BUG' | 'STORY');
-                                                                            setShowTypeDropdown(false);
-                                                                        }}
-                                                                        style={{
-                                                                            padding: '6px 10px',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            cursor: 'pointer',
-                                                                            gap: 6,
-                                                                        }}
-                                                                    >
-                                                                        <img src={type.icon} alt={type.label} style={{ width: 16 }} />
-                                                                        {type.label}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                <td colSpan={5}>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="What needs to be done?"
-                                                        value={newTaskTitle}
-                                                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                                                        style={{
-                                                            width: '45%',
-                                                            padding: '6px',
-                                                            border: '1px solid #ccc',
-                                                            borderRadius: '4px',
-                                                            marginRight: '8px',
-                                                        }}
-                                                    />
-                                                    <button
-                                                        onClick={async () => {
-                                                            try {
-                                                                // await createTask({ epicId: epic.id, title: newTaskTitle, type: newTaskType }).unwrap();
-                                                                console.log('✅ Task created');
-                                                                setNewTaskTitle('');
-                                                                setShowTaskInput(false);
-                                                                await refetch();
-                                                            } catch (err) {
-                                                                console.error('❌ Failed to create task:', err);
-                                                                alert('❌ Failed to create task');
-                                                            }
-                                                        }}
-                                                        disabled={!newTaskTitle.trim()}
-                                                        style={{
-                                                            padding: '6px 12px',
-                                                            backgroundColor: '#0052cc',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            borderRadius: '4px',
-                                                            cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed',
-                                                        }}
-                                                    >
-                                                        Create
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setShowTaskInput(false);
-                                                            setNewTaskTitle('');
-                                                        }}
-                                                        style={{
-                                                            marginLeft: '8px',
-                                                            padding: '6px 12px',
-                                                            backgroundColor: '#ccc',
-                                                            color: 'black',
-                                                            border: 'none',
-                                                            borderRadius: '4px',
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        )}
-
-
 
                                     </table>
                                 </div>
                             </div>
+                            {showTaskInput && (
+                                <tr ref={taskInputRef}>
+                                    <td>
+                                        <div className="task-type-selector" style={{ position: 'relative' }}>
+                                            <button
+                                                className="task-type-button"
+                                                onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '4px 8px',
+                                                    border: '1px solid #ccc',
+                                                    borderRadius: '4px',
+                                                    background: 'white',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                <img
+                                                    src={
+                                                        newTaskType === 'BUG'
+                                                            ? bugIcon
+                                                            : newTaskType === 'STORY'
+                                                                ? storyIcon
+                                                                : taskIcon
+                                                    }
+                                                    alt={newTaskType}
+                                                    style={{ width: 16, marginRight: 6 }}
+                                                />
+                                                {newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
+
+                                            </button>
+
+                                            {showTypeDropdown && (
+                                                <div
+                                                    className="dropdown-menu"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        bottom: '110%',
+                                                        left: 0,
+                                                        backgroundColor: '#fff',
+                                                        border: '1px solid #ddd',
+                                                        borderRadius: 4,
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                                        zIndex: 1000,
+                                                        width: 120,
+                                                    }}
+                                                >
+                                                    {taskTypes.map((type) => (
+                                                        <div
+                                                            key={type.value}
+                                                            className="dropdown-item"
+                                                            onClick={() => {
+                                                                setNewTaskType(type.value as 'TASK' | 'BUG' | 'STORY');
+                                                                setShowTypeDropdown(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '6px 10px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                cursor: 'pointer',
+                                                                gap: 6,
+                                                            }}
+                                                        >
+                                                            <img src={type.icon} alt={type.label} style={{ width: 16 }} />
+                                                            {type.label}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+
+                                    <td colSpan={5}>
+                                        <input
+                                            type="text"
+                                            placeholder="What needs to be done?"
+                                            value={newTaskTitle}
+                                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                                            style={{
+                                                width: '50%',
+                                                padding: '6px',
+                                                border: '1px solid #ccc',
+                                                borderRadius: '4px',
+                                                marginRight: '8px',
+                                            }}
+                                        />
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    const now = new Date().toISOString();
+
+                                                    await createTask({
+                                                        reporterId: accountId,
+                                                        projectId: parseInt(projectId),
+                                                        epicId: epic.id,
+                                                        title: newTaskTitle.trim(),
+                                                        type: newTaskType,
+                                                    }).unwrap();
+
+                                                    console.log('✅ Task created');
+                                                    setNewTaskTitle('');
+                                                    setShowTaskInput(false);
+                                                    await refetch();
+                                                } catch (err) {
+                                                    console.error('❌ Failed to create task:', err);
+                                                    alert('❌ Failed to create task');
+                                                }
+                                            }}
+
+                                            disabled={!newTaskTitle.trim()}
+                                            style={{
+                                                padding: '6px 12px',
+                                                backgroundColor: '#0052cc',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: newTaskTitle.trim() ? 'pointer' : 'not-allowed',
+                                            }}
+                                        >
+                                            Create
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowTaskInput(false);
+                                                setNewTaskTitle('');
+                                            }}
+                                            style={{
+                                                marginLeft: '8px',
+                                                padding: '6px 12px',
+                                                backgroundColor: '#ccc',
+                                                color: 'black',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </td>
+                                </tr>
+                            )}
                         </div>
 
                         <div className="activity-tabs">
@@ -408,8 +688,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <button className="tab">History</button>
                         </div>
                         <div className="comment-list">
-                            <textarea className="activity-input" placeholder="Add a comment...\nCan I get more info..? Status update... Thanks..." />
-                            <p className="pro-tip">Pro tip: Press <strong>M</strong> to comment</p>
+                            <textarea className="activity-input" />
+
                         </div>
                     </div>
 
@@ -444,6 +724,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     </div>
                 </div>
             </div>
+            {selectedTaskId && (
+                <WorkItem
+                    isOpen={true}
+                    taskId={selectedTaskId}
+                    onClose={() => setSelectedTaskId(null)}
+                />
+            )}
         </div>
     );
 };

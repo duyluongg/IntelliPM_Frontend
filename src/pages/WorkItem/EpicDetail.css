@@ -243,3 +243,10 @@ input[type="text"] {
     border-radius: 4px;
     font-size: 14px;
 }
+
+.field-group label {
+  display: block;
+  font-weight: 500;
+  color: #172b4d;
+  margin-bottom: 5px;
+}

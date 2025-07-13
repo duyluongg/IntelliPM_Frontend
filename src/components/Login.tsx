@@ -232,6 +232,12 @@ const Login: React.FC = () => {
           refreshToken: result.data.refreshToken,
         };
 
+        // ✅ Save to localStorage
+        localStorage.setItem("accountId", result.data.id.toString());
+        localStorage.setItem("username", result.data.username);
+        localStorage.setItem("accessToken", result.data.accessToken);
+        localStorage.setItem("email", result.data.email);
+        
         login(userData); // ⚠️ Đợi useEffect phía dưới xử lý redirect
       }
     } catch (err) {
@@ -240,20 +246,20 @@ const Login: React.FC = () => {
   };
 
 
-useEffect(() => {
-  const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
+  useEffect(() => {
+    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
 
-  if (isAccessRole && hasProjects && projectData?.data?.length > 0) {
-    const firstProject = projectData.data[0];
-    navigate(`/project?projectKey=${firstProject.projectKey}#list`);
-  } else if (user?.role === 'ADMIN') {
-    navigate('/admin/dashboard');
-  } else if (user?.role === 'CLIENT') {
-    navigate('/meeting');
-  } else if (user?.role === 'TEAM_LEADER') {
-    navigate('/team-leader');
-  }
-}, [user, hasProjects, projectData, navigate]);
+    if (isAccessRole && hasProjects && projectData?.data?.length > 0) {
+      const firstProject = projectData.data[0];
+      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+    } else if (user?.role === 'ADMIN') {
+      navigate('/admin/dashboard');
+    } else if (user?.role === 'CLIENT') {
+      navigate('/meeting');
+    } else if (user?.role === 'TEAM_LEADER') {
+      navigate('/team-leader');
+    }
+  }, [user, hasProjects, projectData, navigate]);
 
   return (
     <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-purple-100 px-4'>

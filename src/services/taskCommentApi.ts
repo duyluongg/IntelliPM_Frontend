@@ -5,6 +5,7 @@ export interface TaskComment {
   id: number;
   taskId: string;
   accountId: number;
+  accountName: string;
   content: string;
   createdAt: string;
 }
@@ -20,7 +21,49 @@ export const taskCommentApi = createApi({
         data: TaskComment[];
       }) => response.data,
     }),
+
+    createTaskComment: builder.mutation<
+      TaskComment,
+      { taskId: string; accountId: number; content: string }
+    >({
+      query: (commentData) => ({
+        url: 'taskcomment',
+        method: 'POST',
+        body: commentData,
+      }),
+      transformResponse: (response: {
+        isSuccess: boolean;
+        data: TaskComment;
+      }) => response.data,
+    }),
+
+    updateTaskComment: builder.mutation<
+      TaskComment,
+      { id: number; taskId: string; accountId: number; content: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `taskcomment/${id}`,
+        method: 'PUT',
+        body,
+      }),
+      transformResponse: (response: {
+        isSuccess: boolean;
+        data: TaskComment;
+      }) => response.data,
+    }),
+
+    deleteTaskComment: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `taskcomment/${id}`,
+        method: 'DELETE',
+      }),
+    }),
   }),
 });
 
-export const { useGetCommentsByTaskIdQuery } = taskCommentApi;
+export const {
+  useGetCommentsByTaskIdQuery,
+  useCreateTaskCommentMutation,
+  useUpdateTaskCommentMutation,
+  useDeleteTaskCommentMutation,
+} = taskCommentApi;

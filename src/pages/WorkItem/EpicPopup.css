@@ -1,0 +1,173 @@
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.work-item-modal {
+  width: 1000px;
+  max-height: 90vh;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.work-item-detail-page {
+  min-height: 100vh;
+  height: 100%;
+  width: 100%;
+  background-color: #f4f5f7;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.modal-header {  }
+.modal-content {
+  display: flex;
+  flex-direction: row;
+  padding: 24px;
+  gap: 24px;
+}
+.main-section {
+  flex: 3;
+}
+.details-panel {
+  flex: 1;
+  background-color: #f4f5f7;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.custom-epic-status-select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-weight: 600;
+  font-size: 0.85rem;  
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  width: fit-content;
+  min-width: 105px;
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 10px;
+  color: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%236B778C' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  
+}
+
+.custom-epic-status-select option {
+  background-color: #ffffff !important;
+  color: #172B4D !important;
+}
+
+/* Màu theo status */
+.status-to-do {
+  background-color: #dddee1;
+  color: #6B778C;
+}
+
+.status-in-progress {
+  background-color: #87b1e1;
+  color: #0747A6;
+}
+
+.status-done {
+  background-color: #b2da73;
+  color: #006644;
+}
+
+.attachments-section {
+  margin-top: 16px;
+}
+
+.attachment-card {
+  position: relative;
+  border: 1px solid #ddd;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+.thumbnail img {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.doc-thumbnail {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  background-color: #e6e6e6;
+  border-radius: 6px;
+}
+.doc-text {
+  font-size: 12px;
+  color: #555;
+}
+.file-meta {
+  margin-top: 6px;
+}
+.file-name {
+  font-weight: 500;
+}
+.file-date {
+  font-size: 12px;
+  color: #888;
+}
+.delete-file-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.multi-select-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.selected-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selected-tag {
+  background-color: #e0f3ff;
+  padding: 4px 8px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.remove-tag {
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.dropdown-select-wrapper select {
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}

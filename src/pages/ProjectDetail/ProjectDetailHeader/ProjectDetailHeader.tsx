@@ -255,6 +255,7 @@ import {
   PackagePlus,
   ChartNoAxesGantt,
   ChartNoAxesCombined,
+  FileWarning,
   Link as LucideLink,
 } from 'lucide-react';
 
@@ -266,15 +267,18 @@ const navItems = [
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
   { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
-  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
-  // { label: 'All work', icon: <Users2 className='w-4 h-4' />, path: 'all-work' },
+  { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
-  // { label: 'Code', icon: <Code2 className='w-4 h-4' />, path: 'code' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
+  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
+  { label: 'All work', icon: <Users2 className='w-4 h-4' />, path: 'all-work' },
+  { label: 'Code', icon: <Code2 className='w-4 h-4' />, path: 'code' },
   { label: 'Archived work items', icon: <Archive className='w-4 h-4' />, path: 'archived' },
   { label: 'Pages', icon: <FileText className='w-4 h-4' />, path: 'pages' },
   { label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   { label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
+  { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
+
 ];
 
 const ProjectDetailHeader: React.FC = () => {

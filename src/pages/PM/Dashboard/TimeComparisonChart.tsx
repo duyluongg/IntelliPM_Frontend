@@ -51,6 +51,23 @@ const TimeComparisonChart = () => {
     },
   ];
 
+  const WrappedYAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const words = String(payload.value).split(' '); // Tách từ để wrap
+
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} dy={4} textAnchor='end' fill='#666' fontSize={12}>
+          {words.map((word: string, index: number) => (
+            <tspan x={0} dy={index === 0 ? 0 : 14} key={index}>
+              {word}
+            </tspan>
+          ))}
+        </text>
+      </g>
+    );
+  };
+
   return (
     <div className='p-4'>
       <div className='flex items-center justify-between mb-4'>
@@ -76,10 +93,11 @@ const TimeComparisonChart = () => {
           layout='vertical'
           data={chartData}
           margin={{ top: 10, right: 20, left: -60, bottom: 10 }}
-          barCategoryGap={15} 
+          barCategoryGap={15}
         >
           <XAxis type='number' domain={[0, 100]} tickFormatter={(tick) => `${tick}%`} reversed />
-          <YAxis type='category' dataKey='name' width={130} tick={{ fontSize: 12 }} />
+          {/* <YAxis type='category' dataKey='name' width={130} tick={{ fontSize: 12 }} /> */}
+          <YAxis type='category' dataKey='name' width={130} tick={<WrappedYAxisTick />} />
           <Tooltip formatter={(value) => `${value}%`} />
           <Bar dataKey='value' isAnimationActive={false}>
             {chartData.map((entry, index) => (
@@ -90,7 +108,6 @@ const TimeComparisonChart = () => {
               position='insideRight'
               formatter={(value) => (typeof value === 'number' ? `${value}%` : '')}
               fill='#fff'
-            //   style={{ fontWeight: 'bold' }}
             />
           </Bar>
         </BarChart>
@@ -110,10 +127,10 @@ const TimeComparisonChart = () => {
           {status === 'Ahead'
             ? '🚀 Ahead of schedule'
             : status === 'Behind'
-            // ? '⏳ Behind schedule'
-            ? '🔺 Behind schedule'
+            ? // ? '⏳ Behind schedule'
+              '🔺 Behind schedule'
             : '✅ On time'}
-            {/* ⏫ hoặc 🔺 */}
+          {/* ⏫ hoặc 🔺 */}
         </span>
       </p>
     </div>

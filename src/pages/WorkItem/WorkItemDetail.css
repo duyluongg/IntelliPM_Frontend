@@ -103,6 +103,7 @@
 
 .field-group {
   margin-bottom: 15px;
+  width: 100%;
 }
 
 .field-group label {
@@ -310,15 +311,15 @@ input {
   margin-right: 5px;
 }
 
-.issue-table {
-  width: 100%; /* Cho container bao table dãn full */
-  overflow-x: auto; /* Nếu nội dung tràn */
+.issue-work-table {
+  width: 100%;
+  overflow-x: auto;
 }
 
 .issue-table table {
-  width: 100%; /* Table full chiều ngang */
+  width: 100%;
   border-collapse: collapse;
-  table-layout: fixed; /* Đảm bảo các cột chia đều nhau */
+  table-layout: fixed;
 }
 
 .issue-table th,
@@ -329,6 +330,11 @@ input {
   word-wrap: break-word;
 }
 
+.scrollable-work-table-wrapper {
+  max-height: 300px;    
+  overflow: auto;    
+  border: 1px solid #DFE1E6; 
+}
 
 .assignee {
     font-weight: bold;
@@ -365,4 +371,84 @@ input {
 
 .status-dropdown.done {
   background-color: #e3fcef;
+}
+
+.attachments-section {
+  margin-top: 12px;
+}
+
+.attachments-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.attachment-card {
+  width: 140px;
+  border-radius: 8px;
+  background: #f4f5f7;
+  padding: 8px;
+  text-decoration: none;
+  color: #172b4d;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.attachment-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.thumbnail {
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin-bottom: 6px;
+  background: white;
+  border-radius: 4px;
+}
+
+.thumbnail img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.doc-thumbnail {
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #555;
+  background-color: #e0e0e0;
+  padding: 8px;
+  text-align: center;
+}
+
+.file-meta {
+  font-size: 12px;
+}
+
+.file-name {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-date {
+  color: #888;
+  font-size: 11px;
+}
+
+.hover-underline {
+  text-decoration: none;
+}
+
+.hover-underline:hover {
+  text-decoration: underline;
 }

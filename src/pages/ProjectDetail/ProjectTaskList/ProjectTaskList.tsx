@@ -6,11 +6,20 @@ import './ProjectTaskList.css';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
 import WorkItem from '../../WorkItem/WorkItem';
+import EpicPopup from '../../WorkItem/EpicPopup';
+import ChildWorkItemPopup from '../../WorkItem/ChildWorkItemPopup';
 import taskIcon from '../../../assets/icon/type_task.svg';
 import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import { FileText } from 'lucide-react';
+import Doc from '../../PM/YourProject/Doc';
+import {
+  useCreateDocumentMutation,
+  useGetDocumentMappingQuery,
+} from '../../../services/Document/documentAPI';
+import { useAuth } from '../../../services/AuthContext';
 
 // Interface Reporter
 interface Reporter {
@@ -232,13 +241,77 @@ const ProjectTaskList: React.FC = () => {
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
-
+  const [selectedTaskType, setSelectedTaskType] = useState<
+    'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
+  >(null);
+  //const selectedItem = tasks.find((t) => t.key === selectedTaskId);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-console.log('🧩 ProjectTaskList rendered');
+  const shouldShowWorkItem =
+    isPopupOpen &&
+    selectedTaskId &&
+    selectedTaskType !== null &&
+    ['task', 'bug', 'story'].includes(selectedTaskType);
 
-  const handleOpenPopup = (taskId: string) => {
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docTaskId, setDocTaskId] = useState<string | null>(null);
+  const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
+  const [docMode, setDocMode] = useState<'create' | 'view'>('create');
+
+  const [createDocument] = useCreateDocumentMutation();
+  const { user } = useAuth();
+  const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
+
+  const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery({
+    projectId,
+    userId: user?.id,
+  });
+
+  useEffect(() => {
+    if (docMapping) {
+      setCreatedDocIds(docMapping);
+    }
+  }, [docMapping]);
+
+  const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
+    if (!user || !projectId) return;
+
+    if (createdDocIds[taskKey]) {
+      // Nếu đã có → View
+      setDocTaskId(taskKey);
+      setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+      setDocMode('view');
+      setIsDocModalOpen(true);
+    } else {
+      try {
+        const payload = {
+          projectId: projectId,
+          taskId: taskType === 'task' ? taskKey : null,
+          epicId: taskType === 'epic' ? taskKey : null,
+          subTaskId: taskType === 'subtask' ? taskKey : null,
+          type: taskType,
+          title: 'Untitled Document',
+          template: 'blank',
+          content: '',
+          createdBy: user.id,
+        };
+
+        const res = await createDocument(payload).unwrap();
+        setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
+
+        setDocTaskId(taskKey);
+        setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+        setDocMode('view');
+        setIsDocModalOpen(true);
+      } catch (error) {
+        console.error('Error creating document:', error);
+      }
+    }
+  };
+
+  const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
+    setSelectedTaskType(taskType);
     setIsPopupOpen(true);
   };
 
@@ -255,6 +328,7 @@ console.log('🧩 ProjectTaskList rendered');
   const handleClosePopup = () => {
     setIsPopupOpen(false);
     setSelectedTaskId(null);
+    setSelectedTaskType(null);
     searchParams.delete('taskId');
     setSearchParams(searchParams);
   };
@@ -362,7 +436,6 @@ console.log('🧩 ProjectTaskList rendered');
 
   return (
     <div className=' '>
-   
       <HeaderBar />
       <div className='task-table-container '>
         <table className='task-table' ref={tableRef}>
@@ -414,6 +487,10 @@ console.log('🧩 ProjectTaskList rendered');
               </th>
               <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                 Reporter
+                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+              </th>
+              <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+                Document
                 <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
               </th>
             </tr>
@@ -468,7 +545,10 @@ console.log('🧩 ProjectTaskList rendered');
                             fill='none'
                           />
                         </svg>
-                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key)}>
+                        <span
+                          className='subtask-id'
+                          onClick={() => handleOpenPopup(task.key, task.type)}
+                        >
                           {task.key}
                         </span>
                       </div>
@@ -476,7 +556,10 @@ console.log('🧩 ProjectTaskList rendered');
                   ) : (
                     <div className='task-key-wrapper'>
                       <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => handleOpenPopup(task.key)}>
+                      <span
+                        className='task-key'
+                        onClick={() => handleOpenPopup(task.key, task.type)}
+                      >
                         {task.key}
                       </span>
                     </div>
@@ -558,14 +641,96 @@ console.log('🧩 ProjectTaskList rendered');
                 <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                   <Avatar person={task.reporter} />
                 </td>
+                <td className='w-32'>
+                  {createdDocIds[task.key] ? (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                    >
+                      <FileText size={16} className='text-blue-500' />
+                      View Document
+                    </button>
+                  ) : (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm'
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                    >
+                      Add/View
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {isDocModalOpen && docTaskId && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+          {/* Modal box */}
+          <div
+            className='
+        bg-white rounded-xl relative
+        w-full h-full
+        sm:w-[95vw] sm:h-[90vh]
+        md:w-[90vw] md:h-[90vh]
+        lg:w-[90vw] lg:h-[90vh]
+        xl:w-[98vw] xl:h-[95vh]
+        2xl:w-[85vw] 2xl:h-[90vh]
+        shadow-2xl
+        flex flex-col
+      '
+          >
+          
+            <div className='flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100'>
+              <button
+                onClick={() => setIsDocModalOpen(false)}
+                className='
+            absolute top-3 right-3 z-[999] 
+            w-8 h-8 
+            sm:w-10 sm:h-10 
+            md:w-12 md:h-12
+            sm:top-4 sm:right-4
+            md:top-5 md:right-5
+            flex items-center justify-center
+            text-gray-500 hover:text-black hover:bg-gray-100 
+            rounded-full transition-colors duration-200
+            text-lg sm:text-xl md:text-2xl
+            shadow-sm hover:shadow-md
+          '
+                aria-label='Đóng modal'
+              >
+                ✕
+              </button>
+            </div>
 
-      {isPopupOpen && (
-        <WorkItem isOpen={isPopupOpen} onClose={handleClosePopup} taskId={selectedTaskId} />
+            {/* Content container có thể cuộn */}
+            <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
+              <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (
+        <EpicPopup id={selectedTaskId} onClose={handleClosePopup} />
+      )}
+
+      {isPopupOpen && selectedTaskType === 'subtask' && selectedTaskId && (
+        <ChildWorkItemPopup
+          taskId={selectedTaskId}
+          onClose={handleClosePopup}
+          item={{
+            key: selectedTaskId,
+            summary: '',
+            assignee: '',
+            parent: '',
+            status: '',
+          }}
+        />
+      )}
+
+      {shouldShowWorkItem && (
+        <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId as string} />
       )}
     </div>
   );

@@ -212,7 +212,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
             <div className="flex flex-col flex-grow">
               <p className="font-semibold text-gray-900 text-base">
                 {member.fullName}{' '}
-                <span className="text-sm text-gray-500 font-normal">(@{member.username})</span>
+                <span className="text-sm text-gray-500 font-normal">({member.email})</span>
               </p>
               <div className="relative flex flex-wrap gap-2 mt-2" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (
@@ -297,7 +297,7 @@ const MembersSection: React.FC<MembersSectionProps> = ({ projectMembers, project
             <div className="flex flex-col gap-1 flex-grow">
               <p className="font-semibold text-gray-900 text-base">
                 {member.fullName}{' '}
-                <span className="text-sm text-gray-500 font-normal">(@{member.username})</span>
+                <span className="text-sm text-gray-500 font-normal">({member.email})</span>
               </p>
               <div className="relative flex flex-wrap gap-2 mt-2" ref={(el) => { addPositionRef.current[member.id] = el; }}>
                 {member.projectPositions.length > 0 ? (

@@ -18,6 +18,19 @@ interface AIRecommendationsResponse {
   data: AIRecommendationDTO[];
 }
 
+export interface CreateRecommendationRequest {
+  projectId: number;
+  taskId: string | null;
+  type: string;
+  recommendation: string;
+}
+
+interface BaseResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+
 export const projectRecommendationApi = createApi({
   reducerPath: 'projectRecommendationApi',
   baseQuery: fetchBaseQuery({
@@ -38,9 +51,19 @@ export const projectRecommendationApi = createApi({
         method: 'GET',
       }),
     }),
+
+    createProjectRecommendation: builder.mutation<BaseResponse, CreateRecommendationRequest>({
+      query: (body) => ({
+        url: 'projectrecommendation',
+        method: 'POST',
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useGetAIRecommendationsByProjectKeyQuery,
+  useLazyGetAIRecommendationsByProjectKeyQuery,
+  useCreateProjectRecommendationMutation,
 } = projectRecommendationApi;

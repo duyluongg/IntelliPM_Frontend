@@ -11,8 +11,8 @@ import TimeComparisonChart from './TimeComparisonChart';
 import CostBarChart from './CostBarChart';
 import WorkloadChart from './WorkloadChart';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
-import { useGetAIRecommendationsByProjectKeyQuery } from '../../../services/projectRecommendationApi';
+import { AlertTriangle } from 'lucide-react';
+import { useLazyGetAIRecommendationsByProjectKeyQuery, useCreateProjectRecommendationMutation } from '../../../services/projectRecommendationApi';
 
 const ProjectDashboard = () => {
   const [calculate] = useCalculateProjectMetricsMutation();
@@ -25,23 +25,21 @@ const ProjectDashboard = () => {
     });
   }, [calculate, projectKey]);
 
-  // useEffect(() => {
-  //   const doCalculation = async () => {
-  //     try {
-  //       await calculate({ projectKey }).unwrap();
-  //     } catch (err) {
-  //       console.error('Error calculating project metrics:', err);
-  //     }
-  //   };
-
-  //   doCalculation();
-  // }, [calculate, projectKey]);
-
   const { data: metricData } = useGetProjectMetricByProjectKeyQuery(projectKey);
   const spi = metricData?.data?.spi || 1;
   const cpi = metricData?.data?.cpi || 1;
 
-  const AlertCard = ({ spi, cpi }: { spi: number; cpi: number }) => {
+  const AlertCard = ({
+    spi,
+    cpi,
+    onShowAIRecommendations,
+    showRecommendations,
+  }: {
+    spi: number;
+    cpi: number;
+    onShowAIRecommendations: () => void;
+    showRecommendations: boolean;
+  }) => {
     const isSPIBad = spi < 1;
     const isCPIBad = cpi < 1;
 
@@ -49,14 +47,25 @@ const ProjectDashboard = () => {
 
     return (
       <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded col-span-full'>
-        <div className='flex items-start gap-2'>
-          <AlertTriangle className='text-red-500' size={20} />
-          <strong>Warning:</strong>
-          <div className='flex flex-col gap-1 text-sm mt-1'>
-            {isSPIBad && <span>• Schedule Performance Index (SPI) is below 1.</span>}
-            {isCPIBad && <span>• Cost Performance Index (CPI) is below 1.</span>}
-            <span>• Please review suggested actions from AI below.</span>
+        <div className='flex flex-col gap-2'>
+          <div className='flex items-start gap-2'>
+            <AlertTriangle className='text-red-500' size={20} />
+            <div className='flex flex-col text-sm'>
+              <strong>Warning:</strong>
+              {isSPIBad && <span>• Schedule Performance Index (SPI) is below 1.</span>}
+              {isCPIBad && <span>• Cost Performance Index (CPI) is below 1.</span>}
+              <span>• Please review suggested actions from AI below.</span>
+            </div>
           </div>
+
+          {!showRecommendations && (
+            <button
+              onClick={onShowAIRecommendations}
+              className='self-start bg-blue-600 text-white px-4 py-1.5 mt-1 rounded hover:bg-blue-700 text-sm'
+            >
+              📥 Xem gợi ý từ AI
+            </button>
+          )}
         </div>
       </div>
     );
@@ -72,16 +81,30 @@ const ProjectDashboard = () => {
     suggestedChanges: Record<string, any>;
   }
 
-  const { data: recData } = useGetAIRecommendationsByProjectKeyQuery(projectKey);
-  const recommendations = recData?.data || [];
+  const [triggerGetRecommendations, { data: recData, isLoading: isRecLoading }] =
+    useLazyGetAIRecommendationsByProjectKeyQuery();
 
-  const RecommendationCard = ({ rec, index }: { rec: AIRecommendation; index: number }) => {
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const recommendations: AIRecommendation[] = recData?.data ?? [];
+
+  const RecommendationCard = ({ rec, index, projectId }: { rec: AIRecommendation; index: number; projectId: number | undefined; }) => {
     const [approved, setApproved] = useState<boolean | null>(null);
+    const [createRecommendation] = useCreateProjectRecommendationMutation();
 
-    const handleApprove = () => {
-      // TODO: call API để lưu trạng thái duyệt
+    const handleApprove = async () => {
+    if (!projectId) return;
+    try {
+      await createRecommendation({
+        projectId,
+        taskId: rec.suggestedTask,
+        type: rec.type,
+        recommendation: rec.details,
+      }).unwrap();
       setApproved(true);
-    };
+    } catch (err) {
+      console.error('Error saving recommendation:', err);
+    }
+  };
 
     const handleReject = () => {
       setApproved(false);
@@ -132,7 +155,16 @@ const ProjectDashboard = () => {
 
   return (
     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4'>
-      <AlertCard spi={spi} cpi={cpi} />
+      {/* <AlertCard spi={spi} cpi={cpi} /> */}
+      <AlertCard
+        spi={spi}
+        cpi={cpi}
+        showRecommendations={showRecommendations}
+        onShowAIRecommendations={() => {
+          triggerGetRecommendations(projectKey);
+          setShowRecommendations(true);
+        }}
+      />
 
       <DashboardCard title='Health Overview'>
         <HealthOverview />
@@ -158,12 +190,22 @@ const ProjectDashboard = () => {
         <WorkloadChart />
       </DashboardCard>
 
-      {(spi < 1 || cpi < 1) && recommendations.length > 0 && (
+      {showRecommendations && (
         <div className='col-span-full space-y-4 mt-4'>
-          <h2 className='text-lg font-semibold text-red-700'>📌 Suggested actions from AI</h2>
-          {recommendations.map((rec, idx) => (
-            <RecommendationCard key={idx} rec={rec} index={idx} />
-          ))}
+          {isRecLoading ? (
+            <p>Đang lấy gợi ý...</p>
+          ) : (
+            <>
+              <h2>📌 Suggested actions from AI</h2>
+              {recommendations.length > 0 ? (
+                recommendations.map((rec, idx) => (
+                  <RecommendationCard key={idx} rec={rec} index={idx} projectId={metricData?.data?.projectId} />
+                ))
+              ) : (
+                <p className='text-sm text-gray-600'>Không có gợi ý nào từ AI.</p>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

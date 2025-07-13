@@ -31,7 +31,6 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
   projectNameOriginal,
   onUpdate,
 }) => {
-  // Format initialData dates for input type="date"
   const formattedInitialData = {
     ...initialData,
     startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',

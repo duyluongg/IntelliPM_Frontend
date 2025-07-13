@@ -194,7 +194,18 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTask: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
+    updateTask: builder.mutation<
+      TaskResponseDTO,
+      { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
+    >({
+      query: ({ id, body }) => ({
+        url: `task/${id}`,
+        method: 'PUT',
+        body,
+      }),
+    }),
+
+    updateTaskDat: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
       query: ({ id, body }) => ({
         url: `task/${id}/dat`,
         method: 'PUT',
@@ -221,4 +232,5 @@ export const {
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
   useUpdateTaskMutation,
+  useUpdateTaskDatMutation,
 } = taskApi;

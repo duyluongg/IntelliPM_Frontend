@@ -533,7 +533,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           normalizedEpics[epicIndex].reporter = { name: '', picture: null, id: null };
           normalizedEpics[epicIndex].reporterId = null;
           normalizedEpics[epicIndex].assignedBy = null;
-          refetchEpics(); // Làm mới dữ liệu từ server
+          refetchEpics();
         }
       }
     } catch (err: any) {
@@ -577,7 +577,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   const normalizedTasks: TableRow[] = tasks.map((task) => {
     const assignees = (assignmentsMap[task.id] || []).filter(
-      (assignment) => typeof assignment.id === 'string'
+      (assignment) => typeof assignment.id === 'number'
     ).map((assignment) => ({
       id: assignment.accountId,
       name: assignment.accountFullname || '',

@@ -1,4 +1,4 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
 
 import Form from '../../PM/YourProject/Form';
@@ -20,6 +20,10 @@ const ProjectDetailPage = () => {
     console.log('📌 Current hash:', hash);
   }, [location.hash]);
 
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey');
+  console.log(projectKey, 'projectKey');
+
   return (
     <div>
       <ProjectDetailHeader />
@@ -30,7 +34,7 @@ const ProjectDetailPage = () => {
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
         {activeTab === 'risk' && <Risk />}
-        {activeTab === 'tests' && <Doc/>}
+        {activeTab === 'tests' && <Doc />}
       </div>
     </div>
   );

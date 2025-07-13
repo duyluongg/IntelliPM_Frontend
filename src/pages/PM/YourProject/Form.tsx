@@ -1,9 +1,9 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FileText, Zap, Bug, AlertTriangle, Shuffle, SlidersHorizontal } from 'lucide-react';
 import FeatureRequestForm from './FeatureRequestForm';
 import RecentForm from './RecentForm';
-import DocBlank from './DocBlank';
-import { useRef } from 'react';
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
+
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
@@ -17,16 +17,24 @@ const templates = [
 ];
 
 export default function Form() {
-  const { formId } = useParams();
+  const { formId, docId } = useParams();
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey');
+
+  const { data: projectData, error, isLoading } = useGetProjectDetailsByKeyQuery(projectKey);
+  const projectId = projectData?.data?.id;
   const navigate = useNavigate();
 
- const handleSelect = (templateId: string) => {
-  console.log(`Selected template: ${templateId}`);
-  sessionStorage.removeItem(`createdDoc-${templateId}`);
-  sessionStorage.removeItem(`docId-${templateId}`);
-  navigate(`/project/projects/form/${templateId}`);
-};
-
+  const handleSelect = (templateId: string) => {
+    console.log(`Selected template: ${templateId}`);
+    sessionStorage.removeItem(`createdDoc-${templateId}`);
+    sessionStorage.removeItem(`docId-${templateId}`);
+    if (templateId === 'doc') {
+      navigate(`/project/projects/form/default/new?projectKey=${projectId}`);
+    } else {
+      navigate(`/project/projects/form/${templateId}?projectKey=${projectKey}`);
+    }
+  };
 
   const handleBack = () => {
     navigate('/projects/form');
@@ -62,10 +70,7 @@ export default function Form() {
       ) : (
         <div className='mt-6 max-w-5xl mx-auto'>
           {formId === 'feature' && <FeatureRequestForm onBack={handleBack} />}
-          {formId === 'doc' && <DocBlank />}
-
-          {/* {formId === 'bug' && <BugReportForm onBack={handleBack} />} */}
-          {/* ... */}
+          {formId === 'doc' && <DocCreator projectId={projectId} />}
         </div>
       )}
     </div>

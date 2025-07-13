@@ -1,3 +1,4 @@
+// epicApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -11,9 +12,24 @@ export interface EpicResponseDTO {
   createdAt: string;
   updatedAt: string;
   status: string;
-  reporterId: number;
-  assignedById: number | null;
+  reporterId: number  | null;
+  assignedBy: number | null;
+  assignedByFullname: string | null;
+  assignedByPicture: string | null;
+  reporterFullname: string | null;
+  reporterPicture: string | null;
   sprintId: number | null;
+}
+
+export interface UpdateEpicRequestDTO {
+  projectId: number;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  reporterId?: number | null;
+  assignedBy?: number | null;
 }
 
 interface EpicListResponse {
@@ -60,7 +76,7 @@ interface CreateEpicResponse {
   isSuccess: boolean;
   code: number;
   message: string;
-  data: string; // Matches the backend response "Created epic with ID: COURSE-5"
+  data: string;
 }
 
 export const epicApi = createApi({
@@ -75,6 +91,7 @@ export const epicApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ['Epic'],
   endpoints: (builder) => ({
     getEpicsByProjectId: builder.query<EpicResponseDTO[], number>({
       query: (projectId) => ({
@@ -82,11 +99,13 @@ export const epicApi = createApi({
         params: { projectId },
       }),
       transformResponse: (response: EpicListResponse) => response.data,
+      providesTags: ['Epic'],
     }),
 
     getEpicById: builder.query<EpicResponseDTO, string>({
       query: (id) => `epic/${id}`,
       transformResponse: (response: EpicDetailResponse) => response.data,
+      providesTags: ['Epic'],
     }),
 
     updateEpicStatus: builder.mutation<void, { id: string; status: string }>({
@@ -98,9 +117,13 @@ export const epicApi = createApi({
         },
         body: JSON.stringify(status),
       }),
+      invalidatesTags: ['Epic'],
     }),
 
-    createEpicWithTasks: builder.mutation<CreateEpicResponse, { projectId: number; data: EpicWithTaskRequestDTO }>({
+    createEpicWithTasks: builder.mutation<
+      CreateEpicResponse,
+      { projectId: number; data: EpicWithTaskRequestDTO }
+    >({
       query: ({ projectId, data }) => ({
         url: `epic/with-tasks/${projectId}`,
         method: 'POST',
@@ -110,6 +133,19 @@ export const epicApi = createApi({
         body: data,
       }),
       transformResponse: (response: CreateEpicResponse) => response,
+      invalidatesTags: ['Epic'],
+    }),
+
+    updateEpic: builder.mutation<EpicDetailResponse, { id: string; data: UpdateEpicRequestDTO }>({
+      query: ({ id, data }) => ({
+        url: `epic/${id}`,
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data,
+      }),
+      invalidatesTags: ['Epic'],
     }),
   }),
 });
@@ -119,4 +155,5 @@ export const {
   useGetEpicByIdQuery,
   useUpdateEpicStatusMutation,
   useCreateEpicWithTasksMutation,
+  useUpdateEpicMutation,
 } = epicApi;

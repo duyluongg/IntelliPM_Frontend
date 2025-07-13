@@ -3,8 +3,8 @@ import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
   id: string;
-  reporterId: number;
-  reporterName: string;
+  reporterId?: number | null;
+  reporterName?: string | null;
   reporterPicture: string | null;
   projectId: number;
   projectName: string;
@@ -60,7 +60,7 @@ interface TaskDetailResponse {
 }
 
 export interface UpdateTaskRequestDTO {
-  reporterId: number;
+  reporterId: number | null;
   projectId: number;
   epicId: number | null;
   sprintId: number | null;

@@ -13,6 +13,13 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import { FileText } from 'lucide-react';
+import Doc from '../../PM/YourProject/Doc';
+import {
+  useCreateDocumentMutation,
+  useGetDocumentMappingQuery,
+} from '../../../services/Document/documentAPI';
+import { useAuth } from '../../../services/AuthContext';
 
 // Interface Reporter
 interface Reporter {
@@ -234,17 +241,73 @@ const ProjectTaskList: React.FC = () => {
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0);
-  const [selectedTaskType, setSelectedTaskType] = useState<'epic' | 'task' | 'bug' | 'subtask' | 'story' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<
+    'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
+  >(null);
   //const selectedItem = tasks.find((t) => t.key === selectedTaskId);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const shouldShowWorkItem =
-  isPopupOpen &&
-  selectedTaskId &&
-  selectedTaskType !== null &&
-  ['task', 'bug', 'story'].includes(selectedTaskType);
+    isPopupOpen &&
+    selectedTaskId &&
+    selectedTaskType !== null &&
+    ['task', 'bug', 'story'].includes(selectedTaskType);
 
-  console.log('🧩 ProjectTaskList rendered');
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docTaskId, setDocTaskId] = useState<string | null>(null);
+  const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
+  const [docMode, setDocMode] = useState<'create' | 'view'>('create');
+
+  const [createDocument] = useCreateDocumentMutation();
+  const { user } = useAuth();
+  const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
+
+  const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery({
+    projectId,
+    userId: user?.id,
+  });
+
+  useEffect(() => {
+    if (docMapping) {
+      setCreatedDocIds(docMapping);
+    }
+  }, [docMapping]);
+
+  const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
+    if (!user || !projectId) return;
+
+    if (createdDocIds[taskKey]) {
+      // Nếu đã có → View
+      setDocTaskId(taskKey);
+      setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+      setDocMode('view');
+      setIsDocModalOpen(true);
+    } else {
+      try {
+        const payload = {
+          projectId: projectId,
+          taskId: taskType === 'task' ? taskKey : null,
+          epicId: taskType === 'epic' ? taskKey : null,
+          subTaskId: taskType === 'subtask' ? taskKey : null,
+          type: taskType,
+          title: 'Untitled Document',
+          template: 'blank',
+          content: '',
+          createdBy: user.id,
+        };
+
+        const res = await createDocument(payload).unwrap();
+        setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
+
+        setDocTaskId(taskKey);
+        setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+        setDocMode('view');
+        setIsDocModalOpen(true);
+      } catch (error) {
+        console.error('Error creating document:', error);
+      }
+    }
+  };
 
   const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
@@ -335,45 +398,44 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item) => ({
-        id: item.key || '',
-        type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-        key: item.key || '',
-        taskId: item.taskId || null,
-        summary: item.summary || '',
-        status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
-        comments: item.commentCount || 0,
-        sprint: item.sprintId || null,
-        assignees: item.assignees.map((assignee) => ({
-          fullName: assignee.fullname || 'Unknown',
-          initials:
-            assignee.fullname
-              ?.split(' ')
-              .map((n) => n[0])
-              .join('')
-              .substring(0, 2) || '',
-          avatarColor: '#f3eded',
-          picture: assignee.picture || undefined,
-        })),
-        dueDate: item.dueDate || null,
-        labels: item.labels || [],
-        created: item.createdAt || '',
-        updated: item.updatedAt || '',
-        reporter: {
-          fullName: item.reporterFullname || 'Unknown',
-          initials:
-            item.reporterFullname
-              ?.split(' ')
-              .map((n) => n[0])
-              .join('')
-              .substring(0, 2) || '',
-          avatarColor: '#f3eded',
-          picture: item.reporterPicture || undefined,
-        },
-      }));
+          id: item.key || '',
+          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+          key: item.key || '',
+          taskId: item.taskId || null,
+          summary: item.summary || '',
+          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '', // Fixed line
+          comments: item.commentCount || 0,
+          sprint: item.sprintId || null,
+          assignees: item.assignees.map((assignee) => ({
+            fullName: assignee.fullname || 'Unknown',
+            initials:
+              assignee.fullname
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: assignee.picture || undefined,
+          })),
+          dueDate: item.dueDate || null,
+          labels: item.labels || [],
+          created: item.createdAt || '',
+          updated: item.updatedAt || '',
+          reporter: {
+            fullName: item.reporterFullname || 'Unknown',
+            initials:
+              item.reporterFullname
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: item.reporterPicture || undefined,
+          },
+        }));
 
   return (
     <div className=' '>
-
       <HeaderBar />
       <div className='task-table-container '>
         <table className='task-table' ref={tableRef}>
@@ -425,6 +487,10 @@ const ProjectTaskList: React.FC = () => {
               </th>
               <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                 Reporter
+                <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+              </th>
+              <th className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
+                Document
                 <div className='resizer' onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
               </th>
             </tr>
@@ -479,7 +545,10 @@ const ProjectTaskList: React.FC = () => {
                             fill='none'
                           />
                         </svg>
-                        <span className='subtask-id' onClick={() => handleOpenPopup(task.key, task.type)}>
+                        <span
+                          className='subtask-id'
+                          onClick={() => handleOpenPopup(task.key, task.type)}
+                        >
                           {task.key}
                         </span>
                       </div>
@@ -487,7 +556,10 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div className='task-key-wrapper'>
                       <span className='task-id-small'></span>
-                      <span className='task-key' onClick={() => handleOpenPopup(task.key, task.type)}>
+                      <span
+                        className='task-key'
+                        onClick={() => handleOpenPopup(task.key, task.type)}
+                      >
                         {task.key}
                       </span>
                     </div>
@@ -546,10 +618,10 @@ const ProjectTaskList: React.FC = () => {
                 <td className='w-24' style={{ width: `${columnWidths.labels}px` }}>
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                      <span key={index} className='label-tag'>
-                        {label}
-                      </span>
-                    ))
+                        <span key={index} className='label-tag'>
+                          {label}
+                        </span>
+                      ))
                     : ''}
                 </td>
                 <td className='w-28' style={{ width: `${columnWidths.created}px` }}>
@@ -569,11 +641,75 @@ const ProjectTaskList: React.FC = () => {
                 <td className='w-32' style={{ width: `${columnWidths.reporter}px` }}>
                   <Avatar person={task.reporter} />
                 </td>
+                <td className='w-32'>
+                  {createdDocIds[task.key] ? (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                    >
+                      <FileText size={16} className='text-blue-500' />
+                      View Document
+                    </button>
+                  ) : (
+                    <button
+                      className='text-blue-600 underline hover:text-blue-800 text-sm'
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                    >
+                      Add/View
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {isDocModalOpen && docTaskId && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+          {/* Modal box */}
+          <div
+            className='
+        bg-white rounded-xl relative
+        w-full h-full
+        sm:w-[95vw] sm:h-[90vh]
+        md:w-[90vw] md:h-[90vh]
+        lg:w-[90vw] lg:h-[90vh]
+        xl:w-[98vw] xl:h-[95vh]
+        2xl:w-[85vw] 2xl:h-[90vh]
+        shadow-2xl
+        flex flex-col
+      '
+          >
+          
+            <div className='flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100'>
+              <button
+                onClick={() => setIsDocModalOpen(false)}
+                className='
+            absolute top-3 right-3 z-[999] 
+            w-8 h-8 
+            sm:w-10 sm:h-10 
+            md:w-12 md:h-12
+            sm:top-4 sm:right-4
+            md:top-5 md:right-5
+            flex items-center justify-center
+            text-gray-500 hover:text-black hover:bg-gray-100 
+            rounded-full transition-colors duration-200
+            text-lg sm:text-xl md:text-2xl
+            shadow-sm hover:shadow-md
+          '
+                aria-label='Đóng modal'
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content container có thể cuộn */}
+            <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
+              <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (
         <EpicPopup id={selectedTaskId} onClose={handleClosePopup} />
@@ -594,11 +730,7 @@ const ProjectTaskList: React.FC = () => {
       )}
 
       {shouldShowWorkItem && (
-        <WorkItem
-          isOpen={true}
-          onClose={handleClosePopup}
-          taskId={selectedTaskId as string}
-        />
+        <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId as string} />
       )}
     </div>
   );

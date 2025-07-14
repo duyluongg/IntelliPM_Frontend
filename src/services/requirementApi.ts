@@ -1,7 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-// Giao diện cho một yêu cầu requirement
 export interface RequirementRequest {
   title: string;
   type: string;
@@ -9,7 +8,6 @@ export interface RequirementRequest {
   priority: string;
 }
 
-// Giao diện cho một requirement trong phản hồi
 export interface RequirementResponse {
   id: number;
   projectId: number;
@@ -21,19 +19,17 @@ export interface RequirementResponse {
   updatedAt: string;
 }
 
-// Giao diện phản hồi từ API tạo danh sách requirement
-export interface CreateRequirementsBulkResponse {
+export interface ApiResponse<T> {
   isSuccess: boolean;
   code: number;
-  data: RequirementResponse[];
+  data: T;
   message: string;
 }
 
-// API slice
 export const requirementApi = createApi({
   reducerPath: 'requirementApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL, // Ensure this is 'https://localhost:7128/' without '/api'
+    baseUrl: API_BASE_URL, 
     prepareHeaders: (headers) => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       const accessToken = user?.accessToken || '';
@@ -41,22 +37,62 @@ export const requirementApi = createApi({
         headers.set('Authorization', `Bearer ${accessToken}`);
       }
       headers.set('accept', '*/*');
-      headers.set('Content-Type', 'application/json'); // Ensure Content-Type is set
+      headers.set('Content-Type', 'application/json'); 
       return headers;
     },
   }),
   endpoints: (builder) => ({
+    createRequirement: builder.mutation<
+      ApiResponse<RequirementResponse>,
+      { projectId: number; requirement: RequirementRequest }
+    >({
+      query: ({ projectId, requirement }) => ({
+        url: `project/${projectId}/requirement`,
+        method: 'POST',
+        body: requirement,
+      }),
+    }),
+
+    // Cập nhật một requirement
+    updateRequirement: builder.mutation<
+      ApiResponse<RequirementResponse>,
+      { projectId: number; id: number; requirement: RequirementRequest }
+    >({
+      query: ({ projectId, id, requirement }) => ({
+        url: `project/${projectId}/requirement/${id}`,
+        method: 'PUT',
+        body: requirement,
+      }),
+    }),
+
+    // Tạo danh sách requirement
     createRequirementsBulk: builder.mutation<
-      CreateRequirementsBulkResponse,
+      ApiResponse<RequirementResponse[]>,
       { projectId: number; requirements: RequirementRequest[] }
     >({
       query: ({ projectId, requirements }) => ({
         url: `project/${projectId}/requirement/bulk`,
         method: 'POST',
-        body: requirements, // gửi trực tiếp array
+        body: requirements, 
+      }),
+    }),
+
+    // Xóa một requirement
+    deleteRequirement: builder.mutation<
+      ApiResponse<null>,
+      { projectId: number; id: number }
+    >({
+      query: ({ projectId, id }) => ({
+        url: `project/${projectId}/requirement/${id}`,
+        method: 'DELETE',
       }),
     }),
   }),
 });
 
-export const { useCreateRequirementsBulkMutation } = requirementApi;
+export const { 
+  useCreateRequirementMutation, 
+  useUpdateRequirementMutation, 
+  useCreateRequirementsBulkMutation,
+  useDeleteRequirementMutation 
+} = requirementApi;

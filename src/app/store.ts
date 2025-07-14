@@ -27,7 +27,12 @@ import { workItemLabelApi } from '../services/workItemLabelApi';
 import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
+import { subtaskAiApi } from '../services/subtaskAiApi';
+import { projectPositionApi } from '../services/projectPositionApi';
+import { projectRecommendationApi } from '../services/projectRecommendationApi';
+import { epicFileApi } from '../services/epicFileApi';
 import { meetingRescheduleRequestApi } from '../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
+
 
 export const store = configureStore({
   reducer: {
@@ -57,7 +62,12 @@ export const store = configureStore({
     [aiApi.reducerPath]: aiApi.reducer,
     [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
     [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
+    [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
+    [projectPositionApi.reducerPath]: projectPositionApi.reducer,
+    [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
+    [epicFileApi.reducerPath]: epicFileApi.reducer,
     [meetingRescheduleRequestApi.reducerPath]: meetingRescheduleRequestApi.reducer,
+
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -90,7 +100,12 @@ export const store = configureStore({
       subtaskFileApi.middleware,
       subtaskCommentApi.middleware,
       taskAssignmentApi.middleware,
+      subtaskAiApi.middleware,
+      projectPositionApi.middleware,
+      projectRecommendationApi.middleware,
+      epicFileApi.middleware,
       meetingRescheduleRequestApi.middleware, 
+
     ),
 });
 

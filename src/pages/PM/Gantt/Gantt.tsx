@@ -6,6 +6,7 @@ import { useGetFullProjectDetailsByKeyQuery } from '../../../services/projectApi
 import TaskPopupEditor from './TaskPopupEditor';
 import './Gantt.css';
 import { createRoot } from 'react-dom/client';
+import { useUpdateTaskMutation } from '../../../services/taskApi';
 
 const Gantt = () => {
   const ganttRef = useRef<any>(null);
@@ -14,9 +15,49 @@ const Gantt = () => {
   const customWindowRef = useRef<HTMLDivElement>(document.createElement('div'));
   const selectedTaskRef = useRef<any>(null);
 
-  const handleSave = (updatedTask: any) => {
+  const [updateTask] = useUpdateTaskMutation();
+
+  const handleSave = async (updatedTask: any) => {
     ganttRef.current?.updateTask(selectedTaskRef.current, updatedTask);
     ganttRef.current?.closeWindow();
+
+    const rawTask = selectedTaskRef.current?.rawData;
+    if (!rawTask?.id) return;
+
+    const dependencies = updatedTask.connections?.map((conn: any) => {
+      const linkedToId = conn.target.replace('task-', '');
+      return {
+        taskId: rawTask.id,
+        linkedFrom: rawTask.id,
+        linkedTo: linkedToId,
+        type: mapConnectionTypeToString(conn.type),
+      };
+    });
+
+    const taskForUpdate = {
+      id: rawTask.id,
+      body: {
+        reporterId: rawTask.reporterId,
+        projectId: rawTask.projectId,
+        epicId: rawTask.epicId,
+        sprintId: rawTask.sprintId,
+        type: rawTask.type,
+        title: updatedTask.label,
+        description: updatedTask.description,
+        plannedStartDate: updatedTask.dateStart?.toISOString(),
+        plannedEndDate: updatedTask.dateEnd?.toISOString(),
+        status: rawTask.status,
+        dependencies,
+      },
+    };
+
+    try {
+      await updateTask(taskForUpdate).unwrap();
+      console.log('✅ Task updated to DB');
+      await refetch();
+    } catch (error) {
+      console.error('❌ Failed to update task in DB:', error);
+    }
   };
 
   const handleCancel = () => {
@@ -29,8 +70,24 @@ const Gantt = () => {
     ganttRef.current?.closeWindow();
   };
 
-  const popupWindowCustomizationFunction = (target: any, type: string, taskObj: any) => {
-    if (type === 'task' || type === 'project') {
+  const mapConnectionTypeToString = (type: number): string => {
+    switch (type) {
+      case 0:
+        return 'START_START';
+      case 1:
+        return 'FINISH_START';
+      case 2:
+        return 'FINISH_FINISH';
+      case 3:
+        return 'START_FINISH';
+      default:
+        return 'UNKNOWN';
+    }
+  };
+
+  const popupWindowCustomizationFunction = (target: any, type: any, taskObj: any) => {
+    // if (type === 'task' || type === 'project') {
+    if (['task', 'project', 'milestone'].includes(type)) {
       target.headerPosition = 'none';
       target.footerPosition = 'none';
 
@@ -53,9 +110,11 @@ const Gantt = () => {
         const mountPoint = document.getElementById('react-task-editor');
         if (mountPoint) {
           const root = createRoot(mountPoint);
+
           root.render(
             <TaskPopupEditor
-              task={taskObj}
+              task={taskObj.rawData}
+              type={type}
               onSave={handleSave}
               onCancel={handleCancel}
               onDelete={handleDelete}
@@ -71,7 +130,12 @@ const Gantt = () => {
     isLoading,
     isError,
     error,
+    refetch,
   } = useGetFullProjectDetailsByKeyQuery(projectKey);
+
+  useGetFullProjectDetailsByKeyQuery(projectKey, {
+    refetchOnFocus: true,
+  });
 
   const tasks = projectData?.data?.tasks || [];
   const milestones = projectData?.data?.milestones || [];
@@ -126,6 +190,13 @@ const Gantt = () => {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   };
 
+  // const toLocalDate = (dateStr: string | null | undefined): Date | undefined => {
+  //   if (!dateStr) return undefined;
+  //   const d = new Date(dateStr);
+  //   d.setUTCHours(12, 0, 0, 0);
+  //   return d;
+  // };
+
   const getDuration = (startStr: string, endStr: string) => {
     const start = new Date(startStr);
     const end = new Date(endStr);
@@ -171,7 +242,7 @@ const Gantt = () => {
               };
 
               return {
-                target: `task-${dep.linkedTo}`, // ensure target is same format as task id
+                target: `task-${dep.linkedTo}`,
                 type: mapTypeToNumber(dep.type),
               };
             }) ?? [];
@@ -183,32 +254,17 @@ const Gantt = () => {
             progress: t.percentComplete ?? undefined,
             type: 'task',
             id: `task-${t.id}`,
-            connections, // ✅ add connections to task object
+            connections,
+            rawData: t,
           };
         });
-
-      // .map((t) => {
-      //   const start = normalizeDateToLocalISO(t.plannedStartDate);
-      //   const end = normalizeDateToLocalISO(t.plannedEndDate);
-      //   return {
-      //     label: t.title,
-      //     dateStart: toLocalDate(t.plannedStartDate),
-      //     duration: start && end ? getDuration(start, end) : undefined,
-      //     progress: t.percentComplete ?? undefined,
-      //     type: 'task',
-      //     id: `task-${t.id}`,
-      //   };
-      // });
 
       const sprintMilestones = milestones
         .filter((m) => m.sprintId === sprint.id)
         .map((m) => {
-          const start = normalizeDateToLocalISO(m.startDate);
-          const end = normalizeDateToLocalISO(m.endDate);
           return {
             label: m.name,
             dateStart: toLocalDate(m.startDate) || undefined,
-            duration: start && end ? getDuration(start, end) : undefined,
             type: 'milestone',
             id: `milestone-${m.id}`,
           };

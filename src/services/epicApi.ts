@@ -19,6 +19,8 @@ export interface EpicResponseDTO {
   reporterFullname: string | null;
   reporterPicture: string | null;
   sprintId: number | null;
+  sprintName: string | null;
+  sprintGoal: string | null;
 }
 
 export interface UpdateEpicRequestDTO {

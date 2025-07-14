@@ -2,6 +2,8 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
+  assigneeId: number;
+  key: string;
   id: string;
   reporterId?: number | null;
   reporterName?: string | null;

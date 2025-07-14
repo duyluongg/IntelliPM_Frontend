@@ -1,6 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useGetProjectDetailsByKeyQuery, useGetWorkItemsByProjectIdQuery } from '../../../services/projectApi';
+import {
+  useGetProjectDetailsByKeyQuery,
+  useGetWorkItemsByProjectIdQuery,
+} from '../../../services/projectApi';
+import {
+  useGetTasksByProjectIdQuery,
+  type TaskResponseDTO,
+  useUpdateTaskMutation,
+} from '../../../services/taskApi';
+import {
+  useGetEpicsByProjectIdQuery,
+  type EpicResponseDTO,
+  useUpdateEpicMutation,
+} from '../../../services/epicApi';
+import {
+  useGetProjectMembersWithPositionsQuery,
+  type ProjectMemberWithPositionsResponse,
+} from '../../../services/projectMemberApi';
+import {
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  type TaskAssignmentDTO,
+  useDeleteTaskAssignmentMutation,
+  useCreateTaskAssignmentQuickMutation,
+} from '../../../services/taskAssignmentApi';
+import { useUpdateSubtaskMutation } from '../../../services/subtaskApi';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
 import { FileText } from 'lucide-react';
@@ -16,15 +40,84 @@ import Doc from '../../PM/YourProject/Doc';
 import { useCreateDocumentMutation, useGetDocumentMappingQuery } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 
-// Interface Reporter
+// Interfaces
+interface UpdateEpicRequestDTO {
+  projectId: number;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  reporterId: number | null;
+  assignedBy: number | null;
+}
+
+interface UpdateTaskRequestDTO {
+  assignedBy: number | null;
+  priority: string;
+  title: string;
+  description: string;
+  status: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  reporterId: number | null;
+  type: 'task' | 'bug' | 'story';
+}
+
+interface UpdateSubtaskRequestDTO {
+  id: string;
+  taskId: string;
+  title: string;
+  description: string;
+  plannedEndDate: string;
+  status: string;
+  reporterId: number | null;
+  assignedBy: number;
+  priority: string;
+}
+
 interface Reporter {
+  id?: number | null;
   fullName: string;
   initials: string;
   avatarColor: string;
   picture?: string | null;
 }
 
-// Interface TaskItem
+interface Assignee {
+  id?: number | null;
+  fullName: string;
+  initials: string;
+  avatarColor: string;
+  picture?: string | null;
+}
+
+interface ProjectMember {
+  id: number;
+  accountId: number;
+  fullName: string;
+  picture: string | null;
+  status: string;
+}
+
+interface WorkItem {
+  key: string;
+  type: string;
+  taskId?: string | null;
+  summary: string;
+  status: string;
+  commentCount: number;
+  sprintId?: number | null;
+  dueDate?: string | null;
+  labels?: string[];
+  createdAt: string;
+  updatedAt: string;
+  reporterId?: number | null;
+  reporterFullname?: string | null;
+  reporterPicture?: string | null;
+  projectId?: number;
+}
+
 interface TaskItem {
   id: string;
   type: 'epic' | 'task' | 'bug' | 'subtask' | 'story';
@@ -40,17 +133,13 @@ interface TaskItem {
   created: string;
   updated: string;
   reporter: Reporter;
+  reporterId?: number | null;
+  projectId?: number;
+  epicId?: string | null;
+  description: string;
 }
 
-// Interface Assignee
-interface Assignee {
-  fullName: string;
-  initials: string;
-  avatarColor: string;
-  picture?: string | null;
-}
-
-// Component Status
+// Status Component
 const Status: React.FC<{ status: string }> = ({ status }) => {
   const formatStatusForDisplay = (status: string) => {
     switch (status.toLowerCase()) {
@@ -87,7 +176,7 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// Component DateWithIcon
+// DateWithIcon Component
 const DateWithIcon = ({
   date,
   status,
@@ -123,7 +212,7 @@ const DateWithIcon = ({
       />
     </svg>
   );
-  let className = 'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-gray-700 border border-gray-700';
+  let className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-gray-700 border';
 
   if (isDueDate && dueDate) {
     const isOverdue = dueDate < currentDate;
@@ -143,7 +232,7 @@ const DateWithIcon = ({
           <path fill="currentColor" d="M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
         </svg>
       );
-      className = 'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
+      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
     } else if (isDueToday && !isDone) {
       icon = (
         <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-3.5 h-3.5 text-orange-600">
@@ -154,7 +243,7 @@ const DateWithIcon = ({
           />
         </svg>
       );
-      className = 'flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-orange-600 border border-orange-600';
+      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-orange-600 border-2 border-orange-600';
     }
   }
 
@@ -166,30 +255,55 @@ const DateWithIcon = ({
   );
 };
 
-// Component Avatar
-const Avatar = ({ person }: { person: Reporter | Assignee }) =>
-  person.fullName !== 'Unknown' ? (
-    <div className="flex items-center gap-1.5">
+// Avatar Component
+const Avatar = ({
+  person,
+  onDelete,
+}: {
+  person: Reporter | Assignee;
+  onDelete?: () => Promise<void>;
+}) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const displayName = person.fullName || '-';
+
+  return displayName !== '-' && displayName !== 'Unknown' ? (
+    <div
+      className="flex items-center gap-1.5 relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       {person.picture ? (
         <img
           src={person.picture}
-          alt={`${person.fullName}'s avatar`}
-          className="w-5 h-5 rounded-full object-cover"
+          alt={`${displayName}'s avatar`}
+          className="w-[22px] h-[22px] rounded-full object-cover"
           style={{ backgroundColor: person.avatarColor }}
         />
       ) : (
         <div
-          className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+          className="w-[22px] h-[22px] rounded-full flex justify-center items-center text-white text-xs font-bold"
           style={{ backgroundColor: person.avatarColor }}
         >
           {person.initials}
         </div>
       )}
-      <span className="text-xs text-gray-800">{person.fullName}</span>
+      <span className="text-xs text-gray-800">{displayName}</span>
+      {onDelete && isHovered && (
+        <button
+          onClick={onDelete}
+          className="absolute -top-1 -right-1 text-red-600 hover:text-red-800 text-xs bg-white rounded-full w-4 h-4 flex items-center justify-center"
+          title={`Remove ${displayName}`}
+        >
+          ✕
+        </button>
+      )}
     </div>
-  ) : null;
+  ) : (
+    <span className="text-gray-500 text-xs">-</span>
+  );
+};
 
-// Component HeaderBar
+// HeaderBar Component
 const HeaderBar: React.FC = () => {
   return (
     <div className="flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3">
@@ -225,13 +339,24 @@ const HeaderBar: React.FC = () => {
   );
 };
 
-// Component ProjectTaskList
+// ProjectTaskList Component
 const ProjectTaskList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
-  const { data: workItemsData, isLoading, error } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
+  const { data: workItemsData, isLoading, error, refetch: refetchWorkItems } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
+  const {
+    data: projectMembersResponse,
+    isLoading: isMembersLoading,
+    error: membersError,
+  } = useGetProjectMembersWithPositionsQuery(projectId || 0, { skip: !projectId });
+  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskMutation();
+  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
+  const [updateSubtask, { isLoading: isUpdatingSubtask, error: updateSubtaskError }] = useUpdateSubtaskMutation();
+  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] = useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] = useDeleteTaskAssignmentMutation();
+  const [getTaskAssignments, { data: taskAssignmentsData, isLoading: isLoadingAssignments }] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const [selectedTaskType, setSelectedTaskType] = useState<
     'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
   >(null);
@@ -247,24 +372,61 @@ const ProjectTaskList: React.FC = () => {
   const [docTaskId, setDocTaskId] = useState<string | null>(null);
   const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
   const [docMode, setDocMode] = useState<'create' | 'view'>('create');
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [showMemberDropdown, setShowMemberDropdown] = useState<{
+    id: string;
+    field: 'reporter' | 'assignees';
+    type: 'epic' | 'task' | 'bug' | 'subtask' | 'story';
+  } | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [createDocument] = useCreateDocumentMutation();
   const { user } = useAuth();
   const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
-
   const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery(
-    {
-      projectId: projectId!,
-      userId: user?.id!,
-    },
+    { projectId: projectId!, userId: user?.id! },
     { skip: !projectId || !user?.id }
   );
+
+  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map((member: ProjectMemberWithPositionsResponse) => ({
+    id: member.id,
+    accountId: member.accountId,
+    fullName: member.fullName,
+    picture: member.picture,
+    status: member.status,
+  }));
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowMemberDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     if (docMapping) {
       setCreatedDocIds((prev) => ({ ...prev, ...docMapping }));
     }
   }, [docMapping]);
+
+  // Fetch assignments for tasks
+  useEffect(() => {
+    if (workItemsData?.data && projectId) {
+      workItemsData.data.forEach((item) => {
+        if (item.key && ['task', 'bug', 'story'].includes(item.type.toLowerCase())) {
+          getTaskAssignments(item.key);
+        }
+      });
+    }
+  }, [workItemsData, projectId, getTaskAssignments]);
 
   const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
     if (!user?.id || !projectId) return;
@@ -297,6 +459,7 @@ const ProjectTaskList: React.FC = () => {
         setIsDocModalOpen(true);
       } catch (error) {
         console.error('Error creating document:', error);
+        alert('Failed to create document.');
       }
     }
   };
@@ -325,14 +488,249 @@ const ProjectTaskList: React.FC = () => {
     setSearchParams(searchParams);
   };
 
+  const handleEditClick = (id: string, field: string, value: string) => {
+    setEditingCell({ id, field });
+    setEditValue(value);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditValue(e.target.value);
+  };
+
+  const handleInputBlur = async (item: TaskItem) => {
+    if (!editingCell) return;
+
+    const { id, field } = editingCell;
+    if (!editValue || editValue === (item[field as keyof TaskItem] as string)) {
+      setEditingCell(null);
+      setEditValue('');
+      return;
+    }
+
+    // Validation
+    if (field === 'summary' && !editValue.trim()) {
+      alert('Summary cannot be empty.');
+      setEditingCell(null);
+      setEditValue('');
+      return;
+    }
+
+    const isDateField = field === 'dueDate';
+    let formattedDate = editValue;
+    if (isDateField && editValue) {
+      try {
+        const newDate = new Date(editValue);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (newDate < today) {
+          alert('Due date cannot be in the past.');
+          setEditingCell(null);
+          setEditValue('');
+          return;
+        }
+        formattedDate = newDate.toISOString();
+      } catch (error) {
+        alert('Invalid date format. Please use a valid date.');
+        setEditingCell(null);
+        setEditValue('');
+        return;
+      }
+    }
+
+    try {
+      if (item.type === 'epic') {
+        const epicData: UpdateEpicRequestDTO = {
+          projectId: item.projectId || projectId || 0,
+          name: field === 'summary' ? editValue : item.summary,
+          description: item.description || '',
+          startDate: item.created || new Date().toISOString(),
+          endDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
+          status: item.status,
+          reporterId: item.reporterId || null,
+          assignedBy: item.assignees[0]?.id || null,
+        };
+        await updateEpic({ id, data: epicData }).unwrap();
+      } else if (item.type === 'subtask') {
+        const subtaskData: UpdateSubtaskRequestDTO = {
+          id: item.id,
+          taskId: item.taskId || '',
+          title: field === 'summary' ? editValue : item.summary,
+          description: item.description || '',
+          plannedEndDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
+          status: item.status,
+          reporterId: item.reporterId || null,
+          assignedBy: item.assignees[0]?.id || 0,
+          priority: 'MEDIUM',
+        };
+        await updateSubtask(subtaskData).unwrap();
+      } else {
+        const taskData: UpdateTaskRequestDTO = {
+          assignedBy: item.assignees[0]?.id || null,
+          priority: 'MEDIUM',
+          title: field === 'summary' ? editValue : item.summary,
+          description: item.description || '',
+          status: item.status,
+          plannedStartDate: item.created || new Date().toISOString(),
+          plannedEndDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
+          reporterId: item.reporterId || null,
+          type: item.type || 'task',
+        };
+        await updateTask({ id: item.id, body: taskData }).unwrap();
+      }
+      setEditingCell(null);
+      setEditValue('');
+      refetchWorkItems();
+    } catch (err: any) {
+      console.error(`Error updating ${item.type}:`, err);
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
+      alert(`Failed to update ${item.type}: ${errorMessage}`);
+    }
+  };
+
+  const handleMemberSelect = async (
+    item: TaskItem,
+    field: 'reporter' | 'assignees',
+    member: ProjectMember
+  ) => {
+    if (field === 'assignees') {
+      const isAlreadyAssigned = item.assignees.some((assignee) => assignee.id === member.accountId);
+      const isReporter = item.reporter.id === member.accountId;
+      if (isAlreadyAssigned || isReporter) {
+        alert(
+          isAlreadyAssigned
+            ? 'This member is already assigned.'
+            : 'This member is the reporter and cannot be assigned.'
+        );
+        return;
+      }
+    }
+
+    try {
+      if (item.type === 'epic') {
+        const epicData: UpdateEpicRequestDTO = {
+          projectId: item.projectId || projectId || 0,
+          name: item.summary,
+          description: item.description || '',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          status: item.status,
+          reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
+          assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
+        };
+        await updateEpic({ id: item.id, data: epicData }).unwrap();
+      } else if (item.type === 'subtask') {
+        const subtaskData: UpdateSubtaskRequestDTO = {
+          id: item.id,
+          taskId: item.taskId || '',
+          title: item.summary,
+          description: item.description || '',
+          plannedEndDate: item.dueDate || '',
+          status: item.status,
+          reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
+          assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
+          priority: 'MEDIUM',
+        };
+        await updateSubtask(subtaskData).unwrap();
+      } else {
+        if (field === 'reporter') {
+          const taskData: UpdateTaskRequestDTO = {
+            assignedBy: item.assignees[0]?.id || null,
+            priority: 'MEDIUM',
+            title: item.summary,
+            description: item.description || '',
+            status: item.status,
+            plannedStartDate: item.created || new Date().toISOString(),
+            plannedEndDate: item.dueDate || '',
+            reporterId: member.accountId,
+            type: item.type || 'task',
+          };
+          await updateTask({ id: item.id, body: taskData }).unwrap();
+        } else {
+          const response = await createTaskAssignment({
+            taskId: item.id,
+            accountId: member.accountId,
+          }).unwrap();
+          const newAssignment: Assignee = {
+            id: response.accountId,
+            fullName: member.fullName,
+            initials: member.fullName
+              .split(' ')
+              .map((n) => n[0])
+              .join('')
+              .substring(0, 2),
+            avatarColor: '#f3eded',
+            picture: member.picture || undefined,
+          };
+          item.assignees = [...item.assignees, newAssignment];
+        }
+      }
+      setShowMemberDropdown(null);
+      refetchWorkItems();
+    } catch (err: any) {
+      console.error(`Error updating ${item.type}:`, err);
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
+      alert(`Failed to update ${item.type}: ${errorMessage}`);
+    }
+  };
+
+  const handleDeleteAssignment = async (itemId: string, assigneeId: number, itemType: TaskItem['type']) => {
+    try {
+      if (itemType === 'epic') {
+        const item = tasks.find((t) => t.id === itemId);
+        if (!item) throw new Error('Item not found');
+        const epicData: UpdateEpicRequestDTO = {
+          projectId: item.projectId || projectId || 0,
+          name: item.summary,
+          description: item.description || '',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || null,
+          assignedBy: null,
+        };
+        await updateEpic({ id: itemId, data: epicData }).unwrap();
+      } else if (itemType === 'subtask') {
+        const item = tasks.find((t) => t.id === itemId);
+        if (!item) throw new Error('Item not found');
+        const subtaskData: UpdateSubtaskRequestDTO = {
+          id: itemId,
+          taskId: item.taskId || '',
+          title: item.summary,
+          description: item.description || '',
+          plannedEndDate: item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || null,
+          assignedBy: 0,
+          priority: 'MEDIUM',
+        };
+        await updateSubtask(subtaskData).unwrap();
+      } else {
+        await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
+      }
+      refetchWorkItems();
+    } catch (err: any) {
+      console.error(`Error deleting assignment for ${itemType} ${itemId}:`, err);
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
+      alert(`Failed to delete assignment: ${errorMessage}`);
+    }
+  };
+
+  const handleShowMemberDropdown = (
+    id: string,
+    field: 'reporter' | 'assignees',
+    type: 'task' | 'epic' | 'subtask' | 'bug' | 'story'
+  ) => {
+    setShowMemberDropdown({ id, field, type });
+  };
+
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({
-    type: 55,
-    key: 100,
-    summary: 250,
+    type: 50,
+    key: 80,
+    summary: 220,
     status: 120,
     comments: 120,
     sprint: 100,
-    assignee: 180,
+    assignee: 250,
     dueDate: 130,
     labels: 120,
     created: 130,
@@ -390,115 +788,225 @@ const ProjectTaskList: React.FC = () => {
   const tasks: TaskItem[] =
     isLoading || error || !workItemsData?.data
       ? []
-      : workItemsData.data.map((item) => ({
-          id: item.key || '',
-          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-          key: item.key || '',
-          taskId: item.taskId || null,
-          summary: item.summary || '',
-          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-          comments: item.commentCount || 0,
-          sprint: item.sprintId || null,
-          assignees: item.assignees.map((assignee) => ({
-            fullName: assignee.fullname || 'Unknown',
-            initials:
-              assignee.fullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: assignee.picture || undefined,
-          })),
-          dueDate: item.dueDate || null,
-          labels: item.labels || [],
-          created: item.createdAt || '',
-          updated: item.updatedAt || '',
-          reporter: {
-            fullName: item.reporterFullname || 'Unknown',
-            initials:
-              item.reporterFullname
-                ?.split(' ')
-                .map((n) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: item.reporterPicture || undefined,
-          },
-        }));
+      : workItemsData.data.map((item: WorkItem) => {
+          const assignments: Assignee[] =
+            (taskAssignmentsData as Record<string, { data?: TaskAssignmentDTO[] }> | undefined)?.[item.key]?.data?.map((assignment: TaskAssignmentDTO) => ({
+              id: assignment.accountId,
+              fullName: assignment.accountFullname || 'Unknown',
+              initials:
+                assignment.accountFullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: assignment.accountPicture || undefined,
+            })) || [];
+
+          return {
+            id: item.key || '',
+            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+            key: item.key || '',
+            taskId: item.taskId || null,
+            summary: item.summary || '',
+            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+            comments: item.commentCount || 0,
+            sprint: item.sprintId || null,
+            assignees: assignments,
+            dueDate: item.dueDate || null,
+            labels: item.labels || [],
+            created: item.createdAt || '',
+            updated: item.updatedAt || '',
+            reporter: {
+              id: item.reporterId || null,
+              fullName: item.reporterFullname || 'Unknown',
+              initials:
+                item.reporterFullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: item.reporterPicture || undefined,
+            },
+            reporterId: item.reporterId || null,
+            projectId: item.projectId || projectId,
+            epicId: null,
+            description: '',
+          };
+        });
+
+  if (isLoading || isMembersLoading || isLoadingMapping || isLoadingAssignments) {
+    return <div className="text-center py-10 text-gray-600">Loading tasks, members, or assignments...</div>;
+  }
+
+  if (error || membersError || updateTaskError || updateEpicError || updateSubtaskError || createAssignmentError || deleteAssignmentError) {
+    console.error('Error:', { error, membersError, updateTaskError, updateEpicError, updateSubtaskError, createAssignmentError, deleteAssignmentError });
+    return <div className="text-center py-10 text-red-500">Error loading or updating data.</div>;
+  }
 
   return (
-    <div className="p-3 font-sans bg-white w-full relative">
+    <section className="p-3 font-sans bg-white w-full block relative left-0">
+      <h2 className="text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100">
+        Project Tasks
+      </h2>
       <HeaderBar />
-      <div className="overflow-x-auto bg-white w-full">
-        <table className="w-full border-collapse min-w-[800px] table-fixed" ref={tableRef}>
+      {(isUpdatingTask || isUpdatingEpic || isUpdatingSubtask || isCreatingAssignment || isDeletingAssignment) && (
+        <div className="text-center py-4 text-blue-500">Processing...</div>
+      )}
+      <div className="overflow-x-auto bg-white w-full block">
+        <table className="w-full border-separate border-spacing-0 min-w-[800px] table-fixed" ref={tableRef}>
           <thead>
             <tr>
-              <th style={{ width: `${columnWidths.type}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.type}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Type
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'type')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'type')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.key}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.key}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Key
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'key')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'key')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.summary}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.summary}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Summary
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'summary')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'summary')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.status}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.status}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Status
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'status')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'status')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.comments}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.comments}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Comments
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'comments')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'comments')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.sprint}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.sprint}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Sprint
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'sprint')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.assignee}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
-                Assignee
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'assignee')} />
+              <th
+                style={{ width: `${columnWidths.assignee}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
+                Assignees
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'assignee')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.dueDate}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
-                Due date
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'dueDate')} />
+              <th
+                style={{ width: `${columnWidths.dueDate}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
+                Due Date
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'dueDate')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.labels}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.labels}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Labels
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'labels')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'labels')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.created}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.created}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Created
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'created')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'created')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.updated}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.updated}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Updated
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'updated')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'updated')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.reporter}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.reporter}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Reporter
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'reporter')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'reporter')}
+                />
               </th>
-              <th style={{ width: `${columnWidths.document}px` }} className="bg-gray-100 text-gray-700 font-semibold text-[0.7rem] uppercase p-3 border-b border-x border-gray-300 relative">
+              <th
+                style={{ width: `${columnWidths.document}px` }}
+                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+              >
                 Document
-                <div className="absolute right-0 top-0 w-px h-full cursor-col-resize hover:bg-blue-500" onMouseDown={(e) => handleMouseDown(e, 'document')} />
+                <div
+                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  onMouseDown={(e) => handleMouseDown(e, 'document')}
+                />
               </th>
             </tr>
           </thead>
           <tbody>
             {tasks.map((task) => (
               <tr key={task.id} className="hover:bg-gray-100">
-                <td style={{ width: `${columnWidths.type}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.type}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.type === 'task' && <img src={taskIcon} alt="Task" className="w-5 h-5 rounded p-0.5 bg-blue-500" />}
                   {task.type === 'subtask' && <img src={subtaskIcon} alt="Subtask" className="w-5 h-5 rounded p-0.5 bg-emerald-500" />}
                   {task.type === 'bug' && <img src={bugIcon} alt="Bug" className="w-5 h-5 rounded p-0.5 bg-red-500" />}
                   {task.type === 'epic' && <img src={epicIcon} alt="Epic" className="w-5 h-5 rounded p-0.5 bg-purple-500" />}
                   {task.type === 'story' && <img src={storyIcon} alt="Story" className="w-5 h-5 rounded p-0.5 bg-blue-500" />}
                 </td>
-                <td style={{ width: `${columnWidths.key}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.key}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
                     <div className="flex flex-col items-start w-full">
                       <span className="text-[0.68rem] text-gray-600 mb-0.5">{task.taskId}</span>
@@ -521,13 +1029,35 @@ const ProjectTaskList: React.FC = () => {
                     </div>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.summary}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
-                  {task.summary}
+                <td
+                  style={{ width: `${columnWidths.summary}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
+                  {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={handleInputChange}
+                      onBlur={() => handleInputBlur(task)}
+                      autoFocus
+                      className="w-full p-1 border border-gray-300 rounded"
+                    />
+                  ) : (
+                    <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
+                      {task.summary}
+                    </span>
+                  )}
                 </td>
-                <td style={{ width: `${columnWidths.status}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.status}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   <Status status={task.status} />
                 </td>
-                <td style={{ width: `${columnWidths.comments}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.comments}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.comments > 0 ? (
                     <div className="flex items-center gap-1 text-xs text-gray-700">
                       <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4">
@@ -554,7 +1084,10 @@ const ProjectTaskList: React.FC = () => {
                     </div>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.sprint}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.sprint}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.sprint && task.sprint !== 0 ? (
                     <span className="inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800">
                       Sprint {task.sprint}
@@ -563,19 +1096,100 @@ const ProjectTaskList: React.FC = () => {
                     ''
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.assignee}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
-                  {task.assignees.map((assignee, index) => (
-                    <Avatar key={index} person={assignee} />
-                  ))}
-                </td>
-                <td style={{ width: `${columnWidths.dueDate}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
-                  {task.dueDate && task.dueDate !== 'Unknown' ? (
-                    <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
+                <td
+                  style={{ width: `${columnWidths.assignee}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative"
+                >
+                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'assignees' ? (
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0"
+                    >
+                      {projectMembers.map((member: ProjectMember) => {
+                        const isDisabled = task.assignees.some((a) => a.id === member.accountId) || task.reporter.id === member.accountId;
+                        return (
+                          <div
+                            key={member.accountId}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                              isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                            }`}
+                            onClick={() => !isDisabled && handleMemberSelect(task, 'assignees', member)}
+                          >
+                            <div className="relative">
+                              {member.picture ? (
+                                <img
+                                  src={member.picture}
+                                  alt={`${member.fullName}'s avatar`}
+                                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                />
+                              ) : (
+                                <div
+                                  className="w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold"
+                                  style={{ backgroundColor: '#6b7280' }}
+                                >
+                                  {member.fullName
+                                    .split(' ')
+                                    .map((n: string) => n[0])
+                                    .join('')
+                                    .substring(0, 2)}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-gray-900 font-medium truncate">{member.fullName}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
-                    ''
+                    <div
+                      onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
+                      className="flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer"
+                    >
+                      {task.assignees.length ? (
+                        task.assignees.map((assignee, index) => (
+                          <Avatar
+                            key={assignee.id ?? index}
+                            person={assignee}
+                            onDelete={
+                              assignee.id != null
+                                ? () => handleDeleteAssignment(task.id, assignee.id as number, task.type)
+                                : undefined
+                            }
+                          />
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-xs">-</span>
+                      )}
+                    </div>
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.labels}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.dueDate}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
+                  {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
+                    <input
+                      type="date"
+                      value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
+                      onChange={handleInputChange}
+                      onBlur={() => handleInputBlur(task)}
+                      autoFocus
+                      className="w-full p-1 border border-gray-300 rounded"
+                    />
+                  ) : (
+                    <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
+                      {task.dueDate && task.dueDate !== 'Unknown' ? (
+                        <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
+                      ) : (
+                        ''
+                      )}
+                    </span>
+                  )}
+                </td>
+                <td
+                  style={{ width: `${columnWidths.labels}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
                         <span key={index} className="inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800">
@@ -584,24 +1198,83 @@ const ProjectTaskList: React.FC = () => {
                       ))
                     : ''}
                 </td>
-                <td style={{ width: `${columnWidths.created}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.created}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.created !== 'Unknown' ? (
                     <DateWithIcon date={task.created} status={task.status} />
                   ) : (
                     ''
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.updated}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.updated}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {task.updated !== 'Unknown' ? (
                     <DateWithIcon date={task.updated} status={task.status} />
                   ) : (
                     ''
                   )}
                 </td>
-                <td style={{ width: `${columnWidths.reporter}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
-                  <Avatar person={task.reporter} />
+                <td
+                  style={{ width: `${columnWidths.reporter}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative"
+                >
+                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'reporter' ? (
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0"
+                    >
+                      {projectMembers.map((member: ProjectMember) => {
+                        const isDisabled = task.reporter.id === member.accountId;
+                        return (
+                          <div
+                            key={member.accountId}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                              isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                            }`}
+                            onClick={() => !isDisabled && handleMemberSelect(task, 'reporter', member)}
+                          >
+                            <div className="relative">
+                              {member.picture ? (
+                                <img
+                                  src={member.picture}
+                                  alt={`${member.fullName}'s avatar`}
+                                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                />
+                              ) : (
+                                <div
+                                  className="w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold"
+                                  style={{ backgroundColor: '#6b7280' }}
+                                >
+                                  {member.fullName
+                                    .split(' ')
+                                    .map((n: string) => n[0])
+                                    .join('')
+                                    .substring(0, 2)}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-gray-900 font-medium truncate">{member.fullName}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
+                      className="hover:bg-gray-200 cursor-pointer p-1 rounded"
+                    >
+                      <Avatar person={task.reporter} />
+                    </div>
+                  )}
                 </td>
-                <td style={{ width: `${columnWidths.document}px` }} className="p-2.5 border-b border-x border-gray-300 text-gray-800 text-xs">
+                <td
+                  style={{ width: `${columnWidths.document}px` }}
+                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                >
                   {createdDocIds[task.key] ? (
                     <button
                       className="text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1"
@@ -661,8 +1334,11 @@ const ProjectTaskList: React.FC = () => {
       {shouldShowWorkItem && (
         <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId as string} />
       )}
-    </div>
+    </section>
   );
 };
 
 export default ProjectTaskList;
+
+
+/// chưa  cho sửa task

@@ -71,23 +71,22 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [selectedReporter, setSelectedReporter] = React.useState<number | null>(null);
     const [newReporterId, setNewReporterId] = React.useState<number | null>(null);
 
-    React.useEffect(() => {
-        if (epic?.reporterId) {
-            setSelectedReporter(epic.reporterId);
-            setNewReporterId(epic.reporterId);
-        }
-    }, [epic]);
-
-    React.useEffect(() => {
-        if (epic?.assignedBy) {
-            setSelectedAssignee(epic.assignedBy);
-            setNewAssignedBy(epic.assignedBy);
-        }
-    }, [epic]);
-
     const { data: sprints = [] } = useGetSprintsByProjectIdQuery(epic?.projectId!, {
         skip: !epic?.projectId,
     });
+
+    React.useEffect(() => {
+        if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
+            handleUpdateEpic();
+        }
+    }, [newAssignedBy]);
+
+    React.useEffect(() => {
+        if (epic && newReporterId !== null && newReporterId !== epic.reporterId) {
+            handleUpdateEpic();
+        }
+    }, [newReporterId]);
+
 
     React.useEffect(() => {
         const fetchAllTaskAssignments = async () => {
@@ -132,11 +131,22 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     };
 
     React.useEffect(() => {
-        if (epic) {
+        if (epic && epic.assignedBy !== undefined) {
             setEpicId(epic.id);
             setStatus(epic.status);
             setDescription(epic.description);
             setProjectId(String(epic.projectId));
+            setSelectedAssignee(epic.assignedBy);
+            setNewAssignedBy(epic.assignedBy);
+            if (epic?.reporterId) {
+                setSelectedReporter(epic.reporterId);
+                setNewReporterId(epic.reporterId);
+            }
+
+            if (epic?.assignedBy) {
+                setSelectedAssignee(epic.assignedBy);
+                setNewAssignedBy(epic.assignedBy);
+            }
         }
     }, [epic]);
 
@@ -182,6 +192,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             }).unwrap();
 
             alert("✅ Epic updated");
+            console.error("✅ Epic updated");
         } catch (err) {
             console.error("❌ Failed to update epic", err);
             alert("❌ Update failed");
@@ -425,7 +436,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             </a>
                                                         </td>
 
-                                                        <td onClick={() => setEditingTaskId(task.id)} style={{ cursor: 'pointer' }}>
+                                                        <td onClick={() => setEditingTaskId(task.id)} style={{
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'normal',        // Cho phép xuống dòng
+                                                            wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
+                                                            maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                                                        }}>
                                                             {editingTaskId === task.id ? (
                                                                 <input
                                                                     type="text"
@@ -775,8 +791,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         const assigneeId = Number(e.target.value);
                                         setSelectedAssignee(assigneeId);
                                         setNewAssignedBy(assigneeId);
-                                        handleUpdateEpic(); // Gọi API ngay khi chọn
                                     }}
+
                                     style={{
                                         padding: '2px 0px',
                                         borderRadius: '4px',
@@ -844,7 +860,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         const reporterId = Number(e.target.value);
                                         setSelectedReporter(reporterId);
                                         setNewReporterId(reporterId);
-                                        handleUpdateEpic();
                                     }}
                                     style={{ padding: '2px 0px', width: '150px' }}
                                 >

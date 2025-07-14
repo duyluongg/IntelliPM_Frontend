@@ -68,7 +68,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-
+  
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -699,7 +699,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           <tr key={index}>
                             <td><img src={subtaskIcon} alt="Subtask" /></td>
                             <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
-                            <td onClick={() => setEditingSummaryId(item.key)} style={{ cursor: 'pointer' }}>
+                            <td onClick={() => setEditingSummaryId(item.key)} style={{
+                              cursor: 'pointer',
+                              whiteSpace: 'normal',        // Cho phép xuống dòng
+                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
+                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                            }}>
                               {editingSummaryId === item.key ? (
                                 <input
                                   type="text"
@@ -731,7 +736,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   onKeyDown={async (e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      (e.target as HTMLInputElement).blur(); 
+                                      (e.target as HTMLInputElement).blur();
                                     }
                                   }}
                                   autoFocus
@@ -796,7 +801,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     }
                                   }}
                                   style={{ padding: '4px 8px' }}
-                      
+
                                 >
                                   <option value="0">Unassigned</option>
                                   {projectMembers.map((member) => (
@@ -814,7 +819,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 value={item.status}
                                 onChange={(e) => handleStatusChange(item.key, e.target.value)}
                                 className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
-                                  
+
                               >
                                 <option value="TO_DO">To Do</option>
                                 <option value="IN_PROGRESS">In Progress</option>

@@ -2,7 +2,7 @@ import React from 'react';
 import './EpicPopup.css';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
-import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
+import { useGetEpicByIdQuery, useUpdateEpicStatusMutation, useUpdateEpicMutation } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
@@ -14,7 +14,7 @@ import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicF
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
-
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -60,6 +60,34 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
     const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
+    const [updateEpic] = useUpdateEpicMutation();
+    const [newName, setNewName] = React.useState<string | undefined>();
+    const [newDescription, setNewDescription] = React.useState<string | undefined>();
+    const [newStartDate, setNewStartDate] = React.useState<string | undefined>();
+    const [newEndDate, setNewEndDate] = React.useState<string | undefined>();
+    //const [newSprintId, setNewSprintId] = React.useState<number | null>(null);
+    const [selectedAssignee, setSelectedAssignee] = React.useState<number | null>(null);
+    const [newAssignedBy, setNewAssignedBy] = React.useState<number | null>(null);
+    const [selectedReporter, setSelectedReporter] = React.useState<number | null>(null);
+    const [newReporterId, setNewReporterId] = React.useState<number | null>(null);
+
+    React.useEffect(() => {
+        if (epic?.reporterId) {
+            setSelectedReporter(epic.reporterId);
+            setNewReporterId(epic.reporterId);
+        }
+    }, [epic]);
+
+    React.useEffect(() => {
+        if (epic?.assignedBy) {
+            setSelectedAssignee(epic.assignedBy);
+            setNewAssignedBy(epic.assignedBy);
+        }
+    }, [epic]);
+
+    const { data: sprints = [] } = useGetSprintsByProjectIdQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
 
     React.useEffect(() => {
         const fetchAllTaskAssignments = async () => {
@@ -135,6 +163,31 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         document.addEventListener('mouseup', onMouseUp);
     };
 
+    const handleUpdateEpic = async () => {
+        if (!epic) return;
+
+        try {
+            await updateEpic({
+                id: epic.id,
+                data: {
+                    projectId: epic.projectId,
+                    name: newName ?? epic.name,
+                    description: newDescription ?? epic.description,
+                    assignedBy: newAssignedBy ?? epic.assignedBy,
+                    reporterId: newReporterId ?? epic.reporterId,
+                    startDate: newStartDate ?? epic.startDate,
+                    endDate: newEndDate ?? epic.endDate,
+                    status: epic.status,
+                },
+            }).unwrap();
+
+            alert("✅ Epic updated");
+        } catch (err) {
+            console.error("❌ Failed to update epic", err);
+            alert("❌ Update failed");
+        }
+    };
+
     const formatDate = (iso: string | null | undefined) => {
         if (!iso) return 'None';
         return new Date(iso).toLocaleDateString('vi-VN');
@@ -185,6 +238,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             className="issue-summary"
                             placeholder="Enter epic name"
                             defaultValue={epic.name}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onBlur={handleUpdateEpic}
                         />
                     </div>
                     <div className="header-actions">
@@ -243,8 +298,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         <div className="field-group">
                             <label>Description</label>
                             <textarea
-                                placeholder="Add a description..."
-                                defaultValue={epic.description}
+                                value={newDescription ?? epic?.description ?? ''}
+                                onChange={(e) => setNewDescription(e.target.value)}
+                                onBlur={handleUpdateEpic}
                             />
                         </div>
 
@@ -711,7 +767,35 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         </div>
 
                         <div className="details-content">
-                            <div className="detail-item"><label>Assignee</label><span>{epic.assignedByFullname ?? 'None'}</span></div>
+                            <div className="detail-item">
+                                <label>Assignee</label>
+                                <select
+                                    value={selectedAssignee ?? ''}
+                                    onChange={(e) => {
+                                        const assigneeId = Number(e.target.value);
+                                        setSelectedAssignee(assigneeId);
+                                        setNewAssignedBy(assigneeId);
+                                        handleUpdateEpic(); // Gọi API ngay khi chọn
+                                    }}
+                                    style={{
+                                        padding: '2px 0px',
+                                        borderRadius: '4px',
+                                        border: '1px solid #ccc',
+                                        backgroundColor: 'white',
+                                        width: '150px',
+                                    }}
+                                >
+                                    <option value="" disabled>-- Select assignee --</option>
+                                    {projectMembers.map((member) => (
+                                        <option key={member.accountId} value={member.accountId}>
+                                            {member.accountName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+
+
                             <div className="detail-item">
                                 <label>Labels</label>
                                 <span>
@@ -721,8 +805,58 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 </span>
                             </div>
 
-                            <div className="detail-item"><label>Start date</label><span>{formatDate(epic.startDate)}</span></div>
-                            <div className="detail-item"><label>Due date</label><span>{formatDate(epic.endDate)}</span></div>
+                            <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
+                            <div className="detail-item">
+                                <label>Start date</label>
+                                <input
+                                    type="date"
+                                    value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
+                                    onChange={(e) => {
+                                        const selectedDate = e.target.value;
+                                        const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                        setNewStartDate(fullDate);
+                                    }}
+                                    onBlur={handleUpdateEpic}
+                                    style={{ width: '150px' }}
+                                />
+                            </div>
+
+                            <div className="detail-item">
+                                <label>Due date</label>
+                                <input
+                                    type="date"
+                                    value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
+                                    onChange={(e) => {
+                                        const selectedDate = e.target.value;
+                                        const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                        setNewEndDate(fullDate);
+                                    }}
+                                    onBlur={handleUpdateEpic}
+                                    style={{ width: '150px' }}
+                                />
+                            </div>
+
+                            <div className="detail-item">
+                                <label>Reporter</label>
+                                <select
+                                    value={selectedReporter ?? ''}
+                                    onChange={(e) => {
+                                        const reporterId = Number(e.target.value);
+                                        setSelectedReporter(reporterId);
+                                        setNewReporterId(reporterId);
+                                        handleUpdateEpic();
+                                    }}
+                                    style={{ padding: '2px 0px', width: '150px' }}
+                                >
+                                    <option value="" disabled>-- Select reporter --</option>
+                                    {projectMembers.map((member) => (
+                                        <option key={member.accountId} value={member.accountId}>
+                                            {member.accountName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                         </div>
                     </div>
                 </div>

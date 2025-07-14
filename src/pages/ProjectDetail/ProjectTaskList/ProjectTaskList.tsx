@@ -1,33 +1,27 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   useGetProjectDetailsByKeyQuery,
   useGetWorkItemsByProjectIdQuery,
+  type WorkItemList,
+  type Assignee as ApiAssignee,
 } from '../../../services/projectApi';
-import {
-  useGetTasksByProjectIdQuery,
-  type TaskResponseDTO,
-  useUpdateTaskMutation,
-} from '../../../services/taskApi';
-import {
-  useGetEpicsByProjectIdQuery,
-  type EpicResponseDTO,
-  useUpdateEpicMutation,
-} from '../../../services/epicApi';
+import { useUpdateTaskDatMutation } from '../../../services/taskApi';
+import { useUpdateEpicMutation } from '../../../services/epicApi';
 import {
   useGetProjectMembersWithPositionsQuery,
   type ProjectMemberWithPositionsResponse,
 } from '../../../services/projectMemberApi';
 import {
-  useLazyGetTaskAssignmentsByTaskIdQuery,
-  type TaskAssignmentDTO,
-  useDeleteTaskAssignmentMutation,
   useCreateTaskAssignmentQuickMutation,
+  useDeleteTaskAssignmentMutation,
 } from '../../../services/taskAssignmentApi';
 import { useUpdateSubtaskMutation } from '../../../services/subtaskApi';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
 import { FileText } from 'lucide-react';
+import { Tooltip } from 'react-tooltip';
 import WorkItem from '../../WorkItem/WorkItem';
 import EpicPopup from '../../WorkItem/EpicPopup';
 import ChildWorkItemPopup from '../../WorkItem/ChildWorkItemPopup';
@@ -37,10 +31,27 @@ import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 import Doc from '../../PM/YourProject/Doc';
-import { useCreateDocumentMutation, useGetDocumentMappingQuery } from '../../../services/Document/documentAPI';
+import {
+  useCreateDocumentMutation,
+  useGetDocumentMappingQuery,
+} from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 
-// Interfaces
+interface UpdateTaskRequestDTO {
+  reporterId: number | null;
+  projectId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  type: string;
+  title: string;
+  description: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  status: string;
+  assignedBy: number | null;
+  priority: string;
+}
+
 interface UpdateEpicRequestDTO {
   projectId: number;
   name: string;
@@ -50,18 +61,6 @@ interface UpdateEpicRequestDTO {
   status: string;
   reporterId: number | null;
   assignedBy: number | null;
-}
-
-interface UpdateTaskRequestDTO {
-  assignedBy: number | null;
-  priority: string;
-  title: string;
-  description: string;
-  status: string;
-  plannedStartDate: string;
-  plannedEndDate: string;
-  reporterId: number | null;
-  type: 'task' | 'bug' | 'story';
 }
 
 interface UpdateSubtaskRequestDTO {
@@ -84,7 +83,7 @@ interface Reporter {
   picture?: string | null;
 }
 
-interface Assignee {
+interface TaskAssignee {
   id?: number | null;
   fullName: string;
   initials: string;
@@ -100,24 +99,6 @@ interface ProjectMember {
   status: string;
 }
 
-interface WorkItem {
-  key: string;
-  type: string;
-  taskId?: string | null;
-  summary: string;
-  status: string;
-  commentCount: number;
-  sprintId?: number | null;
-  dueDate?: string | null;
-  labels?: string[];
-  createdAt: string;
-  updatedAt: string;
-  reporterId?: number | null;
-  reporterFullname?: string | null;
-  reporterPicture?: string | null;
-  projectId?: number;
-}
-
 interface TaskItem {
   id: string;
   type: 'epic' | 'task' | 'bug' | 'subtask' | 'story';
@@ -127,7 +108,8 @@ interface TaskItem {
   status: string;
   comments: number;
   sprint?: number | null;
-  assignees: Assignee[];
+  sprintName?: string | null;
+  assignees: TaskAssignee[];
   dueDate?: string | null;
   labels?: string[];
   created: string;
@@ -168,7 +150,7 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
   };
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className='flex flex-col gap-0.5'>
       <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getStatusStyle()}`}>
         {formatStatusForDisplay(status)}
       </span>
@@ -203,16 +185,17 @@ const DateWithIcon = ({
     : null;
 
   let icon = (
-    <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-3.5 h-3.5">
+    <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-3.5 h-3.5'>
       <path
-        fill="currentColor"
-        fillRule="evenodd"
-        d="M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z"
-        clipRule="evenodd"
+        fill='currentColor'
+        fillRule='evenodd'
+        d='M4.5 2.5v2H6v-2h4v2h1.5v-2H13a.5.5 0 0 1 .5.5v3h-11V3a.5.5 0 0 1 .5-.5zm-2 5V13a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5V7.5zm9-6.5H13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1.5V0H6v1h4V0h1.5z'
+        clipRule='evenodd'
       />
     </svg>
   );
-  let className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-gray-700 border';
+  let className =
+    'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-gray-700 border';
 
   if (isDueDate && dueDate) {
     const isOverdue = dueDate < currentDate;
@@ -221,29 +204,41 @@ const DateWithIcon = ({
 
     if (isOverdue && !isDone) {
       icon = (
-        <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-3.5 h-3.5 text-red-600">
+        <svg
+          fill='none'
+          viewBox='0 0 16 16'
+          role='presentation'
+          className='w-3.5 h-3.5 text-red-600'
+        >
           <path
-            fill="currentColor"
-            fillRule="evenodd"
-            d="M5.7 1.384c.996-1.816 3.605-1.818 4.602-.003l5.35 9.73C16.612 12.86 15.346 15 13.35 15H2.667C.67 15-.594 12.862.365 11.113zm3.288.72a1.125 1.125 0 0 0-1.972 0l-5.336 9.73c-.41.75.132 1.666.987 1.666H13.35c.855 0 1.398-.917.986-1.667z"
-            clipRule="evenodd"
+            fill='currentColor'
+            fillRule='evenodd'
+            d='M5.7 1.384c.996-1.816 3.605-1.818 4.602-.003l5.35 9.73C16.612 12.86 15.346 15 13.35 15H2.667C.67 15-.594 12.862.365 11.113zm3.288.72a1.125 1.125 0 0 0-1.972 0l-5.336 9.73c-.41.75.132 1.666.987 1.666H13.35c.855 0 1.398-.917.986-1.667z'
+            clipRule='evenodd'
           />
-          <path fill="currentColor" fillRule="evenodd" d="M7.25 9V4h1.5v5z" clipRule="evenodd" />
-          <path fill="currentColor" d="M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+          <path fill='currentColor' fillRule='evenodd' d='M7.25 9V4h1.5v5z' clipRule='evenodd' />
+          <path fill='currentColor' d='M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0' />
         </svg>
       );
-      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
+      className =
+        'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
     } else if (isDueToday && !isDone) {
       icon = (
-        <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-3.5 h-3.5 text-orange-600">
-          <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1" fill="none" />
+        <svg
+          fill='none'
+          viewBox='0 0 16 16'
+          role='presentation'
+          className='w-3.5 h-3.5 text-orange-600'
+        >
+          <circle cx='8' cy='8' r='7' stroke='currentColor' strokeWidth='1' fill='none' />
           <path
-            fill="currentColor"
-            d="M14.5 8a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0M8.75 3.25v4.389l2.219 1.775-.938 1.172-2.5-2-.281-.226V3.25zM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"
+            fill='currentColor'
+            d='M14.5 8a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0M8.75 3.25v4.389l2.219 1.775-.938 1.172-2.5-2-.281-.226V3.25zM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0'
           />
         </svg>
       );
-      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-orange-600 border-2 border-orange-600';
+      className =
+        'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-orange-600 border-2 border-orange-600';
     }
   }
 
@@ -260,7 +255,7 @@ const Avatar = ({
   person,
   onDelete,
 }: {
-  person: Reporter | Assignee;
+  person: Reporter | TaskAssignee;
   onDelete?: () => Promise<void>;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -268,70 +263,82 @@ const Avatar = ({
 
   return displayName !== '-' && displayName !== 'Unknown' ? (
     <div
-      className="flex items-center gap-1.5 relative"
+      className='flex items-center gap-1.5 relative'
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      data-tooltip-id={`assignee-tooltip-${person.id ?? displayName}`}
+      data-tooltip-content={`Assignee: ${displayName}`}
     >
       {person.picture ? (
         <img
           src={person.picture}
           alt={`${displayName}'s avatar`}
-          className="w-[22px] h-[22px] rounded-full object-cover"
+          className='w-[22px] h-[22px] rounded-full object-cover'
           style={{ backgroundColor: person.avatarColor }}
         />
       ) : (
         <div
-          className="w-[22px] h-[22px] rounded-full flex justify-center items-center text-white text-xs font-bold"
+          className='w-[22px] h-[22px] rounded-full flex justify-center items-center text-white text-xs font-bold'
           style={{ backgroundColor: person.avatarColor }}
         >
           {person.initials}
         </div>
       )}
-      <span className="text-xs text-gray-800">{displayName}</span>
+      <span className='text-xs text-gray-800'>{displayName}</span>
       {onDelete && isHovered && (
         <button
           onClick={onDelete}
-          className="absolute -top-1 -right-1 text-red-600 hover:text-red-800 text-xs bg-white rounded-full w-4 h-4 flex items-center justify-center"
+          className='absolute -top-1 -right-1 text-red-600 hover:text-red-800 text-xs bg-white rounded-full w-4 h-4 flex items-center justify-center'
           title={`Remove ${displayName}`}
         >
           ✕
         </button>
       )}
+      <Tooltip id={`assignee-tooltip-${person.id ?? displayName}`} />
     </div>
   ) : (
-    <span className="text-gray-500 text-xs">-</span>
+    <span className='text-gray-500 text-xs'>-</span>
   );
 };
 
 // HeaderBar Component
 const HeaderBar: React.FC = () => {
   return (
-    <div className="flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3">
-      <div className="flex items-center gap-2.5">
-        <div className="relative flex items-center">
-          <FaSearch className="absolute left-2 text-gray-500 text-xs" />
+    <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
+      <div className='flex items-center gap-2.5'>
+        <div className='relative flex items-center'>
+          <FaSearch className='absolute left-2 text-gray-500 text-xs' />
           <input
-            type="text"
-            className="pl-8 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]"
-            placeholder="Search list"
+            type='text'
+            className='pl-8 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]'
+            placeholder='Search list'
           />
         </div>
-        <div className="flex gap-1">
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-emerald-600">DH</div>
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-red-500">D</div>
-          <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-blue-600">NV</div>
+        <div className='flex gap-1'>
+          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-emerald-600'>
+            DH
+          </div>
+          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-red-500'>
+            D
+          </div>
+          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-blue-600'>
+            NV
+          </div>
         </div>
-        <button className="flex items-center bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded font-medium text-sm">
-          <FaFilter className="mr-1" />
-          Filter <span className="ml-1 bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[9px]">1</span>
+        <button className='flex items-center bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded font-medium text-sm'>
+          <FaFilter className='mr-1' />
+          Filter{' '}
+          <span className='ml-1 bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[9px]'>
+            1
+          </span>
         </button>
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer">
+      <div className='flex items-center gap-1.5'>
+        <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
           <MdGroup />
           <span>Group</span>
         </div>
-        <button className="bg-none border-none text-gray-500 text-sm cursor-pointer">
+        <button className='bg-none border-none text-gray-500 text-sm cursor-pointer'>
           <FaEllipsisV />
         </button>
       </div>
@@ -345,18 +352,28 @@ const ProjectTaskList: React.FC = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
-  const { data: workItemsData, isLoading, error, refetch: refetchWorkItems } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
+  const {
+    data: workItemsData,
+    isLoading,
+    error,
+    refetch: refetchWorkItems,
+  } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
   const {
     data: projectMembersResponse,
     isLoading: isMembersLoading,
     error: membersError,
   } = useGetProjectMembersWithPositionsQuery(projectId || 0, { skip: !projectId });
-  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskMutation();
-  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
-  const [updateSubtask, { isLoading: isUpdatingSubtask, error: updateSubtaskError }] = useUpdateSubtaskMutation();
-  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] = useCreateTaskAssignmentQuickMutation();
-  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] = useDeleteTaskAssignmentMutation();
-  const [getTaskAssignments, { data: taskAssignmentsData, isLoading: isLoadingAssignments }] = useLazyGetTaskAssignmentsByTaskIdQuery();
+  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] =
+    useUpdateTaskDatMutation();
+  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] =
+    useUpdateEpicMutation();
+  const [updateSubtask, { isLoading: isUpdatingSubtask, error: updateSubtaskError }] =
+    useUpdateSubtaskMutation();
+  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] =
+    useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
+    useDeleteTaskAssignmentMutation();
+    
   const [selectedTaskType, setSelectedTaskType] = useState<
     'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
   >(null);
@@ -389,13 +406,15 @@ const ProjectTaskList: React.FC = () => {
     { skip: !projectId || !user?.id }
   );
 
-  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map((member: ProjectMemberWithPositionsResponse) => ({
-    id: member.id,
-    accountId: member.accountId,
-    fullName: member.fullName,
-    picture: member.picture,
-    status: member.status,
-  }));
+  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
+    (member: ProjectMemberWithPositionsResponse) => ({
+      id: member.id,
+      accountId: member.accountId,
+      fullName: member.fullName,
+      picture: member.picture,
+      status: member.status,
+    })
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -416,17 +435,6 @@ const ProjectTaskList: React.FC = () => {
       setCreatedDocIds((prev) => ({ ...prev, ...docMapping }));
     }
   }, [docMapping]);
-
-  // Fetch assignments for tasks
-  useEffect(() => {
-    if (workItemsData?.data && projectId) {
-      workItemsData.data.forEach((item) => {
-        if (item.key && ['task', 'bug', 'story'].includes(item.type.toLowerCase())) {
-          getTaskAssignments(item.key);
-        }
-      });
-    }
-  }, [workItemsData, projectId, getTaskAssignments]);
 
   const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
     if (!user?.id || !projectId) return;
@@ -469,16 +477,6 @@ const ProjectTaskList: React.FC = () => {
     setSelectedTaskType(taskType);
     setIsPopupOpen(true);
   };
-
-  useEffect(() => {
-    if (isPopupOpen && selectedTaskId) {
-      searchParams.set('taskId', selectedTaskId);
-      setSearchParams(searchParams);
-    } else {
-      searchParams.delete('taskId');
-      setSearchParams(searchParams);
-    }
-  }, [isPopupOpen, selectedTaskId, searchParams, setSearchParams]);
 
   const handleClosePopup = () => {
     setIsPopupOpen(false);
@@ -544,19 +542,19 @@ const ProjectTaskList: React.FC = () => {
           name: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
           startDate: item.created || new Date().toISOString(),
-          endDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
+          endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || null,
         };
-        await updateEpic({ id, data: epicData }).unwrap();
+        await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
         const subtaskData: UpdateSubtaskRequestDTO = {
-          id: item.id,
+          id: item.key,
           taskId: item.taskId || '',
           title: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
-          plannedEndDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
+          plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || 0,
@@ -565,17 +563,20 @@ const ProjectTaskList: React.FC = () => {
         await updateSubtask(subtaskData).unwrap();
       } else {
         const taskData: UpdateTaskRequestDTO = {
-          assignedBy: item.assignees[0]?.id || null,
-          priority: 'MEDIUM',
+          reporterId: item.reporterId || null,
+          projectId: item.projectId || projectId || 0,
+          epicId: item.epicId || null,
+          sprintId: item.sprint || null,
+          type: item.type as 'task' | 'bug' | 'story',
           title: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
-          status: item.status,
           plannedStartDate: item.created || new Date().toISOString(),
-          plannedEndDate: field === 'dueDate' ? formattedDate : (item.dueDate || ''),
-          reporterId: item.reporterId || null,
-          type: item.type || 'task',
+          plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          status: item.status,
+          assignedBy: item.assignees[0]?.id || null,
+          priority: 'MEDIUM',
         };
-        await updateTask({ id: item.id, body: taskData }).unwrap();
+        await updateTask({ id: item.key, body: taskData }).unwrap();
       }
       setEditingCell(null);
       setEditValue('');
@@ -593,7 +594,9 @@ const ProjectTaskList: React.FC = () => {
     member: ProjectMember
   ) => {
     if (field === 'assignees') {
-      const isAlreadyAssigned = item.assignees.some((assignee) => assignee.id === member.accountId);
+      const isAlreadyAssigned = item.assignees.some(
+        (assignee: TaskAssignee) => assignee.id === member.accountId
+      );
       const isReporter = item.reporter.id === member.accountId;
       if (isAlreadyAssigned || isReporter) {
         alert(
@@ -617,10 +620,10 @@ const ProjectTaskList: React.FC = () => {
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
         };
-        await updateEpic({ id: item.id, data: epicData }).unwrap();
+        await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
         const subtaskData: UpdateSubtaskRequestDTO = {
-          id: item.id,
+          id: item.key,
           taskId: item.taskId || '',
           title: item.summary,
           description: item.description || '',
@@ -634,34 +637,25 @@ const ProjectTaskList: React.FC = () => {
       } else {
         if (field === 'reporter') {
           const taskData: UpdateTaskRequestDTO = {
-            assignedBy: item.assignees[0]?.id || null,
-            priority: 'MEDIUM',
+            reporterId: member.accountId,
+            projectId: item.projectId || projectId || 0,
+            epicId: item.epicId || null,
+            sprintId: item.sprint || null,
+            type: item.type as 'task' | 'bug' | 'story',
             title: item.summary,
             description: item.description || '',
-            status: item.status,
             plannedStartDate: item.created || new Date().toISOString(),
             plannedEndDate: item.dueDate || '',
-            reporterId: member.accountId,
-            type: item.type || 'task',
+            status: item.status,
+            assignedBy: item.assignees[0]?.id || null,
+            priority: 'MEDIUM',
           };
-          await updateTask({ id: item.id, body: taskData }).unwrap();
+          await updateTask({ id: item.key, body: taskData }).unwrap();
         } else {
-          const response = await createTaskAssignment({
-            taskId: item.id,
+          await createTaskAssignment({
+            taskId: item.key,
             accountId: member.accountId,
           }).unwrap();
-          const newAssignment: Assignee = {
-            id: response.accountId,
-            fullName: member.fullName,
-            initials: member.fullName
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .substring(0, 2),
-            avatarColor: '#f3eded',
-            picture: member.picture || undefined,
-          };
-          item.assignees = [...item.assignees, newAssignment];
         }
       }
       setShowMemberDropdown(null);
@@ -673,10 +667,14 @@ const ProjectTaskList: React.FC = () => {
     }
   };
 
-  const handleDeleteAssignment = async (itemId: string, assigneeId: number, itemType: TaskItem['type']) => {
+  const handleDeleteAssignment = async (
+    itemId: string,
+    assigneeId: number,
+    itemType: TaskItem['type']
+  ) => {
     try {
       if (itemType === 'epic') {
-        const item = tasks.find((t) => t.id === itemId);
+        const item = tasks.find((t) => t.key === itemId);
         if (!item) throw new Error('Item not found');
         const epicData: UpdateEpicRequestDTO = {
           projectId: item.projectId || projectId || 0,
@@ -690,7 +688,7 @@ const ProjectTaskList: React.FC = () => {
         };
         await updateEpic({ id: itemId, data: epicData }).unwrap();
       } else if (itemType === 'subtask') {
-        const item = tasks.find((t) => t.id === itemId);
+        const item = tasks.find((t) => t.key === itemId);
         if (!item) throw new Error('Item not found');
         const subtaskData: UpdateSubtaskRequestDTO = {
           id: itemId,
@@ -725,9 +723,9 @@ const ProjectTaskList: React.FC = () => {
 
   const [columnWidths, setColumnWidths] = useState<{ [key: string]: number }>({
     type: 50,
-    key: 80,
+    key: 120,
     summary: 220,
-    status: 120,
+    status: 110,
     comments: 120,
     sprint: 100,
     assignee: 250,
@@ -788,20 +786,26 @@ const ProjectTaskList: React.FC = () => {
   const tasks: TaskItem[] =
     isLoading || error || !workItemsData?.data
       ? []
-      : workItemsData.data.map((item: WorkItem) => {
-          const assignments: Assignee[] =
-            (taskAssignmentsData as Record<string, { data?: TaskAssignmentDTO[] }> | undefined)?.[item.key]?.data?.map((assignment: TaskAssignmentDTO) => ({
-              id: assignment.accountId,
-              fullName: assignment.accountFullname || 'Unknown',
+      : workItemsData.data.map((item: WorkItemList) => {
+          // Loại bỏ trùng lặp trong assignees
+          const uniqueAssignees = Array.from(
+            new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
+          );
+
+          const assignments: TaskAssignee[] = uniqueAssignees
+            .filter((assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown')
+            .map((assignee: ApiAssignee) => ({
+              id: assignee.accountId,
+              fullName: assignee.fullname || 'Unknown',
               initials:
-                assignment.accountFullname
+                assignee.fullname
                   ?.split(' ')
                   .map((n: string) => n[0])
                   .join('')
                   .substring(0, 2) || '',
               avatarColor: '#f3eded',
-              picture: assignment.accountPicture || undefined,
-            })) || [];
+              picture: assignee.picture || undefined,
+            }));
 
           return {
             id: item.key || '',
@@ -812,6 +816,7 @@ const ProjectTaskList: React.FC = () => {
             status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
             comments: item.commentCount || 0,
             sprint: item.sprintId || null,
+            sprintName: item.sprintName || null,
             assignees: assignments,
             dueDate: item.dueDate || null,
             labels: item.labels || [],
@@ -836,155 +841,179 @@ const ProjectTaskList: React.FC = () => {
           };
         });
 
-  if (isLoading || isMembersLoading || isLoadingMapping || isLoadingAssignments) {
-    return <div className="text-center py-10 text-gray-600">Loading tasks, members, or assignments...</div>;
+  if (isLoading || isMembersLoading || isLoadingMapping) {
+    return (
+      <div className='text-center py-10 text-gray-600'>
+        Loading tasks, members, or document mappings...
+      </div>
+    );
   }
 
-  if (error || membersError || updateTaskError || updateEpicError || updateSubtaskError || createAssignmentError || deleteAssignmentError) {
-    console.error('Error:', { error, membersError, updateTaskError, updateEpicError, updateSubtaskError, createAssignmentError, deleteAssignmentError });
-    return <div className="text-center py-10 text-red-500">Error loading or updating data.</div>;
+  if (
+    error ||
+    membersError ||
+    updateTaskError ||
+    updateEpicError ||
+    updateSubtaskError ||
+    createAssignmentError ||
+    deleteAssignmentError
+  ) {
+    console.error('Error:', {
+      error,
+      membersError,
+      updateTaskError,
+      updateEpicError,
+      updateSubtaskError,
+      createAssignmentError,
+      deleteAssignmentError,
+    });
+    return <div className='text-center py-10 text-red-500'>Error loading or updating data.</div>;
   }
 
   return (
-    <section className="p-3 font-sans bg-white w-full block relative left-0">
-      <h2 className="text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100">
-        Project Tasks
-      </h2>
+    <section className='p-3 font-sans bg-white w-full block relative left-0'>
       <HeaderBar />
-      {(isUpdatingTask || isUpdatingEpic || isUpdatingSubtask || isCreatingAssignment || isDeletingAssignment) && (
-        <div className="text-center py-4 text-blue-500">Processing...</div>
+      {(isUpdatingTask ||
+        isUpdatingEpic ||
+        isUpdatingSubtask ||
+        isCreatingAssignment ||
+        isDeletingAssignment) && (
+        <div className='text-center py-4 text-blue-500'>Processing...</div>
       )}
-      <div className="overflow-x-auto bg-white w-full block">
-        <table className="w-full border-separate border-spacing-0 min-w-[800px] table-fixed" ref={tableRef}>
+      <div className='overflow-x-auto bg-white w-full block'>
+        <table
+          className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
+          ref={tableRef}
+        >
           <thead>
             <tr>
               <th
                 style={{ width: `${columnWidths.type}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Type
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'type')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.key}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Key
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'key')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.summary}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Summary
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'summary')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.status}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Status
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'status')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.comments}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Comments
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'comments')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.sprint}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Sprint
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'sprint')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.assignee}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Assignees
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'assignee')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.dueDate}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Due Date
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'dueDate')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.labels}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Labels
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'labels')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.created}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Created
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'created')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.updated}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Updated
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'updated')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.reporter}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Reporter
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'reporter')}
                 />
               </th>
               <th
                 style={{ width: `${columnWidths.document}px` }}
-                className="bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200"
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Document
                 <div
-                  className="absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500"
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'document')}
                 />
               </th>
@@ -992,38 +1021,80 @@ const ProjectTaskList: React.FC = () => {
           </thead>
           <tbody>
             {tasks.map((task) => (
-              <tr key={task.id} className="hover:bg-gray-100">
+              <tr key={task.id} className='hover:bg-gray-100'>
                 <td
                   style={{ width: `${columnWidths.type}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.type === 'task' && <img src={taskIcon} alt="Task" className="w-5 h-5 rounded p-0.5 bg-blue-500" />}
-                  {task.type === 'subtask' && <img src={subtaskIcon} alt="Subtask" className="w-5 h-5 rounded p-0.5 bg-emerald-500" />}
-                  {task.type === 'bug' && <img src={bugIcon} alt="Bug" className="w-5 h-5 rounded p-0.5 bg-red-500" />}
-                  {task.type === 'epic' && <img src={epicIcon} alt="Epic" className="w-5 h-5 rounded p-0.5 bg-purple-500" />}
-                  {task.type === 'story' && <img src={storyIcon} alt="Story" className="w-5 h-5 rounded p-0.5 bg-blue-500" />}
+                  {task.type === 'task' && (
+                    <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
+                  )}
+                  {task.type === 'subtask' && (
+                    <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
+                  )}
+                  {task.type === 'bug' && (
+                    <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
+                  )}
+                  {task.type === 'epic' && (
+                    <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
+                  )}
+                  {task.type === 'story' && (
+                    <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
+                  )}
                 </td>
                 <td
                   style={{ width: `${columnWidths.key}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
-                    <div className="flex flex-col items-start w-full">
-                      <span className="text-[0.68rem] text-gray-600 mb-0.5">{task.taskId}</span>
-                      <div className="flex items-center gap-1">
-                        <svg role="presentation" width="16" height="16" viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5">
-                          <circle cx="5.33333" cy="5.33333" r="1.33333" stroke="#42526E" strokeWidth="1.33333" fill="none" />
-                          <circle cx="10.6667" cy="10.6666" r="1.33333" stroke="#42526E" strokeWidth="1.33333" fill="none" />
-                          <path d="M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337" stroke="#42526E" strokeWidth="1.33333" fill="none" />
+                    <div className='flex flex-col items-start w-full'>
+                      <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
+                      <div className='flex items-center gap-1'>
+                        <svg
+                          role='presentation'
+                          width='16'
+                          height='16'
+                          viewBox='0 0 16 16'
+                          fill='none'
+                          className='w-3.5 h-3.5'
+                        >
+                          <circle
+                            cx='5.33333'
+                            cy='5.33333'
+                            r='1.33333'
+                            stroke='#42526E'
+                            strokeWidth='1.33333'
+                            fill='none'
+                          />
+                          <circle
+                            cx='10.6667'
+                            cy='10.6666'
+                            r='1.33333'
+                            stroke='#42526E'
+                            strokeWidth='1.33333'
+                            fill='none'
+                          />
+                          <path
+                            d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
+                            stroke='#42526E'
+                            strokeWidth='1.33333'
+                            fill='none'
+                          />
                         </svg>
-                        <span className="text-xs text-black cursor-pointer hover:underline" onClick={() => handleOpenPopup(task.key, task.type)}>
+                        <span
+                          className='text-xs text-black cursor-pointer hover:underline'
+                          onClick={() => handleOpenPopup(task.key, task.type)}
+                        >
                           {task.key}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-start w-full">
-                      <span className="text-xs text-black cursor-pointer hover:underline" onClick={() => handleOpenPopup(task.key, task.type)}>
+                    <div className='flex flex-col items-start w-full'>
+                      <span
+                        className='text-xs text-black cursor-pointer hover:underline'
+                        onClick={() => handleOpenPopup(task.key, task.type)}
+                      >
                         {task.key}
                       </span>
                     </div>
@@ -1031,16 +1102,16 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.summary}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
                     <input
-                      type="text"
+                      type='text'
                       value={editValue}
                       onChange={handleInputChange}
                       onBlur={() => handleInputBlur(task)}
                       autoFocus
-                      className="w-full p-1 border border-gray-300 rounded"
+                      className='w-full p-1 border border-gray-300 rounded'
                     />
                   ) : (
                     <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
@@ -1050,34 +1121,39 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.status}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   <Status status={task.status} />
                 </td>
                 <td
                   style={{ width: `${columnWidths.comments}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.comments > 0 ? (
-                    <div className="flex items-center gap-1 text-xs text-gray-700">
-                      <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4">
+                    <div className='flex items-center gap-1 text-xs text-gray-700'>
+                      <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
                         <path
-                          fill="currentColor"
-                          fillRule="evenodd"
-                          d="M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z"
-                          clipRule="evenodd"
+                          fill='currentColor'
+                          fillRule='evenodd'
+                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                          clipRule='evenodd'
                         />
                       </svg>
                       <span>{task.comments} comment</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5">
-                      <svg fill="none" viewBox="0 0 16 16" role="presentation" className="w-4 h-4 min-w-[16px] min-h-[16px]">
+                    <div className='flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5'>
+                      <svg
+                        fill='none'
+                        viewBox='0 0 16 16'
+                        role='presentation'
+                        className='w-4 h-4 min-w-[16px] min-h-[16px]'
+                      >
                         <path
-                          fill="currentColor"
-                          fillRule="evenodd"
-                          d="M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z"
-                          clipRule="evenodd"
+                          fill='currentColor'
+                          fillRule='evenodd'
+                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                          clipRule='evenodd'
                         />
                       </svg>
                       <span>Add comment</span>
@@ -1086,11 +1162,11 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.sprint}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.sprint && task.sprint !== 0 ? (
-                    <span className="inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800">
-                      Sprint {task.sprint}
+                    <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
+                      {task.sprintName}
                     </span>
                   ) : (
                     ''
@@ -1098,83 +1174,101 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.assignee}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                 >
-                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'assignees' ? (
+                  {showMemberDropdown?.id === task.id &&
+                  showMemberDropdown?.field === 'assignees' ? (
                     <div
                       ref={dropdownRef}
-                      className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0"
+                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                     >
-                      {projectMembers.map((member: ProjectMember) => {
-                        const isDisabled = task.assignees.some((a) => a.id === member.accountId) || task.reporter.id === member.accountId;
-                        return (
-                          <div
-                            key={member.accountId}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                              isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                            }`}
-                            onClick={() => !isDisabled && handleMemberSelect(task, 'assignees', member)}
-                          >
-                            <div className="relative">
-                              {member.picture ? (
-                                <img
-                                  src={member.picture}
-                                  alt={`${member.fullName}'s avatar`}
-                                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
-                                />
-                              ) : (
-                                <div
-                                  className="w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold"
-                                  style={{ backgroundColor: '#6b7280' }}
-                                >
-                                  {member.fullName
-                                    .split(' ')
-                                    .map((n: string) => n[0])
-                                    .join('')
-                                    .substring(0, 2)}
-                                </div>
-                              )}
+                      {projectMembers.length ? (
+                        projectMembers.map((member: ProjectMember) => {
+                          const isDisabled =
+                            task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
+                            task.reporter.id === member.accountId;
+                          return (
+                            <div
+                              key={member.accountId}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                              }`}
+                              onClick={() =>
+                                !isDisabled && handleMemberSelect(task, 'assignees', member)
+                              }
+                            >
+                              <div className='relative'>
+                                {member.picture ? (
+                                  <img
+                                    src={member.picture}
+                                    alt={`${member.fullName}'s avatar`}
+                                    className='w-8 h-8 rounded-full object-cover border border-gray-200'
+                                  />
+                                ) : (
+                                  <div
+                                    className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
+                                    style={{ backgroundColor: '#6b7280' }}
+                                  >
+                                    {member.fullName
+                                      .split(' ')
+                                      .map((n: string) => n[0])
+                                      .join('')
+                                      .substring(0, 2)}
+                                  </div>
+                                )}
+                              </div>
+                              <span className='text-gray-900 font-medium truncate'>
+                                {member.fullName}
+                              </span>
                             </div>
-                            <span className="text-gray-900 font-medium truncate">{member.fullName}</span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      ) : (
+                        <span className='text-gray-500 text-xs'>No members available</span>
+                      )}
                     </div>
                   ) : (
                     <div
                       onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
-                      className="flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer"
+                      className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
                     >
                       {task.assignees.length ? (
-                        task.assignees.map((assignee, index) => (
+                        task.assignees.map((assignee: TaskAssignee, index: number) => (
                           <Avatar
                             key={assignee.id ?? index}
                             person={assignee}
                             onDelete={
-                              assignee.id != null
-                                ? () => handleDeleteAssignment(task.id, assignee.id as number, task.type)
+                              assignee.id != null && assignee.id !== 0
+                                ? () =>
+                                    handleDeleteAssignment(
+                                      task.key,
+                                      assignee.id as number,
+                                      task.type
+                                    )
                                 : undefined
                             }
                           />
                         ))
                       ) : (
-                        <span className="text-gray-500 text-xs">-</span>
+                        <span className='text-gray-500 text-xs'>No assignees</span>
                       )}
                     </div>
                   )}
                 </td>
                 <td
                   style={{ width: `${columnWidths.dueDate}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
                     <input
-                      type="date"
+                      type='date'
                       value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
                       onChange={handleInputChange}
                       onBlur={() => handleInputBlur(task)}
                       autoFocus
-                      className="w-full p-1 border border-gray-300 rounded"
+                      className='w-full p-1 border border-gray-300 rounded'
                     />
                   ) : (
                     <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
@@ -1188,11 +1282,14 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.labels}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                     ? task.labels.map((label, index) => (
-                        <span key={index} className="inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800">
+                        <span
+                          key={index}
+                          className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                        >
                           {label}
                         </span>
                       ))
@@ -1200,7 +1297,7 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.created}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.created !== 'Unknown' ? (
                     <DateWithIcon date={task.created} status={task.status} />
@@ -1210,7 +1307,7 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.updated}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {task.updated !== 'Unknown' ? (
                     <DateWithIcon date={task.updated} status={task.status} />
@@ -1220,12 +1317,13 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.reporter}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                 >
-                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'reporter' ? (
+                  {showMemberDropdown?.id === task.id &&
+                  showMemberDropdown?.field === 'reporter' ? (
                     <div
                       ref={dropdownRef}
-                      className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0"
+                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                     >
                       {projectMembers.map((member: ProjectMember) => {
                         const isDisabled = task.reporter.id === member.accountId;
@@ -1233,20 +1331,24 @@ const ProjectTaskList: React.FC = () => {
                           <div
                             key={member.accountId}
                             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                              isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                              isDisabled
+                                ? 'opacity-50 cursor-not-allowed'
+                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                             }`}
-                            onClick={() => !isDisabled && handleMemberSelect(task, 'reporter', member)}
+                            onClick={() =>
+                              !isDisabled && handleMemberSelect(task, 'reporter', member)
+                            }
                           >
-                            <div className="relative">
+                            <div className='relative'>
                               {member.picture ? (
                                 <img
                                   src={member.picture}
                                   alt={`${member.fullName}'s avatar`}
-                                  className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                                  className='w-8 h-8 rounded-full object-cover border border-gray-200'
                                 />
                               ) : (
                                 <div
-                                  className="w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold"
+                                  className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
                                   style={{ backgroundColor: '#6b7280' }}
                                 >
                                   {member.fullName
@@ -1257,7 +1359,9 @@ const ProjectTaskList: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            <span className="text-gray-900 font-medium truncate">{member.fullName}</span>
+                            <span className='text-gray-900 font-medium truncate'>
+                              {member.fullName}
+                            </span>
                           </div>
                         );
                       })}
@@ -1265,7 +1369,7 @@ const ProjectTaskList: React.FC = () => {
                   ) : (
                     <div
                       onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
-                      className="hover:bg-gray-200 cursor-pointer p-1 rounded"
+                      className='hover:bg-gray-200 cursor-pointer p-1 rounded'
                     >
                       <Avatar person={task.reporter} />
                     </div>
@@ -1273,19 +1377,19 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.document}px` }}
-                  className="text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden"
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
                   {createdDocIds[task.key] ? (
                     <button
-                      className="text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1"
+                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
-                      <FileText size={16} className="text-blue-500" />
+                      <FileText size={16} className='text-blue-500' />
                       View Document
                     </button>
                   ) : (
                     <button
-                      className="text-blue-600 underline hover:text-blue-800 text-sm"
+                      className='text-blue-600 underline hover:text-blue-800 text-sm'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
                       Add/View
@@ -1298,19 +1402,23 @@ const ProjectTaskList: React.FC = () => {
         </table>
       </div>
       {isDocModalOpen && docTaskId && user?.id && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl relative w-full h-full sm:w-[95vw] sm:h-[90vh] md:w-[90vw] md:h-[90vh] lg:w-[90vw] lg:h-[90vh] xl:w-[98vw] xl:h-[95vh] 2xl:w-[85vw] 2xl:h-[90vh] shadow-2xl flex flex-col">
-            <div className="flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100">
+        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
+          <div className='bg-white rounded-xl relative w-full h-full sm:w-[95vw] sm:h-[90vh] md:w-[90vw] md:h-[90vh] lg:w-[90vw] lg:h-[90vh] xl:w-[98vw] xl:h-[95vh] 2xl:w-[85vw] 2xl:h-[90vh] shadow-2xl flex flex-col'>
+            <div className='flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100'>
               <button
                 onClick={() => setIsDocModalOpen(false)}
-                className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded-full transition-colors duration-200 text-lg sm:text-xl md:text-2xl shadow-sm hover:shadow-md"
-                aria-label="Close modal"
+                className='absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded-full transition-colors duration-200 text-lg sm:text-xl md:text-2xl shadow-sm hover:shadow-md'
+                aria-label='Close modal'
               >
                 ✕
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              <Doc docId={createdDocIds[docTaskId]} onClose={() => setIsDocModalOpen(false)} updatedBy={user.id} />
+            <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
+              <Doc
+                docId={createdDocIds[docTaskId]}
+                onClose={() => setIsDocModalOpen(false)}
+                updatedBy={user.id}
+              />
             </div>
           </div>
         </div>
@@ -1339,6 +1447,3 @@ const ProjectTaskList: React.FC = () => {
 };
 
 export default ProjectTaskList;
-
-
-/// chưa  cho sửa task

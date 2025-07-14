@@ -1,7 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-// Project-related interfaces
 export interface CreateProjectRequest {
   name: string;
   projectKey: string;
@@ -78,35 +77,40 @@ export interface ProjectDetailsById {
 }
 
 // Work Item-related interfaces
-interface Assignee {
+export interface Assignee {
+  accountId: number;
   fullname: string;
   picture: string | null;
 }
 
-interface WorkItem {
-  type: string;
+export interface WorkItemList {
+  projectId: number;
+  type: string |'epic' | 'task' | 'bug' | 'subtask' | 'story';
   key: string;
   taskId: string | null;
   summary: string;
   status: string;
   commentCount: number;
   sprintId: number | null;
+  sprintName: string | null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
   createdAt: string;
   updatedAt: string;
+  reporterId: number| null;
   reporterFullname: string;
   reporterPicture: string | null;
+
 }
 
-// Task, Sprint, and Milestone interfaces
 interface TaskItem {
   id: string | null;
   reporterId: number;
   projectId: number;
   epicId: string;
   sprintId: number;
+  sprintName: string | null;
   type: string | null;
   manualInput: boolean;
   generationAiInput: boolean;
@@ -197,7 +201,7 @@ export interface CreateProjectResponse {
 export interface GetWorkItemsResponse {
   isSuccess: boolean;
   code: number;
-  data: WorkItem[];
+  data: WorkItemList[];
   message: string;
   error?: string;
 }

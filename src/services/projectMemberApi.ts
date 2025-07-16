@@ -6,7 +6,7 @@ interface ProjectMemberRequest {
   accountId: number;
 }
 
-interface ProjectMemberWithPositionRequest {
+export interface ProjectMemberWithPositionRequest {
   accountId: number;
   positions: string[];
 }
@@ -29,7 +29,7 @@ interface ProjectMemberResponse {
   status: string | null;
 }
 
-interface ProjectMemberWithPositionsResponse {
+export interface ProjectMemberWithPositionsResponse {
   id: number;
   accountId: number;
   accountName: string;

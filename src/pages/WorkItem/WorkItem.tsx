@@ -8,7 +8,7 @@ import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
-import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation, useUpdateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskDescriptionMutation, useUpdatePlannedStartDateMutation, useUpdatePlannedEndDateMutation } from '../../services/taskApi';
+import { useGetTaskByIdQuery, useUpdateTaskStatusMutation, useUpdateTaskTypeMutation, useUpdateTaskTitleMutation, useUpdateTaskDescriptionMutation, useUpdatePlannedStartDateMutation, useUpdatePlannedEndDateMutation } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
@@ -60,7 +60,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
-  const [updateTask] = useUpdateTaskMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
@@ -69,7 +68,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-
+  
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -206,22 +205,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
-
-  const handleUpdateField = async (field: string, value: any) => {
-    if (!taskData?.id) return;
-
-    try {
-      await updateTask({
-        id: taskData.id,
-        body: {
-          [field]: value,
-        },
-      }).unwrap();
-      console.log(`${field} updated`);
-    } catch (err) {
-      console.error(`Failed to update ${field}`, err);
-    }
-  };
 
   const childWorkItems = subtaskData.map((item) => ({
     key: item.id,
@@ -716,7 +699,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           <tr key={index}>
                             <td><img src={subtaskIcon} alt="Subtask" /></td>
                             <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
-                            <td onClick={() => setEditingSummaryId(item.key)} style={{ cursor: 'pointer' }}>
+                            <td onClick={() => setEditingSummaryId(item.key)} style={{
+                              cursor: 'pointer',
+                              whiteSpace: 'normal',        // Cho phép xuống dòng
+                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
+                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                            }}>
                               {editingSummaryId === item.key ? (
                                 <input
                                   type="text"
@@ -748,7 +736,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   onKeyDown={async (e) => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      (e.target as HTMLInputElement).blur(); // Gọi blur để tái sử dụng logic lưu ở onBlur
+                                      (e.target as HTMLInputElement).blur();
                                     }
                                   }}
                                   autoFocus
@@ -812,6 +800,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       alert('❌ Failed to update subtask');
                                     }
                                   }}
+                                  style={{ padding: '4px 8px' }}
+
                                 >
                                   <option value="0">Unassigned</option>
                                   {projectMembers.map((member) => (
@@ -829,6 +819,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 value={item.status}
                                 onChange={(e) => handleStatusChange(item.key, e.target.value)}
                                 className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+
                               >
                                 <option value="TO_DO">To Do</option>
                                 <option value="IN_PROGRESS">In Progress</option>

@@ -2,14 +2,17 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
+  assigneeId: number;
+  key: string;
   id: string;
-  reporterId: number;
-  reporterName: string;
+  reporterId?: number | null;
+  reporterName?: string | null;
+  reporterPicture: string | null;
   projectId: number;
   projectName: string;
-  epicId: number;
-  sprintId: number;
-  milestoneId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  milestoneId: number | null;
   type: string;
   manualInput: boolean;
   generationAiInput: boolean;
@@ -51,6 +54,26 @@ interface TaskListResponse {
   data: TaskResponseDTO[];
 }
 
+interface TaskDetailResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: TaskResponseDTO;
+}
+
+export interface UpdateTaskRequestDTO {
+  reporterId: number | null;
+  projectId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  type: string;
+  title: string;
+  description: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  status: string;
+}
+
 export const taskApi = createApi({
   reducerPath: 'taskApi',
   baseQuery: fetchBaseQuery({
@@ -63,6 +86,7 @@ export const taskApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ['Task'],
   endpoints: (builder) => ({
     getTasksByProjectId: builder.query<TaskResponseDTO[], number>({
       query: (projectId) => ({
@@ -70,6 +94,7 @@ export const taskApi = createApi({
         params: { projectId },
       }),
       transformResponse: (response: TaskListResponse) => response.data,
+      providesTags: ['Task'],
     }),
 
     updateTaskStatus: builder.mutation<void, { id: string; status: string }>({
@@ -81,11 +106,13 @@ export const taskApi = createApi({
         },
         body: JSON.stringify(status),
       }),
+      invalidatesTags: ['Task'],
     }),
 
     getTaskById: builder.query<TaskResponseDTO, string>({
       query: (id) => `task/${id}`,
       transformResponse: (response: { isSuccess: boolean; data: TaskResponseDTO }) => response.data,
+      providesTags: ['Task'],
     }),
 
     updateTaskType: builder.mutation<void, { id: string; type: string }>({
@@ -95,8 +122,9 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(type), //  "TASK", "BUG", "STORY"
+        body: JSON.stringify(type),
       }),
+      invalidatesTags: ['Task'],
     }),
 
     getTasksByEpicId: builder.query<TaskResponseDTO[], string>({
@@ -105,6 +133,7 @@ export const taskApi = createApi({
         params: { epicId },
       }),
       transformResponse: (response: TaskListResponse) => response.data,
+      providesTags: ['Task'],
     }),
 
     updateTasks: builder.mutation<void, { id: string; body: Partial<TaskResponseDTO> }>({
@@ -116,7 +145,9 @@ export const taskApi = createApi({
         },
         body,
       }),
+      invalidatesTags: ['Task'],
     }),
+
 
     updateTaskTitle: builder.mutation<void, { id: string; title: string }>({
       query: ({ id, title }) => ({
@@ -127,6 +158,7 @@ export const taskApi = createApi({
         },
         body: JSON.stringify(title),
       }),
+      invalidatesTags: ['Task'],
     }),
 
     updateTaskDescription: builder.mutation<void, { id: string; description: string }>({
@@ -138,6 +170,7 @@ export const taskApi = createApi({
         },
         body: JSON.stringify(description),
       }),
+      invalidatesTags: ['Task'],
     }),
 
     updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string }>({
@@ -149,6 +182,7 @@ export const taskApi = createApi({
         },
         body: JSON.stringify(plannedStartDate),
       }),
+      invalidatesTags: ['Task'],
     }),
 
     updatePlannedEndDate: builder.mutation<void, { id: string; plannedEndDate: string }>({
@@ -160,9 +194,11 @@ export const taskApi = createApi({
         },
         body: JSON.stringify(plannedEndDate),
       }),
+      invalidatesTags: ['Task'],
     }),
+
     updateTask: builder.mutation<
-      TaskResponseDTO, // response
+      TaskResponseDTO,
       { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
     >({
       query: ({ id, body }) => ({
@@ -171,6 +207,29 @@ export const taskApi = createApi({
         body,
       }),
     }),
+
+
+    updateTaskDat: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
+      query: ({ id, body }) => ({
+        url: `task/${id}/dat`,
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body,
+      }),
+      transformResponse: (response: TaskDetailResponse) => response.data,
+      invalidatesTags: ['Task'],
+    }),
+
+    createTask: builder.mutation<TaskResponseDTO, Partial<TaskResponseDTO>>({
+      query: (newTask) => ({
+        url: 'task',
+        method: 'POST',
+        body: newTask,
+      }),
+    }),
+
   }),
 });
 
@@ -180,10 +239,13 @@ export const {
   useGetTaskByIdQuery,
   useUpdateTaskTypeMutation,
   useGetTasksByEpicIdQuery,
-  useUpdateTaskMutation,
+  useUpdateTasksMutation,
   useUpdateTaskTitleMutation,
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
-  useUpdatePlannedEndDateMutation, 
-  useUpdateTasksMutation
+  useUpdatePlannedEndDateMutation,
+  useUpdateTaskMutation,
+  useUpdateTaskDatMutation,
+  useCreateTaskMutation,
 } = taskApi;
+

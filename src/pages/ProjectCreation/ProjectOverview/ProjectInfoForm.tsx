@@ -31,7 +31,13 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
   projectNameOriginal,
   onUpdate,
 }) => {
-  const [formData, setFormData] = useState<CreateProjectRequest & { status?: string }>(initialData);
+  const formattedInitialData = {
+    ...initialData,
+    startDate: initialData.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
+    endDate: initialData.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
+  };
+
+  const [formData, setFormData] = useState<CreateProjectRequest & { status?: string }>(formattedInitialData);
   const [touched, setTouched] = useState<TouchedFields>({
     name: false,
     projectKey: false,
@@ -60,9 +66,9 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
   const [updateProject, { isLoading: isUpdating, error: updateError }] = useUpdateProjectMutation();
 
   useEffect(() => {
-    setFormData(initialData);
-    setDebouncedProjectKey(initialData.projectKey);
-    setDebouncedProjectName(initialData.name);
+    setFormData(formattedInitialData);
+    setDebouncedProjectKey(formattedInitialData.projectKey);
+    setDebouncedProjectName(formattedInitialData.name);
   }, [initialData]);
 
   useEffect(() => {
@@ -143,6 +149,8 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
           ? value.toUpperCase()
           : name === 'budget'
           ? parseFloat(value) || 0
+          : name === 'startDate' || name === 'endDate'
+          ? value
           : value,
     }));
     setTouched((prev) => ({ ...prev, [name]: true }));
@@ -168,18 +176,21 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
     if (name === 'name' && isNameUnique === false) return;
     if (name === 'budget' && isBudgetValid === false) return;
     if (name === 'endDate' && isDateValid === false) return;
+
     try {
+      const payload: CreateProjectRequest = {
+        name: formData.name,
+        projectKey: formData.projectKey,
+        description: formData.description,
+        budget: Number(formData.budget),
+        projectType: formData.projectType,
+        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : new Date().toISOString(),
+        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : new Date().toISOString(),
+      };
+
       const response = await updateProject({
         id: projectId,
-        body: {
-          name: formData.name,
-          projectKey: formData.projectKey,
-          description: formData.description,
-          budget: Number(formData.budget),
-          projectType: formData.projectType,
-          startDate: formData.startDate ? new Date(formData.startDate).toISOString() : new Date().toISOString(),
-          endDate: formData.endDate ? new Date(formData.endDate).toISOString() : new Date().toISOString(),
-        },
+        body: payload,
       }).unwrap();
       console.log('Project updated successfully:', response);
       onUpdate();

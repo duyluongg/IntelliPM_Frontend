@@ -58,7 +58,7 @@ export default function Doc({ docId }: Props) {
   };
 
   return (
-    <div>
+    <div className='p-5'>
       <DocumentContext.Provider value={{ documentId: docId }}>
         <RichTextEditor value={content} onChange={handleContentChange} />
       </DocumentContext.Provider>

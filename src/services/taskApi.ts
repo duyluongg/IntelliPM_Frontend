@@ -11,6 +11,8 @@ export interface TaskResponseDTO {
   projectId: number;
   projectName: string;
   epicId: string | null;
+  epicName: string | null;
+  sprintName: string | null;
   sprintId: number | null;
   milestoneId: number | null;
   type: string;

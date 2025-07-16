@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -307,13 +306,14 @@ const HeaderBar: React.FC = () => {
     <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
       <div className='flex items-center gap-2.5'>
         <div className='relative flex items-center'>
-          <FaSearch className='absolute left-2 text-gray-500 text-xs' />
+          <FaSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4 pointer-events-none' />
           <input
             type='text'
-            className='pl-8 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]'
+            className='pl-12 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]'
             placeholder='Search list'
           />
         </div>
+
         <div className='flex gap-1'>
           <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-emerald-600'>
             DH
@@ -373,7 +373,7 @@ const ProjectTaskList: React.FC = () => {
     useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
     useDeleteTaskAssignmentMutation();
-    
+
   const [selectedTaskType, setSelectedTaskType] = useState<
     'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
   >(null);
@@ -793,7 +793,9 @@ const ProjectTaskList: React.FC = () => {
           );
 
           const assignments: TaskAssignee[] = uniqueAssignees
-            .filter((assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown')
+            .filter(
+              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+            )
             .map((assignee: ApiAssignee) => ({
               id: assignee.accountId,
               fullName: assignee.fullname || 'Unknown',

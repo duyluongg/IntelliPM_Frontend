@@ -1,10 +1,13 @@
 import React from 'react';
 import EpicColumn from './EpicColumn';
+import SprintColumn from './SprintColumn';
 
+// Định nghĩa Task và Sprint phù hợp với SprintColumn
 interface Task {
   id: string;
   title: string;
-  status: string;
+  status: 'To Do' | 'In Progress' | 'Done';
+  assignee?: string;
 }
 
 interface Sprint {
@@ -51,25 +54,7 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics 
 
         {/* Sprint Column */}
         <div className="w-full sm:w-2/3 md:w-3/4">
-          {sprints.map((sprint) => (
-            <div
-              key={sprint.id}
-              className="mb-6 border border-gray-300 rounded-lg p-3 bg-white shadow-sm"
-            >
-              <h3 className="text-lg font-semibold mb-2 text-gray-900">{sprint.name}</h3>
-              <ul className="space-y-2">
-                {sprint.tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    className="p-2 bg-gray-50 rounded-lg flex justify-between items-center text-sm"
-                  >
-                    <strong className="text-gray-900 truncate max-w-[200px]">{task.title}</strong>
-                    <span className="text-gray-600">{task.status}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <SprintColumn sprints={sprints} backlogTasks={sprints.length > 0 ? [] : sprints.flatMap(s => s.tasks)} />
         </div>
       </div>
     </div>

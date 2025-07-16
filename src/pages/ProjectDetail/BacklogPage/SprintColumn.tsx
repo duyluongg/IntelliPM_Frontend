@@ -11,7 +11,7 @@ interface Task {
 interface Sprint {
   id: string;
   name: string;
-  duration: string;
+  duration?: string;
   tasks: Task[];
 }
 
@@ -63,7 +63,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks }) =>
       <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
         <div>
           <h4 className="text-sm font-semibold text-gray-900">
-            {sprint.name} <span className="text-xs text-gray-500">{sprint.duration}</span>
+            {sprint.name} <span className="text-xs text-gray-500">{sprint.duration || ''}</span>
           </h4>
           <p className="text-xs text-gray-500">{sprint.tasks.length} work items</p>
         </div>
@@ -92,23 +92,25 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks }) =>
       {sprints.map(renderSprint)}
 
       {/* Backlog */}
-      <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900">Backlog</h4>
-            <p className="text-xs text-gray-500">{backlogTasks.length} work item{backlogTasks.length !== 1 ? 's' : ''}</p>
+      {backlogTasks.length > 0 && (
+        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-b">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Backlog</h4>
+              <p className="text-xs text-gray-500">{backlogTasks.length} work item{backlogTasks.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              Create sprint
+            </button>
           </div>
-          <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-            Create sprint
-          </button>
+          <div className="divide-y divide-gray-100">
+            {backlogTasks.map(renderTask)}
+            <button className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200">
+              + Create
+            </button>
+          </div>
         </div>
-        <div className="divide-y divide-gray-100">
-          {backlogTasks.map(renderTask)}
-          <button className="w-full text-left px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200">
-            + Create
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

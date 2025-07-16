@@ -2,8 +2,22 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BacklogHeader from './BacklogHeader';
 import BacklogBody from './BacklogBody';
-import { useGetProjectDetailsByKeyQuery, useGetWorkItemsByProjectIdQuery } from '../../../services/projectApi';
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetEpicsByProjectIdQuery } from '../../../services/epicApi';
+import { useGetTasksByProjectIdQuery , type TaskResponseDTO} from '../../../services/taskApi';
+
+interface Task {
+  id: string;
+  title: string;
+  status: 'To Do' | 'In Progress' | 'Done';
+  assignee?: string;
+}
+
+interface Sprint {
+  id: string;
+  name: string;
+  tasks: Task[];
+}
 
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -16,11 +30,11 @@ const BacklogPage: React.FC = () => {
 
   // Fetch epics by projectId
   const { data: epicData = [], isLoading: isEpicLoading, error: epicError } = useGetEpicsByProjectIdQuery(projectId, {
-    skip: !projectId, // Skip query if projectId is not available
+    skip: !projectId,
   });
 
-  // Fetch work items (for potential future use)
-  const { data: workItemsData } = useGetWorkItemsByProjectIdQuery(projectId, {
+  // Fetch tasks by projectId
+  const { data: taskData = [], isLoading: isTaskLoading, error: taskError } = useGetTasksByProjectIdQuery(projectId, {
     skip: !projectId,
   });
 
@@ -29,10 +43,34 @@ const BacklogPage: React.FC = () => {
     { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
   ]);
 
-  const sprints = [
-    { id: '1', name: 'Sprint 1', tasks: [{ id: 't1', title: 'Task 1', status: 'To Do' }, { id: 't2', title: 'Task 2', status: 'In Progress' }] },
-    { id: '2', name: 'Sprint 2', tasks: [{ id: 't3', title: 'Task 3', status: 'Done' }] },
-  ];
+  // Tạo danh sách sprints và backlog từ taskData
+  const sprints: Sprint[] = [];
+  const backlogTasks: Task[] = [];
+
+  taskData.forEach((task: TaskResponseDTO) => {
+    const taskStatus = task.status as 'To Do' | 'In Progress' | 'Done'; // Ép kiểu status
+    if (task.sprintId !== null && task.sprintId !== undefined) { // Kiểm tra sprintId không null/undefined
+      const sprintIdStr = task.sprintId.toString();
+      let sprint = sprints.find(s => s.id === sprintIdStr);
+      if (!sprint) {
+        sprint = { id: sprintIdStr, name: task.sprintName || `Sprint ${task.sprintId}`, tasks: [] };
+        sprints.push(sprint);
+      }
+      sprint.tasks.push({
+        id: task.id,
+        title: task.title,
+        status: taskStatus,
+        assignee: task.assigneeId ? task.reporterName || 'Unknown' : undefined,
+      });
+    } else {
+      backlogTasks.push({
+        id: task.id,
+        title: task.title,
+        status: taskStatus,
+        assignee: task.assigneeId ? task.reporterName || 'Unknown' : undefined,
+      });
+    }
+  });
 
   const handleCreateEpic = () => {
     alert('Create Epic clicked!');

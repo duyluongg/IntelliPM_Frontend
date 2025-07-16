@@ -1,5 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
-import { useGetRisksByProjectKeyQuery } from '../../../services/riskApi';
+import { useGetRisksByProjectKeyQuery, useCreateRiskMutation } from '../../../services/riskApi';
 import './Risk.css';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
@@ -11,6 +11,7 @@ const Risk = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, error } = useGetRisksByProjectKeyQuery(projectKey);
+  const [createRisk] = useCreateRiskMutation();
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSuggestedModal, setShowSuggestedModal] = useState(false);
@@ -127,8 +128,30 @@ const Risk = () => {
     setShowCreateModal(false);
   };
 
-  const handleSaveRisk = (newRisk: any) => {
-    console.log('Saving risk:', newRisk);
+  const handleSaveRisk = async (newRisk: any) => {
+    try {
+      const request = {
+        projectKey: projectKey,
+        responsibleId: null,
+        taskId: null,
+        riskScope: 'GENERAL',
+        title: newRisk.title,
+        description: newRisk.description,
+        status: 'OPEN',
+        type: newRisk.type,
+        generatedBy: 'Manual',
+        probability: newRisk.probability || newRisk.likelihood,
+        impactLevel: newRisk.impactLevel || newRisk.impact,
+        severityLevel: 'Moderate',
+        isApproved: true,
+        dueDate: newRisk.dueDate + 'T00:00:00Z',
+      };
+
+      const res = await createRisk(request).unwrap();
+      console.log('Created risk:', res.data);
+    } catch (error) {
+      console.error('Failed to create risk:', error);
+    }
   };
 
   const openSuggestedRisks = () => {
@@ -198,6 +221,9 @@ const Risk = () => {
                       initials: getInitials(risk.responsibleFullName),
                     }}
                   />
+                </td>
+                <td className={getDueClass(risk.dueDate?.split('T')[0])}>
+                  {risk.dueDate ? new Date(risk.dueDate).toLocaleDateString('vi-VN') : '--'}
                 </td>
               </tr>
             ))}

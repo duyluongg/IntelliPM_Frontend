@@ -20,6 +20,7 @@ export interface RiskItem {
   impactLevel: string;
   severityLevel: string;
   isApproved: boolean;
+  dueDate: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +30,30 @@ export interface GetRisksByProjectKeyResponse {
   code: number;
   message: string;
   data: RiskItem[];
+}
+
+export interface CreateRiskRequest {
+  projectKey: string;
+  responsibleId: number | null;
+  taskId?: string | null;
+  riskScope: string;
+  title: string;
+  description?: string;
+  status?: string;
+  type?: string;
+  generatedBy?: string;
+  probability?: string;
+  impactLevel?: string;
+  severityLevel?: string;
+  isApproved?: boolean;
+  dueDate?: string;
+}
+
+export interface CreateRiskResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: RiskItem;
 }
 
 export const riskApi = createApi({
@@ -47,7 +72,15 @@ export const riskApi = createApi({
         method: 'GET',
       }),
     }),
+
+    createRisk: builder.mutation<CreateRiskResponse, CreateRiskRequest>({
+      query: (newRisk) => ({
+        url: 'risk',
+        method: 'POST',
+        body: newRisk,
+      }),
+    }),
   }),
 });
 
-export const { useGetRisksByProjectKeyQuery } = riskApi;
+export const { useGetRisksByProjectKeyQuery, useCreateRiskMutation } = riskApi;

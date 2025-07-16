@@ -29,7 +29,6 @@ const ProjectDetailPage = () => {
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
-        {activeTab === 'risk' && <Risk />}
         {activeTab === 'tests' && <Doc/>}
       </div>
     </div>

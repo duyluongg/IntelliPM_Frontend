@@ -2,6 +2,8 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
+  assigneeId: number;
+  key: string;
   id: string;
   reporterId?: number | null;
   reporterName?: string | null;
@@ -9,6 +11,8 @@ export interface TaskResponseDTO {
   projectId: number;
   projectName: string;
   epicId: string | null;
+  epicName: string | null;
+  sprintName: string | null;
   sprintId: number | null;
   milestoneId: number | null;
   type: string;
@@ -227,7 +231,6 @@ export const taskApi = createApi({
         body: newTask,
       }),
     }),
-
 
   }),
 });

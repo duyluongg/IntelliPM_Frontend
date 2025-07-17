@@ -15,6 +15,20 @@ const ManualRiskModal: React.FC<ManualRiskModalProps> = ({ onClose, onSave }) =>
   const [responsible, setResponsible] = useState('');
   const [dueDate, setDueDate] = useState('');
 
+  // const handleSubmit = () => {
+  //   const newRisk = {
+  //     title,
+  //     description,
+  //     impactLevel: impact,
+  //     probability: likelihood,
+  //     type,
+  //     responsibleUserName: responsible,
+  //     dueDate,
+  //   };
+  //   onSave(newRisk);
+  //   onClose();
+  // };
+
   const handleSubmit = () => {
     const newRisk = {
       title,

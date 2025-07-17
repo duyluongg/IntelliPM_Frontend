@@ -2,52 +2,87 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCreateRescheduleRequestMutation } from '../../../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
 import type { FC } from 'react';
-
+import { useAuth } from '../../../services/AuthContext';
 const MeetingRescheduleRequest: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { meeting } = location.state || {}; // Lấy thông tin meeting từ state
-
+  const { user } = useAuth(); 
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [createRescheduleRequest] = useCreateRescheduleRequestMutation();
 
   // Hàm xử lý gửi yêu cầu hoãn
+// const handleSubmit = async () => {
+//   if (!reason) {
+//     alert('Please provide a reason for rescheduling');
+//     return;
+//   }
+
+//   setIsSubmitting(true);
+
+//   const requestData = {
+//     meetingId: parseInt(meeting.id),  // Đảm bảo meetingId là số
+//     requesterId: user.id,  // Giả sử ID người yêu cầu là 1, thay bằng user.id thực tế
+//     requestedDate: new Date().toISOString(),
+//     reason,
+//     status: 'PENDING',  // Chắc chắn 'status' là 'Pending', 'Approved' hoặc 'Rejected'
+//     pmId: null,  // Thay bằng ID PM thực tế
+//     pmProposedDate: new Date().toISOString(),  // Ngày hoãn
+//     pmNote: 'Proposed for rescheduling.',
+//   };
+
+//   // Thêm console.log để xem dữ liệu gửi đi
+//   console.log('Request Data:', requestData);
+
+//   try {
+//     await createRescheduleRequest(requestData);
+//     alert('Reschedule request submitted successfully');
+//     navigate('/meeting');  // Điều hướng về trang lịch họp sau khi gửi yêu cầu
+//   } catch (error) {
+//     console.error(error); // Log lỗi để kiểm tra nguyên nhân
+//     alert('Error submitting reschedule request');
+//   } finally {
+//     setIsSubmitting(false);
+//   }
+// };
+
 const handleSubmit = async () => {
   if (!reason) {
     alert('Please provide a reason for rescheduling');
     return;
   }
 
+  if (!user) {
+    alert('⚠️ You must login first!');
+    return;
+  }
+
   setIsSubmitting(true);
 
   const requestData = {
-    meetingId: parseInt(meeting.id),  // Đảm bảo meetingId là số
-    requesterId: 1,  // Giả sử ID người yêu cầu là 1, thay bằng user.id thực tế
+    meetingId: parseInt(meeting.id),
+    requesterId: user.id, // Không còn báo lỗi nữa
     requestedDate: new Date().toISOString(),
     reason,
-    status: 'Pending',  // Chắc chắn 'status' là 'Pending', 'Approved' hoặc 'Rejected'
-    pmId: null,  // Thay bằng ID PM thực tế
-    pmProposedDate: new Date().toISOString(),  // Ngày hoãn
+    status: 'PENDING',
+    pmId: null,
+    pmProposedDate: new Date().toISOString(),
     pmNote: 'Proposed for rescheduling.',
   };
-
-  // Thêm console.log để xem dữ liệu gửi đi
-  console.log('Request Data:', requestData);
 
   try {
     await createRescheduleRequest(requestData);
     alert('Reschedule request submitted successfully');
-    navigate('/meeting');  // Điều hướng về trang lịch họp sau khi gửi yêu cầu
+    navigate('/meeting');
   } catch (error) {
-    console.error(error); // Log lỗi để kiểm tra nguyên nhân
+    console.error(error);
     alert('Error submitting reschedule request');
   } finally {
     setIsSubmitting(false);
   }
 };
-
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4">

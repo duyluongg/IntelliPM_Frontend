@@ -10,6 +10,7 @@ import {
   useUpdateMeetingMutation,
   useGetParticipantsByMeetingIdQuery,
   useUpdateParticipantStatusMutation,
+  useCompleteMeetingMutation, 
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 
 const MeetingManagementPage: React.FC = () => {
@@ -28,6 +29,7 @@ const MeetingManagementPage: React.FC = () => {
   const [deleteMeeting] = useDeleteMeetingMutation();
   const [updateMeeting] = useUpdateMeetingMutation();
   const [updateParticipantStatus] = useUpdateParticipantStatusMutation();
+  const [completeMeeting] = useCompleteMeetingMutation();
 
 const {
   data: participants = [],
@@ -48,6 +50,32 @@ const {
     );
   if (isLoading) return <p className="mt-4 text-gray-500">⏳ Đang tải dữ liệu…</p>;
   if (isError) return <p className="mt-4 text-red-500">❌ {JSON.stringify(error)}</p>;
+
+// Điểm danh và cập nhật trạng thái cuộc họp
+const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
+  const participant = participants.find((p) => Number(p.id) === participantId);
+  if (!participant) return;
+
+  await updateParticipantStatus({
+    participantId,
+    data: {
+      meetingId: participant.meetingId,
+      accountId: participant.accountId,
+      role: participant.role,
+      status: newStatus,
+    },
+  });
+
+  await refetchParticipants();
+  toast.success('✅ Điểm danh thành công!');
+
+  await completeMeeting(selectedMeeting.id);  // 👈 Gọi API mới ở đây
+
+  await refetch();
+};
+
+
+
 
   return (
     <div className="mx-auto max-w-6xl p-6">
@@ -252,22 +280,8 @@ onClick={() => {
                               ? 'bg-blue-600 text-white'
                               : 'border hover:bg-gray-100'
                           }`}
-onClick={async () => {
-  await updateParticipantStatus({
-    participantId: p.id,
-    data: { ...p, status: 'Present' },
-  });
-  await refetchParticipants();
-  toast.success('✅ Điểm danh thành công!');
+onClick={() => handleAttendance(p.id, 'Present')}
 
-  await updateMeeting({
-    meetingId: selectedMeeting.id,
-    data: {
-      ...selectedMeeting,
-      status: 'COMPLETED', // THÊM field này vào backend Meeting nếu chưa có
-    },
-  });
-}}
                         >
                           Có mặt
                         </button>
@@ -277,22 +291,8 @@ onClick={async () => {
                               ? 'bg-red-600 text-white'
                               : 'border hover:bg-gray-100'
                           }`}
-onClick={async () => {
-  await updateParticipantStatus({
-    participantId: p.id,
-    data: { ...p, status: 'Absent' },
-  });
-  await refetchParticipants();
-  toast.success('✅ Điểm danh thành công!');
+onClick={() => handleAttendance(p.id, 'Absent')}
 
-  await updateMeeting({
-    meetingId: selectedMeeting.id,
-    data: {
-      ...selectedMeeting,
-      status: 'COMPLETED',
-    },
-  });
-}}
 
                         >
                           Vắng

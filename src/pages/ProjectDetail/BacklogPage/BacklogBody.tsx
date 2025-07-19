@@ -1,6 +1,8 @@
+// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectDetail\BacklogPage\BacklogBody.tsx
 import React from 'react';
 import EpicColumn from './EpicColumn';
 import SprintColumn from './SprintColumn';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi'; // Import kiểu mới
 
 // Định nghĩa Task và Sprint phù hợp với SprintColumn
 interface Task {
@@ -16,31 +18,12 @@ interface Sprint {
   tasks: Task[];
 }
 
-interface EpicResponseDTO {
-  id: string;
-  projectId: number;
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  reporterId: number | null;
-  assignedBy: number | null;
-  assignedByFullname: string | null;
-  assignedByPicture: string | null;
-  reporterFullname: string | null;
-  reporterPicture: string | null;
-  sprintId: number | null;
-  sprintName: string | null;
-  sprintGoal: string | null;
-}
-
+// Gỡ bỏ định nghĩa EpicResponseDTO ở đây để tránh xung đột
+// Sử dụng EpicWithStatsResponseDTO thay vì EpicResponseDTO
 interface BacklogBodyProps {
   onCreateEpic: () => void;
   sprints: Sprint[];
-  epics: EpicResponseDTO[];
+  epics: EpicWithStatsResponseDTO[];
 }
 
 const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics }) => {

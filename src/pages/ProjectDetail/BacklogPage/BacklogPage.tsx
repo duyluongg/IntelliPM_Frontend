@@ -1,10 +1,16 @@
+// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectDetail\BacklogPage\BacklogPage.tsx
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BacklogHeader from './BacklogHeader';
 import BacklogBody from './BacklogBody';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
-import { useGetEpicsByProjectIdQuery } from '../../../services/epicApi';
-import { useGetTasksByProjectIdQuery , type TaskResponseDTO} from '../../../services/taskApi';
+import { useGetEpicsWithTasksByProjectKeyQuery, type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+
+interface Sprint {
+  id: string;
+  name: string;
+  tasks: Task[];
+}
 
 interface Task {
   id: string;
@@ -13,29 +19,21 @@ interface Task {
   assignee?: string;
 }
 
-interface Sprint {
-  id: string;
-  name: string;
-  tasks: Task[];
-}
-
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch project details to get projectId
-  const { data: projectData } = useGetProjectDetailsByKeyQuery(projectKey);
-  const projectId = projectData?.data?.id || 0;
+  // Fetch project details to verify projectKey
+  const { data: projectData, isLoading: isProjectLoading, error: projectError } = useGetProjectDetailsByKeyQuery(projectKey);
 
-  // Fetch epics by projectId
-  const { data: epicData = [], isLoading: isEpicLoading, error: epicError } = useGetEpicsByProjectIdQuery(projectId, {
-    skip: !projectId,
-  });
-
-  // Fetch tasks by projectId
-  const { data: taskData = [], isLoading: isTaskLoading, error: taskError } = useGetTasksByProjectIdQuery(projectId, {
-    skip: !projectId,
+  // Fetch epics with tasks by projectKey
+  const {
+    data: epicData = [],
+    isLoading: isEpicLoading,
+    error: epicError,
+  } = useGetEpicsWithTasksByProjectKeyQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
   });
 
   const [members] = useState([
@@ -43,47 +41,46 @@ const BacklogPage: React.FC = () => {
     { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
   ]);
 
-  // Tạo danh sách sprints và backlog từ taskData
+  // Tạo danh sách sprints và backlog (dựa trên epicData nếu cần)
   const sprints: Sprint[] = [];
   const backlogTasks: Task[] = [];
 
-  taskData.forEach((task: TaskResponseDTO) => {
-    const taskStatus = task.status as 'To Do' | 'In Progress' | 'Done'; // Ép kiểu status
-    if (task.sprintId !== null && task.sprintId !== undefined) { // Kiểm tra sprintId không null/undefined
-      const sprintIdStr = task.sprintId.toString();
-      let sprint = sprints.find(s => s.id === sprintIdStr);
-      if (!sprint) {
-        sprint = { id: sprintIdStr, name: task.sprintName || `Sprint ${task.sprintId}`, tasks: [] };
-        sprints.push(sprint);
-      }
-      sprint.tasks.push({
-        id: task.id,
-        title: task.title,
-        status: taskStatus,
-        assignee: task.assigneeId ? task.reporterName || 'Unknown' : undefined,
-      });
-    } else {
-      backlogTasks.push({
-        id: task.id,
-        title: task.title,
-        status: taskStatus,
-        assignee: task.assigneeId ? task.reporterName || 'Unknown' : undefined,
-      });
-    }
-  });
+  // Xử lý loading và error
+  if (isProjectLoading || isEpicLoading) {
+    return <div className="p-4 text-center">Loading...</div>;
+  }
+
+  if (projectError || epicError) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        Error loading data: {(projectError || epicError) as string}
+      </div>
+    );
+  }
 
   const handleCreateEpic = () => {
     alert('Create Epic clicked!');
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query);
+    setSearchQuery(query.toLowerCase()); // Chuyển query thành lowercase để tìm kiếm không phân biệt hoa thường
   };
 
+  // Lọc epics theo searchQuery (nếu có)
+  const filteredEpics = searchQuery
+    ? epicData.filter((epic: EpicWithStatsResponseDTO) =>
+        epic.name.toLowerCase().includes(searchQuery)
+      )
+    : epicData;
+
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-gray-100 min-h-screen p-4">
       <BacklogHeader members={members} onSearch={handleSearch} />
-      <BacklogBody onCreateEpic={handleCreateEpic} sprints={sprints} epics={epicData} />
+      <BacklogBody
+        onCreateEpic={handleCreateEpic}
+        sprints={sprints}
+        epics={filteredEpics}
+      />
     </div>
   );
 };

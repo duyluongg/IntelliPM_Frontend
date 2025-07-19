@@ -74,6 +74,35 @@ export interface UpdateTaskRequestDTO {
   status: string;
 }
 
+export interface SubtaskViewDTO {
+  id: string;
+  taskId: string;
+  assignedBy: number;
+  plannedHours: number | null;
+  actualHours: number | null;
+}
+
+export interface AccountDTO {
+  id: number;
+  username: string;
+  fullName: string;
+}
+
+export interface TaskWithSubtasksDTO {
+  id: string;
+  plannedHours: number;
+  actualHours: number;
+  accounts: AccountDTO[];
+  subtasks: SubtaskViewDTO[];
+}
+
+export interface TaskWithSubtasksResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: TaskWithSubtasksDTO;
+}
+
 export const taskApi = createApi({
   reducerPath: 'taskApi',
   baseQuery: fetchBaseQuery({
@@ -148,7 +177,6 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-
     updateTaskTitle: builder.mutation<void, { id: string; title: string }>({
       query: ({ id, title }) => ({
         url: `task/${id}/title`,
@@ -208,7 +236,6 @@ export const taskApi = createApi({
       }),
     }),
 
-
     updateTaskDat: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
       query: ({ id, body }) => ({
         url: `task/${id}/dat`,
@@ -229,7 +256,14 @@ export const taskApi = createApi({
         body: newTask,
       }),
     }),
-
+    getTaskWithSubtasks: builder.query<TaskWithSubtasksDTO, string>({
+      query: (taskId) => ({
+        url: `task/with-subtasks`,
+        params: { id: taskId },
+      }),
+      transformResponse: (response: TaskWithSubtasksResponse) => response.data,
+      providesTags: ['Task'],
+    }),
   }),
 });
 
@@ -247,5 +281,5 @@ export const {
   useUpdateTaskMutation,
   useUpdateTaskDatMutation,
   useCreateTaskMutation,
+  useGetTaskWithSubtasksQuery,
 } = taskApi;
-

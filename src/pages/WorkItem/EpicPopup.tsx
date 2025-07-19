@@ -2,12 +2,14 @@ import React from 'react';
 import './EpicPopup.css';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
+import { useAuth, type Role } from '../../services/AuthContext';
 import { useGetEpicByIdQuery, useUpdateEpicStatusMutation, useUpdateEpicMutation } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
+import accountIcon from '../../assets/account.png';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
@@ -15,6 +17,7 @@ import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMut
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -23,6 +26,8 @@ interface EpicPopupProps {
 const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
     const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
+    const { user } = useAuth();
+    const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
     const [status, setStatus] = React.useState("");
     const [projectId, setProjectId] = React.useState("");
     const [epicId, setEpicId] = React.useState("");
@@ -70,7 +75,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [newAssignedBy, setNewAssignedBy] = React.useState<number | null>(null);
     const [selectedReporter, setSelectedReporter] = React.useState<number | null>(null);
     const [newReporterId, setNewReporterId] = React.useState<number | null>(null);
+    const [commentContent, setCommentContent] = React.useState('');
+    const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
+    const [updateEpicComment] = useUpdateEpicCommentMutation();
+    const [deleteEpicComment] = useDeleteEpicCommentMutation();
+    const [createEpicComment] = useCreateEpicCommentMutation();
 
+    const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(id!, {
+        skip: !id,
+    });
     const { data: sprints = [] } = useGetSprintsByProjectIdQuery(epic?.projectId!, {
         skip: !epic?.projectId,
     });
@@ -272,16 +285,18 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     <div className="add-item" onClick={() => fileInputRef.current?.click()}>
                                         📁 Attachment
                                     </div>
-                                    <div className="add-item" onClick={() => {
-                                        setShowTaskInput(true);
-                                        setIsAddDropdownOpen(false);
 
-                                        setTimeout(() => {
-                                            taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        }, 100);
-                                    }}>
-                                        📝 Task
-                                    </div>
+                                    {(user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER') && (
+                                        <div className="add-item" onClick={() => {
+                                            setShowTaskInput(true);
+                                            setIsAddDropdownOpen(false);
+                                            setTimeout(() => {
+                                                taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }, 100);
+                                        }}>
+                                            📝 Task
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -436,152 +451,175 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             </a>
                                                         </td>
 
-                                                        <td onClick={() => setEditingTaskId(task.id)} style={{
+                                                        <td onClick={() => canEdit && setEditingTaskId(task.id)} style={{
                                                             cursor: 'pointer',
-                                                            whiteSpace: 'normal',        // Cho phép xuống dòng
-                                                            wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
-                                                            maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                                                            whiteSpace: 'normal',
+                                                            wordBreak: 'break-word',
+                                                            maxWidth: '300px',
                                                         }}>
                                                             {editingTaskId === task.id ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={editableTitles[task.id] ?? task.title}
-                                                                    onChange={(e) =>
-                                                                        setEditableTitles((prev) => ({ ...prev, [task.id]: e.target.value }))
-                                                                    }
-                                                                    onBlur={async () => {
-                                                                        const newTitle = editableTitles[task.id]?.trim();
-                                                                        if (newTitle && newTitle !== task.title) {
-                                                                            try {
-                                                                                await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
-                                                                                await refetch();
-                                                                            } catch (err) {
-                                                                                console.error('❌ Failed to update title:', err);
+                                                                canEdit ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editableTitles[task.id] ?? task.title}
+                                                                        onChange={(e) =>
+                                                                            setEditableTitles((prev) => ({ ...prev, [task.id]: e.target.value }))
+                                                                        }
+                                                                        onBlur={async () => {
+                                                                            const newTitle = editableTitles[task.id]?.trim();
+                                                                            if (newTitle && newTitle !== task.title) {
+                                                                                try {
+                                                                                    await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                                                                    await refetch();
+                                                                                } catch (err) {
+                                                                                    console.error('❌ Failed to update title:', err);
+                                                                                }
                                                                             }
-                                                                        }
-                                                                        setEditingTaskId(null);
+                                                                            setEditingTaskId(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                (e.target as HTMLInputElement).blur();
+                                                                            }
+                                                                        }}
+                                                                        autoFocus
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            padding: '4px 6px',
+                                                                            border: '1px solid #ccc',
+                                                                            borderRadius: 4,
+                                                                        }}
+                                                                    />
+                                                                ) : task.title
+                                                            ) : task.title}
+                                                        </td>
+
+
+                                                        <td>
+                                                            {canEdit ? (
+                                                                <select
+                                                                    value={task.priority}
+                                                                    onChange={async (e) => {
+                                                                        const newPriority = e.target.value;
+                                                                        // try {
+                                                                        //     await updateTaskStatus({
+                                                                        //         id: task.id,
+                                                                        //         priority: newPriority,
+                                                                        //     }).unwrap();
+                                                                        //     await refetch(); // refresh task list
+                                                                        // } catch (err) {
+                                                                        //     console.error('❌ Error updating priority:', err);
+                                                                        // }
                                                                     }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            (e.target as HTMLInputElement).blur();
-                                                                        }
-                                                                    }}
-                                                                    autoFocus
                                                                     style={{
-                                                                        width: '100%',
-                                                                        padding: '4px 6px',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
                                                                         border: '1px solid #ccc',
-                                                                        borderRadius: 4,
+                                                                        backgroundColor: 'white',
                                                                     }}
-                                                                />
+                                                                >
+                                                                    <option value="HIGHEST">Highest</option>
+                                                                    <option value="HIGH">High</option>
+                                                                    <option value="MEDIUM">Medium</option>
+                                                                    <option value="LOW">Low</option>
+                                                                    <option value="LOWEST">Lowest</option>
+                                                                </select>
                                                             ) : (
-                                                                task.title
+                                                                <span>{task.priority ?? 'NONE'}</span>
                                                             )}
                                                         </td>
 
-
                                                         <td>
-                                                            <select
-                                                                value={task.priority}
-                                                                onChange={async (e) => {
-                                                                    const newPriority = e.target.value;
-                                                                    // try {
-                                                                    //     await updateTaskStatus({
-                                                                    //         id: task.id,
-                                                                    //         priority: newPriority,
-                                                                    //     }).unwrap();
-                                                                    //     await refetch(); // refresh task list
-                                                                    // } catch (err) {
-                                                                    //     console.error('❌ Error updating priority:', err);
-                                                                    // }
-                                                                }}
-                                                                style={{
-                                                                    padding: '4px 8px',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid #ccc',
-                                                                    backgroundColor: 'white',
-                                                                }}
-                                                            >
-                                                                <option value="HIGHEST">Highest</option>
-                                                                <option value="HIGH">High</option>
-                                                                <option value="MEDIUM">Medium</option>
-                                                                <option value="LOW">Low</option>
-                                                                <option value="LOWEST">Lowest</option>
-                                                            </select>
-                                                        </td>
+                                                            {canEdit ? (
+                                                                <div className="multi-select-dropdown">
+                                                                    {/* Hiển thị danh sách đã chọn */}
+                                                                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                        {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
+                                                                            <span className="selected-tag" key={assignment.accountId}>
+                                                                                {assignment.accountFullname ?? 'Unknown'}
+                                                                                <button
+                                                                                    className="remove-tag"
+                                                                                    onClick={async () => {
+                                                                                        try {
+                                                                                            await deleteTaskAssignment({
+                                                                                                taskId: task.id,
+                                                                                                assignmentId: assignment.id,
+                                                                                            }).unwrap();
 
-                                                        <td>
-                                                            <div className="multi-select-dropdown">
-                                                                {/* Hiển thị danh sách đã chọn */}
-                                                                <div className="selected-list">
-                                                                    {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
-                                                                        <span className="selected-tag" key={assignment.accountId}>
-                                                                            {assignment.accountFullname ?? 'Unknown'}
-                                                                            <button
-                                                                                className="remove-tag"
-                                                                                onClick={async () => {
+                                                                                            setTaskAssignmentMap((prev) => ({
+                                                                                                ...prev,
+                                                                                                [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
+                                                                                            }));
+                                                                                        } catch (err) {
+                                                                                            console.error('❌ Failed to delete assignee:', err);
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    ✖
+                                                                                </button>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+
+                                                                    {/* Dropdown chọn thêm */}
+                                                                    <div className="dropdown-select-wrapper">
+                                                                        <select
+                                                                            onChange={async (e) => {
+                                                                                const selectedId = parseInt(e.target.value);
+                                                                                if (!selectedAssignees[task.id]?.includes(selectedId)) {
                                                                                     try {
-                                                                                        await deleteTaskAssignment({
+                                                                                        await createTaskAssignment({
                                                                                             taskId: task.id,
-                                                                                            assignmentId: assignment.id,
+                                                                                            accountId: selectedId,
                                                                                         }).unwrap();
+
+                                                                                        const data = await getTaskAssignments(task.id).unwrap();
 
                                                                                         setTaskAssignmentMap((prev) => ({
                                                                                             ...prev,
-                                                                                            [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
+                                                                                            [task.id]: data,
+                                                                                        }));
+
+                                                                                        setSelectedAssignees((prev) => ({
+                                                                                            ...prev,
+                                                                                            [task.id]: [...(prev[task.id] ?? []), selectedId],
                                                                                         }));
                                                                                     } catch (err) {
-                                                                                        console.error('❌ Failed to delete assignee:', err);
+                                                                                        console.error('❌ Failed to create assignee:', err);
+                                                                                        alert('❌ Error adding assignee');
                                                                                     }
-                                                                                }}
-                                                                            >
-                                                                                ✖
-                                                                            </button>
+                                                                                }
+                                                                            }}
+                                                                            value=""
+                                                                        >
+                                                                            <option value="" disabled hidden>
+                                                                                + Add assignee
+                                                                            </option>
+                                                                            {projectMembers
+                                                                                .filter(
+                                                                                    (m) =>
+                                                                                        !(taskAssignmentMap[task.id] ?? []).some(
+                                                                                            (a) => a.accountId === m.accountId
+                                                                                        )
+                                                                                )
+                                                                                .map((member) => (
+                                                                                    <option key={member.accountId} value={member.accountId}>
+                                                                                        {member.accountName}
+                                                                                    </option>
+                                                                                ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                    {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
+                                                                        <span key={assignment.accountId} style={{ marginBottom: '4px' }}>
+                                                                            {assignment.accountFullname ?? 'Unknown'}
                                                                         </span>
                                                                     ))}
-
-                                                                </div>                                              {/* Dropdown chọn thêm */}
-                                                                <div className="dropdown-select-wrapper">
-                                                                    <select
-                                                                        onChange={async (e) => {
-                                                                            const selectedId = parseInt(e.target.value);
-                                                                            if (!selectedAssignees[task.id]?.includes(selectedId)) {
-                                                                                try {
-                                                                                    await createTaskAssignment({ taskId: task.id, accountId: selectedId }).unwrap();
-
-                                                                                    // Gọi lại API để lấy thông tin đầy đủ bao gồm fullname
-                                                                                    const data = await getTaskAssignments(task.id).unwrap();
-
-                                                                                    setTaskAssignmentMap((prev) => ({
-                                                                                        ...prev,
-                                                                                        [task.id]: data, // cập nhật lại danh sách mới
-                                                                                    }));
-
-                                                                                    setSelectedAssignees((prev) => ({
-                                                                                        ...prev,
-                                                                                        [task.id]: [...(prev[task.id] ?? []), selectedId],
-                                                                                    }));
-
-                                                                                } catch (err) {
-                                                                                    console.error('❌ Failed to create assignee:', err);
-                                                                                    alert('❌ Error adding assignee');
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                        value=""
-                                                                    >
-                                                                        <option value="" disabled hidden>+ Add assignee</option>
-                                                                        {projectMembers
-                                                                            .filter((m) => !(taskAssignmentMap[task.id] ?? []).some((a) => a.accountId === m.accountId))
-                                                                            .map((member) => (
-                                                                                <option key={member.accountId} value={member.accountId}>
-                                                                                    {member.accountName}
-                                                                                </option>
-                                                                            ))}
-                                                                    </select>
                                                                 </div>
-                                                            </div>
+                                                            )}
                                                         </td>
 
                                                         <td>
@@ -757,14 +795,139 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             )}
                         </div>
 
-                        <div className="activity-tabs">
-                            <button className="tab active">All</button>
-                            <button className="tab">Comments</button>
-                            <button className="tab">History</button>
-                        </div>
-                        <div className="comment-list">
-                            <textarea className="activity-input" />
+                        <div className="activity-section">
+                            <h4 style={{ marginBottom: '8px' }}>Activity</h4>
 
+                            {/* Tabs */}
+                            <div className="activity-tabs">
+                                <button
+                                    className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('COMMENTS')}
+                                >
+                                    Comments
+                                </button>
+                                <button
+                                    className={`activity-tab-btn ${activeTab === 'HISTORY' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('HISTORY')}
+                                >
+                                    History
+                                </button>
+                            </div>
+
+                            {/* Tab Content */}
+                            {activeTab === 'COMMENTS' ? (
+                                <>
+                                    <div className="comment-list">
+                                        {isCommentsLoading ? (
+                                            <p>Loading comments...</p>
+                                        ) : comments.length === 0 ? (
+                                            <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
+                                        ) : (
+                                            comments
+                                                .slice()
+                                                .reverse()
+                                                .map((comment: any) => (
+                                                    <div key={comment.id} className="simple-comment">
+                                                        <div className="avatar-circle">
+                                                            <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                                                        </div>
+                                                        <div className="comment-content">
+                                                            <div className="comment-header">
+                                                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
+                                                                <span className="comment-time">
+                                                                    {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="comment-text">{comment.content}</div>
+                                                            {comment.accountId === accountId && (
+                                                                <div className="comment-actions">
+                                                                    <button
+                                                                        className="edit-btn"
+                                                                        onClick={async () => {
+                                                                            const newContent = prompt("✏ Edit your comment:", comment.content);
+                                                                            if (newContent && newContent !== comment.content) {
+                                                                                try {
+                                                                                    await updateEpicComment({
+                                                                                        id: comment.id,
+                                                                                        epicId,
+                                                                                        accountId,
+                                                                                        content: newContent,
+                                                                                    }).unwrap();
+                                                                                    alert("✅ Comment updated");
+                                                                                    await refetchComments();
+                                                                                } catch (err) {
+                                                                                    console.error("❌ Failed to update comment", err);
+                                                                                    alert("❌ Update failed");
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        ✏ Edit
+                                                                    </button>
+                                                                    <button
+                                                                        className="delete-btn"
+                                                                        onClick={async () => {
+                                                                            if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                                                                try {
+                                                                                    await deleteEpicComment(comment.id).unwrap();
+                                                                                    alert("🗑️ Deleted successfully");
+                                                                                    await refetchComments();
+                                                                                } catch (err) {
+                                                                                    console.error("❌ Failed to delete comment", err);
+                                                                                    alert("❌ Delete failed");
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        🗑 Delete
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                        </div>
+                                                    </div>
+                                                ))
+                                        )}
+                                    </div>
+
+                                    {/* Comment Input */}
+                                    <div className="simple-comment-input">
+                                        <textarea
+                                            placeholder="Add a comment..."
+                                            value={commentContent}
+                                            onChange={(e) => setCommentContent(e.target.value)}
+                                        />
+                                        <button
+                                            disabled={!commentContent.trim()}
+                                            onClick={async () => {
+                                                try {
+                                                    if (!accountId || isNaN(accountId)) {
+                                                        alert('❌ User not identified. Please log in again.');
+                                                        return;
+                                                    }
+                                                    createEpicComment({
+                                                        epicId,
+                                                        accountId,
+                                                        content: commentContent.trim(),
+                                                    }).unwrap();
+                                                    alert("✅ Comment posted");
+                                                    setCommentContent('');
+                                                    await refetchComments();
+                                                } catch (err: any) {
+                                                    console.error('❌ Failed to post comment:', err);
+                                                    alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                                                }
+                                            }}
+                                        >
+                                            Comment
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="activity-placeholder">
+                                    Chưa có nhật ký hoạt động.
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -775,6 +938,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 value={status}
                                 onChange={(e) => handleStatusChange(e.target.value)}
                                 className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                                disabled={!canEdit}
                             >
                                 <option value="TO_DO">To Do</option>
                                 <option value="IN_PROGRESS">In Progress</option>
@@ -782,35 +946,33 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             </select>
                         </div>
 
+
                         <div className="details-content">
                             <div className="detail-item">
                                 <label>Assignee</label>
-                                <select
-                                    value={selectedAssignee ?? ''}
-                                    onChange={(e) => {
-                                        const assigneeId = Number(e.target.value);
-                                        setSelectedAssignee(assigneeId);
-                                        setNewAssignedBy(assigneeId);
-                                    }}
-
-                                    style={{
-                                        padding: '2px 0px',
-                                        borderRadius: '4px',
-                                        border: '1px solid #ccc',
-                                        backgroundColor: 'white',
-                                        width: '150px',
-                                    }}
-                                >
-                                    <option value="" disabled>-- Select assignee --</option>
-                                    {projectMembers.map((member) => (
-                                        <option key={member.accountId} value={member.accountId}>
-                                            {member.accountName}
-                                        </option>
-                                    ))}
-                                </select>
+                                {canEdit ? (
+                                    <select
+                                        value={selectedAssignee ?? ''}
+                                        onChange={(e) => {
+                                            const assigneeId = Number(e.target.value);
+                                            setSelectedAssignee(assigneeId);
+                                            setNewAssignedBy(assigneeId);
+                                        }}
+                                        style={{ padding: '2px 0px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: 'white', width: '150px' }}
+                                    >
+                                        <option value="" disabled>-- Select assignee --</option>
+                                        {projectMembers.map((member) => (
+                                            <option key={member.accountId} value={member.accountId}>
+                                                {member.accountName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <span>
+                                        {projectMembers.find((m) => m.accountId === selectedAssignee)?.accountName ?? 'None'}
+                                    </span>
+                                )}
                             </div>
-
-
 
                             <div className="detail-item">
                                 <label>Labels</label>
@@ -824,66 +986,81 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
                             <div className="detail-item">
                                 <label>Start date</label>
-                                <input
-                                    type="date"
-                                    value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
-                                    onChange={(e) => {
-                                        const selectedDate = e.target.value;
-                                        const fullDate = `${selectedDate}T00:00:00.000Z`;
-                                        setNewStartDate(fullDate);
-                                    }}
-                                    onBlur={handleUpdateEpic}
-                                    style={{ width: '150px' }}
-                                />
+                                {canEdit ? (
+                                    <input
+                                        type="date"
+                                        value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                            setNewStartDate(fullDate);
+                                        }}
+                                        onBlur={handleUpdateEpic}
+                                        style={{ width: '150px' }}
+                                    />
+                                ) : (
+                                    <span>{epic?.startDate?.slice(0, 10) ?? 'None'}</span>
+                                )}
                             </div>
 
                             <div className="detail-item">
                                 <label>Due date</label>
-                                <input
-                                    type="date"
-                                    value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
-                                    onChange={(e) => {
-                                        const selectedDate = e.target.value;
-                                        const fullDate = `${selectedDate}T00:00:00.000Z`;
-                                        setNewEndDate(fullDate);
-                                    }}
-                                    onBlur={handleUpdateEpic}
-                                    style={{ width: '150px' }}
-                                />
+                                {canEdit ? (
+                                    <input
+                                        type="date"
+                                        value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                            setNewEndDate(fullDate);
+                                        }}
+                                        onBlur={handleUpdateEpic}
+                                        style={{ width: '150px' }}
+                                    />
+                                ) : (
+                                    <span>{epic?.endDate?.slice(0, 10) ?? 'None'}</span>
+                                )}
                             </div>
 
                             <div className="detail-item">
                                 <label>Reporter</label>
-                                <select
-                                    value={selectedReporter ?? ''}
-                                    onChange={(e) => {
-                                        const reporterId = Number(e.target.value);
-                                        setSelectedReporter(reporterId);
-                                        setNewReporterId(reporterId);
-                                    }}
-                                    style={{ padding: '2px 0px', width: '150px' }}
-                                >
-                                    <option value="" disabled>-- Select reporter --</option>
-                                    {projectMembers.map((member) => (
-                                        <option key={member.accountId} value={member.accountId}>
-                                            {member.accountName}
-                                        </option>
-                                    ))}
-                                </select>
+                                {canEdit ? (
+                                    <select
+                                        value={selectedReporter ?? ''}
+                                        onChange={(e) => {
+                                            const reporterId = Number(e.target.value);
+                                            setSelectedReporter(reporterId);
+                                            setNewReporterId(reporterId);
+                                        }}
+                                        style={{ padding: '2px 0px', width: '150px' }}
+                                    >
+                                        <option value="" disabled>-- Select reporter --</option>
+                                        {projectMembers.map((member) => (
+                                            <option key={member.accountId} value={member.accountId}>
+                                                {member.accountName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <span>
+                                        {projectMembers.find((m) => m.accountId === selectedReporter)?.accountName ?? 'None'}
+                                    </span>
+                                )}
                             </div>
-
                         </div>
                     </div>
                 </div>
             </div>
-            {selectedTaskId && (
-                <WorkItem
-                    isOpen={true}
-                    taskId={selectedTaskId}
-                    onClose={() => setSelectedTaskId(null)}
-                />
-            )}
-        </div>
+            {
+                selectedTaskId && (
+                    <WorkItem
+                        isOpen={true}
+                        taskId={selectedTaskId}
+                        onClose={() => setSelectedTaskId(null)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import './WorkItem.css';
+import { useAuth, type Role } from '../../services/AuthContext';
 import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
@@ -16,7 +17,9 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉnh lại path cho đúng
+import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -27,6 +30,8 @@ interface WorkItemProps {
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
   const [searchParams] = useSearchParams();
   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
+  const { user } = useAuth();
+  const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [plannedStartDate, setPlannedStartDate] = React.useState('');
   const [plannedEndDate, setPlannedEndDate] = React.useState('');
   const [status, setStatus] = React.useState('');
@@ -68,7 +73,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-  
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
+  const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -178,6 +186,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
+
+  React.useEffect(() => {
+    if (assignees && taskId) {
+      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+    }
+  }, [assignees, taskId]);
 
   const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
     skip: !taskId,
@@ -617,7 +631,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             border: 'none',
                             borderRadius: '4px',
                             fontWeight: 500,
-                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',   
+                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
                           }}
                         >
                           Create Selected
@@ -701,9 +715,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
                             <td onClick={() => setEditingSummaryId(item.key)} style={{
                               cursor: 'pointer',
-                              whiteSpace: 'normal',        // Cho phép xuống dòng
-                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
-                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              maxWidth: '300px',
                             }}>
                               {editingSummaryId === item.key ? (
                                 <input
@@ -934,7 +948,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         .map((comment: any) => (
                           <div key={comment.id} className="simple-comment">
                             <div className="avatar-circle">
-                              <img src={accountIcon} alt="avatar" className="avatar-img" />
+                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
                             </div>
                             <div className="comment-content">
                               <div className="comment-header">
@@ -1053,14 +1067,91 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <h4>Details</h4>
               <div className="detail-item">
                 <label>Assignee</label>
-                <span>
-                  {isAssigneeLoading
-                    ? 'Loading...'
-                    : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
-                </span>
+                {canEdit ? (
+                  <div className="multi-select-dropdown">
+                    {/* Hiển thị danh sách đã chọn */}
+                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(taskAssignmentMap[taskId] ?? []).map((assignment) => (
+                        <span className="selected-tag" key={assignment.accountId}>
+                          {assignment.accountFullname ?? 'Unknown'}
+                          <button
+                            className="remove-tag"
+                            onClick={async () => {
+                              try {
+                                await deleteTaskAssignment({
+                                  taskId: taskId,
+                                  assignmentId: assignment.id,
+                                }).unwrap();
+
+                                setTaskAssignmentMap((prev) => ({
+                                  ...prev,
+                                  [taskId]: prev[taskId].filter((a) => a.accountId !== assignment.accountId),
+                                }));
+                              } catch (err) {
+                                console.error('❌ Failed to delete assignee:', err);
+                              }
+                            }}
+                          >
+                            ✖
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Dropdown chọn thêm */}
+                    <div className="dropdown-select-wrapper">
+                      <select
+                        onChange={async (e) => {
+                          const selectedId = parseInt(e.target.value);
+                          if (!selectedId) return;
+
+                          try {
+                            await createTaskAssignment({ taskId, accountId: selectedId }).unwrap();
+                            const data = await getTaskAssignments(taskId).unwrap();
+                            setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
+                          } catch (err) {
+                            console.error("Error assigning task", err);
+                          }
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>+ Add assignee</option>
+
+                        {/* Chỉ hiện những người chưa được gán vào task */}
+                        {projectMembers
+                          ?.filter(
+                            (m) =>
+                              !(taskAssignmentMap[taskId] ?? []).some(
+                                (a) => a.accountId === m.accountId
+                              )
+                          )
+                          .map((member) => (
+                            <option key={member.accountId} value={member.accountId}>
+                              {member.accountName}
+                            </option>
+                          ))}
+                      </select>
+
+                    </div>
+                  </div>
+                ) : (
+                  <span>
+                    {isAssigneeLoading ? (
+                      'Loading...'
+                    ) : assignees.length === 0 ? (
+                      'None'
+                    ) : (
+                      assignees.map((assignee) => (
+                        <span key={assignee.id} style={{ display: 'block' }}>
+                          {assignee.accountFullname}
+                        </span>
+                      ))
+                    )}
+                  </span>
+
+                )}
               </div>
+
               <div className="detail-item">
                 <label>Labels</label>
                 <span>

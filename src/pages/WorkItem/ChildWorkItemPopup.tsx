@@ -306,9 +306,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                         .slice()
                         .reverse()
                         .map((comment) => (
-                          <div key={comment.id} className='simple-comment'>
-                            <div className='avatar-circle'>
-                              <img src={accountIcon} alt='avatar' className='avatar-img' />
+                          <div key={comment.id} className="simple-comment">
+                            <div className="avatar-circle">
+                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
                             </div>
                             <div className='comment-content'>
                               <div className='comment-header'>

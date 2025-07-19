@@ -5,9 +5,10 @@ export interface SubtaskComment {
     id: number;
     subtaskId: string;
     accountId: number;
-    accountName?: string;
+    accountName: string;
     content: string;
     createdAt: string;
+    accountPicture: string;
 }
 
 interface SubtaskCommentListResponse {

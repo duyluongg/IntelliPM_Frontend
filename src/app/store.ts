@@ -17,7 +17,7 @@ import { documentApi } from '../services/Document/documentAPI';
 import docReducer from '../components/slices/Document/documentSlice';
 import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
 import { riskApi } from '../services/riskApi';
-import projectCreationReducer  from '../components/slices/Project/projectCreationSlice';
+import projectCreationReducer from '../components/slices/Project/projectCreationSlice';
 import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
 import { projectMemberApi } from '../services/projectMemberApi';
@@ -32,8 +32,8 @@ import { projectPositionApi } from '../services/projectPositionApi';
 import { projectRecommendationApi } from '../services/projectRecommendationApi';
 import { epicFileApi } from '../services/epicFileApi';
 import { meetingRescheduleRequestApi } from '../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
+import { epicCommentApi } from '../services/epicCommentApi';
 import { workLogApi } from '../services/workLogApi';
-
 
 export const store = configureStore({
   reducer: {
@@ -68,8 +68,8 @@ export const store = configureStore({
     [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
     [epicFileApi.reducerPath]: epicFileApi.reducer,
     [meetingRescheduleRequestApi.reducerPath]: meetingRescheduleRequestApi.reducer,
+    [epicCommentApi.reducerPath]: epicCommentApi.reducer,
     [workLogApi.reducerPath]: workLogApi.reducer,
-
     doc: docReducer,
     projectCreation: projectCreationReducer,
   },
@@ -106,9 +106,9 @@ export const store = configureStore({
       projectPositionApi.middleware,
       projectRecommendationApi.middleware,
       epicFileApi.middleware,
-      meetingRescheduleRequestApi.middleware, 
+      meetingRescheduleRequestApi.middleware,
+      epicCommentApi.middleware, 
       workLogApi.middleware,
-
     ),
 });
 

@@ -76,6 +76,15 @@ export const meetingParticipantApi = createApi({
       }),
     }),
 
+    /** PUT /api/meetings/:id/complete – Đánh dấu COMPLETED */
+completeMeeting: builder.mutation<void, number>({
+  query: (meetingId) => ({
+    url: `meetings/${meetingId}/complete`,
+    method: 'PUT',
+  }),
+}),
+
+
     /** PUT /api/meeting-participants/:id – Điểm danh (Present / Absent) */
     updateParticipantStatus: builder.mutation<
       MeetingParticipant,
@@ -97,4 +106,5 @@ export const {
   useDeleteMeetingMutation,
   useGetParticipantsByMeetingIdQuery,
   useUpdateParticipantStatusMutation,
+  useCompleteMeetingMutation, 
 } = meetingParticipantApi;

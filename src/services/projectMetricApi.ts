@@ -2,19 +2,21 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 interface ProjectMetric {
-  id: number;
   projectId: number;
-  calculatedBy: string;
-  isApproved: boolean;
   plannedValue: number;
   earnedValue: number;
   actualCost: number;
-  spi: number;
-  cpi: number;
-  delayDays: number;
-  budgetOverrun: number;
-  projectedFinishDate: string;
-  projectTotalCost: number | null;
+  budgetAtCompletion: number;
+  durationAtCompletion: number;
+  costVariance: number;
+  scheduleVariance: number;
+  costPerformanceIndex: number;
+  schedulePerformanceIndex: number;
+  estimateAtCompletion: number;
+  estimateToComplete: number;
+  varianceAtCompletion: number;
+  estimateDurationAtCompletion: number;
+  calculatedBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,19 +26,21 @@ interface ProjectMetricResponse {
   code: number;
   message: string;
   data: {
-    id: number;
     projectId: number;
-    calculatedBy: string;
-    isApproved: boolean;
     plannedValue: number;
     earnedValue: number;
     actualCost: number;
-    spi: number;
-    cpi: number;
-    delayDays: number;
-    budgetOverrun: number;
-    projectedFinishDate: string;
-    projectTotalCost: number | null;
+    budgetAtCompletion: number;
+    durationAtCompletion: number;
+    costVariance: number;
+    scheduleVariance: number;
+    costPerformanceIndex: number;
+    schedulePerformanceIndex: number;
+    estimateAtCompletion: number;
+    estimateToComplete: number;
+    varianceAtCompletion: number;
+    estimateDurationAtCompletion: number;
+    calculatedBy: string;
     createdAt: string;
     updatedAt: string;
   };
@@ -193,6 +197,13 @@ export const projectMetricApi = createApi({
         method: 'GET',
       }),
     }),
+
+    calculateMetricsBySystem: builder.mutation<ProjectMetricResponse, { projectKey: string }>({
+      query: ({ projectKey }) => ({
+        url: `projectmetric/calculate-by-system?projectKey=${projectKey}`,
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
@@ -205,4 +216,5 @@ export const {
   useGetCostDashboardQuery,
   useGetWorkloadDashboardQuery,
   useGetProjectMetricByProjectKeyQuery,
+  useCalculateMetricsBySystemMutation,
 } = projectMetricApi;

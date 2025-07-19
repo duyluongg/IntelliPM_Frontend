@@ -29,6 +29,8 @@ import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectO
 import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
 import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleRequest';
+import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
+import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
 
 
 export const router = createBrowserRouter([
@@ -82,6 +84,10 @@ export const router = createBrowserRouter([
         path: 'meeting',
         element: <MeetingCore />,
       },
+            {
+        path: 'meeting-reschedule-request-send',
+        element: <MeetingRescheduleRequestSend />,
+      },
 
             {
         path: 'meeting-reschedule-request',
@@ -116,6 +122,10 @@ export const router = createBrowserRouter([
 
       {
         path: `/project?:projectKey`,
+        element: <ProjectTaskList />,
+      },
+      {
+        path: `/project?:projectKey/backlog`,
         element: <ProjectTaskList />,
       },
       {

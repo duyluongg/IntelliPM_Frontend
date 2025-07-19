@@ -666,3 +666,12 @@
   color: #111827;
 }
 
+.due-today {
+  font-weight: bold;
+  color: #d97706;
+}
+
+.due-warning {
+  color: #dc2626;
+}
+

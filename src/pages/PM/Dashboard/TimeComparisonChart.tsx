@@ -16,7 +16,7 @@ const TimeComparisonChart = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, error } = useGetTimeDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (error || !data?.data) return <div>Error loading time dashboard</div>;
 
   const { plannedCompletion, actualCompletion, status } = data.data;

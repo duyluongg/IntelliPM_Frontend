@@ -1,14 +1,61 @@
+// sprintApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
+
+export interface TaskBacklogResponseDTO {
+  id: string;
+  reporterId: number;
+  reporterName: string | null;
+  reporterPicture: string | null;
+  projectId: number;
+  projectName: string | null;
+  epicId: string | null;
+  epicName: string | null;
+  sprintId: number | null;
+  sprintName: string | null;
+  type: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description: string | null;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  duration: number | null;
+  priority: string | null;
+  status: string | null;
+  createdAt: string;
+  updatedAt: string;
+  taskAssignments: TaskAssignmentResponseDTO[];
+}
+
+export interface TaskAssignmentResponseDTO {
+  id: number;
+  taskId: string;
+  accountId: number;
+  status: string | null;
+  assignedAt: string | null;
+  completedAt: string | null;
+  hourlyRate: number | null;
+  accountFullname: string | null;
+  accountPicture: string | null;
+}
 
 export interface SprintResponseDTO {
   id: number;
   projectId: number;
   name: string;
-  goal: string;
-  startDate: string;
-  endDate: string;
-  status: string;
+  goal: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  status: string | null;
+}
+
+export interface SprintWithTaskListResponseDTO extends SprintResponseDTO {
+  tasks: TaskBacklogResponseDTO[];
 }
 
 interface ApiResponse<T> {
@@ -22,16 +69,15 @@ export const sprintApi = createApi({
   reducerPath: 'sprintApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
-    // prepareHeaders: (headers) => {
-    //   const token = localStorage.getItem('accessToken');
-    //   // const token =
-    //   //   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJQUk9KRUNUIE1BTkFHRVIiLCJhY2NvdW50SWQiOiIyNCIsImVtYWlsIjoidXNlckBleGFtcGxlLmNvbSIsInVzZXJuYW1lIjoiSGFuIE5ndXllbiIsImV4cCI6MTc1MjY3NDU4NywiaXNzIjoiSW50ZWxsaVBNIiwiYXVkIjoiSW50ZWxsaVBNIn0.QY0gtqotMmrxHYuuh9yzLNfX1P_XjfgRdNoPNw7P7E8';
-    //   if (token) {
-    //     headers.set('Authorization', `Bearer ${token}`);
-    //   }
-    //   return headers;
-    // },
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
+  tagTypes: ['Sprint'],
   endpoints: (builder) => ({
     getSprintsByProjectId: builder.query<SprintResponseDTO[], number>({
       query: (projectId) => ({
@@ -39,8 +85,20 @@ export const sprintApi = createApi({
         params: { projectId },
       }),
       transformResponse: (response: ApiResponse<SprintResponseDTO[]>) => response.data,
+      providesTags: ['Sprint'],
+    }),
+    getSprintsByProjectKeyWithTasks: builder.query<SprintWithTaskListResponseDTO[], string>({
+      query: (projectKey) => ({
+        url: 'sprint/by-project-id-with-tasks',
+        params: { projectKey },
+      }),
+      transformResponse: (response: ApiResponse<SprintWithTaskListResponseDTO[]>) => response.data,
+      providesTags: ['Sprint'],
     }),
   }),
 });
 
-export const { useGetSprintsByProjectIdQuery } = sprintApi;
+export const { 
+  useGetSprintsByProjectIdQuery, 
+  useGetSprintsByProjectKeyWithTasksQuery 
+} = sprintApi;

@@ -1,13 +1,15 @@
 import React from 'react';
 import EpicColumn from './EpicColumn';
 import SprintColumn from './SprintColumn';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
 
-// Định nghĩa Task và Sprint phù hợp với SprintColumn
 interface Task {
   id: string;
   title: string;
   status: 'To Do' | 'In Progress' | 'Done';
-  assignee?: string;
+  assignee?: { name: string; picture?: string | null }[];
+  type?: 'task' | 'story' | 'bug';
+  epicName?: string | null;
 }
 
 interface Sprint {
@@ -16,34 +18,14 @@ interface Sprint {
   tasks: Task[];
 }
 
-interface EpicResponseDTO {
-  id: string;
-  projectId: number;
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  reporterId: number | null;
-  assignedBy: number | null;
-  assignedByFullname: string | null;
-  assignedByPicture: string | null;
-  reporterFullname: string | null;
-  reporterPicture: string | null;
-  sprintId: number | null;
-  sprintName: string | null;
-  sprintGoal: string | null;
-}
-
 interface BacklogBodyProps {
   onCreateEpic: () => void;
   sprints: Sprint[];
-  epics: EpicResponseDTO[];
+  epics: EpicWithStatsResponseDTO[];
+  backlogTasks: Task[];
 }
 
-const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics }) => {
+const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics, backlogTasks }) => {
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
       <div className="flex flex-col sm:flex-row gap-4 min-w-[640px]">
@@ -54,7 +36,7 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics 
 
         {/* Sprint Column */}
         <div className="w-full sm:w-2/3 md:w-3/4">
-          <SprintColumn sprints={sprints} backlogTasks={sprints.length > 0 ? [] : sprints.flatMap(s => s.tasks)} />
+          <SprintColumn sprints={sprints} backlogTasks={backlogTasks} />
         </div>
       </div>
     </div>

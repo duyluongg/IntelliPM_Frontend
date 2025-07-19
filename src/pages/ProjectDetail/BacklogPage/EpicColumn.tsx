@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi'; 
 
 interface Epic {
   id: string;
@@ -13,32 +14,10 @@ interface Epic {
   };
   startDate: string;
   dueDate: string;
-
-}
-
-interface EpicResponseDTO {
-  id: string;
-  projectId: number;
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  reporterId: number | null;
-  assignedBy: number | null;
-  assignedByFullname: string | null;
-  assignedByPicture: string | null;
-  reporterFullname: string | null;
-  reporterPicture: string | null;
-  sprintId: number | null;
-  sprintName: string | null;
-  sprintGoal: string | null;
 }
 
 interface EpicColumnProps {
-  epics: EpicResponseDTO[];
+  epics: EpicWithStatsResponseDTO[]; // Cập nhật kiểu thành EpicWithStatsResponseDTO[]
   onCreateEpic: () => void;
 }
 
@@ -51,22 +30,38 @@ const formatDate = (isoDate: string): string => {
   });
 };
 
+const calculateProgress = (totalTasks: number, toDo: number, inProgress: number, done: number): { done: number; inProgress: number; toDo: number } => {
+  if (totalTasks === 0) return { done: 0, inProgress: 0, toDo: 100 };
+  const donePercent = (done / totalTasks) * 100;
+  const inProgressPercent = (inProgress / totalTasks) * 100;
+  const toDoPercent = (toDo / totalTasks) * 100;
+  return {
+    done: Math.round(donePercent),
+    inProgress: Math.round(inProgressPercent),
+    toDo: Math.round(toDoPercent),
+  };
+};
+
 const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
   const [expandedEpicId, setExpandedEpicId] = useState<string | null>(null);
 
-  const mappedEpics: Epic[] = epics.map((epic) => ({
-    id: epic.id,
-    name: epic.name,
-    owner: epic.reporterFullname || epic.assignedByFullname || 'Unknown',
-    color: epic.sprintId ? '#6b7280' : '#9333ea',
-    progress: {
-      done: 30,
-      inProgress: 40,
-      toDo: 30,
-    },
-    startDate: formatDate(epic.startDate),
-    dueDate: formatDate(epic.endDate),
-  }));
+  const mappedEpics: Epic[] = epics.map((epic) => {
+    const progress = calculateProgress(
+      epic.totalTasks,
+      epic.totalToDoTasks,
+      epic.totalInProgressTasks,
+      epic.totalDoneTasks
+    );
+    return {
+      id: epic.id,
+      name: epic.name,
+      owner: epic.reporterFullname || epic.assignedByFullname || 'Unknown',
+      color: epic.sprintId ? '#6b7280' : '#9333ea',
+      progress,
+      startDate: formatDate(epic.startDate || epic.createdAt), // Sử dụng createdAt nếu startDate null
+      dueDate: formatDate(epic.endDate || epic.updatedAt), // Sử dụng updatedAt nếu endDate null
+    };
+  });
 
   return (
     <div className="w-full min-w-[250px] sm:w-1/3 md:w-1/4 p-4 bg-white border flex flex-col h-full shadow-sm">
@@ -112,14 +107,17 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                 <div
                   className="bg-green-500"
                   style={{ width: `${epic.progress.done}%` }}
+                  title={`Done: ${epic.progress.done}%`}
                 />
                 <div
                   className="bg-blue-500"
                   style={{ width: `${epic.progress.inProgress}%` }}
+                  title={`In Progress: ${epic.progress.inProgress}%`}
                 />
                 <div
                   className="bg-gray-300"
                   style={{ width: `${epic.progress.toDo}%` }}
+                  title={`To Do: ${epic.progress.toDo}%`}
                 />
               </div>
 
@@ -135,6 +133,11 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                     <span className="font-semibold">Due date</span>
                     <br />
                     {epic.dueDate}
+                  </div>
+                  <div>
+                    <span className="font-semibold">Owner</span>
+                    <br />
+                    {epic.owner}
                   </div>
                   <button className="w-full mt-2 border rounded py-1 text-sm text-center hover:bg-gray-100 transition">
                     View all details

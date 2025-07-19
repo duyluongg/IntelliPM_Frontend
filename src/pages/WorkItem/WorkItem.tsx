@@ -568,9 +568,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           <label
                             key={idx}
                             style={{
-                              display: 'flex !important',
+                              display: 'flex',
                               alignItems: 'flex-start',
-                              gap: '8px',
+                              gap: '2px',
                               lineHeight: '1.4',
                               wordBreak: 'break-word',
                               fontSize: '14px',
@@ -586,9 +586,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   checked ? [...prev, item.title] : prev.filter((t) => t !== item.title)
                                 );
                               }}
-                              style={{ display: 'flex !important', marginTop: '3px' }}
+                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
                             />
-                            <span>{item.title}</span>
+                            <span style={{ flex: 6 }}>{item.title}</span>
                           </label>
                         ))}
                       </div>
@@ -617,7 +617,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             border: 'none',
                             borderRadius: '4px',
                             fontWeight: 500,
-                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',   
                           }}
                         >
                           Create Selected

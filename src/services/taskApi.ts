@@ -41,6 +41,8 @@ export interface TaskResponseDTO {
   dependencies: TaskDependency[];
 }
 
+
+
 interface TaskDependency {
   id: number;
   taskId: string;
@@ -63,6 +65,13 @@ interface TaskDetailResponse {
   data: TaskResponseDTO;
 }
 
+interface TaskBackLogResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: TaskBacklogResponseDTO[];
+}
+
 export interface UpdateTaskRequestDTO {
   reporterId: number | null;
   projectId: number;
@@ -75,6 +84,48 @@ export interface UpdateTaskRequestDTO {
   plannedEndDate: string;
   status: string;
 }
+
+export interface TaskBacklogResponseDTO {
+  id: string;
+  reporterId: number;
+  reporterName?: string | null;
+  reporterPicture?: string | null;
+  projectId: number;
+  projectName?: string | null;
+  epicId?: string | null;
+  epicName?: string | null;
+  sprintId?: number | null;
+  sprintName?: string | null;
+  type?: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description?: string | null;
+  plannedStartDate?: Date | string | null;
+  plannedEndDate?: Date | string | null;
+  actualStartDate?: Date | string | null;
+  actualEndDate?: Date | string | null;
+  duration?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  taskAssignments: TaskAssignmentResponseDTO[];
+}
+
+export interface TaskAssignmentResponseDTO {
+  id: number;
+  taskId: string;
+  accountId: number;
+  status?: string | null;
+  assignedAt?: string | null;
+  completedAt?: string | null;
+  hourlyRate?: number | null;
+  accountFullname?: string | null;
+  accountPicture?: string | null;
+}
+
+
 
 export const taskApi = createApi({
   reducerPath: 'taskApi',
@@ -231,6 +282,14 @@ export const taskApi = createApi({
         body: newTask,
       }),
     }),
+   getTasksFromBacklog: builder.query<TaskBacklogResponseDTO[], string>({
+      query: (projectKey) => ({
+        url: 'task/backlog',
+        params: { projectKey },
+      }),
+      transformResponse: (response: TaskBackLogResponse) => response.data as TaskBacklogResponseDTO[],
+      providesTags: ['Task'],
+    }),
 
   }),
 });
@@ -249,5 +308,6 @@ export const {
   useUpdateTaskMutation,
   useUpdateTaskDatMutation,
   useCreateTaskMutation,
+  useGetTasksFromBacklogQuery,
 } = taskApi;
 

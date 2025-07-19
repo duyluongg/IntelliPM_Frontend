@@ -1,7 +1,6 @@
-// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectDetail\BacklogPage\EpicColumn.tsx
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
-import { type EpicWithStatsResponseDTO } from '../../../services/epicApi'; // Sử dụng kiểu từ epicApi
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi'; 
 
 interface Epic {
   id: string;

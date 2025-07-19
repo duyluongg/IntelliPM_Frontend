@@ -1,10 +1,11 @@
-// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\pages\ProjectDetail\BacklogPage\BacklogPage.tsx
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import BacklogHeader from './BacklogHeader';
 import BacklogBody from './BacklogBody';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetEpicsWithTasksByProjectKeyQuery, type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import { useGetSprintsByProjectKeyWithTasksQuery } from '../../../services/sprintApi';
+import { useGetTasksFromBacklogQuery } from '../../../services/taskApi';
 
 interface Sprint {
   id: string;
@@ -16,7 +17,9 @@ interface Task {
   id: string;
   title: string;
   status: 'To Do' | 'In Progress' | 'Done';
-  assignee?: string;
+  assignee?: { name: string; picture?: string | null }[]; // Cập nhật assignee
+  type?: 'task' | 'story' | 'bug';
+  epicName?: string | null;
 }
 
 const BacklogPage: React.FC = () => {
@@ -36,24 +39,68 @@ const BacklogPage: React.FC = () => {
     skip: !projectKey || projectKey === 'NotFound',
   });
 
+  // Fetch sprints with tasks by projectKey
+  const {
+    data: sprintData = [],
+    isLoading: isSprintLoading,
+    error: sprintError,
+  } = useGetSprintsByProjectKeyWithTasksQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
+  });
+
+  // Fetch backlog tasks by projectKey
+  const {
+    data: backlogData = [],
+    isLoading: isBacklogLoading,
+    error: backlogError,
+  } = useGetTasksFromBacklogQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
+  });
+
   const [members] = useState([
     { id: 1, name: 'John Doe', avatar: 'https://via.placeholder.com/30' },
     { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
   ]);
 
-  // Tạo danh sách sprints và backlog (dựa trên epicData nếu cần)
-  const sprints: Sprint[] = [];
-  const backlogTasks: Task[] = [];
+  // Ánh xạ dữ liệu sprints
+  const sprints: Sprint[] = sprintData.map((sprint) => ({
+    id: sprint.id.toString(),
+    name: sprint.name,
+    tasks: sprint.tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status === 'TO_DO' ? 'To Do' : task.status === 'IN_PROGRESS' ? 'In Progress' : 'Done',
+      type: task.type?.toLowerCase() as 'task' | 'story' | 'bug' | undefined,
+      epicName: task.epicName || null,
+      assignee: task.taskAssignments.map((a) => ({
+        name: a.accountFullname || 'Unknown',
+        picture: a.accountPicture || null,
+      })) || [],
+    })),
+  }));
+
+  // Ánh xạ dữ liệu backlogTasks
+  const backlogTasks: Task[] = backlogData.map((task) => ({
+    id: task.id,
+    title: task.title,
+    status: task.status === 'TO_DO' ? 'To Do' : task.status === 'IN_PROGRESS' ? 'In Progress' : 'Done',
+    type: task.type?.toLowerCase() as 'task' | 'story' | 'bug' | undefined,
+    epicName: task.epicName || null,
+    assignee: task.taskAssignments.map((a) => ({
+      name: a.accountFullname || 'Unknown',
+      picture: a.accountPicture || null,
+    })) || [],
+  }));
 
   // Xử lý loading và error
-  if (isProjectLoading || isEpicLoading) {
+  if (isProjectLoading || isEpicLoading || isSprintLoading || isBacklogLoading) {
     return <div className="p-4 text-center">Loading...</div>;
   }
 
-  if (projectError || epicError) {
+  if (projectError || epicError || sprintError || backlogError) {
     return (
       <div className="p-4 text-center text-red-500">
-        Error loading data: {(projectError || epicError) as string}
+        Error loading data: {(projectError || epicError || sprintError || backlogError) as string}
       </div>
     );
   }
@@ -63,7 +110,7 @@ const BacklogPage: React.FC = () => {
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query.toLowerCase()); // Chuyển query thành lowercase để tìm kiếm không phân biệt hoa thường
+    setSearchQuery(query.toLowerCase());
   };
 
   // Lọc epics theo searchQuery (nếu có)
@@ -80,6 +127,7 @@ const BacklogPage: React.FC = () => {
         onCreateEpic={handleCreateEpic}
         sprints={sprints}
         epics={filteredEpics}
+        backlogTasks={backlogTasks}
       />
     </div>
   );

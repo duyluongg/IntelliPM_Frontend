@@ -6,7 +6,7 @@ const ProgressPerSprint = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, error } = useGetProgressDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading progress...</div>;
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (error || !data?.data) return <div>Error loading progress data</div>;
 
   return (

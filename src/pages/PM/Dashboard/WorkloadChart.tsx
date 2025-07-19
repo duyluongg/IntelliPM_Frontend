@@ -22,7 +22,7 @@ const WorkloadChart = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading workload chart...</div>;
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (isError || !data?.data) return <div>Failed to load workload chart</div>;
 
   const chartData = data.data.map((member) => ({

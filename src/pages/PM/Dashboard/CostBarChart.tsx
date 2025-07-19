@@ -16,7 +16,7 @@ const CostBarChart = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading cost data...</div>;
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (isError || !data?.data) return <div>Failed to load cost data</div>;
 
   const { actualCost, plannedCost, budget } = data.data;

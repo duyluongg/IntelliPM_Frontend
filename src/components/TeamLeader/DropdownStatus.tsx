@@ -20,6 +20,8 @@ import {
   useDocumentStatusQuery,
 } from '../../services/Document/documentAPI';
 import type { DocumentType } from '../../types/DocumentType';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../app/store';
 
 type DocProps = {
   doc: DocumentType;
@@ -77,7 +79,17 @@ export default function DropdownStatus() {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid');
 
-  const { data: documents = [], isLoading, error, refetch } = useDocumentStatusQuery(status);
+  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+
+  const {
+    data: documents = [],
+    isLoading,
+    error,
+    refetch,
+  } = useDocumentStatusQuery({
+    projectId: projectId ?? 0,
+    status,
+  });
   const [approveDocument] = useApproveDocumentMutation();
 
   const filteredDocuments = documents.filter((doc) => {

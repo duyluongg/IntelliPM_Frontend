@@ -227,7 +227,7 @@
 
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
-import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
+import { useCreateDocumentRequestMutation } from '../../../services/Document/documentAPI';
 import { useState } from 'react';
 import { Check, CheckSquare, Loader2, Send } from 'lucide-react';
 
@@ -243,7 +243,7 @@ export default function FeatureRequestForm() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
 
-  const [createDocument] = useCreateDocumentMutation();
+  const [createDocument] = useCreateDocumentRequestMutation();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 

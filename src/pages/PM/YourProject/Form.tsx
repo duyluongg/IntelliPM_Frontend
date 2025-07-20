@@ -5,6 +5,8 @@ import RecentForm from './RecentForm';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import DocWrapper from './DocWrapper';
 import { useAuth } from '../../../services/AuthContext';
+import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
+import { useDispatch } from 'react-redux';
 
 const templates = [
   { id: 'blank', label: 'Blank form', icon: <FileText size={16} /> },
@@ -18,13 +20,14 @@ const templates = [
 ];
 
 export default function Form() {
-  const { formId, docId } = useParams();
+  const { formId } = useParams();
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey');
+  const projectKey = searchParams.get('projectKey') || '';
 
   const { data: projectData, error, isLoading } = useGetProjectDetailsByKeyQuery(projectKey);
-  const projectId = projectData?.data?.id;
+  const projectId = projectData?.data?.id || 0;
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSelect = (templateId: string) => {
     console.log(`Selected template: ${templateId}`);
@@ -37,9 +40,14 @@ export default function Form() {
     }
   };
 
-  const handleBack = () => {
-    navigate('/projects/form');
-  };
+  const handleSelectFormRQ = (projectId: number) => {
+  dispatch(setCurrentProjectId(projectId));
+  navigate('/team-leader/all-request-form');
+};
+
+  // const handleBack = () => {
+  //   navigate('/projects/form');
+  // };
   const { user } = useAuth();
   const userRole = user?.role;
   console.log(userRole, 'userRole');
@@ -50,7 +58,7 @@ export default function Form() {
 
       {userRole === 'TEAM_LEADER' && (
         <button
-          onClick={() => navigate(`/team-leader/all-request-form`)}
+          onClick={() =>handleSelectFormRQ(projectId) }
           className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-indigo-700 transition duration-200'
         >
           All Request Form
@@ -65,7 +73,7 @@ export default function Form() {
             {templates.map((template) => (
               <button
                 key={template.id}
-                onClick={() => handleSelect(template.id)}
+                onClick={() => handleSelect( template.id)}
                 className={`flex items-center gap-2 px-3 py-2 border rounded-md transition ${
                   template.id === 'blank'
                     ? 'bg-blue-600 text-white border-blue-600'

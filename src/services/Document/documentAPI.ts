@@ -23,7 +23,14 @@ export const documentApi = createApi({
     getDocumentById: builder.query<DocumentType, number>({
       query: (id) => `documents/${id}`,
     }),
-    createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
+    createDocumentRequest: builder.mutation<DocumentType, Partial<DocumentType>>({
+      query: (body) => ({
+        url: 'documents/request',
+        method: 'POST',
+        body,
+      }),
+    }),
+      createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
         url: 'documents',
         method: 'POST',
@@ -93,8 +100,8 @@ export const documentApi = createApi({
     summarizeAI: builder.query<{ summary: string }, number>({
       query: (id) => `documents/${id}/summary`,
     }),
-    documentStatus: builder.query<DocumentType[], string>({
-      query: (status) => `documents/status/${status}`,
+    documentStatus: builder.query<DocumentType[], {projectId: number, status: string}>({
+      query: ({projectId, status}) =>  `documents/project/${projectId}/status/${status}`,
     }),
 
     approveDocument: builder.mutation<DocumentType, { documentId: number; status: string; comment: string }>(
@@ -114,6 +121,7 @@ export const documentApi = createApi({
 
 export const {
   useGetDocumentByIdQuery,
+  useCreateDocumentRequestMutation,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useGetMyDocumentsQuery,

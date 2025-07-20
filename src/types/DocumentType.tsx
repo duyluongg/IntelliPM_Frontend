@@ -8,7 +8,14 @@ export type DocumentType = {
   title: string;
   type: string;
   content: string;
-  updatedAt: string;
   template: string;
+  status: string;
+
+  createdBy: number;
   updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+
+  isActive: boolean;
+  fileUrl?: string | null;
 };

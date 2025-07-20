@@ -17,7 +17,7 @@ interface Epic {
 }
 
 interface EpicColumnProps {
-  epics: EpicWithStatsResponseDTO[]; // Cập nhật kiểu thành EpicWithStatsResponseDTO[]
+  epics: EpicWithStatsResponseDTO[]; 
   onCreateEpic: () => void;
 }
 
@@ -56,7 +56,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
       id: epic.id,
       name: epic.name,
       owner: epic.reporterFullname || epic.assignedByFullname || 'Unknown',
-      color: epic.sprintId ? '#6b7280' : '#9333ea',
+      color: epic.sprintId ? '#6b7280' : '#c97cf4',
       progress,
       startDate: formatDate(epic.startDate || epic.createdAt), // Sử dụng createdAt nếu startDate null
       dueDate: formatDate(epic.endDate || epic.updatedAt), // Sử dụng updatedAt nếu endDate null
@@ -93,7 +93,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                   )}
                   <span
                     className="w-3 h-3 rounded bg-purple-400 inline-block"
-                    style={{ backgroundColor: epic.color || '#9333ea' }}
+                    style={{ backgroundColor: epic.color || '#c97cf4' }}
                   />
                   <span className="capitalize font-medium truncate max-w-[120px]">
                     {epic.name}

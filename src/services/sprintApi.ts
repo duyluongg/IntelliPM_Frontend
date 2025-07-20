@@ -22,7 +22,7 @@ export interface TaskBacklogResponseDTO {
   plannedEndDate: string | null;
   actualStartDate: string | null;
   actualEndDate: string | null;
-  duration: number | null;
+  duration?: string | null;
   priority: string | null;
   status: string | null;
   createdAt: string;

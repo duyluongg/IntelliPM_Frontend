@@ -397,8 +397,6 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 
     drop(ref);
 
-    const todoCount = tasks.filter((task) => (task.status || 'TO_DO') === 'TO_DO').length;
-    const doneCount = tasks.filter((task) => (task.status || 'TO_DO') === 'DONE').length;
     const isSprint = sprintId !== null;
     const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
 

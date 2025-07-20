@@ -887,3 +887,14 @@ input {
   50% { transform: scale(1.3); opacity: 1; }
 }
 
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+}

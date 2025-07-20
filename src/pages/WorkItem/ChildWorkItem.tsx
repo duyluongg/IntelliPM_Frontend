@@ -114,11 +114,16 @@ const ChildWorkItem: React.FC = () => {
     if (!subtaskDetail) return;
 
     try {
-      await updateSubtaskStatus({ id: subtaskDetail.id, status: newStatus }).unwrap();
-      setSubtaskDetail({ ...subtaskDetail, status: newStatus });
-      console.log(`✅ Updated ${subtaskDetail.id} to ${newStatus}`);
+      await updateSubtaskStatus({
+        id: subtaskDetail.id,
+        status: newStatus,
+        createdBy: accountId, 
+      }).unwrap();
+
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
+      console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
     } catch (err) {
-      console.error('❌ Error update subtask status:', err);
+      console.error('❌ Failed to update subtask status', err);
     }
   };
 

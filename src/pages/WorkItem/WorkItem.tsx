@@ -41,10 +41,11 @@ import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
-import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; 
+import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 // import type { useState } from 'react';
 import { WorkLogModal } from './WorkLogModal';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -104,6 +105,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+
+
 
   const {
     data: attachments = [],
@@ -221,12 +224,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
-  
+
   React.useEffect(() => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
     }
   }, [assignees, taskId]);
+
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
 
   const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
     skip: !taskId,
@@ -270,7 +278,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateSubtaskStatus({ id, status: newStatus }).unwrap();
+      await updateSubtaskStatus({
+        id,
+        status: newStatus,
+        createdBy: accountId,
+      }).unwrap();
+
       refetch();
     } catch (err) {
       console.error('Failed to update subtask status', err);
@@ -706,7 +719,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           onClick={async () => {
                             for (const title of selectedSuggestions) {
                               try {
-                                await createSubtask({ taskId, title }).unwrap();
+                                await createSubtask({ taskId, title, createdBy: accountId }).unwrap();
                               } catch (err) {
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
@@ -974,6 +987,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       await createSubtask({
                                         taskId,
                                         title: newSubtaskTitle,
+                                        createdBy: accountId,
                                       }).unwrap();
                                       console.log('✅ Create successfully');
                                     } catch (err) {
@@ -1044,6 +1058,24 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </div>
 
               {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className="history-list">
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="history-item">
+                        <strong>{log.createdByName}</strong> — <em>{new Date(log.createdAt).toLocaleString()}</em>
+                        <div>{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+
               {activeTab === 'COMMENTS' ? (
                 <>
                   <div className='comment-list'>
@@ -1161,7 +1193,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   </div>
                 </>
               ) : (
-                <div className='activity-placeholder'>Chưa có nhật ký hoạt động.</div>
+                <div className='activity-placeholder'></div>
               )}
             </div>
           </div>
@@ -1274,8 +1306,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   {isLabelLoading
                     ? 'Loading...'
                     : workItemLabels.length === 0
-                    ? 'None'
-                    : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
               <div className='detail-item'>

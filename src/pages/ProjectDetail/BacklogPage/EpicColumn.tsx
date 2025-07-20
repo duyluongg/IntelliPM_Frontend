@@ -97,7 +97,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                     <ChevronRight className="w-4 h-4 text-gray-700" />
                   )}
                   <span
-                    className="w-3 h-3 rounded-full"
+                    className="w-3 h-3 rounded-sm"
                     style={{ backgroundColor: epic.color || '#c97cf4' }}
                   />
                   <span className="capitalize font-medium truncate max-w-[120px]">

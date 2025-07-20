@@ -214,7 +214,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   return (
     <div
       ref={ref}
-      className={`grid grid-cols-[auto_100px_1fr_160px_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
+      className={`grid grid-cols-[auto_100px_1fr_auto_auto_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
@@ -238,19 +238,24 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           {title}
         </span>
       )}
-      <div className='flex items-center gap-2 justify-end w-[160px] relative' ref={dropdownRef}>
+      {/* Epic column with auto width */}
+      <div className='flex items-center justify-start pl-2'>
         {(task.epicName || '') &&
           (isNarrow || isMultiline ? (
             <span className='w-3 h-3 rounded-sm bg-[#c97cf4]' title={task.epicName || ''} />
           ) : (
             <span
               ref={epicRef}
-              className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate max-w-[80px]'
+              className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
               title={task.epicName || ''}
             >
               {task.epicName}
             </span>
           ))}
+        {!task.epicName && <span className='text-xs text-gray-400'>-</span>}
+      </div>
+      {/* Status column with auto width */}
+      <div className='flex items-center justify-start pl-2 relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
           className={`inline-flex text-xs font-bold rounded px-2 py-0.5 items-center gap-0.5 ${currentStyle.bg} ${currentStyle.text} hover:brightness-95`}
@@ -440,7 +445,6 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
               >
                 Create Sprint
               </button>
-
             </div>
           </div>
         ) : (
@@ -463,7 +467,6 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
                 </span>
               </div>
               <div className='flex items-center space-x-2'>
-               
                 {sprint.status === 'FUTURE' && (
                   <button
                     onClick={() => handleStartSprint(sprint.id)}
@@ -488,7 +491,6 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
                   sprint.status !== 'COMPLETED' && (
                     <span className='text-sm text-red-500'>Unknown Status: {sprint.status}</span>
                   )}
-                
               </div>
             </div>
           )

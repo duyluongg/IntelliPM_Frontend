@@ -301,7 +301,37 @@ const Avatar = ({
 };
 
 // HeaderBar Component
-const HeaderBar: React.FC = () => {
+const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
+  const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+  const { data: membersData, isLoading, error } = useGetProjectMembersWithPositionsQuery(projectId, {
+    skip: !projectId || projectId === 0,
+  });
+
+  // Filter members with status IN_PROGRESS
+  const members = membersData?.data
+    ?.filter(member => member.status.toUpperCase() === 'IN_PROGRESS')
+    ?.map(member => ({
+      id: member.id,
+      name: member.fullName || member.accountName || 'Unknown',
+      avatar: member.picture || 'https://via.placeholder.com/32', // Updated placeholder size
+    })) || [];
+
+  const toggleMembers = () => {
+    setIsMembersExpanded(!isMembersExpanded);
+  };
+
+  if (isLoading) {
+    return <div className="p-4 text-center text-gray-500">Loading members...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        Error loading members: {(error as any)?.data?.message || 'Unknown error'}
+      </div>
+    );
+  }
+
   return (
     <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
       <div className='flex items-center gap-2.5'>
@@ -314,17 +344,54 @@ const HeaderBar: React.FC = () => {
           />
         </div>
 
-        <div className='flex gap-1'>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-emerald-600'>
-            DH
-          </div>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-red-500'>
-            D
-          </div>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-blue-600'>
-            NV
-          </div>
+        <div className="flex items-center">
+          {members.length > 0 ? (
+            isMembersExpanded ? (
+              <div className="flex items-center">
+                {members.map((member, index) => (
+                  <div
+                    key={member.id}
+                    className="relative w-8 h-8 group"
+                    style={{ marginLeft: index > 0 ? '-4px' : '0' }}
+                  >
+                    <img
+                      src={member.avatar}
+                      alt={`${member.name} avatar`}
+                      className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                      onClick={toggleMembers}
+                    />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      {member.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="relative w-8 h-8 group">
+                <img
+                  src={members[0].avatar}
+                  alt={`${members[0].name} avatar`}
+                  className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                  onClick={toggleMembers}
+                />
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  {members[0].name}
+                </span>
+                {members.length > 1 && (
+                  <div
+                    className="absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer"
+                    onClick={toggleMembers}
+                  >
+                    +{members.length - 1}
+                  </div>
+                )}
+              </div>
+            )
+          ) : (
+            <div className="text-xs text-gray-500">No active members</div>
+          )}
         </div>
+
         <button className='flex items-center bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded font-medium text-sm'>
           <FaFilter className='mr-1' />
           Filter{' '}
@@ -874,7 +941,7 @@ const ProjectTaskList: React.FC = () => {
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
-      <HeaderBar />
+      <HeaderBar projectId={projectId || 0} />
       {(isUpdatingTask ||
         isUpdatingEpic ||
         isUpdatingSubtask ||

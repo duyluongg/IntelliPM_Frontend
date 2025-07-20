@@ -405,7 +405,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
       const response = await createTask(newTask).unwrap();
       console.log('Task creation result:', response);
       setNewTaskTitle('');
-      onTaskUpdated(); // Trigger refetch of sprint and backlog data
+      onTaskUpdated(); 
     } catch (err: any) {
       console.error('Error creating task:', err);
       const errorMessage = err?.data?.message || 'Failed to create task';

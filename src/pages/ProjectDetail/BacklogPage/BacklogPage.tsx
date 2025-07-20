@@ -66,11 +66,6 @@ const BacklogPage: React.FC = () => {
     skip: !projectKey || projectKey === 'NotFound',
   });
 
-  const [members] = useState([
-    { id: 1, name: 'John Doe', avatar: 'https://via.placeholder.com/30' },
-    { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
-  ]);
-
   console.log('Raw Sprint Data:', sprintData);
   console.log('Raw Backlog Data:', backlogData);
 
@@ -116,7 +111,7 @@ const BacklogPage: React.FC = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      <BacklogHeader members={members} onSearch={handleSearch} />
+      <BacklogHeader onSearch={handleSearch} projectId={projectData?.data?.id || 0} />
       <DndProvider backend={HTML5Backend}>
         <BacklogBody
           onCreateEpic={handleCreateEpic}

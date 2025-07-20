@@ -35,17 +35,10 @@ interface TaskItemProps {
 
 const staticStatusOptions = [
   { label: 'TO DO', value: 'TO DO', name: 'TO_DO', bg: 'bg-gray-200', text: 'text-gray-800' },
-  {
-    label: 'IN PROGRESS',
-    value: 'IN PROGRESS',
-    name: 'IN_PROGRESS',
-    bg: 'bg-blue-200',
-    text: 'text-blue-800',
-  },
+  { label: 'IN PROGRESS', value: 'IN PROGRESS', name: 'IN_PROGRESS', bg: 'bg-blue-200', text: 'text-blue-800' },
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
-// Function to format date to "day monthAbbr" (e.g., "1 Jun")
 const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return 'Invalid Date';
   const date = new Date(dateStr);
@@ -82,10 +75,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     categories: DynamicCategory[]
   ): string => {
     if (!apiStatus) return 'TO DO';
-    const normalizedApiStatus = apiStatus
-      .trim()
-      .toUpperCase()
-      .replace(/[-_\s]/g, '');
+    const normalizedApiStatus = apiStatus.trim().toUpperCase().replace(/[-_\s]/g, '');
     const category = categories.find(
       (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
     );
@@ -214,11 +204,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   return (
     <div
       ref={ref}
-      className={`grid grid-cols-[auto_100px_1fr_auto_auto_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
+      className={`grid grid-cols-[40px_100px_1fr_auto_120px_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className='w-4 h-4' />
+      <div className='flex justify-center'>
+        <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className='w-4 h-4' />
+      </div>
       <span className='text-sm text-gray-900 truncate ml-2'>{task.id}</span>
       {editingTitle ? (
         <input
@@ -228,18 +220,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
           onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
-          className='text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500'
+          className='text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full'
         />
       ) : (
         <span
-          className='text-sm text-gray-700 truncate cursor-pointer hover:underline'
+          className='text-sm text-gray-700 truncate cursor-pointer hover:underline w-full'
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
-      {/* Epic column with auto width */}
-      <div className='flex items-center justify-start pl-2'>
+      {/* Epic column with 5px right margin */}
+      <div className='flex justify-end pl-2 mr-5'>
         {(task.epicName || '') &&
           (isNarrow || isMultiline ? (
             <span className='w-3 h-3 rounded-sm bg-[#c97cf4]' title={task.epicName || ''} />
@@ -254,8 +246,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           ))}
         {!task.epicName && <span className='text-xs text-gray-400'>-</span>}
       </div>
-      {/* Status column with auto width */}
-      <div className='flex items-center justify-start pl-2 relative' ref={dropdownRef}>
+      {/* Status column with background fitting content */}
+      <div className='flex items-center justify-start relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
           className={`inline-flex text-xs font-bold rounded px-2 py-0.5 items-center gap-0.5 ${currentStyle.bg} ${currentStyle.text} hover:brightness-95`}

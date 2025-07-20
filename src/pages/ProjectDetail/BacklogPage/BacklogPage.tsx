@@ -11,7 +11,6 @@ import { useGetTasksFromBacklogQuery, type TaskBacklogResponseDTO } from '../../
 
 const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In Progress' | 'Done' => {
   if (!apiStatus) {
-    console.warn('API status is null or undefined, defaulting to To Do');
     return 'To Do';
   }
   const normalizedStatus = apiStatus.toUpperCase();
@@ -25,7 +24,6 @@ const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In P
     case 'DONE':
       return 'Done';
     default:
-      console.warn(`Unknown API status: ${apiStatus}, defaulting to To Do`);
       return 'To Do';
   }
 };
@@ -65,9 +63,6 @@ const BacklogPage: React.FC = () => {
   } = useGetTasksFromBacklogQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
-
-  console.log('Raw Sprint Data:', sprintData);
-  console.log('Raw Backlog Data:', backlogData);
 
   const sprints: SprintWithTaskListResponseDTO[] = (Array.isArray(sprintData) ? sprintData : []).map((sprint) => ({
     ...sprint,

@@ -4,12 +4,12 @@ import {
   useUpdateTaskTitleMutation,
   useUpdateTaskStatusMutation,
   useCreateTaskMutation,
-  useUpdateTaskSprintMutation, // Thêm hook mới
+  useUpdateTaskSprintMutation,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
 import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 import { useGetCategoriesByGroupQuery, type DynamicCategory } from '../../../services/dynamicCategoryApi';
-import { useDrag, useDrop } from 'react-dnd';
+import { useDrag, useDrop, type ConnectDragSource, type ConnectDropTarget } from 'react-dnd';
 import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
@@ -19,20 +19,22 @@ interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
   backlogTasks: TaskBacklogResponseDTO[];
   projectId: number;
+  onTaskUpdated: () => void;
 }
 
 interface TaskItemProps {
   task: TaskBacklogResponseDTO;
   index: number;
-  sprintId: number | null; // null cho backlog
-  moveTask: (taskId: string, toSprintId: number | null, toStatus: string) => Promise<void>;
+  sprintId: number | null;
+  moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) => {
   const { data: statusCategories, isLoading: isStatusLoading, error: categoryError } = useGetCategoriesByGroupQuery('task_status');
   const [updateTaskStatus, { isLoading: isUpdatingStatus, error: statusError }] = useUpdateTaskStatusMutation();
+  const [updateTaskTitle, { isLoading: isUpdatingTitle, error: titleError }] = useUpdateTaskTitleMutation();
 
-  // Drag source
+  const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'TASK',
     item: { id: task.id, index, sprintId, status: task.status },
@@ -41,7 +43,8 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }),
   }));
 
-  // Map API status to UI label
+  drag(ref);
+
   const mapApiStatusToUI = (apiStatus: string | null | undefined, categories: DynamicCategory[]): string => {
     if (!apiStatus) {
       console.warn('API status is null or undefined, defaulting to first active status');
@@ -83,7 +86,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const [updateTaskTitle, { isLoading: isUpdatingTitle, error: titleError }] = useUpdateTaskTitleMutation();
 
   useEffect(() => {
     if (!isStatusLoading && statusCategories?.data) {
@@ -124,13 +126,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
       return;
     }
     try {
-      console.log(`Updating title for task ${task.id} to: ${title}`);
+      console.log(`Cập nhật tiêu đề cho task ${task.id} thành: ${title}`);
       await updateTaskTitle({ id: task.id, title }).unwrap();
       setEditingTitle(false);
     } catch (err: any) {
-      console.error('Error updating title:', err);
-      const errorMessage = err?.data?.message || 'Failed to update title';
-      alert(`Failed to update title: ${errorMessage}`);
+      console.error('Lỗi khi cập nhật tiêu đề:', err);
+      const errorMessage = err?.data?.message || 'Không thể cập nhật tiêu đề';
+      alert(`Không thể cập nhật tiêu đề: ${errorMessage}`);
       setTitle(task.title);
       setEditingTitle(false);
     }
@@ -140,22 +142,22 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     try {
       const category = statusCategories?.data?.find(c => c.label === newStatusLabel);
       const apiStatus = category?.name || (newStatusLabel === 'To Do' ? 'TO_DO' : newStatusLabel === 'In Progress' ? 'IN_PROGRESS' : 'DONE');
-      console.log(`Sending update for task ${task.id} with status: ${apiStatus}`);
+      console.log(`Cập nhật trạng thái cho task ${task.id} thành: ${apiStatus}`);
       const response = await updateTaskStatus({ id: task.id, status: apiStatus }).unwrap();
-      console.log('Update status response:', response);
+      console.log('Kết quả cập nhật trạng thái:', response);
       setStatus(newStatusLabel);
       setOpenDropdown(false);
     } catch (err: any) {
-      console.error('Error updating status:', err);
-      const errorMessage = err?.data?.message || 'Failed to update status';
-      console.log('Error details:', { error: err, status: err.status, data: err.data });
-      alert(`Failed to update status: ${errorMessage}`);
+      console.error('Lỗi khi cập nhật trạng thái:', err);
+      const errorMessage = err?.data?.message || 'Không thể cập nhật trạng thái';
+      console.log('Chi tiết lỗi:', { error: err, status: err.status, data: err.data });
+      alert(`Không thể cập nhật trạng thái: ${errorMessage}`);
       setStatus(mapApiStatusToUI(task.status, statusCategories?.data || []));
     }
   };
 
   const assignees = task.taskAssignments.map((a) => ({
-    name: a.accountFullname || 'Unknown',
+    name: a.accountFullname || 'Không xác định',
     picture: a.accountPicture || null,
   }));
   const isNarrow = window.innerWidth < 640;
@@ -171,16 +173,16 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
 
   if (isStatusLoading) {
-    return <div className="text-xs text-gray-500">Loading statuses...</div>;
+    return <div className="text-xs text-gray-500">Đang tải trạng thái...</div>;
   }
 
   if (categoryError) {
-    return <div className="text-xs text-red-500">Error loading statuses: {(categoryError as any)?.data?.message || 'Unknown error'}</div>;
+    return <div className="text-xs text-red-500">Lỗi tải trạng thái: {(categoryError as any)?.data?.message || 'Lỗi không xác định'}</div>;
   }
 
   return (
     <div
-      ref={drag}
+      ref={ref}
       className={`grid grid-cols-[auto_100px_1fr_160px_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${isDragging ? 'opacity-50' : ''}`}
     >
       <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className="w-4 h-4" />
@@ -279,23 +281,23 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         )}
       </div>
       {(isUpdatingTitle || isUpdatingStatus) && (
-        <div className="text-xs text-blue-500">Updating...</div>
+        <div className="text-xs text-blue-500">Đang cập nhật...</div>
       )}
       {titleError && (
         <div className="text-xs text-red-500">
-          Error: {(titleError as any)?.data?.message || 'Failed to update title'}
+          Lỗi: {(titleError as any)?.data?.message || 'Không thể cập nhật tiêu đề'}
         </div>
       )}
       {statusError && (
         <div className="text-xs text-red-500">
-          Error: {(statusError as any)?.data?.message || 'Failed to update status'}
+          Lỗi: {(statusError as any)?.data?.message || 'Không thể cập nhật trạng thái'}
         </div>
       )}
     </div>
   );
 };
 
-const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, projectId }) => {
+const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, projectId, onTaskUpdated }) => {
   const [newTaskTitle, setNewTaskTitle] = useState<string>('');
   const [createTask, { isLoading: isCreatingTask, error: createTaskError }] = useCreateTaskMutation();
   const [updateTaskSprint, { isLoading: isUpdatingSprint, error: sprintError }] = useUpdateTaskSprintMutation();
@@ -304,30 +306,30 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
 
   const moveTask = async (taskId: string, toSprintId: number | null, toStatus: string | null) => {
     try {
-      console.log(`Moving task ${taskId} to sprint ${toSprintId ?? 'Backlog'}${toStatus ? ` with status ${toStatus}` : ''}`);
-      // Cập nhật sprintId
+      console.log(`Di chuyển task ${taskId} đến sprint ${toSprintId ?? 'Backlog'}${toStatus ? ` với trạng thái ${toStatus}` : ''}`);
       await updateTaskSprint({ id: taskId, sprintId: toSprintId }).unwrap();
-      // Cập nhật status nếu được chỉ định
       if (toStatus) {
         const apiStatus = statusCategories?.data?.find(c => c.label === toStatus)?.name ||
           (toStatus === 'To Do' ? 'TO_DO' : toStatus === 'In Progress' ? 'IN_PROGRESS' : 'DONE');
+        console.log(`Cập nhật trạng thái task ${taskId} thành: ${apiStatus}`);
         await updateTaskStatus({ id: taskId, status: apiStatus }).unwrap();
       }
+      onTaskUpdated(); // Trigger refetch of sprint and backlog data
     } catch (err: any) {
-      console.error('Error moving task:', err);
-      const errorMessage = err?.data?.message || 'Failed to move task';
-      console.log('Error details:', { error: err, status: err.status, data: err.data });
-      alert(`Failed to move task: ${errorMessage}`);
+      console.error('Lỗi khi di chuyển task:', err);
+      const errorMessage = err?.data?.message || 'Không thể di chuyển task';
+      console.log('Chi tiết lỗi:', { error: err, status: err.status, data: err.data });
+      alert(`Không thể di chuyển task: ${errorMessage}`);
     }
   };
 
   const renderSection = (title: string, tasks: TaskBacklogResponseDTO[], actionText: string, sprintId: number | null) => {
+    const ref = useRef<HTMLDivElement>(null);
     const [{ isOver }, drop] = useDrop(() => ({
       accept: 'TASK',
       drop: (item: { id: string; index: number; sprintId: number | null; status: string | null }) => {
-        // Chỉ cập nhật nếu sprintId khác
         if (item.sprintId !== sprintId) {
-          const defaultStatus = sprintId === null ? 'TO_DO' : null; // Task vào backlog thì set TO_DO
+          const defaultStatus = sprintId === null ? 'To Do' : null;
           moveTask(item.id, sprintId, defaultStatus);
         }
       },
@@ -336,15 +338,17 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
       }),
     }));
 
+    drop(ref);
+
     return (
       <div
-        ref={drop}
+        ref={ref}
         className={`bg-white rounded-xl border border-gray-200 mb-4 ${isOver ? 'bg-blue-50' : ''}`}
       >
         <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
           <div>
             <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-            <p className="text-xs text-gray-500">{tasks.length} work item{tasks.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-500">{tasks.length} công việc{tasks.length !== 1 ? '' : ''}</p>
           </div>
           <button className="text-xs text-blue-600 hover:text-blue-700 font-medium px-2 py-1 rounded hover:bg-blue-50">
             {actionText}
@@ -358,7 +362,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
             <ChevronDown className="w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="What needs to be done?"
+              placeholder="Cần làm gì?"
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               onKeyDown={(e) => handleAddTask(e, title)}
@@ -369,12 +373,12 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
         </div>
         {createTaskError && (
           <div className="text-xs text-red-500 px-3 py-1">
-            Error: {(createTaskError as any)?.data?.message || 'Failed to create task'}
+            Lỗi: {(createTaskError as any)?.data?.message || 'Không thể tạo task'}
           </div>
         )}
         {sprintError && (
           <div className="text-xs text-red-500 px-3 py-1">
-            Error: {(sprintError as any)?.data?.message || 'Failed to update sprint'}
+            Lỗi: {(sprintError as any)?.data?.message || 'Không thể cập nhật sprint'}
           </div>
         )}
       </div>
@@ -386,30 +390,33 @@ const SprintColumn: React.FC<SprintColumnProps> = ({ sprints, backlogTasks, proj
 
     try {
       const defaultStatus = statusCategories?.data?.find(c => c.isActive && c.orderIndex === 1)?.name || 'TO_DO';
+      const sprintId = section !== 'Backlog' ? sprints.find(s => s.name === section)?.id : null;
       const newTask = {
         projectId,
         title: newTaskTitle,
         type: 'task',
         status: defaultStatus,
+        sprintId,
         createdAt: new Date().toISOString(),
         manualInput: true,
         generationAiInput: false,
       };
-      console.log('Creating task:', newTask);
+      console.log('Tạo task:', newTask);
       const response = await createTask(newTask).unwrap();
-      console.log('Create task response:', response);
+      console.log('Kết quả tạo task:', response);
       setNewTaskTitle('');
+      onTaskUpdated(); // Trigger refetch of sprint and backlog data
     } catch (err: any) {
-      console.error('Error creating task:', err);
-      const errorMessage = err?.data?.message || 'Failed to create task';
-      alert(`Failed to create task: ${errorMessage}`);
+      console.error('Lỗi khi tạo task:', err);
+      const errorMessage = err?.data?.message || 'Không thể tạo task';
+      alert(`Không thể tạo task: ${errorMessage}`);
     }
   };
 
   return (
     <div className="p-3 space-y-4">
-      {sprints.map((sprint) => renderSection(sprint.name, sprint.tasks, 'Complete sprint', sprint.id))}
-      {backlogTasks.length > 0 && renderSection('Backlog', backlogTasks, 'Create sprint', null)}
+      {sprints.map((sprint) => renderSection(sprint.name, sprint.tasks, 'Hoàn thành sprint', sprint.id))}
+      {backlogTasks.length > 0 && renderSection('Backlog', backlogTasks, 'Tạo sprint', null)}
     </div>
   );
 };

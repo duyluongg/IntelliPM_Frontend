@@ -11,7 +11,6 @@ import { useGetTasksFromBacklogQuery, type TaskBacklogResponseDTO } from '../../
 
 const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In Progress' | 'Done' => {
   if (!apiStatus) {
-    console.warn('API status is null or undefined, defaulting to To Do');
     return 'To Do';
   }
   const normalizedStatus = apiStatus.toUpperCase();
@@ -25,7 +24,6 @@ const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In P
     case 'DONE':
       return 'Done';
     default:
-      console.warn(`Unknown API status: ${apiStatus}, defaulting to To Do`);
       return 'To Do';
   }
 };
@@ -65,14 +63,6 @@ const BacklogPage: React.FC = () => {
   } = useGetTasksFromBacklogQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
-
-  const [members] = useState([
-    { id: 1, name: 'John Doe', avatar: 'https://via.placeholder.com/30' },
-    { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
-  ]);
-
-  console.log('Raw Sprint Data:', sprintData);
-  console.log('Raw Backlog Data:', backlogData);
 
   const sprints: SprintWithTaskListResponseDTO[] = (Array.isArray(sprintData) ? sprintData : []).map((sprint) => ({
     ...sprint,
@@ -116,7 +106,7 @@ const BacklogPage: React.FC = () => {
 
   return (
     <div className="bg-gray-100 min-h-screen p-4">
-      <BacklogHeader members={members} onSearch={handleSearch} />
+      <BacklogHeader onSearch={handleSearch} projectId={projectData?.data?.id || 0} />
       <DndProvider backend={HTML5Backend}>
         <BacklogBody
           onCreateEpic={handleCreateEpic}

@@ -243,10 +243,15 @@ const WorkItemDetail: React.FC = () => {
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateSubtaskStatus({ id, status: newStatus }).unwrap();
-      await refetchSubtask();
+      await updateSubtaskStatus({
+        id,
+        status: newStatus,
+        createdBy: accountId,
+      }).unwrap();
+
+      refetchSubtask();
     } catch (err) {
-      console.error('Update subtask status failed', err);
+      console.error('Failed to update subtask status', err);
     }
   };
 
@@ -609,7 +614,7 @@ const WorkItemDetail: React.FC = () => {
                           onClick={async () => {
                             for (const title of selectedSuggestions) {
                               try {
-                                await createSubtask({ taskId, title }).unwrap();
+                                await createSubtask({ taskId, title, createdBy: accountId }).unwrap();
                               } catch (err) {
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
@@ -719,9 +724,9 @@ const WorkItemDetail: React.FC = () => {
 
                             <td onClick={() => setEditingSummaryId(item.key)} style={{
                               cursor: 'pointer',
-                              whiteSpace: 'normal',        // Cho phép xuống dòng
-                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
-                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                              whiteSpace: 'normal',       
+                              wordBreak: 'break-word',     
+                              maxWidth: '300px',           
                             }}
                             >
                               {editingSummaryId === item.key ? (
@@ -867,7 +872,7 @@ const WorkItemDetail: React.FC = () => {
                                 onClick={async () => {
                                   try {
                                     try {
-                                      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                      await createSubtask({ taskId, title: newSubtaskTitle, createdBy: accountId }).unwrap();
                                       console.log("✅ Create successfully");
                                     } catch (err) {
                                       console.error("❌ Error to call createSubtask:", err);

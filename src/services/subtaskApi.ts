@@ -46,25 +46,25 @@ export const subtaskApi = createApi({
       transformResponse: (response: ApiResponse<SubtaskResponseDTO[]>) => response.data,
     }),
 
-    updateSubtaskStatus: builder.mutation<void, { id: string; status: string }>({
-      query: ({ id, status }) => ({
+    updateSubtaskStatus: builder.mutation<void, { id: string; status: string; createdBy: number }>({
+      query: ({ id, status, createdBy }) => ({
         url: `subtask/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(status),
+        body: JSON.stringify({ status, createdBy }),
       }),
     }),
 
-    createSubtask: builder.mutation<void, { taskId: string; title: string }>({
-      query: ({ taskId, title }) => ({
-        url: 'subtask/create2', // ✅ endpoint đúng như curl bạn gửi
+    createSubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number }>({
+      query: ({ taskId, title, createdBy }) => ({
+        url: 'subtask/create2', 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: { taskId, title }, // ✅ không cần JSON.stringify
+        body: { taskId, title, createdBy }, 
       }),
     }),
 

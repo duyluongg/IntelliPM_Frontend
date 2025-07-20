@@ -19,7 +19,8 @@ import {
 import { useUpdateSubtaskMutation } from '../../../services/subtaskApi';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
-import { FileText } from 'lucide-react';
+import { FcDocument } from 'react-icons/fc';
+import { HiDocumentAdd } from 'react-icons/hi';
 import { Tooltip } from 'react-tooltip';
 import WorkItem from '../../WorkItem/WorkItem';
 import EpicPopup from '../../WorkItem/EpicPopup';
@@ -1446,22 +1447,21 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.document}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden '
                 >
                   {createdDocIds[task.key] ? (
                     <button
-                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
+                      className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
-                      <FileText size={16} className='text-blue-500' />
-                      View Document
+                      <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
                   ) : (
                     <button
-                      className='text-blue-600 underline hover:text-blue-800 text-sm'
+                      className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
-                      Add/View
+                      <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
                   )}
                 </td>

@@ -233,11 +233,11 @@ const Login: React.FC = () => {
         };
 
         // ✅ Save to localStorage
-        localStorage.setItem("accountId", result.data.id.toString());
-        localStorage.setItem("username", result.data.username);
-        localStorage.setItem("accessToken", result.data.accessToken);
-        localStorage.setItem("email", result.data.email);
-        
+        localStorage.setItem('accountId', result.data.id.toString());
+        localStorage.setItem('username', result.data.username);
+        localStorage.setItem('accessToken', result.data.accessToken);
+        localStorage.setItem('email', result.data.email);
+
         login(userData); // ⚠️ Đợi useEffect phía dưới xử lý redirect
       }
     } catch (err) {
@@ -245,19 +245,36 @@ const Login: React.FC = () => {
     }
   };
 
+  //   useEffect(() => {
+  //   const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
+
+  //   if (isAccessRole && hasProjects && projectData?.data?.length > 0) {
+  //     const firstProject = projectData.data[0];
+  //     navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+  //   } else if (user?.role === 'ADMIN') {
+  //     navigate('/admin/dashboard');
+  //   } else if (user?.role === 'CLIENT') {
+  //     navigate('/meeting');
+  //   } else if (user?.role === 'TEAM_LEADER') {
+  //     navigate(`/team-leader/project?projectKey=${firstProject.projectKey}#list`);
+  //   }
+  // }, [user, hasProjects, projectData, navigate]);
 
   useEffect(() => {
-    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
+    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(
+      user?.role ?? ''
+    );
+    const hasData = hasProjects && projectData?.data?.length > 0;
+    const firstProject = hasData ? projectData.data[0] : null;
 
-    if (isAccessRole && hasProjects && projectData?.data?.length > 0) {
-      const firstProject = projectData.data[0];
-      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+    if (isAccessRole && hasData && firstProject) {
+      if (user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_MEMBER') {
+        navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+      }
     } else if (user?.role === 'ADMIN') {
       navigate('/admin/dashboard');
     } else if (user?.role === 'CLIENT') {
       navigate('/meeting');
-    } else if (user?.role === 'TEAM_LEADER') {
-      navigate('/team-leader');
     }
   }, [user, hasProjects, projectData, navigate]);
 

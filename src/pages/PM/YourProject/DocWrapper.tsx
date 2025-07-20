@@ -5,7 +5,7 @@ import { useCreateDocumentMutation } from '../../../services/Document/documentAP
 import { useAuth } from '../../../services/AuthContext';
 
 export default function DocWrapper() {
-  const { id, type } = useParams(); // type = 'default', id = 'new' hoặc docId
+  const { id, type } = useParams();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey');
 
@@ -14,6 +14,7 @@ export default function DocWrapper() {
   const navigate = useNavigate();
 
   const [docId, setDocId] = useState<number | null>(null);
+  console.log(type, 'type');
 
   useEffect(() => {
     const createNewDocument = async () => {
@@ -21,7 +22,7 @@ export default function DocWrapper() {
 
       try {
         const res = await createDocument({
-          projectId: Number(projectKey), // Nếu projectKey là projectId, OK
+          projectId: Number(projectKey),
           title: 'New Document',
           type: type || 'default',
           content: '',
@@ -45,11 +46,11 @@ export default function DocWrapper() {
   }, [id, projectKey, user?.id]);
 
   if (id === 'new') {
-    return <p className="p-4 text-gray-500">Đang tạo tài liệu...</p>;
+    return <p className='p-4 text-gray-500'>Đang tạo tài liệu...</p>;
   }
 
   if (!docId) {
-    return <p className="p-4 text-red-500">Invalid document ID.</p>;
+    return <p className='p-4 text-red-500'>Invalid document ID.</p>;
   }
 
   return <Doc docId={docId} />;

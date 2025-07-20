@@ -32,7 +32,7 @@ export const documentApi = createApi({
     }),
       createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
-        url: 'documents',
+        url: 'documents/create',
         method: 'POST',
         body,
       }),

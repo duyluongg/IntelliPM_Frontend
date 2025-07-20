@@ -41,8 +41,6 @@ export interface TaskResponseDTO {
   dependencies: TaskDependency[];
 }
 
-
-
 interface TaskDependency {
   id: number;
   taskId: string;
@@ -84,7 +82,6 @@ export interface UpdateTaskRequestDTO {
   plannedEndDate: string;
   status: string;
 }
-
 
 export interface SubtaskViewDTO {
   id: string;
@@ -154,8 +151,6 @@ export interface TaskAssignmentResponseDTO {
   accountFullname?: string | null;
   accountPicture?: string | null;
 }
-
-
 
 export const taskApi = createApi({
   reducerPath: 'taskApi',
@@ -320,13 +315,27 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-   getTasksFromBacklog: builder.query<TaskBacklogResponseDTO[], string>({
+    getTasksFromBacklog: builder.query<TaskBacklogResponseDTO[], string>({
       query: (projectKey) => ({
         url: 'task/backlog',
         params: { projectKey },
       }),
-      transformResponse: (response: TaskBackLogResponse) => response.data as TaskBacklogResponseDTO[],
+      transformResponse: (response: TaskBackLogResponse) =>
+        response.data as TaskBacklogResponseDTO[],
       providesTags: ['Task'],
+    }),
+
+    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null }>({
+      query: ({ id, sprintId }) => ({
+        url: `task/${id}/sprint`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: sprintId, 
+      }),
+      transformResponse: (response: TaskDetailResponse) => response.data,
+      invalidatesTags: ['Task'],
     }),
 
 
@@ -349,5 +358,5 @@ export const {
   useCreateTaskMutation,
   useGetTaskWithSubtasksQuery,
   useGetTasksFromBacklogQuery,
-
+  useUpdateTaskSprintMutation,
 } = taskApi;

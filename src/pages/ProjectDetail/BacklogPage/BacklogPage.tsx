@@ -1,36 +1,41 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import BacklogHeader from './BacklogHeader';
 import BacklogBody from './BacklogBody';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetEpicsWithTasksByProjectKeyQuery, type EpicWithStatsResponseDTO } from '../../../services/epicApi';
-import { useGetSprintsByProjectKeyWithTasksQuery } from '../../../services/sprintApi';
-import { useGetTasksFromBacklogQuery } from '../../../services/taskApi';
+import { useGetSprintsByProjectKeyWithTasksQuery, type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
+import { useGetTasksFromBacklogQuery, type TaskBacklogResponseDTO } from '../../../services/taskApi';
 
-interface Sprint {
-  id: string;
-  name: string;
-  tasks: Task[];
-}
-
-interface Task {
-  id: string;
-  title: string;
-  status: 'To Do' | 'In Progress' | 'Done';
-  assignee?: { name: string; picture?: string | null }[]; // Cập nhật assignee
-  type?: 'task' | 'story' | 'bug';
-  epicName?: string | null;
-}
+const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In Progress' | 'Done' => {
+  if (!apiStatus) {
+    console.warn('API status is null or undefined, defaulting to To Do');
+    return 'To Do';
+  }
+  const normalizedStatus = apiStatus.toUpperCase();
+  switch (normalizedStatus) {
+    case 'TO_DO':
+      return 'To Do';
+    case 'IN_PROGRESS':
+    case 'IN PROGRESS':
+    case 'INPROGRESS':
+      return 'In Progress';
+    case 'DONE':
+      return 'Done';
+    default:
+      console.warn(`Unknown API status: ${apiStatus}, defaulting to To Do`);
+      return 'To Do';
+  }
+};
 
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch project details to verify projectKey
   const { data: projectData, isLoading: isProjectLoading, error: projectError } = useGetProjectDetailsByKeyQuery(projectKey);
-
-  // Fetch epics with tasks by projectKey
   const {
     data: epicData = [],
     isLoading: isEpicLoading,
@@ -38,8 +43,6 @@ const BacklogPage: React.FC = () => {
   } = useGetEpicsWithTasksByProjectKeyQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
-
-  // Fetch sprints with tasks by projectKey
   const {
     data: sprintData = [],
     isLoading: isSprintLoading,
@@ -47,8 +50,6 @@ const BacklogPage: React.FC = () => {
   } = useGetSprintsByProjectKeyWithTasksQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
-
-  // Fetch backlog tasks by projectKey
   const {
     data: backlogData = [],
     isLoading: isBacklogLoading,
@@ -62,58 +63,42 @@ const BacklogPage: React.FC = () => {
     { id: 2, name: 'Jane Smith', avatar: 'https://via.placeholder.com/30' },
   ]);
 
-  // Ánh xạ dữ liệu sprints
-  const sprints: Sprint[] = sprintData.map((sprint) => ({
-    id: sprint.id.toString(),
-    name: sprint.name,
+  console.log('Raw Sprint Data:', sprintData);
+  console.log('Raw Backlog Data:', backlogData);
+
+  const sprints: SprintWithTaskListResponseDTO[] = sprintData.map((sprint) => ({
+    ...sprint,
     tasks: sprint.tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      status: task.status === 'TO_DO' ? 'To Do' : task.status === 'IN_PROGRESS' ? 'In Progress' : 'Done',
-      type: task.type?.toLowerCase() as 'task' | 'story' | 'bug' | undefined,
-      epicName: task.epicName || null,
-      assignee: task.taskAssignments.map((a) => ({
-        name: a.accountFullname || 'Unknown',
-        picture: a.accountPicture || null,
-      })) || [],
+      ...task,
+      status: mapApiStatusToUI(task.status),
     })),
   }));
 
-  // Ánh xạ dữ liệu backlogTasks
-  const backlogTasks: Task[] = backlogData.map((task) => ({
-    id: task.id,
-    title: task.title,
-    status: task.status === 'TO_DO' ? 'To Do' : task.status === 'IN_PROGRESS' ? 'In Progress' : 'Done',
-    type: task.type?.toLowerCase() as 'task' | 'story' | 'bug' | undefined,
-    epicName: task.epicName || null,
-    assignee: task.taskAssignments.map((a) => ({
-      name: a.accountFullname || 'Unknown',
-      picture: a.accountPicture || null,
-    })) || [],
+  const backlogTasks: TaskBacklogResponseDTO[] = backlogData.map((task) => ({
+    ...task,
+    status: mapApiStatusToUI(task.status),
   }));
 
-  // Xử lý loading và error
   if (isProjectLoading || isEpicLoading || isSprintLoading || isBacklogLoading) {
-    return <div className="p-4 text-center">Loading...</div>;
+    return <div className="p-4 text-center">Đang tải...</div>;
   }
 
   if (projectError || epicError || sprintError || backlogError) {
     return (
       <div className="p-4 text-center text-red-500">
-        Error loading data: {(projectError || epicError || sprintError || backlogError) as string}
+        Lỗi tải dữ liệu: {(projectError || epicError || sprintError || backlogError) as string}
       </div>
     );
   }
 
   const handleCreateEpic = () => {
-    alert('Create Epic clicked!');
+    alert('Tạo Epic được click!');
   };
 
   const handleSearch = (query: string) => {
     setSearchQuery(query.toLowerCase());
   };
 
-  // Lọc epics theo searchQuery (nếu có)
   const filteredEpics = searchQuery
     ? epicData.filter((epic: EpicWithStatsResponseDTO) =>
         epic.name.toLowerCase().includes(searchQuery)
@@ -123,12 +108,15 @@ const BacklogPage: React.FC = () => {
   return (
     <div className="bg-gray-100 min-h-screen p-4">
       <BacklogHeader members={members} onSearch={handleSearch} />
-      <BacklogBody
-        onCreateEpic={handleCreateEpic}
-        sprints={sprints}
-        epics={filteredEpics}
-        backlogTasks={backlogTasks}
-      />
+      <DndProvider backend={HTML5Backend}>
+        <BacklogBody
+          onCreateEpic={handleCreateEpic}
+          sprints={sprints}
+          epics={filteredEpics}
+          backlogTasks={backlogTasks}
+          projectId={projectData?.data?.id || 0}
+        />
+      </DndProvider>
     </div>
   );
 };

@@ -2,30 +2,18 @@ import React from 'react';
 import EpicColumn from './EpicColumn';
 import SprintColumn from './SprintColumn';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
-
-interface Task {
-  id: string;
-  title: string;
-  status: 'To Do' | 'In Progress' | 'Done';
-  assignee?: { name: string; picture?: string | null }[];
-  type?: 'task' | 'story' | 'bug';
-  epicName?: string | null;
-}
-
-interface Sprint {
-  id: string;
-  name: string;
-  tasks: Task[];
-}
+import { type TaskBacklogResponseDTO } from '../../../services/taskApi';
+import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 
 interface BacklogBodyProps {
   onCreateEpic: () => void;
-  sprints: Sprint[];
+  sprints: SprintWithTaskListResponseDTO[];
   epics: EpicWithStatsResponseDTO[];
-  backlogTasks: Task[];
+  backlogTasks: TaskBacklogResponseDTO[];
+  projectId: number; // Thêm projectId
 }
 
-const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics, backlogTasks }) => {
+const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics, backlogTasks, projectId }) => {
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
       <div className="flex flex-col sm:flex-row gap-4 min-w-[640px]">
@@ -36,7 +24,7 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics,
 
         {/* Sprint Column */}
         <div className="w-full sm:w-2/3 md:w-3/4">
-          <SprintColumn sprints={sprints} backlogTasks={backlogTasks} />
+          <SprintColumn sprints={sprints} backlogTasks={backlogTasks} projectId={projectId} />
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ export interface TaskComment {
   accountName: string;
   content: string;
   createdAt: string;
+  accountPicture: string;
 }
 
 export const taskCommentApi = createApi({

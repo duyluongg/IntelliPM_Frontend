@@ -2,7 +2,7 @@ import TaskStatusChart from './TaskStatusChart';
 import DashboardCard from './DashboardCard';
 import { useEffect, useState } from 'react';
 import {
-  useCalculateProjectMetricsMutation,
+  useCalculateMetricsBySystemMutation,
   useGetProjectMetricByProjectKeyQuery,
 } from '../../../services/projectMetricApi';
 import HealthOverview from './HealthOverview';
@@ -12,10 +12,14 @@ import CostBarChart from './CostBarChart';
 import WorkloadChart from './WorkloadChart';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
-import { useLazyGetAIRecommendationsByProjectKeyQuery, useCreateProjectRecommendationMutation } from '../../../services/projectRecommendationApi';
+import {
+  useLazyGetAIRecommendationsByProjectKeyQuery,
+  useCreateProjectRecommendationMutation,
+} from '../../../services/projectRecommendationApi';
+import './ProjectDashboard.css';
 
 const ProjectDashboard = () => {
-  const [calculate] = useCalculateProjectMetricsMutation();
+  const [calculate] = useCalculateMetricsBySystemMutation();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
 
@@ -26,8 +30,55 @@ const ProjectDashboard = () => {
   }, [calculate, projectKey]);
 
   const { data: metricData } = useGetProjectMetricByProjectKeyQuery(projectKey);
-  const spi = metricData?.data?.spi || 1;
-  const cpi = metricData?.data?.cpi || 1;
+  const spi = metricData?.data?.schedulePerformanceIndex || 1;
+  const cpi = metricData?.data?.costPerformanceIndex || 1;
+
+  const ForecastCard = ({
+    eac,
+    etc,
+    vac,
+    edac,
+  }: {
+    eac: number;
+    etc: number;
+    vac: number;
+    edac: number;
+  }) => {
+    return (
+      <div className='bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded col-span-full'>
+        <div className='flex flex-col gap-2 text-sm'>
+          <div className='font-semibold text-base mb-1'>📊 Project Forecast</div>
+          <div>
+            <strong>Estimate at Completion (EAC):</strong> {eac.toLocaleString()}
+            <span className='block ml-1 text-xs text-gray-600'>
+              — This is the expected total cost of the project when completed. It considers actual
+              costs so far and remaining estimates.
+            </span>
+          </div>
+          <div>
+            <strong>Estimate to Complete (ETC):</strong> {etc.toLocaleString()}
+            <span className='block ml-1 text-xs text-gray-600'>
+              — The projected cost required to finish the remaining work in the project.
+            </span>
+          </div>
+          <div>
+            <strong>Variance at Completion (VAC):</strong> {vac.toLocaleString()}
+            <span className='block ml-1 text-xs text-gray-600'>
+              — The difference between the original budget and the estimated cost at completion. A
+              negative value means over budget.
+            </span>
+          </div>
+          <div>
+            <strong>Estimated Duration (EDAC):</strong> {edac} months
+            <span className='block ml-1 text-xs text-gray-600'>
+              — The estimated total time to complete the project based on current progress and
+              trends.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const AlertCard = ({
     spi,
@@ -58,12 +109,22 @@ const ProjectDashboard = () => {
             </div>
           </div>
 
-          {!showRecommendations && (
+          {/* {!showRecommendations && (
             <button
               onClick={onShowAIRecommendations}
               className='self-start bg-blue-600 text-white px-4 py-1.5 mt-1 rounded hover:bg-blue-700 text-sm'
             >
               📥 Xem gợi ý từ AI
+            </button>
+          )} */}
+          {!showRecommendations && (
+            <button
+              onClick={onShowAIRecommendations}
+              disabled={isRecLoading}
+              className='self-start bg-blue-600 text-white px-4 py-1.5 mt-1 rounded hover:bg-blue-700 text-sm flex items-center gap-2'
+            >
+              📥 View AI suggestion
+              {isRecLoading && <span className='loader small'></span>}
             </button>
           )}
         </div>
@@ -87,24 +148,32 @@ const ProjectDashboard = () => {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const recommendations: AIRecommendation[] = recData?.data ?? [];
 
-  const RecommendationCard = ({ rec, index, projectId }: { rec: AIRecommendation; index: number; projectId: number | undefined; }) => {
+  const RecommendationCard = ({
+    rec,
+    index,
+    projectId,
+  }: {
+    rec: AIRecommendation;
+    index: number;
+    projectId: number | undefined;
+  }) => {
     const [approved, setApproved] = useState<boolean | null>(null);
     const [createRecommendation] = useCreateProjectRecommendationMutation();
 
     const handleApprove = async () => {
-    if (!projectId) return;
-    try {
-      await createRecommendation({
-        projectId,
-        taskId: rec.suggestedTask,
-        type: rec.type,
-        recommendation: rec.details,
-      }).unwrap();
-      setApproved(true);
-    } catch (err) {
-      console.error('Error saving recommendation:', err);
-    }
-  };
+      if (!projectId) return;
+      try {
+        await createRecommendation({
+          projectId,
+          taskId: rec.suggestedTask,
+          type: rec.type,
+          recommendation: rec.details,
+        }).unwrap();
+        setApproved(true);
+      } catch (err) {
+        console.error('Error saving recommendation:', err);
+      }
+    };
 
     const handleReject = () => {
       setApproved(false);
@@ -166,6 +235,13 @@ const ProjectDashboard = () => {
         }}
       />
 
+      <ForecastCard
+        eac={metricData?.data?.estimateAtCompletion ?? 0}
+        etc={metricData?.data?.estimateToComplete ?? 0}
+        vac={metricData?.data?.varianceAtCompletion ?? 0}
+        edac={metricData?.data?.estimateDurationAtCompletion ?? 0}
+      />
+
       <DashboardCard title='Health Overview'>
         <HealthOverview />
       </DashboardCard>
@@ -190,7 +266,7 @@ const ProjectDashboard = () => {
         <WorkloadChart />
       </DashboardCard>
 
-      {showRecommendations && (
+      {/* {showRecommendations && (
         <div className='col-span-full space-y-4 mt-4'>
           {isRecLoading ? (
             <p>Đang lấy gợi ý...</p>
@@ -199,13 +275,49 @@ const ProjectDashboard = () => {
               <h2>📌 Suggested actions from AI</h2>
               {recommendations.length > 0 ? (
                 recommendations.map((rec, idx) => (
-                  <RecommendationCard key={idx} rec={rec} index={idx} projectId={metricData?.data?.projectId} />
+                  <RecommendationCard
+                    key={idx}
+                    rec={rec}
+                    index={idx}
+                    projectId={metricData?.data?.projectId}
+                  />
                 ))
               ) : (
                 <p className='text-sm text-gray-600'>Không có gợi ý nào từ AI.</p>
               )}
             </>
           )}
+        </div>
+      )} */}
+      {showRecommendations && (
+        <div className='fixed inset-0 z-50 bg-black bg-opacity-30 flex justify-center items-center'>
+          <div className='bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto'>
+            <h2 className='text-lg font-semibold mb-4'>📌 AI Suggestions</h2>
+
+            {isRecLoading ? (
+              <p>Đang lấy gợi ý...</p>
+            ) : recommendations.length > 0 ? (
+              recommendations.map((rec, idx) => (
+                <RecommendationCard
+                  key={idx}
+                  rec={rec}
+                  index={idx}
+                  projectId={metricData?.data?.projectId}
+                />
+              ))
+            ) : (
+              <p className='text-sm text-gray-600'>Không có gợi ý nào từ AI.</p>
+            )}
+
+            <div className='mt-4 text-right'>
+              <button
+                onClick={() => setShowRecommendations(false)}
+                className='px-4 py-1.5 bg-gray-200 rounded hover:bg-gray-300'
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

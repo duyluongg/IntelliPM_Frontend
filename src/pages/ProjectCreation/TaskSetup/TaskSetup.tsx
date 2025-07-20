@@ -273,7 +273,7 @@ const TaskSetup: React.FC = () => {
           console.log(`Epic ${epic.epicId} created:`, response);
         }
         setSuccessMessage('Epics and tasks saved successfully!');
-        setTimeout(() => navigate('/project-overview'), 1000);
+        setTimeout(() => navigate(''), 1000);
       } catch (error: any) {
         console.error('Error saving epics:', error);
         setErrorMessage(error.data?.message || 'Failed to save epics and tasks. Please try again.');

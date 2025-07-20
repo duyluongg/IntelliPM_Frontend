@@ -35,7 +35,7 @@
 // const persistConfig = {
 //   key: 'root',
 //   storage,
-//   whitelist: ['project'], 
+//   whitelist: ['project'],
 // };
 
 // export const store = configureStore({
@@ -114,14 +114,7 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import storage from 'redux-persist/lib/storage'; // dùng localStorage
 import { persistReducer, persistStore } from 'redux-persist';
-import {
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
-} from 'redux-persist';
+import { FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 
 import { api } from '../services/api';
 import { authApi } from '../services/authApi';
@@ -140,6 +133,7 @@ import { meetingParticipantApi } from '../services/ProjectManagement/MeetingServ
 import { documentApi } from '../services/Document/documentAPI';
 import { meetingFeedbackApi } from '../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
 import { riskApi } from '../services/riskApi';
+import projectCreationReducer from '../components/slices/Project/projectCreationSlice';
 import { dynamicCategoryApi } from '../services/dynamicCategoryApi';
 import { requirementApi } from '../services/requirementApi';
 import { projectMemberApi } from '../services/projectMemberApi';
@@ -152,11 +146,12 @@ import { taskAssignmentApi } from '../services/taskAssignmentApi';
 import { subtaskAiApi } from '../services/subtaskAiApi';
 import { projectPositionApi } from '../services/projectPositionApi';
 import { projectRecommendationApi } from '../services/projectRecommendationApi';
-
+import { epicFileApi } from '../services/epicFileApi';
+import { meetingRescheduleRequestApi } from '../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
+import { epicCommentApi } from '../services/epicCommentApi';
+import { workLogApi } from '../services/workLogApi';
 import docReducer from '../components/slices/Document/documentSlice';
-import projectCreationReducer from '../components/slices/Project/projectCreationSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
-
 
 const persistConfig = {
   key: 'root',
@@ -195,14 +190,16 @@ const rootReducer = combineReducers({
   [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
   [projectPositionApi.reducerPath]: projectPositionApi.reducer,
   [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
+  [epicFileApi.reducerPath]: epicFileApi.reducer,
+  [meetingRescheduleRequestApi.reducerPath]: meetingRescheduleRequestApi.reducer,
+  [epicCommentApi.reducerPath]: epicCommentApi.reducer,
+  [workLogApi.reducerPath]: workLogApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
 });
 
-
 const persistedReducer = persistReducer(persistConfig, rootReducer);
-
 
 export const store = configureStore({
   reducer: persistedReducer,
@@ -241,6 +238,10 @@ export const store = configureStore({
       subtaskAiApi.middleware,
       projectPositionApi.middleware,
       projectRecommendationApi.middleware,
+      epicFileApi.middleware,
+      meetingRescheduleRequestApi.middleware,
+      epicCommentApi.middleware,
+      workLogApi.middleware
     ),
 });
 

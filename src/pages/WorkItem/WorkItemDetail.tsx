@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './WorkItemDetail.css';
+import { useAuth, type Role } from '../../services/AuthContext';
 import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
@@ -27,11 +28,17 @@ import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTas
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉnh lại path cho đúng
+import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
+import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const taskId = searchParams.get('taskId') || '';
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateTaskType] = useUpdateTaskTypeMutation();
   const [description, setDescription] = useState('');
@@ -67,7 +74,15 @@ const WorkItemDetail: React.FC = () => {
   const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
-
+  const [showSuggestionList, setShowSuggestionList] = React.useState(false);
+  const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
+  const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
+  const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
+  
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -174,6 +189,12 @@ const WorkItemDetail: React.FC = () => {
     skip: !taskData?.projectId,
   });
 
+  React.useEffect(() => {
+      if (assignees && taskId) {
+        setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      }
+    }, [assignees, taskId]);
+
   const {
     data: subtaskData = [],
     isLoading,
@@ -194,7 +215,7 @@ const WorkItemDetail: React.FC = () => {
       setDescription(taskData.description ?? '');
       setWorkType(taskData.type);
       setTitle(taskData.title);
-      setReporterName(taskData.reporterName);
+      setReporterName(taskData.reporterName ?? '');
       setPlannedEndDate(taskData.plannedEndDate);
       setPlannedStartDate(taskData.plannedStartDate);
       setProjectName(taskData.projectName ?? '');
@@ -432,6 +453,202 @@ const WorkItemDetail: React.FC = () => {
 
             <div className="field-group">
               <label>Subtasks</label>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  padding: '16px',
+                  margin: '12px 0',
+                  backgroundColor: '#fff',
+                  fontSize: '14px',
+                }}
+              >
+                {/* Header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '15px', fontWeight: '500' }}>
+                    <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
+                    Create suggested work items
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await generateSubtasksByAI(taskId).unwrap();
+                        setAiSuggestions(result);
+                        setShowSuggestionList(true);
+                        setSelectedSuggestions([]);
+                      } catch (err) {
+                        alert('❌ Failed to get suggestions');
+                        console.error(err);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#f4f5f7',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {loadingSuggest ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span role="img" style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}>🧠</span>
+                        <div className="dot-loader">
+                          <span>.</span><span>.</span><span>.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      'Suggest'
+                    )}
+
+                  </button>
+                </div>
+
+                {/* Suggestions */}
+                {showSuggestionList && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0, left: 0, right: 0, bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.4)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 1000,
+                    }}
+                    onClick={() => setShowSuggestionList(false)}
+                  >
+                    <div
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: '8px',
+                        width: '480px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        padding: '20px',
+                        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '15px', fontWeight: '500' }}>
+                          <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
+                          AI Suggested Subtasks
+                        </div>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                          }}
+                          title="Close"
+                        >
+                          ✖
+                        </button>
+                      </div>
+
+                      {/* Suggestion List */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          padding: '4px 8px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        {aiSuggestions.map((item, idx) => (
+                          <label
+                            key={idx}
+                            style={{
+                              display: 'flex ',
+                              alignItems: 'flex-start',
+                              gap: '2px',
+                              lineHeight: '1.4',
+                              wordBreak: 'break-word',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSuggestions.includes(item.title)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedSuggestions((prev) =>
+                                  checked ? [...prev, item.title] : prev.filter((t) => t !== item.title)
+                                );
+                              }}
+                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
+                            />
+                            <span style={{ flex: 6 }}>{item.title}</span>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Create Button */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <button
+                          onClick={async () => {
+                            for (const title of selectedSuggestions) {
+                              try {
+                                await createSubtask({ taskId, title }).unwrap();
+                              } catch (err) {
+                                console.error(`❌ Failed to create: ${title}`, err);
+                              }
+                            }
+                            alert('✅ Created selected subtasks');
+                            setShowSuggestionList(false);
+                            setSelectedSuggestions([]);
+                            await refetchSubtask();
+                          }}
+                          disabled={selectedSuggestions.length === 0}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontWeight: 500,
+                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Create Selected
+                        </button>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#eee',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div style={{ marginBottom: '8px' }}>
                 <div style={{
                   height: '8px',
@@ -450,6 +667,7 @@ const WorkItemDetail: React.FC = () => {
                   {progressPercent}% Done
                 </div>
               </div>
+
               <div className="issue-table">
                 {isLoading ? (
                   <p>Loading subtasks...</p>
@@ -499,7 +717,13 @@ const WorkItemDetail: React.FC = () => {
                               </span>
                             </td>
 
-                            <td onClick={() => setEditingSummaryId(item.key)} style={{ cursor: 'pointer' }}>
+                            <td onClick={() => setEditingSummaryId(item.key)} style={{
+                              cursor: 'pointer',
+                              whiteSpace: 'normal',        // Cho phép xuống dòng
+                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
+                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                            }}
+                            >
                               {editingSummaryId === item.key ? (
                                 <input
                                   type="text"
@@ -729,7 +953,7 @@ const WorkItemDetail: React.FC = () => {
                         .map((comment: any) => (
                           <div key={comment.id} className="simple-comment">
                             <div className="avatar-circle">
-                              <img src={accountIcon} alt="avatar" className="avatar-img" />
+                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
                             </div>
                             <div className="comment-content">
                               <div className="comment-header">
@@ -846,13 +1070,89 @@ const WorkItemDetail: React.FC = () => {
               </div>
               <div className="detail-item">
                 <label>Assignee</label>
-                <span>
-                  {isAssigneeLoading
-                    ? 'Loading...'
-                    : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
-                </span>
+                {canEdit ? (
+                  <div className="multi-select-dropdown">
+                    {/* Hiển thị danh sách đã chọn */}
+                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(taskAssignmentMap[taskId] ?? []).map((assignment) => (
+                        <span className="selected-tag" key={assignment.accountId}>
+                          {assignment.accountFullname ?? 'Unknown'}
+                          <button
+                            className="remove-tag"
+                            onClick={async () => {
+                              try {
+                                await deleteTaskAssignment({
+                                  taskId: taskId,
+                                  assignmentId: assignment.id,
+                                }).unwrap();
+
+                                setTaskAssignmentMap((prev) => ({
+                                  ...prev,
+                                  [taskId]: prev[taskId].filter((a) => a.accountId !== assignment.accountId),
+                                }));
+                              } catch (err) {
+                                console.error('❌ Failed to delete assignee:', err);
+                              }
+                            }}
+                          >
+                            ✖
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Dropdown chọn thêm */}
+                    <div className="dropdown-select-wrapper">
+                      <select
+                        onChange={async (e) => {
+                          const selectedId = parseInt(e.target.value);
+                          if (!selectedId) return;
+
+                          try {
+                            await createTaskAssignment({ taskId, accountId: selectedId }).unwrap();
+                            const data = await getTaskAssignments(taskId).unwrap();
+                            setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
+                          } catch (err) {
+                            console.error("Error assigning task", err);
+                          }
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>+ Add assignee</option>
+
+                        {/* Chỉ hiện những người chưa được gán vào task */}
+                        {projectMembers
+                          ?.filter(
+                            (m) =>
+                              !(taskAssignmentMap[taskId] ?? []).some(
+                                (a) => a.accountId === m.accountId
+                              )
+                          )
+                          .map((member) => (
+                            <option key={member.accountId} value={member.accountId}>
+                              {member.accountName}
+                            </option>
+                          ))}
+                      </select>
+
+                    </div>
+                  </div>
+                ) : (
+                  <span>
+                    {isAssigneeLoading ? (
+                      'Loading...'
+                    ) : assignees.length === 0 ? (
+                      'None'
+                    ) : (
+                      assignees.map((assignee) => (
+                        <span key={assignee.id} style={{ display: 'block' }}>
+                          {assignee.accountFullname}
+                        </span>
+                      ))
+                    )}
+                  </span>
+
+                )}
               </div>
               <div className="detail-item">
                 <label>Labels</label>

@@ -20,7 +20,7 @@ interface MeetingEvent {
   participants: string;
   roomUrl: string;
   status: 'Present' | 'Absent' | 'Active';
-  meetingStatus: string; // 👈 Trạng thái từ bảng Meeting: SCHEDULED, CANCELLED, v.v.
+  meetingStatus: string; 
 }
 
 const MeetingRoom: FC = () => {

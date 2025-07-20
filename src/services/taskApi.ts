@@ -2,13 +2,17 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
 export interface TaskResponseDTO {
+  assigneeId: number;
+  key: string;
   id: string;
-  reporterId: number;
-  reporterName: string;
+  reporterId?: number | null;
+  reporterName?: string | null;
   reporterPicture: string | null;
   projectId: number;
   projectName: string;
-  epicId: number | null;
+  epicId: string | null;
+  epicName: string | null;
+  sprintName: string | null;
   sprintId: number | null;
   milestoneId: number | null;
   type: string;
@@ -59,10 +63,17 @@ interface TaskDetailResponse {
   data: TaskResponseDTO;
 }
 
+interface TaskBackLogResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: TaskBacklogResponseDTO[];
+}
+
 export interface UpdateTaskRequestDTO {
-  reporterId: number;
+  reporterId: number | null;
   projectId: number;
-  epicId: number | null;
+  epicId: string | null;
   sprintId: number | null;
   type: string;
   title: string;
@@ -70,6 +81,75 @@ export interface UpdateTaskRequestDTO {
   plannedStartDate: string;
   plannedEndDate: string;
   status: string;
+}
+
+export interface SubtaskViewDTO {
+  id: string;
+  taskId: string;
+  assignedBy: number;
+  plannedHours: number | null;
+  actualHours: number | null;
+}
+
+export interface AccountDTO {
+  id: number;
+  username: string;
+  fullName: string;
+}
+
+export interface TaskWithSubtasksDTO {
+  id: string;
+  plannedHours: number;
+  actualHours: number;
+  accounts: AccountDTO[];
+  subtasks: SubtaskViewDTO[];
+}
+
+export interface TaskWithSubtasksResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: TaskWithSubtasksDTO;
+}
+
+export interface TaskBacklogResponseDTO {
+  id: string;
+  reporterId: number;
+  reporterName?: string | null;
+  reporterPicture?: string | null;
+  projectId: number;
+  projectName?: string | null;
+  epicId?: string | null;
+  epicName?: string | null;
+  sprintId?: number | null;
+  sprintName?: string | null;
+  type?: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description?: string | null;
+  plannedStartDate?: Date | string | null;
+  plannedEndDate?: Date | string | null;
+  actualStartDate?: Date | string | null;
+  actualEndDate?: Date | string | null;
+  duration?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  taskAssignments: TaskAssignmentResponseDTO[];
+}
+
+export interface TaskAssignmentResponseDTO {
+  id: number;
+  taskId: string;
+  accountId: number;
+  status?: string | null;
+  assignedAt?: string | null;
+  completedAt?: string | null;
+  hourlyRate?: number | null;
+  accountFullname?: string | null;
+  accountPicture?: string | null;
 }
 
 export const taskApi = createApi({
@@ -194,7 +274,18 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTask: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
+    updateTask: builder.mutation<
+      TaskResponseDTO,
+      { id: string; body: Partial<Omit<TaskResponseDTO, 'id'>> }
+    >({
+      query: ({ id, body }) => ({
+        url: `task/${id}`,
+        method: 'PUT',
+        body,
+      }),
+    }),
+
+    updateTaskDat: builder.mutation<TaskResponseDTO, { id: string; body: UpdateTaskRequestDTO }>({
       query: ({ id, body }) => ({
         url: `task/${id}/dat`,
         method: 'PUT',
@@ -206,6 +297,48 @@ export const taskApi = createApi({
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
     }),
+
+    createTask: builder.mutation<TaskResponseDTO, Partial<TaskResponseDTO>>({
+      query: (newTask) => ({
+        url: 'task',
+        method: 'POST',
+        body: newTask,
+      }),
+    }),
+
+    getTaskWithSubtasks: builder.query<TaskWithSubtasksDTO, string>({
+      query: (taskId) => ({
+        url: `task/with-subtasks`,
+        params: { id: taskId },
+      }),
+      transformResponse: (response: TaskWithSubtasksResponse) => response.data,
+      providesTags: ['Task'],
+    }),
+
+    getTasksFromBacklog: builder.query<TaskBacklogResponseDTO[], string>({
+      query: (projectKey) => ({
+        url: 'task/backlog',
+        params: { projectKey },
+      }),
+      transformResponse: (response: TaskBackLogResponse) =>
+        response.data as TaskBacklogResponseDTO[],
+      providesTags: ['Task'],
+    }),
+
+    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null }>({
+      query: ({ id, sprintId }) => ({
+        url: `task/${id}/sprint`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: sprintId, 
+      }),
+      transformResponse: (response: TaskDetailResponse) => response.data,
+      invalidatesTags: ['Task'],
+    }),
+
+
   }),
 });
 
@@ -221,4 +354,9 @@ export const {
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
   useUpdateTaskMutation,
+  useUpdateTaskDatMutation,
+  useCreateTaskMutation,
+  useGetTaskWithSubtasksQuery,
+  useGetTasksFromBacklogQuery,
+  useUpdateTaskSprintMutation,
 } = taskApi;

@@ -91,12 +91,6 @@ export interface MeetingEventWithStatus {
 }
 
 
-interface GetMeetingsResponse {
-  isSuccess: boolean;
-  code: number;
-  data: Meeting[];
-  message: string;
-}
 
 export const meetingApi = createApi({
   reducerPath: 'meetingApi',

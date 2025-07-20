@@ -10,7 +10,7 @@ const HealthOverview = () => {
   if (error || !data || !data.data)
     return <div className='text-sm text-red-500'>Error fetching health data</div>;
 
-  const { timeStatus, tasksToBeCompleted, overdueTasks, progressPercent, costStatus } = data.data;
+  const { timeStatus, tasksToBeCompleted, overdueTasks, progressPercent, costStatus, cost } = data.data;
 
   return (
     <div className='p-4'>
@@ -26,6 +26,7 @@ const HealthOverview = () => {
             costStatus === 0 || costStatus === undefined ? 'No budget specified.' : `${costStatus}`
           }
         />
+        <Row label='Schedule Performance Index' value={`${cost.schedulePerformanceIndex}`} />
       </div>
     </div>
   );

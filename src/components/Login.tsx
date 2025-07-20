@@ -268,7 +268,7 @@ const Login: React.FC = () => {
     const firstProject = hasData ? projectData.data[0] : null;
 
     if (isAccessRole && hasData && firstProject) {
-      if (user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER') {
+      if (user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_MEMBER') {
         navigate(`/project?projectKey=${firstProject.projectKey}#list`);
       }
     } else if (user?.role === 'ADMIN') {

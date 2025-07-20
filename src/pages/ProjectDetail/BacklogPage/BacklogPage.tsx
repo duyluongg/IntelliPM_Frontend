@@ -30,6 +30,14 @@ const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In P
   }
 };
 
+const getErrorMessage = (error: any): string => {
+  if (!error) return 'Unknown error';
+  if (typeof error === 'string') return error;
+  if (error.data?.message) return error.data.message;
+  if (error.status) return `Error ${error.status}: Failed to load data`;
+  return 'Unknown error';
+};
+
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
@@ -66,33 +74,34 @@ const BacklogPage: React.FC = () => {
   console.log('Raw Sprint Data:', sprintData);
   console.log('Raw Backlog Data:', backlogData);
 
-  const sprints: SprintWithTaskListResponseDTO[] = sprintData.map((sprint) => ({
+  const sprints: SprintWithTaskListResponseDTO[] = (Array.isArray(sprintData) ? sprintData : []).map((sprint) => ({
     ...sprint,
-    tasks: sprint.tasks.map((task) => ({
+    tasks: Array.isArray(sprint.tasks) ? sprint.tasks.map((task) => ({
       ...task,
       status: mapApiStatusToUI(task.status),
-    })),
+    })) : [],
   }));
 
-  const backlogTasks: TaskBacklogResponseDTO[] = backlogData.map((task) => ({
+  const backlogTasks: TaskBacklogResponseDTO[] = (Array.isArray(backlogData) ? backlogData : []).map((task) => ({
     ...task,
     status: mapApiStatusToUI(task.status),
   }));
 
   if (isProjectLoading || isEpicLoading || isSprintLoading || isBacklogLoading) {
-    return <div className="p-4 text-center">Đang tải...</div>;
+    return <div className="p-4 text-center">Loading...</div>;
   }
 
   if (projectError || epicError || sprintError || backlogError) {
+    const errorMessage = getErrorMessage(projectError || epicError || sprintError || backlogError);
     return (
       <div className="p-4 text-center text-red-500">
-        Lỗi tải dữ liệu: {(projectError || epicError || sprintError || backlogError) as string}
+        Error loading data: {errorMessage}
       </div>
     );
   }
 
   const handleCreateEpic = () => {
-    alert('Tạo Epic được click!');
+    alert('Create Epic clicked!');
   };
 
   const handleSearch = (query: string) => {

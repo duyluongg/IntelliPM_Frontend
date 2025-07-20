@@ -4,7 +4,7 @@ import { useGetSprintsByProjectKeyWithTasksQuery } from '../../../services/sprin
 import EpicColumn from './EpicColumn';
 import SprintColumn from './SprintColumn';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
-import { type TaskBacklogResponseDTO , useGetTasksFromBacklogQuery } from '../../../services/taskApi';
+import { type TaskBacklogResponseDTO, useGetTasksFromBacklogQuery } from '../../../services/taskApi';
 import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 
 interface BacklogBodyProps {

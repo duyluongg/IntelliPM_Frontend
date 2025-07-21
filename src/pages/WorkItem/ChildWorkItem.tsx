@@ -6,6 +6,8 @@ import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
 import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation } from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
+import accountIcon from '../../assets/account.png';
+import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation } from '../../services/subtaskCommentApi';
 
 interface SubtaskDetail {
   id: string;
@@ -31,9 +33,20 @@ const ChildWorkItem: React.FC = () => {
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
   const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
+  const accountId = parseInt(localStorage.getItem("accountId") || "0");
+  const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
+  const [deleteSubtaskComment] = useDeleteSubtaskCommentMutation();
+  const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
+  const [commentContent, setCommentContent] = React.useState('');
+  const [createSubtaskComment] = useCreateSubtaskCommentMutation();
+  
   const { data: attachments = [], refetch: refetchAttachments } = useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
     skip: !subtaskDetail?.id,
   });
+
+  const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
+      skip: !subtaskDetail?.id,
+    });
 
   useEffect(() => {
     const fetchSubtask = async () => {
@@ -101,11 +114,16 @@ const ChildWorkItem: React.FC = () => {
     if (!subtaskDetail) return;
 
     try {
-      await updateSubtaskStatus({ id: subtaskDetail.id, status: newStatus }).unwrap();
-      setSubtaskDetail({ ...subtaskDetail, status: newStatus });
-      console.log(`✅ Updated ${subtaskDetail.id} to ${newStatus}`);
+      await updateSubtaskStatus({
+        id: subtaskDetail.id,
+        status: newStatus,
+        createdBy: accountId, 
+      }).unwrap();
+
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
+      console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
     } catch (err) {
-      console.error('❌ Error update subtask status:', err);
+      console.error('❌ Failed to update subtask status', err);
     }
   };
 
@@ -202,14 +220,137 @@ const ChildWorkItem: React.FC = () => {
             )}
 
             <div className="activity-section">
-              <h4>Activity</h4>
+              <h4 style={{ marginBottom: '8px' }}>Activity</h4>
+
+              {/* Tabs */}
               <div className="activity-tabs">
-                <button className="tab">Comments</button>
-                <button className="tab">History</button>
+                <button
+                  className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('COMMENTS')}
+                >
+                  Comments
+                </button>
+                <button
+                  className={`activity-tab-btn ${activeTab === 'HISTORY' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('HISTORY')}
+                >
+                  History
+                </button>
               </div>
-              <div className="comment-box">
-                <textarea placeholder="Add a comment..." />
-              </div>
+
+              {/* Tab Content */}
+              {activeTab === 'COMMENTS' ? (
+                <>
+                  <div className="comment-list">
+                    {isCommentsLoading ? (
+                      <p>Loading comments...</p>
+                    ) : comments.length === 0 ? (
+                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
+                    ) : (
+                      comments
+                        .slice()
+                        .reverse()
+                        .map((comment) => (
+                          <div key={comment.id} className="simple-comment">
+                            <div className="avatar-circle">
+                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                            </div>
+                            <div className="comment-content">
+                              <div className="comment-header">
+                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
+                                <span className="comment-time">
+                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                </span>
+                              </div>
+                              <div className="comment-text">{comment.content}</div>
+                              {comment.accountId === accountId && (
+                                <div className="comment-actions">
+                                  <button
+                                    className="edit-btn"
+                                    onClick={async () => {
+                                      const newContent = prompt("✏ Edit your comment:", comment.content);
+                                      if (newContent && newContent !== comment.content) {
+                                        try {
+                                          await updateSubtaskComment({
+                                            id: comment.id,
+                                            subtaskId: subtaskDetail.id,
+                                            accountId,
+                                            content: newContent,
+                                          }).unwrap();
+                                          alert("✅ Comment updated");
+                                          await refetchComments();
+                                        } catch (err) {
+                                          console.error("❌ Failed to update comment", err);
+                                          alert("❌ Update failed");
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    ✏ Edit
+                                  </button>
+                                  <button
+                                    className="delete-btn"
+                                    onClick={async () => {
+                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                        try {
+                                          await deleteSubtaskComment(comment.id).unwrap();
+                                          alert("🗑️ Deleted successfully");
+                                          await refetchComments();
+                                        } catch (err) {
+                                          console.error("❌ Failed to delete comment", err);
+                                          alert("❌ Delete failed");
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    🗑 Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+
+                  {/* Comment Input */}
+                  <div className="simple-comment-input">
+                    <textarea
+                      placeholder="Add a comment..."
+                      value={commentContent}
+                      onChange={(e) => setCommentContent(e.target.value)}
+                    />
+                    <button
+                      disabled={!commentContent.trim()}
+                      onClick={async () => {
+                        try {
+                          if (!accountId || isNaN(accountId)) {
+                            alert('❌ User not identified. Please log in again.');
+                            return;
+                          }
+                          await createSubtaskComment({
+                            subtaskId: subtaskDetail.id,
+                            accountId,
+                            content: commentContent.trim(),
+                          }).unwrap();
+                          alert("✅ Comment posted");
+                          setCommentContent('');
+                          await refetchComments();
+                        } catch (err: any) {
+                          console.error('❌ Failed to post comment:', err);
+                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                        }
+                      }}
+                    >
+                      Comment
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="activity-placeholder">
+                  Chưa có nhật ký hoạt động.
+                </div>
+              )}
             </div>
           </div>
 

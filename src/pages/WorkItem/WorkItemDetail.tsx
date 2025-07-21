@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './WorkItemDetail.css';
+import { useAuth, type Role } from '../../services/AuthContext';
 import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
@@ -29,11 +30,15 @@ import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉnh lại path cho đúng
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
+import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const taskId = searchParams.get('taskId') || '';
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [updateTaskType] = useUpdateTaskTypeMutation();
   const [description, setDescription] = useState('');
@@ -73,7 +78,11 @@ const WorkItemDetail: React.FC = () => {
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
+  const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
+  
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -180,6 +189,12 @@ const WorkItemDetail: React.FC = () => {
     skip: !taskData?.projectId,
   });
 
+  React.useEffect(() => {
+      if (assignees && taskId) {
+        setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      }
+    }, [assignees, taskId]);
+
   const {
     data: subtaskData = [],
     isLoading,
@@ -228,10 +243,15 @@ const WorkItemDetail: React.FC = () => {
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
     try {
-      await updateSubtaskStatus({ id, status: newStatus }).unwrap();
-      await refetchSubtask();
+      await updateSubtaskStatus({
+        id,
+        status: newStatus,
+        createdBy: accountId,
+      }).unwrap();
+
+      refetchSubtask();
     } catch (err) {
-      console.error('Update subtask status failed', err);
+      console.error('Failed to update subtask status', err);
     }
   };
 
@@ -563,9 +583,9 @@ const WorkItemDetail: React.FC = () => {
                           <label
                             key={idx}
                             style={{
-                              display: 'flex !important',
+                              display: 'flex ',
                               alignItems: 'flex-start',
-                              gap: '8px',
+                              gap: '2px',
                               lineHeight: '1.4',
                               wordBreak: 'break-word',
                               fontSize: '14px',
@@ -581,9 +601,9 @@ const WorkItemDetail: React.FC = () => {
                                   checked ? [...prev, item.title] : prev.filter((t) => t !== item.title)
                                 );
                               }}
-                              style={{ display: 'flex !important', marginTop: '3px' }}
+                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
                             />
-                            <span>{item.title}</span>
+                            <span style={{ flex: 6 }}>{item.title}</span>
                           </label>
                         ))}
                       </div>
@@ -594,7 +614,7 @@ const WorkItemDetail: React.FC = () => {
                           onClick={async () => {
                             for (const title of selectedSuggestions) {
                               try {
-                                await createSubtask({ taskId, title }).unwrap();
+                                await createSubtask({ taskId, title, createdBy: accountId }).unwrap();
                               } catch (err) {
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
@@ -704,9 +724,9 @@ const WorkItemDetail: React.FC = () => {
 
                             <td onClick={() => setEditingSummaryId(item.key)} style={{
                               cursor: 'pointer',
-                              whiteSpace: 'normal',        // Cho phép xuống dòng
-                              wordBreak: 'break-word',     // Tự động ngắt nếu từ quá dài
-                              maxWidth: '300px',           // (Tùy chọn) Giới hạn chiều ngang
+                              whiteSpace: 'normal',       
+                              wordBreak: 'break-word',     
+                              maxWidth: '300px',           
                             }}
                             >
                               {editingSummaryId === item.key ? (
@@ -852,7 +872,7 @@ const WorkItemDetail: React.FC = () => {
                                 onClick={async () => {
                                   try {
                                     try {
-                                      await createSubtask({ taskId, title: newSubtaskTitle }).unwrap();
+                                      await createSubtask({ taskId, title: newSubtaskTitle, createdBy: accountId }).unwrap();
                                       console.log("✅ Create successfully");
                                     } catch (err) {
                                       console.error("❌ Error to call createSubtask:", err);
@@ -938,7 +958,7 @@ const WorkItemDetail: React.FC = () => {
                         .map((comment: any) => (
                           <div key={comment.id} className="simple-comment">
                             <div className="avatar-circle">
-                              <img src={accountIcon} alt="avatar" className="avatar-img" />
+                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
                             </div>
                             <div className="comment-content">
                               <div className="comment-header">
@@ -1055,13 +1075,89 @@ const WorkItemDetail: React.FC = () => {
               </div>
               <div className="detail-item">
                 <label>Assignee</label>
-                <span>
-                  {isAssigneeLoading
-                    ? 'Loading...'
-                    : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => assignee.accountFullname).join(', ')}
-                </span>
+                {canEdit ? (
+                  <div className="multi-select-dropdown">
+                    {/* Hiển thị danh sách đã chọn */}
+                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(taskAssignmentMap[taskId] ?? []).map((assignment) => (
+                        <span className="selected-tag" key={assignment.accountId}>
+                          {assignment.accountFullname ?? 'Unknown'}
+                          <button
+                            className="remove-tag"
+                            onClick={async () => {
+                              try {
+                                await deleteTaskAssignment({
+                                  taskId: taskId,
+                                  assignmentId: assignment.id,
+                                }).unwrap();
+
+                                setTaskAssignmentMap((prev) => ({
+                                  ...prev,
+                                  [taskId]: prev[taskId].filter((a) => a.accountId !== assignment.accountId),
+                                }));
+                              } catch (err) {
+                                console.error('❌ Failed to delete assignee:', err);
+                              }
+                            }}
+                          >
+                            ✖
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Dropdown chọn thêm */}
+                    <div className="dropdown-select-wrapper">
+                      <select
+                        onChange={async (e) => {
+                          const selectedId = parseInt(e.target.value);
+                          if (!selectedId) return;
+
+                          try {
+                            await createTaskAssignment({ taskId, accountId: selectedId }).unwrap();
+                            const data = await getTaskAssignments(taskId).unwrap();
+                            setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
+                          } catch (err) {
+                            console.error("Error assigning task", err);
+                          }
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>+ Add assignee</option>
+
+                        {/* Chỉ hiện những người chưa được gán vào task */}
+                        {projectMembers
+                          ?.filter(
+                            (m) =>
+                              !(taskAssignmentMap[taskId] ?? []).some(
+                                (a) => a.accountId === m.accountId
+                              )
+                          )
+                          .map((member) => (
+                            <option key={member.accountId} value={member.accountId}>
+                              {member.accountName}
+                            </option>
+                          ))}
+                      </select>
+
+                    </div>
+                  </div>
+                ) : (
+                  <span>
+                    {isAssigneeLoading ? (
+                      'Loading...'
+                    ) : assignees.length === 0 ? (
+                      'None'
+                    ) : (
+                      assignees.map((assignee) => (
+                        <span key={assignee.id} style={{ display: 'block' }}>
+                          {assignee.accountFullname}
+                        </span>
+                      ))
+                    )}
+                  </span>
+
+                )}
               </div>
               <div className="detail-item">
                 <label>Labels</label>

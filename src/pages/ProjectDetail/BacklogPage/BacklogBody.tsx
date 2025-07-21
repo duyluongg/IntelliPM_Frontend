@@ -1,49 +1,31 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useGetSprintsByProjectKeyWithTasksQuery } from '../../../services/sprintApi';
 import EpicColumn from './EpicColumn';
 import SprintColumn from './SprintColumn';
-
-// Định nghĩa Task và Sprint phù hợp với SprintColumn
-interface Task {
-  id: string;
-  title: string;
-  status: 'To Do' | 'In Progress' | 'Done';
-  assignee?: string;
-}
-
-interface Sprint {
-  id: string;
-  name: string;
-  tasks: Task[];
-}
-
-interface EpicResponseDTO {
-  id: string;
-  projectId: number;
-  name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  createdAt: string;
-  updatedAt: string;
-  status: string;
-  reporterId: number | null;
-  assignedBy: number | null;
-  assignedByFullname: string | null;
-  assignedByPicture: string | null;
-  reporterFullname: string | null;
-  reporterPicture: string | null;
-  sprintId: number | null;
-  sprintName: string | null;
-  sprintGoal: string | null;
-}
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import { type TaskBacklogResponseDTO, useGetTasksFromBacklogQuery } from '../../../services/taskApi';
+import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 
 interface BacklogBodyProps {
   onCreateEpic: () => void;
-  sprints: Sprint[];
-  epics: EpicResponseDTO[];
+  sprints: SprintWithTaskListResponseDTO[];
+  epics: EpicWithStatsResponseDTO[];
+  backlogTasks: TaskBacklogResponseDTO[];
+  projectId: number;
 }
 
-const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics }) => {
+const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics, backlogTasks, projectId }) => {
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { refetch: refetchSprints } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
+  const { refetch: refetchBacklog } = useGetTasksFromBacklogQuery(projectKey);
+
+  const handleTaskUpdated = () => {
+    refetchSprints(); 
+    refetchBacklog(); 
+  }
+
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
       <div className="flex flex-col sm:flex-row gap-4 min-w-[640px]">
@@ -54,7 +36,12 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics 
 
         {/* Sprint Column */}
         <div className="w-full sm:w-2/3 md:w-3/4">
-          <SprintColumn sprints={sprints} backlogTasks={sprints.length > 0 ? [] : sprints.flatMap(s => s.tasks)} />
+          <SprintColumn
+            sprints={sprints}
+            backlogTasks={backlogTasks}
+            projectId={projectId}
+            onTaskUpdated={handleTaskUpdated}
+          />
         </div>
       </div>
     </div>

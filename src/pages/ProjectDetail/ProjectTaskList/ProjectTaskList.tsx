@@ -19,7 +19,8 @@ import {
 import { useUpdateSubtaskMutation } from '../../../services/subtaskApi';
 import { FaSearch, FaFilter, FaEllipsisV } from 'react-icons/fa';
 import { MdGroup } from 'react-icons/md';
-import { FileText } from 'lucide-react';
+import { FcDocument } from 'react-icons/fc';
+import { HiDocumentAdd } from 'react-icons/hi';
 import { Tooltip } from 'react-tooltip';
 import WorkItem from '../../WorkItem/WorkItem';
 import EpicPopup from '../../WorkItem/EpicPopup';
@@ -301,7 +302,37 @@ const Avatar = ({
 };
 
 // HeaderBar Component
-const HeaderBar: React.FC = () => {
+const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
+  const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+  const { data: membersData, isLoading, error } = useGetProjectMembersWithPositionsQuery(projectId, {
+    skip: !projectId || projectId === 0,
+  });
+
+  // Filter members with status IN_PROGRESS
+  const members = membersData?.data
+    ?.filter(member => member.status.toUpperCase() === 'IN_PROGRESS')
+    ?.map(member => ({
+      id: member.id,
+      name: member.fullName || member.accountName || 'Unknown',
+      avatar: member.picture || 'https://via.placeholder.com/32', // Updated placeholder size
+    })) || [];
+
+  const toggleMembers = () => {
+    setIsMembersExpanded(!isMembersExpanded);
+  };
+
+  if (isLoading) {
+    return <div className="p-4 text-center text-gray-500">Loading members...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        Error loading members: {(error as any)?.data?.message || 'Unknown error'}
+      </div>
+    );
+  }
+
   return (
     <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
       <div className='flex items-center gap-2.5'>
@@ -314,17 +345,54 @@ const HeaderBar: React.FC = () => {
           />
         </div>
 
-        <div className='flex gap-1'>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-emerald-600'>
-            DH
-          </div>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-red-500'>
-            D
-          </div>
-          <div className='w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white bg-blue-600'>
-            NV
-          </div>
+        <div className="flex items-center">
+          {members.length > 0 ? (
+            isMembersExpanded ? (
+              <div className="flex items-center">
+                {members.map((member, index) => (
+                  <div
+                    key={member.id}
+                    className="relative w-8 h-8 group"
+                    style={{ marginLeft: index > 0 ? '-4px' : '0' }}
+                  >
+                    <img
+                      src={member.avatar}
+                      alt={`${member.name} avatar`}
+                      className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                      onClick={toggleMembers}
+                    />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      {member.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="relative w-8 h-8 group">
+                <img
+                  src={members[0].avatar}
+                  alt={`${members[0].name} avatar`}
+                  className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                  onClick={toggleMembers}
+                />
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  {members[0].name}
+                </span>
+                {members.length > 1 && (
+                  <div
+                    className="absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer"
+                    onClick={toggleMembers}
+                  >
+                    +{members.length - 1}
+                  </div>
+                )}
+              </div>
+            )
+          ) : (
+            <div className="text-xs text-gray-500">No active members</div>
+          )}
         </div>
+
         <button className='flex items-center bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded font-medium text-sm'>
           <FaFilter className='mr-1' />
           Filter{' '}
@@ -874,7 +942,7 @@ const ProjectTaskList: React.FC = () => {
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
-      <HeaderBar />
+      <HeaderBar projectId={projectId || 0} />
       {(isUpdatingTask ||
         isUpdatingEpic ||
         isUpdatingSubtask ||
@@ -1379,22 +1447,21 @@ const ProjectTaskList: React.FC = () => {
                 </td>
                 <td
                   style={{ width: `${columnWidths.document}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden '
                 >
                   {createdDocIds[task.key] ? (
                     <button
-                      className='text-blue-600 underline hover:text-blue-800 text-sm flex items-center gap-1'
+                      className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
-                      <FileText size={16} className='text-blue-500' />
-                      View Document
+                      <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
                   ) : (
                     <button
-                      className='text-blue-600 underline hover:text-blue-800 text-sm'
+                      className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
                       onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
-                      Add/View
+                      <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
                   )}
                 </td>

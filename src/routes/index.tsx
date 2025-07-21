@@ -4,33 +4,34 @@ import PMLayout from '../layout/PMLayout';
 import Homepage from '../pages/Homepage';
 import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
-import Gantt from '../pages/PM/Gantt/Gantt';
+// import Gantt from '../pages/PM/Gantt/Gantt';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Form from '../pages/PM/YourProject/Form';
 // import FeatureRequestFormWrapper from '../pages/PM/YourProject/FeatureRequestFormWrapper';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
 // import FeatureRequestForm from '../pages/PM/YourProject/FeatureRequestForm';
-import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
+// import ProjectDetail from '../pages/ProjectDetail/ProjectDetail';
 import WorkItemDetail from '../pages/WorkItem/WorkItemDetail';
 import EpicDetail from '../pages/WorkItem/EpicDetail';
 import ChildWorkItem from '../pages/WorkItem/ChildWorkItem';
 import MeetingCore from '../pages/PM/Meeting/MeetingCorePage/MeetingCore';
 import CreateMeetingPage from '../pages/PM/Meeting/CreateMeetingPage/CreateMeetingPage';
 import MeetingManagementPage from '../pages/PM/Meeting/MeetingManagementPage/MeetingManagementPage';
-import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
+// import ProjectDashboard from '../pages/PM/Dashboard/ProjectDashboard';
 import ProjectIntroduction from '../pages/ProjectCreation/ProjectIntroduction/ProjectIntroduction';
 import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskList';
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
-import DocBlank from '../pages/PM/YourProject/DocBlank';
+// import DocBlank from '../pages/PM/YourProject/DocBlank';
 import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
-import Doc from '../pages/PM/YourProject/Doc';
+// import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
+import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
 import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleRequest';
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
-import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
+// import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
 
 
 export const router = createBrowserRouter([
@@ -209,6 +210,8 @@ export const router = createBrowserRouter([
         index: true,
         element: <ProjectDetailPage />,
       },
+
+      { path: 'all-request-form', element: <AllRequestForm /> },
     ],
   },
 ]);

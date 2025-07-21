@@ -81,6 +81,40 @@ interface CreateEpicResponse {
   data: string;
 }
 
+
+export interface EpicWithStatsResponseDTO {
+  id: string;
+  projectId: number;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  status: string | null;
+  reporterId: number | null;
+  reporterFullname: string | null;
+  reporterPicture: string | null;
+  assignedBy: number | null;
+  assignedByFullname: string | null;
+  assignedByPicture: string | null;
+  sprintId: number | null;
+  sprintName: string | null;
+  sprintGoal: string | null;
+  totalTasks: number;
+  totalToDoTasks: number;
+  totalInProgressTasks: number;
+  totalDoneTasks: number;
+}
+
+interface EpicWithStatsListResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: EpicWithStatsResponseDTO[];
+}
+
+
 export const epicApi = createApi({
   reducerPath: 'epicApi',
   baseQuery: fetchBaseQuery({
@@ -149,6 +183,12 @@ export const epicApi = createApi({
       }),
       invalidatesTags: ['Epic'],
     }),
+    getEpicsWithTasksByProjectKey: builder.query<EpicWithStatsResponseDTO[], string>({
+      query: (projectKey) => `epic/by-project/${projectKey}/tasks-with-stats`,
+      transformResponse: (response: EpicWithStatsListResponse) => response.data,
+      providesTags: ['Epic'],
+    }),
+
   }),
 });
 
@@ -158,4 +198,5 @@ export const {
   useUpdateEpicStatusMutation,
   useCreateEpicWithTasksMutation,
   useUpdateEpicMutation,
+  useGetEpicsWithTasksByProjectKeyQuery,
 } = epicApi;

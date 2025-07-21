@@ -59,16 +59,32 @@ export const subtaskApi = createApi({
 
     createSubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number }>({
       query: ({ taskId, title, createdBy }) => ({
-        url: 'subtask/create2', 
+        url: 'subtask/create2',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: { taskId, title, createdBy }, 
+        body: { taskId, title, createdBy },
       }),
     }),
 
-    updateSubtask: builder.mutation<any, { id: string; assignedBy: number; priority: string; title: string; description: string }>({
+    getSubtaskById: builder.query<SubtaskResponseDTO, string>({
+      query: (id) => `subtask/${id}`,
+      transformResponse: (response: ApiResponse<SubtaskResponseDTO>) => response.data,
+    }),
+
+
+    updateSubtask: builder.mutation<any, {
+      id: string;
+      assignedBy: number;
+      priority: string;
+      title: string;
+      description: string;
+      startDate: string;
+      endDate: string;
+      reporterId: number;
+      createdBy: number;
+    }>({
       query: ({ id, ...body }) => ({
         url: `subtask/${id}`,
         method: 'PUT',
@@ -82,5 +98,6 @@ export const {
   useGetSubtasksByTaskIdQuery,
   useUpdateSubtaskStatusMutation,
   useCreateSubtaskMutation,
-  useUpdateSubtaskMutation
+  useUpdateSubtaskMutation,
+  useGetSubtaskByIdQuery,
 } = subtaskApi;

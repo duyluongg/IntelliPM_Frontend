@@ -4,11 +4,11 @@
   }
 
   /* List styles */
-  ul, 
+  ul,
   ol {
     padding: 0 1rem;
     margin: 1.25rem 1rem 1.25rem 0.4rem;
-    
+
     li p {
       margin-top: 0.25em;
       margin-bottom: 0.25em;
@@ -16,39 +16,39 @@
   }
 
   /* Heading styles */
-  h1, 
-  h2, 
-  h3, 
-  h4, 
-  h5, 
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
   h6 {
     line-height: 1.1;
     margin-top: 2.5rem;
     text-wrap: pretty;
   }
 
-  h1, 
+  h1,
   h2 {
-    margin-top: 3.5rem;
+    margin-top: 0.5rem;
     margin-bottom: 1.5rem;
   }
 
-  h1 { 
-    font-size: 1.4rem; 
+  h1 {
+    font-size: 1.4rem;
   }
 
-  h2 { 
-    font-size: 1.2rem; 
+  h2 {
+    font-size: 1.2rem;
   }
 
-  h3 { 
-    font-size: 1.1rem; 
+  h3 {
+    font-size: 1.1rem;
   }
 
-  h4, 
-  h5, 
-  h6 { 
-    font-size: 1rem; 
+  h4,
+  h5,
+  h6 {
+    font-size: 1rem;
   }
 
   /* Code and preformatted text styles */
@@ -87,33 +87,91 @@
     border-top: 1px solid var(--gray-2);
     margin: 2rem 0;
   }
+
+  /* Task list specific styles */
+  ul[data-type='taskList'] {
+    list-style: none;
+    margin-left: 0;
+    padding: 0;
+
+    li {
+      display: flex;
+      align-items: flex-start;
+      margin: 0.5em 0;
+      padding-left: 0;
+
+      &::marker,
+      &::before {
+        content: none;
+      }
+
+      > label {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        margin-right: 0.5rem;
+        user-select: none;
+        height: 1.5em; /* Đảm bảo chiều cao đủ cho checkbox và căn chỉnh */
+      }
+
+      > div {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+
+    input[type='checkbox'] {
+      cursor: pointer;
+      width: 1.2em;
+      height: 1.2em;
+      margin-top: 0.15em;
+      flex-shrink: 0;
+    }
+
+    ul[data-type='taskList'] {
+      margin-top: 0.5em;
+      padding-left: 2em;
+    }
+  }
+
+  // Styles cho các tiêu đề trong template to-do-list
+  ul li p, /* Áp dụng cho p trong list item thông thường */
+  ol li p, /* Áp dụng cho p trong ordered list item */
+  ul[data-type='taskList'] li p {
+    /* Áp dụng cho p trong task list item */
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+    color: #6c6c6c; /* <--- THÊM DÒNG NÀY để đặt màu xám cho văn bản task */
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th,
+  td {
+    position: relative;
+    border: 1px solid #e5e7eb; /* Tailwind gray-200 */
+    padding: 0.5rem;
+  }
+
+  th .resize-handle,
+  td .resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 4px;
+    cursor: col-resize;
+    background-color: transparent;
+    z-index: 10;
+  }
+
+  th:hover .resize-handle,
+  td:hover .resize-handle {
+    background-color: #cbd5e1; /* Tailwind gray-300 */
+  }
 }
 
-/* styles.scss hoặc trong file global CSS */
-table {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-th, td {
-  position: relative;
-  border: 1px solid #e5e7eb; /* Tailwind gray-200 */
-  padding: 0.5rem;
-}
-
-th .resize-handle,
-td .resize-handle {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 100%;
-  width: 4px;
-  cursor: col-resize;
-  background-color: transparent;
-  z-index: 10;
-}
-
-th:hover .resize-handle,
-td:hover .resize-handle {
-  background-color: #cbd5e1; /* Tailwind gray-300 */
-}

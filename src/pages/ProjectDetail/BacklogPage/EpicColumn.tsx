@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
-import { type EpicWithStatsResponseDTO } from '../../../services/epicApi'; 
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
 
 interface Epic {
   id: string;
@@ -17,7 +17,7 @@ interface Epic {
 }
 
 interface EpicColumnProps {
-  epics: EpicWithStatsResponseDTO[]; 
+  epics: EpicWithStatsResponseDTO[];
   onCreateEpic: () => void;
 }
 
@@ -30,15 +30,17 @@ const formatDate = (isoDate: string): string => {
   });
 };
 
-const calculateProgress = (totalTasks: number, toDo: number, inProgress: number, done: number): { done: number; inProgress: number; toDo: number } => {
+const calculateProgress = (
+  totalTasks: number,
+  toDo: number,
+  inProgress: number,
+  done: number
+): { done: number; inProgress: number; toDo: number } => {
   if (totalTasks === 0) return { done: 0, inProgress: 0, toDo: 100 };
-  const donePercent = (done / totalTasks) * 100;
-  const inProgressPercent = (inProgress / totalTasks) * 100;
-  const toDoPercent = (toDo / totalTasks) * 100;
   return {
-    done: Math.round(donePercent),
-    inProgress: Math.round(inProgressPercent),
-    toDo: Math.round(toDoPercent),
+    done: Math.round((done / totalTasks) * 100),
+    inProgress: Math.round((inProgress / totalTasks) * 100),
+    toDo: Math.round((toDo / totalTasks) * 100),
   };
 };
 
@@ -52,19 +54,20 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
       epic.totalInProgressTasks,
       epic.totalDoneTasks
     );
+
     return {
       id: epic.id,
       name: epic.name,
       owner: epic.reporterFullname || epic.assignedByFullname || 'Unknown',
       color: epic.sprintId ? '#6b7280' : '#c97cf4',
       progress,
-      startDate: formatDate(epic.startDate || epic.createdAt), // Sử dụng createdAt nếu startDate null
-      dueDate: formatDate(epic.endDate || epic.updatedAt), // Sử dụng updatedAt nếu endDate null
+      startDate: formatDate(epic.startDate || epic.createdAt),
+      dueDate: formatDate(epic.endDate || epic.updatedAt),
     };
   });
 
   return (
-    <div className="w-full min-w-[250px] sm:w-1/3 md:w-1/4 p-4 bg-white border flex flex-col h-full shadow-sm">
+    <div className="w-full min-w-[250px] sm:w-1/3 md:w-1/4 p-4 bg-white border rounded shadow-sm flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Epic</h3>
@@ -72,19 +75,21 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
       </div>
 
       {/* Epic List */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+      <div className="space-y-3 overflow-y-auto max-h-[80vh] pr-1">
         {mappedEpics.map((epic) => {
           const isExpanded = expandedEpicId === epic.id;
           return (
             <div
               key={epic.id}
-              className="border rounded shadow-sm p-3 space-y-2 bg-white hover:bg-gray-50 transition"
+              className="border rounded p-3 space-y-2 bg-white hover:bg-gray-50 transition shadow-sm"
             >
-              {/* Epic Header */}
+              {/* Header */}
               <div className="flex items-center justify-between">
                 <div
                   className="flex items-center gap-2 text-sm cursor-pointer"
-                  onClick={() => setExpandedEpicId(isExpanded ? null : epic.id)}
+                  onClick={() =>
+                    setExpandedEpicId(isExpanded ? null : epic.id)
+                  }
                 >
                   {isExpanded ? (
                     <ChevronDown className="w-4 h-4 text-gray-700" />
@@ -92,7 +97,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                     <ChevronRight className="w-4 h-4 text-gray-700" />
                   )}
                   <span
-                    className="w-3 h-3 rounded bg-purple-400 inline-block"
+                    className="w-3 h-3 rounded-sm"
                     style={{ backgroundColor: epic.color || '#c97cf4' }}
                   />
                   <span className="capitalize font-medium truncate max-w-[120px]">
@@ -102,7 +107,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                 <MoreHorizontal className="w-4 h-4 text-gray-600" />
               </div>
 
-              {/* Progress bar */}
+              {/* Progress */}
               <div className="flex h-2 overflow-hidden rounded-full bg-gray-200">
                 <div
                   className="bg-green-500"
@@ -121,7 +126,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                 />
               </div>
 
-              {/* Detail (if expanded) */}
+              {/* Detail */}
               {isExpanded && (
                 <div className="text-sm text-gray-600 space-y-1">
                   <div>

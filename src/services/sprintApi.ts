@@ -95,10 +95,23 @@ export const sprintApi = createApi({
       transformResponse: (response: ApiResponse<SprintWithTaskListResponseDTO[]>) => response.data,
       providesTags: ['Sprint'],
     }),
+
+    updateSprintStatus: builder.mutation<SprintResponseDTO, { id: string; status: string }>({
+      query: ({ id, status }) => ({
+        url: `sprint/${id}/status`,
+        method: 'PATCH',
+        body: JSON.stringify(status),
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      invalidatesTags: ['Sprint'],
+    }),
+
+
   }),
 });
 
 export const { 
   useGetSprintsByProjectIdQuery, 
-  useGetSprintsByProjectKeyWithTasksQuery 
+  useGetSprintsByProjectKeyWithTasksQuery,
+  useUpdateSprintStatusMutation,
 } = sprintApi;

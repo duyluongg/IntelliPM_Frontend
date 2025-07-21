@@ -10,8 +10,16 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import { Edit3, FileText, Sparkles, X } from 'lucide-react';
+import { Edit3, FileText, LucideLock, LucideSun, Sparkles, X } from 'lucide-react';
 import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
+import {
+  HiOutlineLightBulb,
+  HiOutlineTemplate,
+  HiOutlineTable,
+  HiOutlineChartBar,
+} from 'react-icons/hi'; // Các biểu tượng khác
+import TextareaAutosize from 'react-textarea-autosize';
+import { useAuth } from '../../../services/AuthContext';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -334,7 +342,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 editor={editor}
                 onClose={() => setShowWriteModal(false)}
                 form='write_with_ai'
-            
               />
             </div>
           )}
@@ -382,10 +389,13 @@ const extensions = [
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  title: string;
+  onTitleChange: (title: string) => void;
 };
 
-export default function RichTextEditor({ value, onChange }: Props) {
+export default function RichTextEditor({ value, onChange, title, onTitleChange }: Props) {
   const cleanedValue = stripMarkdownCodeBlock(value);
+  const { user } = useAuth();
 
   const editor = useEditor({
     extensions,
@@ -409,7 +419,48 @@ export default function RichTextEditor({ value, onChange }: Props) {
       <div className='sticky top-0 z-10 bg-white'>{editor && <MenuBar editor={editor} />}</div>
 
       <div className='prose max-w-none'>
+        <div className='flex items-center mb-6'>
+          <TextareaAutosize
+            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none focus:ring-0 focus:border-none border-none shadow-none'
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder='Untitled document'
+          />
+        </div>
+
+        <div className='flex items-center text-sm text-gray-500 mb-6'>
+          <div className='flex items-center mr-4'>
+            <div className='w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold mr-2'>
+              DL
+            </div>
+            <span>
+              Creator <span className='font-semibold text-gray-700'>{user?.username}</span>
+            </span>
+          </div>
+          <div className='flex items-center mr-4'>
+            <LucideSun className='mr-1' />
+            <span>
+              Created <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+            </span>
+          </div>
+          <div className='flex items-center'>
+            <LucideLock className='mr-1' />
+            <span>
+              Last updated <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+            </span>
+          </div>
+        </div>
+
         <EditorContent editor={editor} />
+
+        <div className='space-y-4'>
+          <OptionItem icon={<HiOutlineLightBulb className='w-5 h-5' />} text='Start with AI' />
+          <OptionItem icon={<HiOutlineTemplate className='w-5 h-5' />} text='Templates' />
+          <OptionItem icon={<HiOutlineTable className='w-5 h-5' />} text='Table' />
+          <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Chart' />
+          <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board values' />
+          <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board' />{' '}
+        </div>
       </div>
     </div>
   );
@@ -419,3 +470,17 @@ function stripMarkdownCodeBlock(input: string): string {
   if (typeof input !== 'string') return '';
   return input.replace(/^```html\s*([\s\S]*?)\s*```$/i, '$1').trim();
 }
+
+interface OptionItemProps {
+  icon: React.ReactNode;
+  text: string;
+}
+
+const OptionItem: React.FC<OptionItemProps> = ({ icon, text }) => {
+  return (
+    <div className='flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'>
+      <div className='text-purple-500 mr-3'>{icon}</div>
+      <span className='text-gray-700 font-medium'>{text}</span>
+    </div>
+  );
+};

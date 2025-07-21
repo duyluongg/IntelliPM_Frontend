@@ -49,6 +49,8 @@ export interface SprintResponseDTO {
   goal: string | null;
   startDate: string | null;
   endDate: string | null;
+  plannedStartDate?: string | null; 
+  plannedEndDate?: string | null;
   createdAt: string;
   updatedAt: string;
   status: string | null;
@@ -106,6 +108,15 @@ export const sprintApi = createApi({
       invalidatesTags: ['Sprint'],
     }),
 
+    createSprintQuick: builder.mutation<SprintResponseDTO, { projectKey: string }>({
+      query: (body) => ({
+        url: 'sprint/quick',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      invalidatesTags: ['Sprint'],
+    }),
 
   }),
 });
@@ -114,4 +125,5 @@ export const {
   useGetSprintsByProjectIdQuery, 
   useGetSprintsByProjectKeyWithTasksQuery,
   useUpdateSprintStatusMutation,
+  useCreateSprintQuickMutation,
 } = sprintApi;

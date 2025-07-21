@@ -10,11 +10,13 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
+
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Edit3, FileText, LucideLock, LucideSun, Sparkles, X } from 'lucide-react';
 import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
 import { HiOutlineTemplate, HiOutlineTable, HiOutlineChartBar } from 'react-icons/hi'; // Các biểu tượng khác
+
 import TextareaAutosize from 'react-textarea-autosize';
 import { useAuth } from '../../../services/AuthContext';
 
@@ -536,6 +538,7 @@ type Props = {
   onChange: (value: string) => void;
   title: string;
   onTitleChange: (title: string) => void;
+
   showTemplatePicker: boolean;
   setShowTemplatePicker: React.Dispatch<React.SetStateAction<boolean>>;
 };
@@ -551,6 +554,7 @@ export default function RichTextEditor({
   const cleanedValue = stripMarkdownCodeBlock(value);
   const { user } = useAuth();
   // const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
 
   const editor = useEditor({
     extensions,
@@ -622,6 +626,7 @@ export default function RichTextEditor({
 
         <EditorContent editor={editor} />
 
+
         {isEmptyContent(value) && (
           <div className='space-y-4'>
             <OptionItem
@@ -678,6 +683,7 @@ export default function RichTextEditor({
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
@@ -691,6 +697,7 @@ function stripMarkdownCodeBlock(input: string): string {
 interface OptionItemProps {
   icon: React.ReactNode;
   text: string;
+
   onClick?: () => void;
 }
 
@@ -700,6 +707,7 @@ const OptionItem: React.FC<OptionItemProps> = ({ icon, text, onClick }) => {
       className='flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'
       onClick={onClick}
     >
+
       <div className='text-purple-500 mr-3'>{icon}</div>
       <span className='text-gray-700 font-medium'>{text}</span>
     </div>

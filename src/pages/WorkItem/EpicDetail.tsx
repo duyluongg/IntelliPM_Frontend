@@ -19,6 +19,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -80,6 +81,10 @@ const EpicDetail: React.FC = () => {
   const [createEpicComment] = useCreateEpicCommentMutation();
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
+  });
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+    skip: !epic?.projectId,
   });
 
   React.useEffect(() => {
@@ -819,6 +824,28 @@ const EpicDetail: React.FC = () => {
               </div>
 
               {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className="history-list">
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="history-item">
+                        <div className="history-header">
+                          <span className="history-user">{log.createdByName}</span>
+                          <span className="history-time">
+                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="history-message">{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === 'COMMENTS' ? (
                 <>
                   <div className="comment-list">
@@ -887,7 +914,6 @@ const EpicDetail: React.FC = () => {
                                   </button>
                                 </div>
                               )}
-
                             </div>
                           </div>
                         ))
@@ -929,7 +955,6 @@ const EpicDetail: React.FC = () => {
                 </>
               ) : (
                 <div className="activity-placeholder">
-                  Chưa có nhật ký hoạt động.
                 </div>
               )}
             </div>

@@ -10,7 +10,6 @@ import {
 import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
-  useUpdateSprintStatusMutation,
   useDeleteSprintMutation,
 } from '../../../services/sprintApi';
 import {
@@ -24,6 +23,7 @@ import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
+import CompleteSprintPopup from './CompleteSprintPopup';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -355,9 +355,9 @@ const Section: React.FC<SectionProps> = ({
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
     refetchOnMountOrArgChange: true,
   });
-  const [updateSprintStatus] = useUpdateSprintStatusMutation();
   const [isStartPopupOpen, setIsStartPopupOpen] = useState(false);
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
+  const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -408,6 +408,15 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const handleCreateSprint = async () => {
+    try {
+      await createSprint({ projectKey }).unwrap();
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
+    }
+  };
+
   const handleStartSprint = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (sprintId) {
@@ -423,6 +432,13 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId) {
+      setIsCompletePopupOpen(true);
+    }
+  };
+
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
@@ -433,25 +449,6 @@ const Section: React.FC<SectionProps> = ({
       } catch (err: any) {
         alert(`Failed to delete sprint: ${err?.data?.message || 'Failed to delete sprint'}`);
       }
-    }
-  };
-
-  const handleCompleteSprint = async (sprintId: number) => {
-    try {
-      console.log(`Completing sprint ${sprintId} with status COMPLETED`);
-      await updateSprintStatus({ id: sprintId.toString(), status: 'COMPLETED' }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to complete sprint: ${err?.data?.message || 'Failed to complete sprint'}`);
-    }
-  };
-
-  const handleCreateSprint = async () => {
-    try {
-      await createSprint({ projectKey }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
     }
   };
 
@@ -522,9 +519,7 @@ const Section: React.FC<SectionProps> = ({
                       Add dates
                     </button>
                   ) : (
-                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
-                      tasks.length
-                    } work items)`
+                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${tasks.length} work items)`
                   )}
                 </span>
               </span>
@@ -567,7 +562,7 @@ const Section: React.FC<SectionProps> = ({
               )}
               {sprint.status === 'ACTIVE' && (
                 <button
-                  onClick={() => handleCompleteSprint(sprint.id)}
+                  onClick={handleOpenCompleteSprintPopup}
                   disabled={tasks.length === 0}
                   className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                     tasks.length === 0
@@ -663,6 +658,15 @@ const Section: React.FC<SectionProps> = ({
         sprintId={sprintId || 0}
         onTaskUpdated={onTaskUpdated}
         projectKey={projectKey}
+        workItem={tasks.length}
+      />
+      <CompleteSprintPopup
+        isOpen={isCompletePopupOpen}
+        onClose={() => setIsCompletePopupOpen(false)}
+        sprintId={sprintId || 0}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        projectId = {projectId}
         workItem={tasks.length}
       />
     </div>

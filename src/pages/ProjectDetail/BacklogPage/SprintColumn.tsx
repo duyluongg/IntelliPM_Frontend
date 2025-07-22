@@ -7,7 +7,12 @@ import {
   useUpdateTaskSprintMutation,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
-import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
+import {
+  type SprintWithTaskListResponseDTO,
+  useCreateSprintQuickMutation,
+  useUpdateSprintStatusMutation,
+  useDeleteSprintMutation,
+} from '../../../services/sprintApi';
 import {
   useGetCategoriesByGroupQuery,
   type DynamicCategory,
@@ -17,12 +22,14 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import { useUpdateSprintStatusMutation } from '../../../services/sprintApi';
+import StartSprintPopup from './StartSprintPopup';
+import EditDatePopup from './EditDatePopup';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
   backlogTasks: TaskBacklogResponseDTO[];
   projectId: number;
+  projectKey: string;
   onTaskUpdated: () => void;
 }
 
@@ -33,9 +40,26 @@ interface TaskItemProps {
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
 
+interface SectionProps {
+  title: string;
+  tasks: TaskBacklogResponseDTO[];
+  sprintId: number | null;
+  sprints: SprintWithTaskListResponseDTO[];
+  projectId: number;
+  projectKey: string;
+  onTaskUpdated: () => void;
+  moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
+}
+
 const staticStatusOptions = [
   { label: 'TO DO', value: 'TO DO', name: 'TO_DO', bg: 'bg-gray-200', text: 'text-gray-800' },
-  { label: 'IN PROGRESS', value: 'IN PROGRESS', name: 'IN_PROGRESS', bg: 'bg-blue-200', text: 'text-blue-800' },
+  {
+    label: 'IN PROGRESS',
+    value: 'IN PROGRESS',
+    name: 'IN_PROGRESS',
+    bg: 'bg-blue-200',
+    text: 'text-blue-800',
+  },
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
@@ -75,7 +99,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     categories: DynamicCategory[]
   ): string => {
     if (!apiStatus) return 'TO DO';
-    const normalizedApiStatus = apiStatus.trim().toUpperCase().replace(/[-_\s]/g, '');
+    const normalizedApiStatus = apiStatus
+      .trim()
+      .toUpperCase()
+      .replace(/[-_\s]/g, '');
     const category = categories.find(
       (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
     );
@@ -230,7 +257,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           {title}
         </span>
       )}
-      {/* Epic column with 5px right margin */}
       <div className='flex justify-end pl-2 mr-5'>
         {(task.epicName || '') &&
           (isNarrow || isMultiline ? (
@@ -246,7 +272,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           ))}
         {!task.epicName && <span className='text-xs text-gray-400'>-</span>}
       </div>
-      {/* Status column with background fitting content */}
       <div className='flex items-center justify-start relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
@@ -313,20 +338,349 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   );
 };
 
+const Section: React.FC<SectionProps> = ({
+  title,
+  tasks,
+  sprintId,
+  sprints,
+  projectId,
+  projectKey,
+  onTaskUpdated,
+  moveTask,
+}) => {
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [createTask] = useCreateTaskMutation();
+  const [createSprint, { isLoading: isCreatingSprint }] = useCreateSprintQuickMutation();
+  const [deleteSprint] = useDeleteSprintMutation();
+  const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
+    refetchOnMountOrArgChange: true,
+  });
+  const [updateSprintStatus] = useUpdateSprintStatusMutation();
+  const [isStartPopupOpen, setIsStartPopupOpen] = useState(false);
+  const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  const ref = useRef<HTMLDivElement>(null);
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: 'TASK',
+    item: { sprintId },
+    drop: (item: {
+      id: string;
+      index: number;
+      sprintId: number | null;
+      status: string | null | undefined;
+    }) => {
+      if (item.sprintId !== sprintId) {
+        moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
+      }
+    },
+    collect: (monitor) => ({ isOver: monitor.isOver() }),
+  }));
+
+  drop(ref);
+
+  const isSprint = sprintId !== null;
+  const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
+  const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
+  const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
+
+  const handleAddTask = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || !newTaskTitle.trim()) return;
+    try {
+      const defaultStatus =
+        statusCategories?.data?.find((c) => c.isActive && c.orderIndex === 1)?.name || 'TO_DO';
+      const newTask = {
+        projectId,
+        title: newTaskTitle,
+        type: 'task',
+        status: defaultStatus,
+        sprintId,
+        createdAt: new Date().toISOString(),
+        manualInput: true,
+        generationAiInput: false,
+      };
+      await createTask(newTask).unwrap();
+      setNewTaskTitle('');
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Failed to create task: ${err?.data?.message || 'Failed to create task'}`);
+    }
+  };
+
+  const handleStartSprint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId) {
+      setIsStartPopupOpen(true);
+    }
+  };
+
+  const handleEditSprint = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId) {
+      setIsEditPopupOpen(true);
+      setIsMoreMenuOpen(false);
+    }
+  };
+
+  const handleDeleteSprint = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
+      try {
+        await deleteSprint(sprintId.toString()).unwrap();
+        onTaskUpdated();
+        setIsMoreMenuOpen(false);
+      } catch (err: any) {
+        alert(`Failed to delete sprint: ${err?.data?.message || 'Failed to delete sprint'}`);
+      }
+    }
+  };
+
+  const handleCompleteSprint = async (sprintId: number) => {
+    try {
+      console.log(`Completing sprint ${sprintId} with status COMPLETED`);
+      await updateSprintStatus({ id: sprintId.toString(), status: 'COMPLETED' }).unwrap();
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Failed to complete sprint: ${err?.data?.message || 'Failed to complete sprint'}`);
+    }
+  };
+
+  const handleCreateSprint = async () => {
+    try {
+      await createSprint({ projectKey }).unwrap();
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver ? 'bg-blue-50' : ''}`}
+    >
+      {sprintId === null ? (
+        <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
+          <span className='text-sm font-semibold text-gray-800'>
+            Backlogㅤ
+            <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
+          </span>
+          <div className='flex items-center space-x-2'>
+            <button
+              onClick={handleCreateSprint}
+              className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
+              disabled={isCreatingSprint}
+            >
+              {isCreatingSprint ? 'Creating...' : 'Create Sprint'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        isSprint &&
+        sprint && (
+          <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
+            <div className='flex items-center space-x-2'>
+              <input
+                type='checkbox'
+                className='h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'
+                disabled={sprint.status === 'COMPLETED'}
+              />
+              <span className='text-sm font-semibold text-gray-800'>
+                {sprint.name}
+                {'ㅤ'}
+                <span className='text-gray-700 font-normal'>
+                  {hasNoDates ? (
+                    <button
+                      className='inline-flex items-center text-xs text-black hover:no-underline hover:bg-gray-200 px-1 py-1 rounded'
+                      onClick={handleEditSprint}
+                    >
+                      <svg
+                        fill='none'
+                        viewBox='0 0 16 16'
+                        role='presentation'
+                        className='w-3.5 h-3.5 mr-1'
+                        style={{ color: 'var(--ds-icon, #000000)' }}
+                      >
+                        <path
+                          fill='currentColor'
+                          fillRule='evenodd'
+                          clipRule='evenodd'
+                          d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
+                        />
+                      </svg>
+                      Add dates
+                    </button>
+                  ) : (
+                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
+                      tasks.length
+                    } work items)`
+                  )}
+                </span>
+              </span>
+            </div>
+            <div className='flex items-center space-x-2'>
+              {sprint.status === 'FUTURE' && (
+                <>
+                  {hasNoDates ? (
+                    <button
+                      onClick={handleStartSprint}
+                      disabled={tasks.length === 0 || hasActiveSprint}
+                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                        tasks.length === 0 || hasActiveSprint
+                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      }`}
+                      title={
+                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                      }
+                    >
+                      Start Sprint
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStartSprint}
+                      disabled={tasks.length === 0 || hasActiveSprint}
+                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                        tasks.length === 0 || hasActiveSprint
+                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      }`}
+                      title={
+                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                      }
+                    >
+                      Start Sprint
+                    </button>
+                  )}
+                </>
+              )}
+              {sprint.status === 'ACTIVE' && (
+                <button
+                  onClick={() => handleCompleteSprint(sprint.id)}
+                  disabled={tasks.length === 0}
+                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                    tasks.length === 0
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                  }`}
+                >
+                  Complete Sprint
+                </button>
+              )}
+              {sprint.status === 'COMPLETED' && (
+                <span className='text-sm font-medium text-gray-500'>COMPLETED</span>
+              )}
+              {sprint.status !== 'FUTURE' &&
+                sprint.status !== 'ACTIVE' &&
+                sprint.status !== 'COMPLETED' && (
+                  <span className='text-sm text-red-500'>Unknown Status: {sprint.status}</span>
+                )}
+              <div className='relative' ref={moreMenuRef}>
+                <button
+                  className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
+                    isMoreMenuOpen
+                      ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
+                      : 'border-transparent'
+                  }`}
+                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                  aria-label='More sprint options'
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+                {isMoreMenuOpen && (
+                  <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
+                    <button
+                      className='block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
+                      onClick={handleEditSprint}
+                    >
+                      Edit sprint
+                    </button>
+                    <button
+                      className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
+                      onClick={handleDeleteSprint}
+                    >
+                      Delete sprint
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      )}
+      <div className='divide-y divide-gray-200'>
+        {tasks.length === 0 ? (
+          <div className='px-4 py-3 text-center text-gray-500 border border-dashed rounded-md'>
+            No tasks available. Add a task to get started!
+          </div>
+        ) : (
+          <>
+            {tasks.map((task, index) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                index={index}
+                sprintId={sprintId}
+                moveTask={moveTask}
+              />
+            ))}
+          </>
+        )}
+        <div className='flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100'>
+          <ChevronDown className='w-4 h-4 text-gray-400' />
+          <input
+            type='text'
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onKeyDown={handleAddTask}
+            placeholder='What needs to be done?'
+            className='flex-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded bg-transparent'
+          />
+        </div>
+      </div>
+      <StartSprintPopup
+        isOpen={isStartPopupOpen}
+        onClose={() => setIsStartPopupOpen(false)}
+        sprintId={sprintId || 0}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        workItem={tasks.length}
+      />
+      <EditDatePopup
+        isOpen={isEditPopupOpen}
+        onClose={() => setIsEditPopupOpen(false)}
+        sprintId={sprintId || 0}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        workItem={tasks.length}
+      />
+    </div>
+  );
+};
+
 const SprintColumn: React.FC<SprintColumnProps> = ({
   sprints,
   backlogTasks,
   projectId,
+  projectKey,
   onTaskUpdated,
 }) => {
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [createTask] = useCreateTaskMutation();
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
     refetchOnMountOrArgChange: true,
   });
-  const [updateSprintStatus] = useUpdateSprintStatusMutation();
 
   const moveTask = async (taskId: string, toSprintId: number | null, toStatus: string | null) => {
     try {
@@ -344,179 +698,33 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
     }
   };
 
-  const handleStartSprint = async (sprintId: number) => {
-    try {
-      console.log(`Starting sprint ${sprintId} with status ACTIVE`);
-      await updateSprintStatus({ id: sprintId.toString(), status: 'ACTIVE' }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to start sprint: ${err?.data?.message || 'Failed to start sprint'}`);
-    }
-  };
-
-  const handleCompleteSprint = async (sprintId: number) => {
-    try {
-      console.log(`Completing sprint ${sprintId} with status COMPLETED`);
-      await updateSprintStatus({ id: sprintId.toString(), status: 'COMPLETED' }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to complete sprint: ${err?.data?.message || 'Failed to complete sprint'}`);
-    }
-  };
-
-  const handleCreateSprint = () => {
-    onTaskUpdated();
-  };
-
-  const handleMoreOptions = (sprintId: number | null) => {
-    onTaskUpdated();
-  };
-
-  const renderSection = (
-    title: string,
-    tasks: TaskBacklogResponseDTO[],
-    sprintId: number | null
-  ) => {
-    const ref = useRef<HTMLDivElement>(null);
-    const [{ isOver }, drop] = useDrop(() => ({
-      accept: 'TASK',
-      drop: (item: {
-        id: string;
-        index: number;
-        sprintId: number | null;
-        status: string | null | undefined;
-      }) => {
-        if (item.sprintId !== sprintId)
-          moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
-      },
-      collect: (monitor) => ({ isOver: monitor.isOver() }),
-    }));
-
-    drop(ref);
-
-    const isSprint = sprintId !== null;
-    const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
-
-    const handleAddTask = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== 'Enter' || !newTaskTitle.trim()) return;
-      try {
-        const defaultStatus =
-          statusCategories?.data?.find((c) => c.isActive && c.orderIndex === 1)?.name || 'TO_DO';
-        const newTask = {
-          projectId,
-          title: newTaskTitle,
-          type: 'task',
-          status: defaultStatus,
-          sprintId,
-          createdAt: new Date().toISOString(),
-          manualInput: true,
-          generationAiInput: false,
-        };
-        await createTask(newTask).unwrap();
-        setNewTaskTitle('');
-        onTaskUpdated();
-      } catch (err: any) {
-        alert(`Failed to create task: ${err?.data?.message || 'Failed to create task'}`);
-      }
-    };
-    return (
-      <div
-        ref={ref}
-        className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver ? 'bg-blue-50' : ''}`}
-      >
-        {sprintId === null ? (
-          <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
-            <span className='text-sm font-semibold text-gray-800'>
-              Backlogㅤ
-              <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
-            </span>
-            <div className='flex items-center space-x-2'>
-              <button
-                onClick={handleCreateSprint}
-                className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
-              >
-                Create Sprint
-              </button>
-            </div>
-          </div>
-        ) : (
-          isSprint &&
-          sprint && (
-            <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
-              <div className='flex items-center space-x-2'>
-                <input
-                  type='checkbox'
-                  className='h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'
-                  disabled={sprint.status === 'COMPLETED'}
-                />
-                <span className='text-sm font-semibold text-gray-800'>
-                  {sprint.name}
-                  {'ㅤ'}
-                  <span className='text-gray-700 font-normal'>
-                    {formatDate(sprint.startDate)} - {formatDate(sprint.endDate)} ({tasks.length}{' '}
-                    work items)
-                  </span>
-                </span>
-              </div>
-              <div className='flex items-center space-x-2'>
-                {sprint.status === 'FUTURE' && (
-                  <button
-                    onClick={() => handleStartSprint(sprint.id)}
-                    className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
-                  >
-                    Start Sprint
-                  </button>
-                )}
-                {sprint.status === 'ACTIVE' && (
-                  <button
-                    onClick={() => handleCompleteSprint(sprint.id)}
-                    className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
-                  >
-                    Complete Sprint
-                  </button>
-                )}
-                {sprint.status === 'COMPLETED' && (
-                  <span className='text-sm font-medium text-gray-500'>COMPLETED</span>
-                )}
-                {sprint.status !== 'FUTURE' &&
-                  sprint.status !== 'ACTIVE' &&
-                  sprint.status !== 'COMPLETED' && (
-                    <span className='text-sm text-red-500'>Unknown Status: {sprint.status}</span>
-                  )}
-              </div>
-            </div>
-          )
-        )}
-        <div className='divide-y divide-gray-200'>
-          {tasks.map((task, index) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              index={index}
-              sprintId={sprintId}
-              moveTask={moveTask}
-            />
-          ))}
-          <div className='flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100'>
-            <ChevronDown className='w-4 h-4 text-gray-400' />
-            <input
-              type='text'
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              onKeyDown={handleAddTask}
-              placeholder='What needs to be done?'
-              className='flex-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded bg-transparent'
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className='p-4 space-y-4'>
-      {sprints.map((sprint) => renderSection(sprint.name, sprint.tasks, sprint.id))}
-      {backlogTasks.length > 0 && renderSection('Backlog', backlogTasks, null)}
+      {sprints.map((sprint) => (
+        <Section
+          key={sprint.id}
+          title={sprint.name}
+          tasks={sprint.tasks}
+          sprintId={sprint.id}
+          sprints={sprints}
+          projectId={projectId}
+          projectKey={projectKey}
+          onTaskUpdated={onTaskUpdated}
+          moveTask={moveTask}
+        />
+      ))}
+      {backlogTasks.length > 0 && (
+        <Section
+          title='Backlog'
+          tasks={backlogTasks}
+          sprintId={null}
+          sprints={sprints}
+          projectId={projectId}
+          projectKey={projectKey}
+          onTaskUpdated={onTaskUpdated}
+          moveTask={moveTask}
+        />
+      )}
     </div>
   );
 };

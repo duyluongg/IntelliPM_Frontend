@@ -9,6 +9,7 @@ export interface TaskComment {
   content: string;
   createdAt: string;
   accountPicture: string;
+  createdBy: number;
 }
 
 export const taskCommentApi = createApi({
@@ -25,7 +26,7 @@ export const taskCommentApi = createApi({
 
     createTaskComment: builder.mutation<
       TaskComment,
-      { taskId: string; accountId: number; content: string }
+      { taskId: string; accountId: number; content: string; createdBy: number }
     >({
       query: (commentData) => ({
         url: 'taskcomment',
@@ -40,7 +41,7 @@ export const taskCommentApi = createApi({
 
     updateTaskComment: builder.mutation<
       TaskComment,
-      { id: number; taskId: string; accountId: number; content: string }
+      { id: number; taskId: string; accountId: number; content: string; createdBy: number }
     >({
       query: ({ id, ...body }) => ({
         url: `taskcomment/${id}`,
@@ -53,10 +54,11 @@ export const taskCommentApi = createApi({
       }) => response.data,
     }),
 
-    deleteTaskComment: builder.mutation<void, number>({
-      query: (id) => ({
+    deleteTaskComment: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({ id, createdBy }) => ({
         url: `taskcomment/${id}`,
         method: 'DELETE',
+        body: { createdBy },
       }),
     }),
   }),

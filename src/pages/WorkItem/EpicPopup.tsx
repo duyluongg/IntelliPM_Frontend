@@ -90,7 +90,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         skip: !epic?.projectId,
     });
 
-    const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+    const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
         skip: !epic?.projectId,
     });
 
@@ -472,7 +472,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                             const newTitle = editableTitles[task.id]?.trim();
                                                                             if (newTitle && newTitle !== task.title) {
                                                                                 try {
-                                                                                    await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                                                                    await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                                                                     await refetch();
                                                                                 } catch (err) {
                                                                                     console.error('❌ Failed to update title:', err);
@@ -634,6 +634,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                         await updateTaskStatus({
                                                                             id: task.id,
                                                                             status: e.target.value,
+                                                                            createdBy: accountId,
                                                                         }).unwrap();
                                                                         await refetch();
                                                                     } catch (err) {
@@ -753,12 +754,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         epicId: epic.id,
                                                         title: newTaskTitle.trim(),
                                                         type: newTaskType,
+                                                        createdBy: accountId,
                                                     }).unwrap();
 
                                                     console.log('✅ Task created');
                                                     setNewTaskTitle('');
                                                     setShowTaskInput(false);
                                                     await refetch();
+                                                    await refetchActivityLogs();
                                                 } catch (err) {
                                                     console.error('❌ Failed to create task:', err);
                                                     alert('❌ Failed to create task');

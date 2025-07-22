@@ -156,6 +156,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
+        createdBy: accountId,
       }).unwrap();
       console.log('✅ Start date updated');
     } catch (err) {
@@ -169,6 +170,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
+        createdBy: accountId,
       }).unwrap();
       console.log('✅ End date updated');
     } catch (err) {
@@ -178,7 +180,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title }).unwrap();
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
       console.log('Update title task successfully');
     } catch (err) {
@@ -191,7 +193,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (description === taskData?.description) return;
 
     try {
-      await updateTaskDescription({ id: taskId, description }).unwrap();
+      await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -229,7 +231,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
 
@@ -287,6 +289,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       }).unwrap();
 
       refetch();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -294,7 +297,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       setStatus(newStatus);
       await refetchTask();
     } catch (err) {
@@ -312,7 +315,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       setWorkType(type);
       setIsDropdownOpen(false);
-      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
     } catch (err) {
       console.error('❌ Error update work type:', err);
@@ -730,6 +733,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             setShowSuggestionList(false);
                             setSelectedSuggestions([]);
                             await refetch();
+                            await refetchActivityLogs();
                           }}
                           disabled={selectedSuggestions.length === 0}
                           style={{
@@ -861,6 +865,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetch();
+                                        await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
                                         alert('❌ Failed to update summary');
@@ -902,6 +907,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     }).unwrap();
                                     console.log('✅ Updated priority');
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
                                     alert('❌ Failed to update priority');
@@ -943,6 +949,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
                                       await refetch();
+                                      await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Failed to update subtask:', err);
                                       alert('❌ Failed to update subtask');
@@ -1011,6 +1018,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     setNewSubtaskTitle('');
                                     setShowSubtaskInput(false);
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('Error create subtask:', err);
                                   }
@@ -1136,9 +1144,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             taskId,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert('✅ Comment updated');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
                                           alert('❌ Update failed');
@@ -1157,9 +1167,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         )
                                       ) {
                                         try {
-                                          await deleteTaskComment(comment.id).unwrap();
+                                          await deleteTaskComment({ id: comment.id, createdBy: accountId }).unwrap();
                                           alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to delete comment', err);
                                           alert('❌ Delete failed');
@@ -1196,10 +1207,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             taskId,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

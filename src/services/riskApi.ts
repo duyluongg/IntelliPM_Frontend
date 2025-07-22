@@ -3,6 +3,11 @@ import { API_BASE_URL } from '../constants/api';
 
 export interface RiskItem {
   id: number;
+  riskKey: string;
+  createdBy: number;
+  creatorFullName: string | null;
+  creatorUserName: string | null;
+  creatorPicture: string | null;
   responsibleId: number;
   responsibleFullName: string | null;
   responsibleUserName: string | null;
@@ -56,12 +61,45 @@ export interface CreateRiskResponse {
   data: RiskItem;
 }
 
+export interface UpdateRiskStatusRequest {
+  id: number;
+  status: string;
+}
+
+export interface UpdateRiskTypeRequest {
+  id: number;
+  type: string;
+}
+
+export interface UpdateRiskResponsibleRequest {
+  id: number;
+  responsibleId: number;
+}
+
+export interface UpdateRiskDueDateRequest {
+  id: number;
+  dueDate: string;
+}
+
+export interface UpdateRiskTitleRequest {
+  id: number;
+  title: string;
+}
+
+export interface UpdateRiskResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: RiskItem;
+}
+
 export const riskApi = createApi({
   reducerPath: 'riskApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
@@ -80,7 +118,55 @@ export const riskApi = createApi({
         body: newRisk,
       }),
     }),
+
+    updateRiskStatus: builder.mutation<UpdateRiskResponse, UpdateRiskStatusRequest>({
+      query: ({ id, status }) => ({
+        url: `risk/${id}/status`,
+        method: 'PATCH',
+        body: JSON.stringify(status),
+      }),
+    }),
+
+    updateRiskType: builder.mutation<UpdateRiskResponse, UpdateRiskTypeRequest>({
+      query: ({ id, type }) => ({
+        url: `risk/${id}/type`,
+        method: 'PATCH',
+        body: JSON.stringify(type),
+      }),
+    }),
+
+    updateRiskResponsible: builder.mutation<UpdateRiskResponse, UpdateRiskResponsibleRequest>({
+      query: ({ id, responsibleId }) => ({
+        url: `risk/${id}/responsibleid`,
+        method: 'PATCH',
+        body: JSON.stringify(responsibleId),
+      }),
+    }),
+
+    updateRiskDueDate: builder.mutation<UpdateRiskResponse, UpdateRiskDueDateRequest>({
+      query: ({ id, dueDate }) => ({
+        url: `risk/${id}/duedate`,
+        method: 'PATCH',
+        body: JSON.stringify(dueDate),
+      }),
+    }),
+
+    updateRiskTitle: builder.mutation<UpdateRiskResponse, UpdateRiskTitleRequest>({
+      query: ({ id, title }) => ({
+        url: `risk/${id}/title`,
+        method: 'PATCH',
+        body: JSON.stringify(title),
+      }),
+    }),
   }),
 });
 
-export const { useGetRisksByProjectKeyQuery, useCreateRiskMutation } = riskApi;
+export const {
+  useGetRisksByProjectKeyQuery,
+  useCreateRiskMutation,
+  useUpdateRiskStatusMutation,
+  useUpdateRiskTypeMutation,
+  useUpdateRiskResponsibleMutation,
+  useUpdateRiskDueDateMutation,
+  useUpdateRiskTitleMutation,
+} = riskApi;

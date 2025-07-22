@@ -22,9 +22,9 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics,
   const { refetch: refetchBacklog } = useGetTasksFromBacklogQuery(projectKey);
 
   const handleTaskUpdated = () => {
-    refetchSprints(); 
-    refetchBacklog(); 
-  }
+    refetchSprints();
+    refetchBacklog();
+  };
 
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
@@ -40,6 +40,7 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics,
             sprints={sprints}
             backlogTasks={backlogTasks}
             projectId={projectId}
+            projectKey={projectKey} 
             onTaskUpdated={handleTaskUpdated}
           />
         </div>

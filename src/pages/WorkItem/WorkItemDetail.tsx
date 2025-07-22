@@ -109,6 +109,7 @@ const WorkItemDetail: React.FC = () => {
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
+        createdBy: accountId,
       }).unwrap();
       console.log('✅ Start date updated');
     } catch (err) {
@@ -122,6 +123,7 @@ const WorkItemDetail: React.FC = () => {
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
+        createdBy: accountId
       }).unwrap();
       console.log('✅ End date updated');
     } catch (err) {
@@ -131,7 +133,7 @@ const WorkItemDetail: React.FC = () => {
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title }).unwrap();
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
       console.log('Update title task successfully');
     } catch (err) {
@@ -144,7 +146,7 @@ const WorkItemDetail: React.FC = () => {
     if (description === taskData?.description) return;
 
     try {
-      await updateTaskDescription({ id: taskId, description }).unwrap();
+      await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -196,7 +198,7 @@ const WorkItemDetail: React.FC = () => {
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
       skip: !taskData?.projectId,
     });
 
@@ -244,7 +246,7 @@ const WorkItemDetail: React.FC = () => {
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       await refetchTask();
     } catch (err) {
       console.error('Update task status failed', err);
@@ -275,7 +277,7 @@ const WorkItemDetail: React.FC = () => {
     try {
       setWorkType(type);
       setIsDropdownOpen(false);
-      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
     } catch (err) {
       console.error('❌ Error update work type:', err);
@@ -1024,9 +1026,11 @@ const WorkItemDetail: React.FC = () => {
                                             taskId,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert("✅ Comment updated");
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to update comment", err);
                                           alert("❌ Update failed");
@@ -1039,14 +1043,19 @@ const WorkItemDetail: React.FC = () => {
                                   <button
                                     className="delete-btn"
                                     onClick={async () => {
-                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                      if (
+                                        window.confirm(
+                                          '🗑️ Are you sure you want to delete this comment?'
+                                        )
+                                      ) {
                                         try {
-                                          await deleteTaskComment(comment.id).unwrap();
-                                          alert("🗑️ Deleted successfully");
+                                          await deleteTaskComment({ id: comment.id, createdBy: accountId }).unwrap();
+                                          alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error("❌ Failed to delete comment", err);
-                                          alert("❌ Delete failed");
+                                          console.error('❌ Failed to delete comment', err);
+                                          alert('❌ Delete failed');
                                         }
                                       }
                                     }}
@@ -1080,11 +1089,13 @@ const WorkItemDetail: React.FC = () => {
                             taskId,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
 
                           setCommentContent('');
                           alert('✅ Comment posted ');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

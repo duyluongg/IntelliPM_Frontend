@@ -83,7 +83,7 @@ const EpicDetail: React.FC = () => {
     skip: !epicIdFromUrl,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
     skip: !epic?.projectId,
   });
 
@@ -212,7 +212,7 @@ const EpicDetail: React.FC = () => {
 
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       refetch();
     } catch (err) {
       console.error('❌ Error updating task status:', err);
@@ -480,7 +480,7 @@ const EpicDetail: React.FC = () => {
                                         const newTitle = editableTitles[task.id]?.trim();
                                         if (newTitle && newTitle !== task.title) {
                                           try {
-                                            await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                            await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                             await refetch();
                                           } catch (err) {
                                             console.error('❌ Failed to update title:', err);
@@ -641,6 +641,7 @@ const EpicDetail: React.FC = () => {
                                       await updateTaskStatus({
                                         id: task.id,
                                         status: e.target.value,
+                                        createdBy: accountId
                                       }).unwrap();
                                       await refetch();
                                     } catch (err) {
@@ -759,12 +760,14 @@ const EpicDetail: React.FC = () => {
                             epicId: epic.id,
                             title: newTaskTitle.trim(),
                             type: newTaskType,
+                            createdBy: accountId,
                           }).unwrap();
 
                           console.log('✅ Task created');
                           setNewTaskTitle('');
                           setShowTaskInput(false);
                           await refetch();
+                          await refetchActivityLogs();
                         } catch (err) {
                           console.error('❌ Failed to create task:', err);
                           alert('❌ Failed to create task');

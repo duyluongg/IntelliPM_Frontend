@@ -74,7 +74,10 @@ export const projectMemberApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    createProjectMember: builder.mutation<ApiResponse<ProjectMemberResponse>, { projectId: number; request: ProjectMemberRequest }>({
+    createProjectMember: builder.mutation<
+      ApiResponse<ProjectMemberResponse>,
+      { projectId: number; request: ProjectMemberRequest }
+    >({
       query: ({ projectId, request }) => ({
         url: `project/${projectId}/projectmember`,
         method: 'POST',
@@ -87,7 +90,10 @@ export const projectMemberApi = createApi({
         method: 'DELETE',
       }),
     }),
-    createBulkProjectMembersWithPositions: builder.mutation<ApiResponse<ProjectMemberWithPositionsResponse[]>, { projectId: number; requests: ProjectMemberWithPositionRequest[] }>({
+    createBulkProjectMembersWithPositions: builder.mutation<
+      ApiResponse<ProjectMemberWithPositionsResponse[]>,
+      { projectId: number; requests: ProjectMemberWithPositionRequest[] }
+    >({
       query: ({ projectId, requests }) => ({
         url: `project/${projectId}/projectmember/bulk-with-positions`,
         method: 'POST',
@@ -109,6 +115,17 @@ export const projectMemberApi = createApi({
         return [];
       },
     }),
+
+    getProjectMembersNoStatus: builder.query<ProjectMemberWithPositionsResponse[], number>({
+      query: (projectId) => `project/${projectId}/projectmember`,
+      transformResponse: (response: any) => {
+        if (response?.isSuccess && Array.isArray(response.data)) {
+          return response.data; 
+        }
+        return [];
+      },
+    }),
+
     getProjectMembersWithPositions: builder.query<GetProjectMembersWithPositionsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/projectmember/with-positions`,
@@ -123,5 +140,6 @@ export const {
   useDeleteProjectMemberMutation,
   useCreateBulkProjectMembersWithPositionsMutation,
   useGetProjectMembersQuery,
+  useGetProjectMembersNoStatusQuery,
   useGetProjectMembersWithPositionsQuery,
 } = projectMemberApi;

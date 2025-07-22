@@ -106,8 +106,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
 
-
-
   const {
     data: attachments = [],
     isLoading: isAttachmentsLoading,
@@ -231,7 +229,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-
   const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
@@ -271,9 +268,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     key: item.id,
     summary: item.title,
     priority: item.priority,
+    description: item.description,
     assignee: item.assignedByName ?? 'Unassigned',
     assigneeId: item.assignedBy ?? '0',
     status: item.status,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    reporterId: item.reporterId,
+    reporterName: item.reporterName,
   }));
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -849,8 +851,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             selectedAssignees[item.key] ?? item.assigneeId
                                           ),
                                           title: newTitle,
-                                          description: taskData?.description ?? '',
+                                          description: item.description ?? '',
                                           priority: item.priority,
+                                          startDate: item.startDate,
+                                          endDate: item.endDate,
+                                          reporterId: item.reporterId,
+                                          createdBy: accountId,
                                         }).unwrap();
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
@@ -887,8 +893,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         selectedAssignees[item.key] ?? item.assigneeId
                                       ),
                                       title: editableSummaries[item.key] ?? item.summary,
-                                      description: taskData?.description ?? '',
+                                      description: item?.description ?? '',
                                       priority: newPriority,
+                                      startDate: item.startDate,
+                                      endDate: item.endDate,
+                                      reporterId: item.reporterId,
+                                      createdBy: accountId,
                                     }).unwrap();
                                     console.log('✅ Updated priority');
                                     await refetch();
@@ -924,7 +934,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         assignedBy: newAssigneeId,
                                         priority: item.priority,
                                         title: item.summary,
-                                        description: taskData?.description ?? '', // giữ nguyên
+                                        description: item?.description ?? '',
+                                        startDate: item.startDate,
+                                        endDate: item.endDate,
+                                        reporterId: item.reporterId,
+                                        createdBy: accountId,
                                       }).unwrap();
                                       alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
@@ -1067,14 +1081,18 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   ) : (
                     activityLogs.map((log) => (
                       <div key={log.id} className="history-item">
-                        <strong>{log.createdByName}</strong> — <em>{new Date(log.createdAt).toLocaleString()}</em>
-                        <div>{log.message}</div>
+                        <div className="history-header">
+                          <span className="history-user">{log.createdByName}</span>
+                          <span className="history-time">
+                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="history-message">{log.message}</div>
                       </div>
                     ))
                   )}
                 </div>
               )}
-
 
               {activeTab === 'COMMENTS' ? (
                 <>
@@ -1265,7 +1283,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       >
                         <option value="" disabled>+ Add assignee</option>
 
-                        {/* Chỉ hiện những người chưa được gán vào task */}
                         {projectMembers
                           ?.filter(
                             (m) =>
@@ -1316,7 +1333,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </div>
               <div className='detail-item'>
                 <label>Sprint</label>
-                <span>{taskData?.sprintId ?? 'None'}</span>
+                <span>{taskData?.sprintName ?? 'None'}</span>
               </div>
               <div className='detail-item'>
                 <label>Start date</label>

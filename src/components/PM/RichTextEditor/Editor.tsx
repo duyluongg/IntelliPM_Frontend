@@ -1,27 +1,40 @@
 import './styles.scss';
 
 import { Color } from '@tiptap/extension-color';
-import ListItem from '@tiptap/extension-list-item';
+// import ListItem from '@tiptap/extension-list-item';
 import TextStyle from '@tiptap/extension-text-style';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import { Edit3, FileText, Sparkles, X } from 'lucide-react';
+
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import { Edit3, FileText, LucideLock, LucideSun, Sparkles, X } from 'lucide-react';
 import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
+import { HiOutlineTemplate, HiOutlineTable, HiOutlineChartBar } from 'react-icons/hi'; // Các biểu tượng khác
+
+import TextareaAutosize from 'react-textarea-autosize';
+import { useAuth } from '../../../services/AuthContext';
+import { useGetProjectMembersNoStatusQuery } from '../../../services/projectMemberApi';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../app/store';
+import { createMentionExtension } from './MentionExtension';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
 };
 
 const MenuBar = ({ editor }: MenuBarProps) => {
-  if (!editor) return null;
   const [showAIOptions, setShowAIOptions] = useState(false);
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [showSummarizeModal, setShowSummarizeModal] = useState(false);
+  if (!editor) return null;
+
+  const headingLevels: (1 | 2 | 3 | 4 | 5 | 6)[] = [1, 2, 3, 4, 5, 6];
 
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
@@ -114,7 +127,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
           >
             P
           </button>
-          {[1, 2, 3, 4, 5, 6].map((level) => (
+          {headingLevels.map((level) => (
             <button
               key={level}
               onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
@@ -334,7 +347,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                 editor={editor}
                 onClose={() => setShowWriteModal(false)}
                 form='write_with_ai'
-            
               />
             </div>
           )}
@@ -363,40 +375,243 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 //   }),
 // ];
 
-const extensions = [
-  Color.configure({ types: [TextStyle.name, ListItem.name] }),
-  TextStyle.configure({ types: [ListItem.name] }),
-  StarterKit.configure({
-    bulletList: { keepMarks: true, keepAttributes: false },
-    orderedList: { keepMarks: true, keepAttributes: false },
-    table: false,
-  }),
-  Table.configure({
-    resizable: true,
-  }),
-  TableRow,
-  TableHeader,
-  TableCell,
-];
+const templates = {
+  'to-do-list': `
+  <h1 style="color: #6C6C6C;">Name your to do list</h1>
+
+  <h2 class="task-category-header">
+    <span class="highlight-bg">
+      <span style="color: #F7C841;">&#128193;</span> 
+      <span style="color: #000000;">Today</span>
+    </span>
+  </h2>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false">
+      <p>Add a task for today and turn it into an item on your board</p>
+    </li>
+  </ul>
+
+  <h2 class="task-category-header">
+    <span class="highlight-bg">
+      <span style="color: #FF9800;">&#10024;</span> 
+      <span style="color: #000000;">Priorities for the week</span>
+    </span>
+  </h2>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false">
+      <p>Add a task, use '@' to mention someone</p>
+    </li>
+  </ul>
+
+  <h2 class="task-category-header">
+    <span class="highlight-bg">
+      <span style="color: #9C27B0;">&#128220;</span> 
+      <span style="color: #000000;">Upcoming tasks</span>
+    </span>
+  </h2>
+  
+  <h3 class="task-project-header">Name of project 1</h3>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false">
+      <p>List</p>
+    </li>
+  </ul>
+
+  <h3 class="task-project-header">Name of project 2</h3>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false">
+      <p>or type '/board' to insert a board here</p>
+    </li>
+  </ul>
+`,
+  'project-plan': `
+    <h1>Kế Hoạch Dự Án: [Điền Tên Dự Án]</h1>
+    <p><strong>Ngày bắt đầu:</strong> [Ngày]</p>
+    <p><strong>Ngày kết thúc dự kiến:</strong> [Ngày]</p>
+    <p><strong>Người phụ trách chính:</strong> [Tên]</p>
+
+    <h2>1. Mục Tiêu Dự Án</h2>
+    <p>Mô tả rõ ràng các mục tiêu chính mà dự án này muốn đạt được. Đảm bảo các mục tiêu là SMART (Specific, Measurable, Achievable, Relevant, Time-bound).</p>
+    <ul>
+      <li>Mục tiêu 1:</li>
+      <li>Mục tiêu 2:</li>
+      <li>Mục tiêu 3:</li>
+    </ul>
+
+    <h2>2. Phạm Vi Dự Án</h2>
+    <p>Xác định ranh giới và giới hạn của dự án. Liệt kê những gì sẽ được bao gồm và những gì sẽ không được bao gồm.</p>
+    <ul>
+      <li><strong>Bao gồm:</strong></li>
+      <li><strong>Không bao gồm:</strong></li>
+    </ul>
+
+    <h2>3. Lịch Trình & Giai Đoạn</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Giai đoạn</th>
+          <th>Mô tả</th>
+          <th>Ngày bắt đầu</th>
+          <th>Ngày kết thúc dự kiến</th>
+          <th>Người chịu trách nhiệm</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Khởi tạo</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Lập kế hoạch</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Thực hiện</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Kiểm tra & Đánh giá</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Kết thúc</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>4. Nguồn Lực</h2>
+    <p>Liệt kê các nguồn lực cần thiết cho dự án (nhân lực, tài chính, công cụ, vật liệu).</p>
+    <ul>
+      <li>Nhân lực:</li>
+      <li>Ngân sách:</li>
+      <li>Công cụ:</li>
+    </ul>
+
+    <h2>5. Rủi Ro & Giảm Thiểu</h2>
+    <p>Xác định các rủi ro tiềm ẩn và kế hoạch giảm thiểu cho từng rủi ro.</p>
+    <ul>
+      <li>Rủi ro 1: [Mô tả] - Giải pháp: [Kế hoạch giảm thiểu]</li>
+      <li>Rủi ro 2: [Mô tả] - Giải pháp: [Kế hoạch giảm thiểu]</li>
+    </ul>
+
+    <h2>6. Các Bên Liên Quan</h2>
+    <p>Liệt kê các bên liên quan chính và vai trò của họ trong dự án.</p>
+    <ul>
+      <li>[Tên / Chức vụ]: [Vai trò]</li>
+    </ul>
+  `,
+};
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
+  title: string;
+  onTitleChange: (title: string) => void;
+
+  showTemplatePicker: boolean;
+  setShowTemplatePicker: React.Dispatch<React.SetStateAction<boolean>>;
+  projectId?: number;
 };
 
-export default function RichTextEditor({ value, onChange }: Props) {
+export default function RichTextEditor({
+  value,
+  onChange,
+  title,
+  onTitleChange,
+  showTemplatePicker,
+  setShowTemplatePicker,
+}: Props) {
   const cleanedValue = stripMarkdownCodeBlock(value);
+  const { user } = useAuth();
+  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+  console.log('Project ID:', projectId);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
-  const editor = useEditor({
-    extensions,
-    content: cleanedValue,
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      if (html !== value) {
-        onChange(html);
-      }
-    },
+  const { data: members = [] } = useGetProjectMembersNoStatusQuery(projectId!, {
+    skip: !projectId,
   });
+  console.log(members, 'Members data from query');
+
+  const mentionItems = useMemo(
+    () =>
+      members.map((m) => ({
+        id: m.accountId,
+        label: m.accountName,
+      })),
+    [members]
+  );
+
+  // const extensions = [
+  //   Color.configure({ types: [TextStyle.name, ListItem.name] }),
+  //   TextStyle.configure(),
+  //   StarterKit.configure({
+  //     bulletList: { keepMarks: true, keepAttributes: false },
+  //     orderedList: { keepMarks: true, keepAttributes: false },
+  //   }),
+  //   Table.configure({
+  //     resizable: true,
+  //   }),
+  //   TableRow,
+  //   TableHeader,
+  //   TableCell,
+  //   TaskList,
+  //   TaskItem.configure({
+  //     nested: true,
+  //   }),
+  //   mentionExtension,
+  // ];
+
+  // const editor = useEditor({
+  //   extensions,
+  //   content: cleanedValue,
+  //   onUpdate: ({ editor }) => {
+  //     const html = editor.getHTML();
+  //     if (html !== value) {
+  //       onChange(html);
+  //     }
+  //   },
+  // });
+  useEffect(() => {
+    if (mentionItems.length === 0 || editor) return;
+
+    const instance = new Editor({
+      extensions: [
+        StarterKit,
+        TextStyle,
+        Color,
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        createMentionExtension(mentionItems),
+      ],
+      content: value,
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        if (html !== value) onChange(html);
+      },
+    });
+
+    setEditor(instance);
+  }, [mentionItems, editor]);
 
   useEffect(() => {
     if (editor && cleanedValue && editor.getHTML() !== cleanedValue) {
@@ -404,12 +619,117 @@ export default function RichTextEditor({ value, onChange }: Props) {
     }
   }, [value, editor]);
 
+  const applyTemplate = (templateKey: keyof typeof templates) => {
+    if (editor) {
+      const templateContent = templates[templateKey];
+      const currentEditorContent = editor.getHTML();
+      const newContentAfterTemplate = currentEditorContent + templateContent;
+      editor.commands.setContent(editor.getHTML() + templateContent);
+      setShowTemplatePicker(false);
+
+      onChange(newContentAfterTemplate);
+    }
+  };
+  const isEmptyContent = (html: string) =>
+    !html || html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
+
   return (
     <div>
       <div className='sticky top-0 z-10 bg-white'>{editor && <MenuBar editor={editor} />}</div>
 
       <div className='prose max-w-none'>
+        <div className='flex items-center mb-6'>
+          <TextareaAutosize
+            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none focus:ring-0 focus:border-none border-none shadow-none'
+            value={title}
+            onChange={(e) => onTitleChange(e.target.value)}
+            placeholder='Untitled document'
+          />
+        </div>
+
+        <div className='flex items-center text-sm text-gray-500 mb-6'>
+          <div className='flex items-center mr-4'>
+            <div className='w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold mr-2'>
+              DL
+            </div>
+            <span>
+              Creator <span className='font-semibold text-gray-700'>{user?.username}</span>
+            </span>
+          </div>
+          <div className='flex items-center mr-4'>
+            <LucideSun className='mr-1' />
+            <span>
+              Created <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+            </span>
+          </div>
+          <div className='flex items-center'>
+            <LucideLock className='mr-1' />
+            <span>
+              Last updated <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+            </span>
+          </div>
+        </div>
+
         <EditorContent editor={editor} />
+
+
+        {isEmptyContent(value) && (
+          <div className='space-y-4'>
+            <OptionItem
+              icon={<HiOutlineTemplate className='w-5 h-5' />}
+              text='Templates'
+              onClick={() => setShowTemplatePicker(true)}
+            />
+            <OptionItem icon={<HiOutlineTable className='w-5 h-5' />} text='Table' />
+            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Chart' />
+            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board values' />
+            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board' />
+          </div>
+        )}
+
+        {showTemplatePicker && (
+          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+            <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl'>
+              <h2 className='text-2xl font-bold mb-6 text-center'>Document Template</h2>
+
+              <div className='flex gap-4 justify-center flex-wrap'>
+                <button
+                  onClick={() => applyTemplate('project-plan')}
+                  className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
+                >
+                  <span className='text-2xl mb-2'>🚧</span>
+                  <span className='font-medium text-sm leading-tight'>
+                    Project
+                    <br />
+                    Plan
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => applyTemplate('to-do-list')}
+                  className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
+                >
+                  <span className='text-2xl mb-2'>✅</span>
+                  <span className='font-medium text-sm leading-tight'>
+                    To-Do
+                    <br />
+                    List
+                  </span>
+                </button>
+              </div>
+
+              <div className='text-center mt-6'>
+                <button
+                  className='px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm'
+                  onClick={() => setShowTemplatePicker(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -419,3 +739,23 @@ function stripMarkdownCodeBlock(input: string): string {
   if (typeof input !== 'string') return '';
   return input.replace(/^```html\s*([\s\S]*?)\s*```$/i, '$1').trim();
 }
+
+interface OptionItemProps {
+  icon: React.ReactNode;
+  text: string;
+
+  onClick?: () => void;
+}
+
+const OptionItem: React.FC<OptionItemProps> = ({ icon, text, onClick }) => {
+  return (
+    <div
+      className='flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'
+      onClick={onClick}
+    >
+
+      <div className='text-purple-500 mr-3'>{icon}</div>
+      <span className='text-gray-700 font-medium'>{text}</span>
+    </div>
+  );
+};

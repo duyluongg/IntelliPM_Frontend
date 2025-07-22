@@ -1,23 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
-import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import { useUpdateSubtaskStatusMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
+import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
-import {
-  useDeleteSubtaskFileMutation,
-  useGetSubtaskFilesBySubtaskIdQuery,
-  useUploadSubtaskFileMutation,
-} from '../../services/subtaskFileApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation, } from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import {
-  useGetSubtaskCommentsBySubtaskIdQuery,
-  useDeleteSubtaskCommentMutation,
-  useUpdateSubtaskCommentMutation,
-  useCreateSubtaskCommentMutation,
-} from '../../services/subtaskCommentApi';
+import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation, } from '../../services/subtaskCommentApi';
 import { WorkLogModal } from './WorkLogModal';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 
 interface SubtaskDetail {
   id: string;
@@ -47,21 +40,53 @@ interface ChildWorkItemPopupProps {
 }
 
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
-  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-  const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
+  const [subtaskDetail, setSubtaskDetail] = React.useState<SubtaskDetail | null>(null);
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
-  const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
+  const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
   const [deleteSubtaskComment] = useDeleteSubtaskCommentMutation();
   const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
   const [commentContent, setCommentContent] = React.useState('');
   const [createSubtaskComment] = useCreateSubtaskCommentMutation();
-  const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
+  const [description, setDescription] = React.useState('');
+  const [title, setTitle] = React.useState('');
+  const [assignedBy, setAssignedBy] = React.useState('');
+  const [priority, setPriority] = React.useState('');
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
+  const [reporterId, setReporterId] = React.useState('');
+  const [newTitle, setNewTitle] = useState<string>();
+  const [newDescription, setNewDescription] = useState<string>();
+  const [newPriority, setNewPriority] = useState<string>();
+  const [newStartDate, setNewStartDate] = useState<string>();
+  const [newEndDate, setNewEndDate] = useState<string>();
+  const [newReporterId, setNewReporterId] = useState<number>();
+  const [newAssignedBy, setNewAssignedBy] = useState<number>();
+  const [updateSubtask] = useUpdateSubtaskMutation();
+  const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(subtaskDetail?.assignedBy);
+  const [selectedReporter, setSelectedReporter] = useState<number | undefined>(subtaskDetail?.reporterId);
+  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '');
+  const projectId = taskDetail?.projectId;
+  const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
+
+  React.useEffect(() => {
+    if (subtaskDetail) {
+      setDescription(subtaskDetail.description || '');
+      setTitle(subtaskDetail.title || '');
+      setAssignedBy(String(subtaskDetail.assignedBy) || '');
+      setPriority(subtaskDetail.priority || '');
+      setStartDate(subtaskDetail.startDate || '');
+      setEndDate(subtaskDetail.endDate || '');
+      setReporterId(String(subtaskDetail.reporterId) || '');
+    }
+  }, [subtaskDetail]);
 
   const { data: attachments = [], refetch: refetchAttachments } =
     useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
@@ -76,21 +101,67 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id,
   });
 
-  useEffect(() => {
-    const fetchSubtask = async () => {
-      try {
-        const res = await fetch(`https://localhost:7128/api/subtask/${item.key}`);
-        const json = await res.json();
-        if (json.isSuccess && json.data) {
-          setSubtaskDetail(json.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch subtask', err);
-      }
-    };
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskDetail?.projectId!, {
+    skip: !taskDetail?.projectId,
+  });
 
+  const fetchSubtask = async () => {
+    try {
+      const res = await fetch(`https://localhost:7128/api/subtask/${item.key}`);
+      const json = await res.json();
+      if (json.isSuccess && json.data) {
+        setSubtaskDetail(json.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch subtask', err);
+    }
+  };
+
+  useEffect(() => {
     fetchSubtask();
   }, [item.key]);
+
+
+  const toISO = (localDate: string) => {
+    const date = new Date(localDate);
+    return date.toISOString(); // "2025-07-21T00:00:00.000Z"
+  };
+
+  const handleUpdateSubtask = async () => {
+    if (!subtaskDetail) return;
+
+    if (
+      newTitle === undefined &&
+      newDescription === undefined &&
+      newPriority === undefined &&
+      newStartDate === undefined &&
+      newEndDate === undefined &&
+      newReporterId === undefined &&
+      newAssignedBy === undefined
+    ) {
+      return; 
+    }
+
+    try {
+      await updateSubtask({
+        id: subtaskDetail.id,
+        title: newTitle ?? subtaskDetail.title,
+        description: newDescription ?? subtaskDetail.description,
+        priority: newPriority ?? subtaskDetail.priority,
+        startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
+        endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
+        reporterId: newReporterId ?? subtaskDetail.reporterId,
+        assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
+        createdBy: accountId, 
+      }).unwrap();
+
+      console.log("✅ Subtask updated");
+      await fetchSubtask();
+    } catch (err) {
+      console.error("❌ Failed to update subtask", err);
+      alert("❌ Update failed");
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -139,7 +210,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       await updateSubtaskStatus({
         id: subtaskDetail.id,
         status: newStatus,
-        createdBy: accountId, 
+        createdBy: accountId,
       }).unwrap();
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
@@ -184,10 +255,20 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
           </button>
         </div>
 
+        <input
+          className="subtask-input"
+          defaultValue={subtaskDetail?.title}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onBlur={handleUpdateSubtask}
+          style={{
+            width: '500px',
+            fontWeight: 'bold',
+          }}
+        />
+
         <div className='child-popup-content'>
           <div className='child-popup-main'>
             <div className='child-popup-header-row'>
-              <h2 className='child-popup-title'>{subtaskDetail.title}</h2>
               <div className='add-menu-wrapper'>
                 <button
                   className='btn-add'
@@ -214,8 +295,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             <div className='field-group'>
               <label>Description</label>
               <textarea
-                defaultValue={subtaskDetail.description}
-                placeholder='Add a description...'
+                className="subtask-description"
+                defaultValue={subtaskDetail?.description}
+                onChange={(e) => setNewDescription(e.target.value)}
+                onBlur={handleUpdateSubtask}
               />
             </div>
             {attachments.length > 0 && (
@@ -298,7 +381,28 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 </button>
               </div>
 
-              {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className="history-list">
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="history-item">
+                        <div className="history-header">
+                          <span className="history-user">{log.createdByName}</span>
+                          <span className="history-time">
+                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="history-message">{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === 'COMMENTS' ? (
                 <>
                   <div className='comment-list'>
@@ -416,7 +520,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   </div>
                 </>
               ) : (
-                <div className='activity-placeholder'>Chưa có nhật ký hoạt động.</div>
+                <div className='activity-placeholder'></div>
               )}
             </div>
           </div>
@@ -440,8 +544,44 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <h4>Details</h4>
               <div className='detail-item'>
                 <label>Assignee</label>
-                <span>{subtaskDetail.assignedByName}</span>
+                <div className="detail-item">
+                  <select
+                    value={selectedAssignee ?? subtaskDetail?.assignedBy}
+                    onChange={async (e) => {
+                      const newAssignee = parseInt(e.target.value);
+                      setSelectedAssignee(newAssignee);
+
+                      try {
+                        await updateSubtask({
+                          id: subtaskDetail.id,
+                          assignedBy: newAssignee,
+                          title: subtaskDetail.title,
+                          description: subtaskDetail.description ?? '',
+                          priority: subtaskDetail.priority,
+                          startDate: subtaskDetail.startDate,
+                          endDate: subtaskDetail.endDate,
+                          reporterId: subtaskDetail.reporterId,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Updated subtask assignee');
+                        await fetchSubtask();
+                      } catch (err) {
+                        alert('❌ Failed to update subtask');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ minWidth: '150px' }}
+                  >
+                    <option value="0">Unassigned</option>
+                    {projectMembers?.map((m) => (
+                      <option key={m.accountId} value={m.accountId}>
+                        {m.accountName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
               <div className='detail-item'>
                 <label>Labels</label>
                 <span>
@@ -450,22 +590,89 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     : subtaskLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
+
               <div className='detail-item'>
                 <label>Parent</label>
                 <span>{subtaskDetail.taskId}</span>
               </div>
+
               <div className='detail-item'>
-                <label>Due date</label>
-                <span>{formatDate(subtaskDetail.endDate)}</span>
+                <label>Priority</label>
+                <select style={{ width: '150px' }}
+                  value={newPriority ?? subtaskDetail?.priority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                >
+                  <option value='HIGH'>High</option>
+                  <option value='HIGHEST'>Highest</option>
+                  <option value='MEDIUM'>Medium</option>
+                  <option value='LOW'>Low</option>
+                  <option value='LOWEST'>Lowest</option>
+                </select>
               </div>
+
               <div className='detail-item'>
-                <label>Start date</label>
-                <span>{formatDate(subtaskDetail.startDate)}</span>
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => setNewStartDate(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                  style={{ width: '150px' }}
+                />
               </div>
+
+              <div className='detail-item'>
+                <label>Due Date</label>
+                <input
+                  type="date"
+                  value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => setNewEndDate(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                  style={{ width: '150px' }}
+                />
+              </div>
+
               <div className='detail-item'>
                 <label>Reporter</label>
-                <span>{subtaskDetail.assignedByName}</span>
+                <div className="detail-item">
+                  <select
+                    value={selectedReporter ?? subtaskDetail?.reporterId}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateSubtask({
+                          id: subtaskDetail.id,
+                          assignedBy: subtaskDetail.assignedBy,
+                          title: subtaskDetail.title,
+                          description: subtaskDetail.description ?? '',
+                          priority: subtaskDetail.priority,
+                          startDate: subtaskDetail.startDate,
+                          endDate: subtaskDetail.endDate,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Updated subtask reporter');
+                        await fetchSubtask();
+                      } catch (err) {
+                        alert('❌ Failed to update reporter');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ minWidth: '150px' }}
+                  >
+                    <option value="0">Unassigned</option>
+                    {projectMembers?.map((m) => (
+                      <option key={m.accountId} value={m.accountId}>
+                        {m.accountName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
               <div className='detail-item'>
                 <label>Time Tracking</label>
                 <span
@@ -475,6 +682,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   Log Work
                 </span>
               </div>
+
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}

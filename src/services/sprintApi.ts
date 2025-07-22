@@ -170,6 +170,17 @@ export const sprintApi = createApi({
       }),
       transformResponse: (response: ApiResponse<{ isWithin: boolean }>) => response.data,
     }),
+    deleteSprint: builder.mutation<void, string>({
+      query: (sprintId) => ({
+        url: `sprint/${sprintId}/with-task`,
+        method: 'DELETE',
+        headers: {
+          'accept': '*/*',
+        },
+      }),
+      invalidatesTags: ['Sprint'],
+    }),
+
   }),
 });
 
@@ -182,4 +193,5 @@ export const {
   useCreateSprintQuickMutation,
   useCheckSprintDatesMutation,
   useCheckWithinProjectMutation,
+  useDeleteSprintMutation,
 } = sprintApi;

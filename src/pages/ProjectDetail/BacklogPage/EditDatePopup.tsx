@@ -3,7 +3,7 @@ import { useGetSprintByIdQuery, useUpdateSprintDetailsMutation, useCheckSprintDa
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import dayjs from 'dayjs';
 
-interface StartSprintPopupProps {
+interface EditDatePopupProps {
   isOpen: boolean;
   onClose: () => void;
   sprintId: number;
@@ -19,7 +19,7 @@ interface ApiResponse<T> {
   data: T;
 }
 
-const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
+const EditDatePopup: React.FC<EditDatePopupProps> = ({
   isOpen,
   onClose,
   sprintId,
@@ -41,9 +41,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   } = useGetProjectDetailsByKeyQuery(projectKey, {
     skip: !isOpen || !projectKey,
   });
-
-
-
   const [updateSprintDetails] = useUpdateSprintDetailsMutation();
   const [checkSprintDates] = useCheckSprintDatesMutation();
   const [checkWithinProject] = useCheckWithinProjectMutation();
@@ -62,10 +59,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   const [hasChangedEnd, setHasChangedEnd] = useState(false);
   const [validWeeks, setValidWeeks] = useState<number[]>([1, 2, 3, 4]);
 
-  // Sử dụng useRef để theo dõi trạng thái khởi tạo
   const isInitialized = useRef(false);
 
-  // Initialize sprint data only when form opens
   useEffect(() => {
     if (isOpen && sprint && !isInitialized.current) {
       const start = sprint.startDate ? dayjs(sprint.startDate) : dayjs();
@@ -91,10 +86,9 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         setEndTime(newEnd.format('HH:mm'));
       }
       setGoal(sprint.goal || '');
-      isInitialized.current = true; // Đánh dấu đã khởi tạo
+      isInitialized.current = true;
     }
 
-    // Reset khi form đóng
     if (!isOpen) {
       isInitialized.current = false;
       setSprintName('');
@@ -113,7 +107,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     }
   }, [isOpen, sprint]);
 
-  // Update end date and time when duration or start date/time changes
   useEffect(() => {
     if (duration !== 'custom' && startDate && startTime) {
       const weeks = parseInt(duration.split(' ')[0]) || 1;
@@ -127,7 +120,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     }
   }, [duration, startDate, startTime, validWeeks]);
 
-  // Validate start date and determine valid weeks
   useEffect(() => {
     if (!hasChangedStart || !startDate || !startTime || !projectKey || !project) return;
 
@@ -145,12 +137,10 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           setStartDateError(null);
         }
 
-        // Check if startDate is within project duration
         const start = dayjs(`${startDate}T${startTime}`);
         const projectStart = dayjs(project.data.startDate);
         const projectEnd = dayjs(project.data.endDate);
 
-        // Validate project dates
         if (!projectStart.isValid() || !projectEnd.isValid()) {
           setStartDateError('Invalid project dates');
           setValidWeeks([]);
@@ -165,7 +155,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           return;
         }
 
-        // Check valid weeks (1 to 4)
         const newValidWeeks: number[] = [];
         for (let weeks = 1; weeks <= 4; weeks++) {
           const sprintEnd = start.add(weeks, 'week');
@@ -176,7 +165,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
 
         setValidWeeks(newValidWeeks);
 
-        // Set duration to custom if no valid weeks, or adjust if current duration is invalid
         if (newValidWeeks.length === 0) {
           setGeneralError('Sprint duration cannot exceed project end date. Please use custom duration.');
           setDuration('custom');
@@ -193,7 +181,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     checkStartDate();
   }, [startDate, startTime, hasChangedStart, projectKey, project, checkSprintDates]);
 
-  // Validate end date when changed (only for custom duration)
   useEffect(() => {
     if (!hasChangedEnd || !endDate || !endTime || duration !== 'custom' || !projectKey) return;
 
@@ -245,7 +232,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           return;
         }
 
-        // Additional validation: startDate must be within project duration
         const start = dayjs(`${startDate}T${startTime}`);
         const projectStart = dayjs(project.data.startDate);
         const projectEnd = dayjs(project.data.endDate);
@@ -265,7 +251,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         return;
       }
 
-      // Validate endDate if duration is custom
       if (duration === 'custom' && endDate && endTime) {
         const checkDate = dayjs(`${endDate}T${endTime}`).toISOString();
         const result = await checkWithinProject({ projectKey, checkDate }).unwrap();
@@ -276,13 +261,11 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         }
       }
 
-      // Prepare dates for API
       const startDateTime = dayjs(`${startDate}T${startTime}`).toISOString();
       const endDateTime = duration === 'custom' 
         ? dayjs(`${endDate}T${endTime}`).toISOString() 
         : dayjs(`${startDate}T${startTime}`).add(parseInt(duration.split(' ')[0]) || 1, 'week').toISOString();
 
-      // Call updateSprintDetails with status set to ACTIVE
       await updateSprintDetails({
         id: sprintId.toString(),
         projectId: project.data.id,
@@ -292,7 +275,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         endDate: endDateTime,
         plannedStartDate: startDateTime,
         plannedEndDate: endDateTime,
-        status: 'ACTIVE',
+        status: sprint?.status || 'FUTURE', // Preserve existing status
       }).unwrap();
 
       onTaskUpdated();
@@ -328,7 +311,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           {generalError && (
             <div className="text-red-500 text-sm mb-4">{generalError}</div>
           )}
-          <h2 className="text-xl font-semibold mb-4">Start another sprint</h2>
+          <h2 className="text-xl font-semibold mb-4">Edit sprint dates</h2>
           <p className="text-sm text-gray-600 mb-4">
             <strong>{workItem}</strong> work item{workItem !== 1 ? 's' : ''} will be included in this sprint.
           </p>
@@ -496,7 +479,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
               onClick={handleConfirm}
               className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
             >
-              Start
+              Save
             </button>
           </div>
         </div>
@@ -505,4 +488,4 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   );
 };
 
-export default StartSprintPopup;
+export default EditDatePopup;

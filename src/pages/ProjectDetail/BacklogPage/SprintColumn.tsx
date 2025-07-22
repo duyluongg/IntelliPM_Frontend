@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import {
   useUpdateTaskTitleMutation,
   useUpdateTaskStatusMutation,
@@ -11,6 +11,7 @@ import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
   useUpdateSprintStatusMutation,
+  useDeleteSprintMutation,
 } from '../../../services/sprintApi';
 import {
   useGetCategoriesByGroupQuery,
@@ -22,6 +23,7 @@ import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 import StartSprintPopup from './StartSprintPopup';
+import EditDatePopup from './EditDatePopup';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -349,11 +351,15 @@ const Section: React.FC<SectionProps> = ({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [createTask] = useCreateTaskMutation();
   const [createSprint, { isLoading: isCreatingSprint }] = useCreateSprintQuickMutation();
+  const [deleteSprint] = useDeleteSprintMutation();
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
     refetchOnMountOrArgChange: true,
   });
   const [updateSprintStatus] = useUpdateSprintStatusMutation();
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isStartPopupOpen, setIsStartPopupOpen] = useState(false);
+  const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   const ref = useRef<HTMLDivElement>(null);
   const [{ isOver }, drop] = useDrop(() => ({
@@ -376,8 +382,8 @@ const Section: React.FC<SectionProps> = ({
 
   const isSprint = sprintId !== null;
   const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
-  // Check if any sprint has status ACTIVE
   const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
+  const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
 
   const handleAddTask = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || !newTaskTitle.trim()) return;
@@ -404,7 +410,26 @@ const Section: React.FC<SectionProps> = ({
 
   const handleStartSprint = () => {
     if (sprintId) {
-      setIsPopupOpen(true);
+      setIsStartPopupOpen(true);
+    }
+  };
+
+  const handleEditSprint = () => {
+    if (sprintId) {
+      setIsEditPopupOpen(true);
+      setIsMoreMenuOpen(false);
+    }
+  };
+
+  const handleDeleteSprint = async () => {
+    if (sprintId) {
+      try {
+        await deleteSprint(sprintId.toString()).unwrap();
+        onTaskUpdated();
+        setIsMoreMenuOpen(false);
+      } catch (err: any) {
+        alert(`Failed to delete sprint: ${err?.data?.message || 'Failed to delete sprint'}`);
+      }
     }
   };
 
@@ -426,6 +451,16 @@ const Section: React.FC<SectionProps> = ({
       alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div
@@ -462,25 +497,70 @@ const Section: React.FC<SectionProps> = ({
                 {sprint.name}
                 {'ㅤ'}
                 <span className='text-gray-700 font-normal'>
-                  {formatDate(sprint.startDate)} - {formatDate(sprint.endDate)} ({tasks.length} work
-                  items)
+                  {hasNoDates ? (
+                    <button
+                      className='inline-flex items-center text-xs text-black hover:no-underline hover:bg-gray-200 px-1 py-1 rounded'
+                      onClick={handleEditSprint}
+                    >
+                      <svg
+                        fill='none'
+                        viewBox='0 0 16 16'
+                        role='presentation'
+                        className='w-3.5 h-3.5 mr-1'
+                        style={{ color: 'var(--ds-icon, #000000)' }}
+                      >
+                        <path
+                          fill='currentColor'
+                          fillRule='evenodd'
+                          clipRule='evenodd'
+                          d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
+                        />
+                      </svg>
+                      Add dates
+                    </button>
+                  ) : (
+                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
+                      tasks.length
+                    } work items)`
+                  )}
                 </span>
               </span>
             </div>
             <div className='flex items-center space-x-2'>
               {sprint.status === 'FUTURE' && (
-                <button
-                  onClick={handleStartSprint}
-                  disabled={tasks.length === 0 || hasActiveSprint}
-                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                    tasks.length === 0 || hasActiveSprint
-                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
-                  }`}
-                  title={hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''}
-                >
-                  Start Sprint
-                </button>
+                <>
+                  {hasNoDates ? (
+                    <button
+                      onClick={handleStartSprint}
+                      disabled={tasks.length === 0 || hasActiveSprint}
+                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                        tasks.length === 0 || hasActiveSprint
+                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      }`}
+                      title={
+                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                      }
+                    >
+                      Start Sprint
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStartSprint}
+                      disabled={tasks.length === 0 || hasActiveSprint}
+                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                        tasks.length === 0 || hasActiveSprint
+                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      }`}
+                      title={
+                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                      }
+                    >
+                      Start Sprint
+                    </button>
+                  )}
+                </>
               )}
               {sprint.status === 'ACTIVE' && (
                 <button
@@ -503,6 +583,39 @@ const Section: React.FC<SectionProps> = ({
                 sprint.status !== 'COMPLETED' && (
                   <span className='text-sm text-red-500'>Unknown Status: {sprint.status}</span>
                 )}
+              <div className='relative' ref={moreMenuRef}>
+                <button
+                  className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center
+                   hover:bg-gray-200 
+                  ${
+                      isMoreMenuOpen
+                     ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
+                    : 'border-transparent'
+                    }
+                  `}
+                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                  aria-label='More sprint options'
+                >
+                  <MoreHorizontal size={16} />
+                </button>
+
+                {isMoreMenuOpen && (
+                  <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
+                    <button
+                      className='block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
+                      onClick={handleEditSprint}
+                    >
+                      Edit sprint
+                    </button>
+                    <button
+                      className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
+                      onClick={handleDeleteSprint}
+                    >
+                      Delete sprint
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )
@@ -538,8 +651,16 @@ const Section: React.FC<SectionProps> = ({
         </div>
       </div>
       <StartSprintPopup
-        isOpen={isPopupOpen}
-        onClose={() => setIsPopupOpen(false)}
+        isOpen={isStartPopupOpen}
+        onClose={() => setIsStartPopupOpen(false)}
+        sprintId={sprintId || 0}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        workItem={tasks.length}
+      />
+      <EditDatePopup
+        isOpen={isEditPopupOpen}
+        onClose={() => setIsEditPopupOpen(false)}
         sprintId={sprintId || 0}
         onTaskUpdated={onTaskUpdated}
         projectKey={projectKey}

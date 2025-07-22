@@ -1,11 +1,11 @@
 import './styles.scss';
 
 import { Color } from '@tiptap/extension-color';
-import ListItem from '@tiptap/extension-list-item';
+// import ListItem from '@tiptap/extension-list-item';
 import TextStyle from '@tiptap/extension-text-style';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
@@ -19,6 +19,10 @@ import { HiOutlineTemplate, HiOutlineTable, HiOutlineChartBar } from 'react-icon
 
 import TextareaAutosize from 'react-textarea-autosize';
 import { useAuth } from '../../../services/AuthContext';
+import { useGetProjectMembersNoStatusQuery } from '../../../services/projectMemberApi';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../app/store';
+import { createMentionExtension } from './MentionExtension';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -371,25 +375,6 @@ const MenuBar = ({ editor }: MenuBarProps) => {
 //   }),
 // ];
 
-const extensions = [
-  Color.configure({ types: [TextStyle.name, ListItem.name] }),
-  TextStyle.configure(),
-  StarterKit.configure({
-    bulletList: { keepMarks: true, keepAttributes: false },
-    orderedList: { keepMarks: true, keepAttributes: false },
-  }),
-  Table.configure({
-    resizable: true,
-  }),
-  TableRow,
-  TableHeader,
-  TableCell,
-  TaskList,
-  TaskItem.configure({
-    nested: true,
-  }),
-];
-
 const templates = {
   'to-do-list': `
   <h1 style="color: #6C6C6C;">Name your to do list</h1>
@@ -541,6 +526,7 @@ type Props = {
 
   showTemplatePicker: boolean;
   setShowTemplatePicker: React.Dispatch<React.SetStateAction<boolean>>;
+  projectId?: number;
 };
 
 export default function RichTextEditor({
@@ -553,19 +539,79 @@ export default function RichTextEditor({
 }: Props) {
   const cleanedValue = stripMarkdownCodeBlock(value);
   const { user } = useAuth();
-  // const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+  console.log('Project ID:', projectId);
+  const [editor, setEditor] = useState<Editor | null>(null);
 
-
-  const editor = useEditor({
-    extensions,
-    content: cleanedValue,
-    onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      if (html !== value) {
-        onChange(html);
-      }
-    },
+  const { data: members = [] } = useGetProjectMembersNoStatusQuery(projectId!, {
+    skip: !projectId,
   });
+  console.log(members, 'Members data from query');
+
+  const mentionItems = useMemo(
+    () =>
+      members.map((m) => ({
+        id: m.accountId,
+        label: m.accountName,
+      })),
+    [members]
+  );
+
+  // const extensions = [
+  //   Color.configure({ types: [TextStyle.name, ListItem.name] }),
+  //   TextStyle.configure(),
+  //   StarterKit.configure({
+  //     bulletList: { keepMarks: true, keepAttributes: false },
+  //     orderedList: { keepMarks: true, keepAttributes: false },
+  //   }),
+  //   Table.configure({
+  //     resizable: true,
+  //   }),
+  //   TableRow,
+  //   TableHeader,
+  //   TableCell,
+  //   TaskList,
+  //   TaskItem.configure({
+  //     nested: true,
+  //   }),
+  //   mentionExtension,
+  // ];
+
+  // const editor = useEditor({
+  //   extensions,
+  //   content: cleanedValue,
+  //   onUpdate: ({ editor }) => {
+  //     const html = editor.getHTML();
+  //     if (html !== value) {
+  //       onChange(html);
+  //     }
+  //   },
+  // });
+  useEffect(() => {
+    if (mentionItems.length === 0 || editor) return;
+
+    const instance = new Editor({
+      extensions: [
+        StarterKit,
+        TextStyle,
+        Color,
+        Table.configure({ resizable: true }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        createMentionExtension(mentionItems),
+      ],
+      content: value,
+      onUpdate: ({ editor }) => {
+        const html = editor.getHTML();
+        if (html !== value) onChange(html);
+      },
+    });
+
+    setEditor(instance);
+  }, [mentionItems, editor]);
 
   useEffect(() => {
     if (editor && cleanedValue && editor.getHTML() !== cleanedValue) {

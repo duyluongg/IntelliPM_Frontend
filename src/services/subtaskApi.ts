@@ -18,6 +18,7 @@ export interface SubtaskResponseDTO {
   endDate: string;
   reporterId: number;
   reporterName: string;
+  createdBy: number;
 }
 
 interface ApiResponse<T> {

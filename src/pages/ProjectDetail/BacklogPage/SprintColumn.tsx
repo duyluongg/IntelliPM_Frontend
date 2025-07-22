@@ -82,7 +82,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   });
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
-
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'TASK',
@@ -176,7 +176,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
       return;
     }
     try {
-      await updateTaskTitle({ id: task.id, title }).unwrap();
+      await updateTaskTitle({ id: task.id, title, createdBy: accountId }).unwrap();
       setEditingTitle(false);
     } catch (err: any) {
       alert(`Failed to update title: ${err?.data?.message || 'Failed to update title'}`);
@@ -194,7 +194,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         category?.name ||
         staticStatusOptions.find((opt) => opt.label === newStatusLabel)?.name ||
         'TO_DO';
-      await updateTaskStatus({ id: task.id, status: apiStatus }).unwrap();
+      await updateTaskStatus({ id: task.id, status: apiStatus, createdBy: accountId }).unwrap();
       setStatus(newStatusLabel);
       setOpenDropdown(false);
     } catch (err: any) {
@@ -678,6 +678,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 }) => {
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
     refetchOnMountOrArgChange: true,
   });
@@ -690,7 +691,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
           statusCategories?.data?.find((c) => c.label.toUpperCase() === toStatus)?.name ||
           staticStatusOptions.find((opt) => opt.label === toStatus)?.name ||
           'TO_DO';
-        await updateTaskStatus({ id: taskId, status: apiStatus }).unwrap();
+        await updateTaskStatus({ id: taskId, status: apiStatus, createdBy: accountId }).unwrap();
       }
       onTaskUpdated();
     } catch (err: any) {

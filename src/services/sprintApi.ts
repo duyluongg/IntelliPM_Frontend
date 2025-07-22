@@ -1,4 +1,3 @@
-// sprintApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -49,7 +48,7 @@ export interface SprintResponseDTO {
   goal: string | null;
   startDate: string | null;
   endDate: string | null;
-  plannedStartDate?: string | null; 
+  plannedStartDate?: string | null;
   plannedEndDate?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -97,7 +96,16 @@ export const sprintApi = createApi({
       transformResponse: (response: ApiResponse<SprintWithTaskListResponseDTO[]>) => response.data,
       providesTags: ['Sprint'],
     }),
-
+    getSprintById: builder.query<SprintResponseDTO, number>({
+      query: (id) => ({
+        url: `sprint/${id}`,
+        headers: {
+          'accept': '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      providesTags: ['Sprint'],
+    }),
     updateSprintStatus: builder.mutation<SprintResponseDTO, { id: string; status: string }>({
       query: ({ id, status }) => ({
         url: `sprint/${id}/status`,
@@ -107,7 +115,29 @@ export const sprintApi = createApi({
       transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
       invalidatesTags: ['Sprint'],
     }),
-
+    updateSprintDetails: builder.mutation<SprintResponseDTO, {
+      id: string;
+      projectId: number;
+      name: string;
+      goal: string | null;
+      startDate: string;
+      endDate: string;
+      plannedStartDate: string;
+      plannedEndDate: string;
+      status: string;
+    }>({
+      query: ({ id, ...body }) => ({
+        url: `sprint/${id}`,
+        method: 'PUT',
+        body,
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      invalidatesTags: ['Sprint'],
+    }),
     createSprintQuick: builder.mutation<SprintResponseDTO, { projectKey: string }>({
       query: (body) => ({
         url: 'sprint/quick',
@@ -117,13 +147,39 @@ export const sprintApi = createApi({
       transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
       invalidatesTags: ['Sprint'],
     }),
-
+    checkSprintDates: builder.mutation<ApiResponse<{ isValid: boolean }>, { projectKey: string; checkDate: string }>({
+      query: (body) => ({
+        url: 'sprint/check-dates',
+        method: 'POST',
+        body,
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+    checkWithinProject: builder.mutation<{ isWithin: boolean }, { projectKey: string; checkDate: string }>({
+      query: (body) => ({
+        url: 'sprint/check-within-project',
+        method: 'POST',
+        body,
+        headers: {
+          'accept': '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: ApiResponse<{ isWithin: boolean }>) => response.data,
+    }),
   }),
 });
 
-export const { 
-  useGetSprintsByProjectIdQuery, 
+export const {
+  useGetSprintsByProjectIdQuery,
   useGetSprintsByProjectKeyWithTasksQuery,
+  useGetSprintByIdQuery,
   useUpdateSprintStatusMutation,
+  useUpdateSprintDetailsMutation,
   useCreateSprintQuickMutation,
+  useCheckSprintDatesMutation,
+  useCheckWithinProjectMutation,
 } = sprintApi;

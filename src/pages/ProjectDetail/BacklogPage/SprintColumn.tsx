@@ -10,6 +10,7 @@ import {
 import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
+  useUpdateSprintStatusMutation,
 } from '../../../services/sprintApi';
 import {
   useGetCategoriesByGroupQuery,
@@ -20,7 +21,7 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import { useUpdateSprintStatusMutation } from '../../../services/sprintApi';
+import StartSprintPopup from './StartSprintPopup';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -352,6 +353,7 @@ const Section: React.FC<SectionProps> = ({
     refetchOnMountOrArgChange: true,
   });
   const [updateSprintStatus] = useUpdateSprintStatusMutation();
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   const ref = useRef<HTMLDivElement>(null);
   const [{ isOver }, drop] = useDrop(() => ({
@@ -374,6 +376,8 @@ const Section: React.FC<SectionProps> = ({
 
   const isSprint = sprintId !== null;
   const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
+  // Check if any sprint has status ACTIVE
+  const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
 
   const handleAddTask = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter' || !newTaskTitle.trim()) return;
@@ -398,13 +402,9 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
-  const handleStartSprint = async (sprintId: number) => {
-    try {
-      console.log(`Starting sprint ${sprintId} with status ACTIVE`);
-      await updateSprintStatus({ id: sprintId.toString(), status: 'ACTIVE' }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to start sprint: ${err?.data?.message || 'Failed to start sprint'}`);
+  const handleStartSprint = () => {
+    if (sprintId) {
+      setIsPopupOpen(true);
     }
   };
 
@@ -470,23 +470,27 @@ const Section: React.FC<SectionProps> = ({
             <div className='flex items-center space-x-2'>
               {sprint.status === 'FUTURE' && (
                 <button
-                  onClick={() => handleStartSprint(sprint.id)}
+                  onClick={handleStartSprint}
+                  disabled={tasks.length === 0 || hasActiveSprint}
+                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                    tasks.length === 0 || hasActiveSprint
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                  }`}
+                  title={hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''}
+                >
+                  Start Sprint
+                </button>
+              )}
+              {sprint.status === 'ACTIVE' && (
+                <button
+                  onClick={() => handleCompleteSprint(sprint.id)}
                   disabled={tasks.length === 0}
                   className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                     tasks.length === 0
                       ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
                       : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
                   }`}
-                >
-                  Start Sprint
-                </button>
-              )}
-
-              {sprint.status === 'ACTIVE' && (
-                <button
-                  onClick={() => handleCompleteSprint(sprint.id)}
-                  disabled={tasks.length === 0}
-                  className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
                 >
                   Complete Sprint
                 </button>
@@ -533,6 +537,14 @@ const Section: React.FC<SectionProps> = ({
           />
         </div>
       </div>
+      <StartSprintPopup
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+        sprintId={sprintId || 0}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        workItem={tasks.length}
+      />
     </div>
   );
 };

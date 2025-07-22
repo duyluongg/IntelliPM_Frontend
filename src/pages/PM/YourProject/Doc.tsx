@@ -32,6 +32,7 @@ export default function Doc({ docId }: Props) {
     }
   }, [docData]);
 
+
   useEffect(() => {
     if (docId) {
       refetch();
@@ -66,6 +67,7 @@ export default function Doc({ docId }: Props) {
     return html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
   };
 
+
   const handleTitleChange = async (newTitle: string) => {
     if (!docId || isUpdatingRef.current || newTitle === title) return;
 
@@ -84,16 +86,20 @@ export default function Doc({ docId }: Props) {
     }
   };
 
+
   return (
     <div className='p-5'>
       <DocumentContext.Provider value={{ documentId: docId }}>
+
         <RichTextEditor
           value={content}
           onChange={handleContentChange}
           title={title}
           onTitleChange={handleTitleChange}
+
           showTemplatePicker={showTemplatePicker}
           setShowTemplatePicker={setShowTemplatePicker}
+
         />
       </DocumentContext.Provider>
 

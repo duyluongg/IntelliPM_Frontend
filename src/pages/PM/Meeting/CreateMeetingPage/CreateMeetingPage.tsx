@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import {
   useGetProjectsByAccountIdQuery,
   useGetProjectDetailsQuery,
@@ -11,6 +13,8 @@ import { useAuth } from '../../../../services/AuthContext';
 const CreateMeetingPage: React.FC = () => {
   const { user } = useAuth();
   const accountId = user?.id;
+  const navigate = useNavigate();
+
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -40,6 +44,21 @@ const CreateMeetingPage: React.FC = () => {
     console.log(`🟩 ${participantIds.includes(accountId) ? 'Bỏ chọn' : 'Chọn'} account ID: ${accountId}`);
   };
   
+  const isValidMeetingUrl = (url: string): boolean => {
+  const zoomRegex = /https:\/\/.*zoom\.us\/j\/\d+/i;
+  const googleMeetRegex = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i;
+  return zoomRegex.test(url) || googleMeetRegex.test(url);
+};
+
+const timeSlots = [
+  { label: '08:00 - 10:30', start: '08:00', end: '10:30' },
+  { label: '10:30 - 13:00', start: '10:30', end: '13:00' },
+  { label: '13:00 - 15:30', start: '13:00', end: '15:30' },
+  { label: '15:30 - 18:00', start: '15:30', end: '18:00' },
+  { label: '18:00 - 20:30', start: '18:00', end: '20:30' },
+  { label: '20:30 - 23:00', start: '20:30', end: '23:00' },
+];
+
 
 const handleCreateMeeting = async () => {
   console.log("🔍 Bắt đầu handleCreateMeeting");
@@ -57,6 +76,11 @@ const handleCreateMeeting = async () => {
     setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
     return;
   }
+  if (!isValidMeetingUrl(meetingUrl)) {
+  setErrorMessage('Link họp phải là Zoom hoặc Google Meet hợp lệ.');
+  return;
+}
+
 
   // Đảm bảo user.id được thêm vào đầu danh sách, không bị trùng
   const finalParticipantIds = [user!.id, ...participantIds.filter(id => id !== user!.id)];
@@ -98,6 +122,7 @@ const handleCreateMeeting = async () => {
     alert('✅ Cuộc họp đã được tạo thành công!');
     console.log('📥 Response:', response);
     setErrorMessage(null);
+    navigate('/meeting-room');
   } catch (error: any) {
     const apiError = error?.data;
     const message =
@@ -200,31 +225,32 @@ const handleCreateMeeting = async () => {
                 <input
                   type="date"
                   value={meetingDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setMeetingDate(e.target.value)}
                   className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
                 />
               </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700">Khung giờ</label>
+  <select
+    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+    onChange={(e) => {
+      const [start, end] = e.target.value.split('|');
+      setStartTime(start);
+      setEndTime(end);
+    }}
+    defaultValue=""
+  >
+    <option value="" disabled>-- Chọn khung giờ --</option>
+    {timeSlots.map((slot) => (
+      <option key={slot.label} value={`${slot.start}|${slot.end}`}>
+        {slot.label}
+      </option>
+    ))}
+  </select>
+</div>
 
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Giờ bắt đầu</label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Giờ kết thúc</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  />
-                </div>
-              </div>
+
             </div>
 
             {errorMessage && (
@@ -238,7 +264,22 @@ const handleCreateMeeting = async () => {
               disabled={isCreating}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium disabled:opacity-50 transition"
             >
-              {isCreating ? 'Đang tạo cuộc họp...' : 'Tạo cuộc họp'}
+              {isCreating ? (
+  <button
+    disabled
+    className="w-full bg-blue-400 text-white py-2 px-4 rounded-lg font-medium opacity-50 cursor-not-allowed"
+  >
+    Đang tạo cuộc họp...
+  </button>
+) : (
+  <button
+    onClick={handleCreateMeeting}
+    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition"
+  >
+    Tạo cuộc họp
+  </button>
+)}
+
             </button>
           </>
         )}

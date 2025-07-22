@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Dialog, DialogTrigger, DialogContent } from '@radix-ui/react-dialog';
 import { useAuth } from '../../../../services/AuthContext';
@@ -23,6 +23,10 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState<'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
   const [formData, setFormData]   = useState<any>({});
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
+
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
     useGetMeetingsManagedByQuery(accountId!, { skip: !accountId });
@@ -40,7 +44,11 @@ const {
   { skip: !attendanceOpen }
 );
 
-
+useEffect(() => {
+  if (accountId) {
+    refetch();
+  }
+}, [accountId]);
 
 
   // … các hàm handle* giữ nguyên …
@@ -55,47 +63,6 @@ const {
   if (isError) return <p className="mt-4 text-red-500">❌ {JSON.stringify(error)}</p>;
 
 // Điểm danh và cập nhật trạng thái cuộc họp
-// const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
-//   // Lấy thông tin cuộc họp hiện tại
-//   const participant = participants.find((p) => Number(p.id) === participantId);
-//   if (!participant) return;
-
-//   // Kiểm tra thời gian hiện tại và ngày cuộc họp
-//   const currentTime = new Date();
-//   const meetingTime = new Date(selectedMeeting?.meetingDate);  // Sử dụng selectedMeeting để lấy ngày và giờ cuộc họp
-
-//   // Kiểm tra nếu ngày hiện tại đã qua ngày diễn ra cuộc họp
-//   const meetingDayEnd = new Date(meetingTime);
-//   meetingDayEnd.setHours(23, 59, 59, 999); // Đặt giờ cuối cùng của ngày cuộc họp
-
-//   if (currentTime > meetingDayEnd) {
-//     // Nếu đã qua ngày cuộc họp, không cho phép thay đổi điểm danh
-//     toast.error('❌ Không thể thay đổi điểm danh vì đã qua ngày cuộc họp!');
-//     return;
-//   }
-
-//   // Thực hiện điểm danh
-//   await updateParticipantStatus({
-//     participantId,
-//     data: {
-//       meetingId: participant.meetingId,
-//       accountId: participant.accountId,
-//       role: participant.role,
-//       status: newStatus,
-//     },
-//   });
-
-//   await refetchParticipants();
-//   toast.success('✅ Điểm danh thành công!');
-
-//   // Chỉ hoàn tất cuộc họp khi tất cả người tham gia đã điểm danh (hoặc theo logic khác của bạn)
-//     // Kiểm tra xem tất cả người tham gia đã có trạng thái khác "Active"
-//     await completeMeeting(selectedMeeting.id);  // 👈 Gọi API mới ở đây để hoàn thành cuộc họp
-  
-
-//   await refetch();
-// };
-
 const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
   // Lấy thông tin cuộc họp hiện tại
   const participant = participants.find((p) => Number(p.id) === participantId);
@@ -182,10 +149,42 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
     ❌ Đã huỷ
   </button>
 </div>
+<div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+  <input
+    type="text"
+    placeholder="🔍 Tìm theo chủ đề..."
+    className="w-full rounded border px-3 py-2 md:w-1/2"
+    value={searchKeyword}
+    onChange={(e) => setSearchKeyword(e.target.value)}
+  />
+
+  <select
+    className="rounded border px-3 py-2"
+    value={dateFilter}
+    onChange={(e) => setDateFilter(e.target.value as 'ALL' | 'TODAY')}
+  >
+    <option value="ALL">📋 Tất cả ngày</option>
+    <option value="TODAY">📅 Chỉ hôm nay</option>
+  </select>
+</div>
+
 
       {/* --- Danh sách cuộc họp --- */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {meetings  .filter((m) => m.status === currentTab)
+        {meetings 
+         .filter((m) => m.status === currentTab)
+         .filter((m) =>
+    m.meetingTopic.toLowerCase().includes(searchKeyword.toLowerCase())
+  )
+  .filter((m) => {
+    if (dateFilter === 'TODAY') {
+      const today = new Date().toISOString().split('T')[0];
+      const meetingDate = new Date(m.meetingDate).toISOString().split('T')[0];
+      return meetingDate === today;
+    }
+    return true; // nếu 'ALL', thì cho qua tất cả
+  })
+         
   .map((m) => (
     <div
       key={m.id}
@@ -362,14 +361,24 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
 <Dialog
   open={attendanceOpen && selectedMeeting?.id === m.id} 
   onOpenChange={(open) => {
-    // Khi mở/đóng dialog, cập nhật trạng thái attendanceOpen
-    setAttendanceOpen(open);
+  setAttendanceOpen(open);
+  if (open) {
+    setSelectedMeeting(m);
 
-    // Nếu mở dialog, cập nhật selectedMeeting với cuộc họp đang mở
-    if (open) {
-      setSelectedMeeting(m);
-    }
-  }}
+    // Cập nhật trạng thái ban đầu cho attendanceDraft
+    const initialDraft: Record<number, 'Present' | 'Absent'> = {};
+    participants.forEach((p) => {
+      if (p.status === 'Present' || p.status === 'Absent') {
+        initialDraft[p.id] = p.status;
+      }
+    });
+    setAttendanceDraft(initialDraft);
+  } else {
+    // Reset khi đóng dialog
+    setAttendanceDraft({});
+  }
+}}
+
 >
   <DialogTrigger asChild>
     <button
@@ -398,25 +407,39 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           <p className="text-sm text-gray-600">Vai trò: {p.role}</p>
         </div>
         <div className="flex gap-2">
-          <button
-            className={`rounded px-3 py-1 text-sm ${
-              p.status === 'Present' ? 'bg-blue-600 text-white' : 'border hover:bg-gray-100'
-            }`}
-            onClick={() => handleAttendance(p.id, 'Present')}
-          >
-            Có mặt
-          </button>
-          <button
-            className={`rounded px-3 py-1 text-sm ${
-              p.status === 'Absent' ? 'bg-red-600 text-white' : 'border hover:bg-gray-100'
-            }`}
-            onClick={() => handleAttendance(p.id, 'Absent')}
-          >
-            Vắng
-          </button>
+<button
+  className={`rounded px-3 py-1 text-sm ${
+    attendanceDraft[p.id] === 'Present' ? 'bg-blue-600 text-white' : 'border hover:bg-gray-100'
+  }`}
+  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
+>
+  Có mặt
+</button>
+<button
+  className={`rounded px-3 py-1 text-sm ${
+    attendanceDraft[p.id] === 'Absent' ? 'bg-red-600 text-white' : 'border hover:bg-gray-100'
+  }`}
+  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
+>
+  Vắng
+</button>
         </div>
       </div>
     ))}
+    <button
+    className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+    onClick={async () => {
+      for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
+        const participantId = Number(participantIdStr);
+        await handleAttendance(participantId, newStatus);
+      }
+
+      setAttendanceDraft({});
+      setAttendanceOpen(false);
+    }}
+  >
+    💾 Lưu điểm danh
+  </button>
   </DialogContent>
 </Dialog>
 

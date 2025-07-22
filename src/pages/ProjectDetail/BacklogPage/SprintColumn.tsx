@@ -408,21 +408,24 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
-  const handleStartSprint = () => {
+  const handleStartSprint = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (sprintId) {
       setIsStartPopupOpen(true);
     }
   };
 
-  const handleEditSprint = () => {
+  const handleEditSprint = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (sprintId) {
       setIsEditPopupOpen(true);
       setIsMoreMenuOpen(false);
     }
   };
 
-  const handleDeleteSprint = async () => {
-    if (sprintId) {
+  const handleDeleteSprint = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
       try {
         await deleteSprint(sprintId.toString()).unwrap();
         onTaskUpdated();
@@ -585,20 +588,16 @@ const Section: React.FC<SectionProps> = ({
                 )}
               <div className='relative' ref={moreMenuRef}>
                 <button
-                  className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center
-                   hover:bg-gray-200 
-                  ${
-                      isMoreMenuOpen
-                     ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
-                    : 'border-transparent'
-                    }
-                  `}
+                  className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
+                    isMoreMenuOpen
+                      ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
+                      : 'border-transparent'
+                  }`}
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                   aria-label='More sprint options'
                 >
                   <MoreHorizontal size={16} />
                 </button>
-
                 {isMoreMenuOpen && (
                   <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
                     <button

@@ -36,6 +36,8 @@ import {
   useGetDocumentMappingQuery,
 } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
+import { useDispatch } from 'react-redux';
+import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -304,30 +306,35 @@ const Avatar = ({
 // HeaderBar Component
 const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
-  const { data: membersData, isLoading, error } = useGetProjectMembersWithPositionsQuery(projectId, {
+  const {
+    data: membersData,
+    isLoading,
+    error,
+  } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
 
   // Filter members with status IN_PROGRESS
-  const members = membersData?.data
-    ?.filter(member => member.status.toUpperCase() === 'IN_PROGRESS')
-    ?.map(member => ({
-      id: member.id,
-      name: member.fullName || member.accountName || 'Unknown',
-      avatar: member.picture || 'https://via.placeholder.com/32', // Updated placeholder size
-    })) || [];
+  const members =
+    membersData?.data
+      ?.filter((member) => member.status.toUpperCase() === 'IN_PROGRESS')
+      ?.map((member) => ({
+        id: member.id,
+        name: member.fullName || member.accountName || 'Unknown',
+        avatar: member.picture || 'https://via.placeholder.com/32', // Updated placeholder size
+      })) || [];
 
   const toggleMembers = () => {
     setIsMembersExpanded(!isMembersExpanded);
   };
 
   if (isLoading) {
-    return <div className="p-4 text-center text-gray-500">Loading members...</div>;
+    return <div className='p-4 text-center text-gray-500'>Loading members...</div>;
   }
 
   if (error) {
     return (
-      <div className="p-4 text-center text-red-500">
+      <div className='p-4 text-center text-red-500'>
         Error loading members: {(error as any)?.data?.message || 'Unknown error'}
       </div>
     );
@@ -345,42 +352,42 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
           />
         </div>
 
-        <div className="flex items-center">
+        <div className='flex items-center'>
           {members.length > 0 ? (
             isMembersExpanded ? (
-              <div className="flex items-center">
+              <div className='flex items-center'>
                 {members.map((member, index) => (
                   <div
                     key={member.id}
-                    className="relative w-8 h-8 group"
+                    className='relative w-8 h-8 group'
                     style={{ marginLeft: index > 0 ? '-4px' : '0' }}
                   >
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                      className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                       onClick={toggleMembers}
                     />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                       {member.name}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="relative w-8 h-8 group">
+              <div className='relative w-8 h-8 group'>
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                  className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                   onClick={toggleMembers}
                 />
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                   {members[0].name}
                 </span>
                 {members.length > 1 && (
                   <div
-                    className="absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer"
+                    className='absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer'
                     onClick={toggleMembers}
                   >
                     +{members.length - 1}
@@ -389,7 +396,7 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
               </div>
             )
           ) : (
-            <div className="text-xs text-gray-500">No active members</div>
+            <div className='text-xs text-gray-500'>No active members</div>
           )}
         </div>
 
@@ -416,10 +423,18 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
 
 // ProjectTaskList Component
 const ProjectTaskList: React.FC = () => {
+  const dispatch = useDispatch();
+
   const [searchParams, setSearchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
+  useEffect(() => {
+    if (projectDetails?.data?.id) {
+      dispatch(setCurrentProjectId(projectDetails.data.id));
+    }
+  }, [projectDetails, dispatch]);
+
   const {
     data: workItemsData,
     isLoading,

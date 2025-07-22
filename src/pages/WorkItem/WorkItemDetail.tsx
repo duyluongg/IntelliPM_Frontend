@@ -32,6 +32,7 @@ import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉn
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -82,7 +83,7 @@ const WorkItemDetail: React.FC = () => {
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  
+
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -190,10 +191,14 @@ const WorkItemDetail: React.FC = () => {
   });
 
   React.useEffect(() => {
-      if (assignees && taskId) {
-        setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
-      }
-    }, [assignees, taskId]);
+    if (assignees && taskId) {
+      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+    }
+  }, [assignees, taskId]);
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
 
   const {
     data: subtaskData = [],
@@ -230,6 +235,11 @@ const WorkItemDetail: React.FC = () => {
     assignee: item.assignedByName ?? 'Unassigned',
     assigneeId: item.assignedBy ?? '0',
     status: item.status,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    reporterId: item.reporterId,
+    reporterName: item.reporterName,
+    description: item.description,
   }));
 
   const handleTaskStatusChange = async (newStatus: string) => {
@@ -724,9 +734,9 @@ const WorkItemDetail: React.FC = () => {
 
                             <td onClick={() => setEditingSummaryId(item.key)} style={{
                               cursor: 'pointer',
-                              whiteSpace: 'normal',       
-                              wordBreak: 'break-word',     
-                              maxWidth: '300px',           
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              maxWidth: '300px',
                             }}
                             >
                               {editingSummaryId === item.key ? (
@@ -744,8 +754,12 @@ const WorkItemDetail: React.FC = () => {
                                           id: item.key,
                                           assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                           title: newTitle,
-                                          description: taskData?.description ?? '',
+                                          description: item?.description ?? '',
                                           priority: item.priority,
+                                          startDate: item.startDate,
+                                          endDate: item.endDate,
+                                          reporterId: item.reporterId,
+                                          createdBy: accountId,
                                         }).unwrap();
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
@@ -780,8 +794,12 @@ const WorkItemDetail: React.FC = () => {
                                       id: item.key,
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
-                                      description: taskData?.description ?? '',
+                                      description: item?.description ?? '',
                                       priority: newPriority,
+                                      startDate: item.startDate,
+                                      endDate: item.endDate,
+                                      reporterId: item.reporterId,
+                                      createdBy: accountId,
                                     }).unwrap();
                                     alert('✅ Updated priority');
                                     console.log('✅ Updated priority');
@@ -815,7 +833,11 @@ const WorkItemDetail: React.FC = () => {
                                         assignedBy: newAssigneeId,
                                         priority: item.priority,
                                         title: item.summary,
-                                        description: taskData?.description ?? '', // giữ nguyên
+                                        description: item?.description ?? '', 
+                                        startDate: item.startDate,
+                                        endDate: item.endDate,
+                                        reporterId: item.reporterId,
+                                        createdBy: accountId,
                                       }).unwrap();
                                       alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
@@ -943,7 +965,28 @@ const WorkItemDetail: React.FC = () => {
                 </button>
               </div>
 
-              {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className="history-list">
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="history-item">
+                        <div className="history-header">
+                          <span className="history-user">{log.createdByName}</span>
+                          <span className="history-time">
+                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="history-message">{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === 'COMMENTS' ? (
                 <>
                   <div className="comment-list">
@@ -1054,7 +1097,6 @@ const WorkItemDetail: React.FC = () => {
                 </>
               ) : (
                 <div className="activity-placeholder">
-                  Chưa có nhật ký hoạt động.
                 </div>
               )}
             </div>

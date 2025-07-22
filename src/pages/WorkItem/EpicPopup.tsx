@@ -18,6 +18,8 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -88,6 +90,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         skip: !epic?.projectId,
     });
 
+    const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
+
     React.useEffect(() => {
         if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
             handleUpdateEpic();
@@ -99,7 +105,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             handleUpdateEpic();
         }
     }, [newReporterId]);
-
 
     React.useEffect(() => {
         const fetchAllTaskAssignments = async () => {
@@ -113,7 +118,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
                 }
             }
-
             setTaskAssignmentMap(result);
         };
 
@@ -229,7 +233,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                 return taskIcon;
         }
     };
-
 
     if (isLoading || !epic) {
         return (
@@ -815,6 +818,28 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             </div>
 
                             {/* Tab Content */}
+                            {activeTab === 'HISTORY' && (
+                                <div className="history-list">
+                                    {isActivityLogsLoading ? (
+                                        <div>Loading...</div>
+                                    ) : activityLogs.length === 0 ? (
+                                        <div>No history available.</div>
+                                    ) : (
+                                        activityLogs.map((log) => (
+                                            <div key={log.id} className="history-item">
+                                                <div className="history-header">
+                                                    <span className="history-user">{log.createdByName}</span>
+                                                    <span className="history-time">
+                                                        {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="history-message">{log.message}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
                             {activeTab === 'COMMENTS' ? (
                                 <>
                                     <div className="comment-list">
@@ -925,7 +950,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 </>
                             ) : (
                                 <div className="activity-placeholder">
-                                    Chưa có nhật ký hoạt động.
                                 </div>
                             )}
                         </div>

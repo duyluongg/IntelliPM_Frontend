@@ -21,6 +21,7 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import avatarIcon from '../../../assets/account.png';
 import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';
@@ -55,7 +56,13 @@ interface SectionProps {
 
 const staticStatusOptions = [
   { label: 'TO DO', value: 'TO DO', name: 'TO_DO', bg: 'bg-gray-200', text: 'text-gray-800' },
-  { label: 'IN PROGRESS', value: 'IN PROGRESS', name: 'IN_PROGRESS', bg: 'bg-blue-200', text: 'text-blue-800' },
+  {
+    label: 'IN PROGRESS',
+    value: 'IN PROGRESS',
+    name: 'IN_PROGRESS',
+    bg: 'bg-blue-200',
+    text: 'text-blue-800',
+  },
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
@@ -332,8 +339,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           </div>
         )}
         {!assignees.length && (
-          <div className='w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-400'>
-            👤
+          <div className='w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-600 bg-gray-300'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              className='w-4 h-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+              strokeWidth={2}
+            >
+              <circle cx='12' cy='8' r='4' />
+              <path d='M4 20c0-4 4-6 8-6s8 2 8 6' />
+            </svg>
           </div>
         )}
       </div>
@@ -450,7 +467,10 @@ const Section: React.FC<SectionProps> = ({
 
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
+    if (
+      sprintId &&
+      window.confirm('Are you sure you want to delete this sprint and all its tasks?')
+    ) {
       try {
         await deleteSprint(sprintId.toString()).unwrap();
         onTaskUpdated();
@@ -546,7 +566,9 @@ const Section: React.FC<SectionProps> = ({
                       Add dates
                     </button>
                   ) : (
-                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${tasks.length} work items)`
+                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
+                      tasks.length
+                    } work items)`
                   )}
                 </span>
               </span>
@@ -737,7 +759,9 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
     <div className='space-y-4 w-full'>
       {sprints.map((sprint) => {
         const completed = sprint.tasks.filter((task) =>
-          ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
+          ['DONE'].includes(
+            mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase()
+          )
         ).length;
         const open = sprint.tasks.length - completed;
         return (

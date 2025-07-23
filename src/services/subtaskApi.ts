@@ -6,6 +6,8 @@ export interface SubtaskResponseDTO {
   taskId: string;
   assignedBy: number;
   assignedByName: string;
+  plannedEndDate: string | null;
+  
   title: string;
   description: string;
   status: string;

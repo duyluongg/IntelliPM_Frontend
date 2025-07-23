@@ -155,6 +155,7 @@ import { notificationApi } from '../services/notificationApi';
 import { recipientNotificationApi } from '../services/recipientNotificationApi';
 import docReducer from '../components/slices/Document/documentSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
+import { notificationsApi } from '../services/Notification/notificationApi';
 
 const persistConfig = {
   key: 'root',
@@ -198,6 +199,7 @@ const rootReducer = combineReducers({
   [epicCommentApi.reducerPath]: epicCommentApi.reducer,
   [workLogApi.reducerPath]: workLogApi.reducer,
   [activityLogApi.reducerPath]: activityLogApi.reducer,
+  [notificationsApi.reducerPath]: notificationsApi.reducer,
   [notificationApi.reducerPath]: notificationApi.reducer,
   [recipientNotificationApi.reducerPath]: recipientNotificationApi.reducer,
   doc: docReducer,
@@ -249,6 +251,7 @@ export const store = configureStore({
       epicCommentApi.middleware, 
       workLogApi.middleware,
       activityLogApi.middleware,
+      notificationsApi.middleware,
       notificationApi.middleware,
       recipientNotificationApi.middleware,
     ),

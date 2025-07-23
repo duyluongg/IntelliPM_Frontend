@@ -10,7 +10,6 @@ import {
 import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
-  useUpdateSprintStatusMutation,
   useDeleteSprintMutation,
 } from '../../../services/sprintApi';
 import {
@@ -22,8 +21,10 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import avatarIcon from '../../../assets/account.png';
 import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
+import CompleteSprintPopup from './CompleteSprintPopup';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -47,6 +48,8 @@ interface SectionProps {
   sprints: SprintWithTaskListResponseDTO[];
   projectId: number;
   projectKey: string;
+  workItemCompleted: number;
+  workItemOpen: number;
   onTaskUpdated: () => void;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
@@ -92,7 +95,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }),
   }));
 
-  drag(ref);
+  useEffect(() => {
+    drag(ref);
+  }, [drag]);
 
   const mapApiStatusToUI = (
     apiStatus: string | null | undefined,
@@ -139,11 +144,15 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         };
       }) || staticStatusOptions;
 
+  const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
+
   const [title, setTitle] = useState(task.title || '');
   const [editingTitle, setEditingTitle] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const [titleOverflow, setTitleOverflow] = useState(false);
 
   type TaskType = 'story' | 'bug' | 'epic' | 'task';
   const getTaskIcon = (type: string | null | undefined): string => {
@@ -206,19 +215,33 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     name: a.accountFullname || 'Unknown',
     picture: a.accountPicture || null,
   }));
-  const isNarrow = window.innerWidth < 640;
   const epicRef = useRef<HTMLSpanElement>(null);
-  let isMultiline = (task.epicName || '').length > 12;
 
   useEffect(() => {
-    if (epicRef.current && !isNarrow && !isMultiline) {
-      isMultiline =
-        epicRef.current.offsetHeight >
-        parseFloat(getComputedStyle(epicRef.current).lineHeight) * 1.2;
+    if (titleRef.current) {
+      const titleElement = titleRef.current;
+      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
     }
-  }, [task.epicName, isNarrow]);
+  }, [title]);
 
-  const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
+  const renderEpicName = () => {
+    if (!task.epicName) return <span className='text-xs text-gray-400'>-</span>;
+
+    let displayEpicName = task.epicName;
+    if (displayEpicName.length > 12) {
+      displayEpicName = displayEpicName.substring(0, 12) + '...';
+    }
+
+    return (
+      <span
+        ref={epicRef}
+        className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
+        title={task.epicName || ''}
+      >
+        {displayEpicName}
+      </span>
+    );
+  };
 
   if (isStatusLoading) return <div className='text-xs text-gray-500'>LOADING STATUS...</div>;
   if (categoryError)
@@ -251,27 +274,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         />
       ) : (
         <span
+          ref={titleRef}
           className='text-sm text-gray-700 truncate cursor-pointer hover:underline w-full'
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
-      <div className='flex justify-end pl-2 mr-5'>
-        {(task.epicName || '') &&
-          (isNarrow || isMultiline ? (
-            <span className='w-3 h-3 rounded-sm bg-[#c97cf4]' title={task.epicName || ''} />
-          ) : (
-            <span
-              ref={epicRef}
-              className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
-              title={task.epicName || ''}
-            >
-              {task.epicName}
-            </span>
-          ))}
-        {!task.epicName && <span className='text-xs text-gray-400'>-</span>}
-      </div>
+      <div className='flex justify-end pl-2 mr-5'>{renderEpicName()}</div>
       <div className='flex items-center justify-start relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
@@ -329,8 +339,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           </div>
         )}
         {!assignees.length && (
-          <div className='w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-400'>
-            👤
+          <div className='w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-600 bg-gray-300'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              className='w-4 h-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+              strokeWidth={2}
+            >
+              <circle cx='12' cy='8' r='4' />
+              <path d='M4 20c0-4 4-6 8-6s8 2 8 6' />
+            </svg>
           </div>
         )}
       </div>
@@ -345,6 +365,8 @@ const Section: React.FC<SectionProps> = ({
   sprints,
   projectId,
   projectKey,
+  workItemCompleted,
+  workItemOpen,
   onTaskUpdated,
   moveTask,
 }) => {
@@ -355,9 +377,9 @@ const Section: React.FC<SectionProps> = ({
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
     refetchOnMountOrArgChange: true,
   });
-  const [updateSprintStatus] = useUpdateSprintStatusMutation();
   const [isStartPopupOpen, setIsStartPopupOpen] = useState(false);
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
+  const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -408,6 +430,15 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const handleCreateSprint = async () => {
+    try {
+      await createSprint({ projectKey }).unwrap();
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
+    }
+  };
+
   const handleStartSprint = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (sprintId) {
@@ -423,9 +454,23 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (sprintId) {
+      const completed = tasks.filter((task) =>
+        ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
+      ).length;
+      const open = tasks.length - completed;
+      setIsCompletePopupOpen(true);
+    }
+  };
+
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
+    if (
+      sprintId &&
+      window.confirm('Are you sure you want to delete this sprint and all its tasks?')
+    ) {
       try {
         await deleteSprint(sprintId.toString()).unwrap();
         onTaskUpdated();
@@ -433,25 +478,6 @@ const Section: React.FC<SectionProps> = ({
       } catch (err: any) {
         alert(`Failed to delete sprint: ${err?.data?.message || 'Failed to delete sprint'}`);
       }
-    }
-  };
-
-  const handleCompleteSprint = async (sprintId: number) => {
-    try {
-      console.log(`Completing sprint ${sprintId} with status COMPLETED`);
-      await updateSprintStatus({ id: sprintId.toString(), status: 'COMPLETED' }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to complete sprint: ${err?.data?.message || 'Failed to complete sprint'}`);
-    }
-  };
-
-  const handleCreateSprint = async () => {
-    try {
-      await createSprint({ projectKey }).unwrap();
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
     }
   };
 
@@ -464,6 +490,24 @@ const Section: React.FC<SectionProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const mapApiStatusToUI = (
+    apiStatus: string | null | undefined,
+    categories: DynamicCategory[]
+  ): string => {
+    if (!apiStatus) return 'TO DO';
+    const normalizedApiStatus = apiStatus
+      .trim()
+      .toUpperCase()
+      .replace(/[-_\s]/g, '');
+    const category = categories.find(
+      (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+    );
+    const staticOption = staticStatusOptions.find(
+      (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+    );
+    return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
+  };
 
   return (
     <div
@@ -539,7 +583,7 @@ const Section: React.FC<SectionProps> = ({
                       className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                         tasks.length === 0 || hasActiveSprint
                           ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
                         hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
@@ -554,7 +598,7 @@ const Section: React.FC<SectionProps> = ({
                       className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                         tasks.length === 0 || hasActiveSprint
                           ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
                         hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
@@ -567,12 +611,12 @@ const Section: React.FC<SectionProps> = ({
               )}
               {sprint.status === 'ACTIVE' && (
                 <button
-                  onClick={() => handleCompleteSprint(sprint.id)}
+                  onClick={handleOpenCompleteSprintPopup}
                   disabled={tasks.length === 0}
                   className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                     tasks.length === 0
                       ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                   }`}
                 >
                   Complete Sprint
@@ -665,6 +709,18 @@ const Section: React.FC<SectionProps> = ({
         projectKey={projectKey}
         workItem={tasks.length}
       />
+      <CompleteSprintPopup
+        isOpen={isCompletePopupOpen}
+        onClose={() => setIsCompletePopupOpen(false)}
+        sprintId={sprintId || 0}
+        sprintName={sprint?.name || ''}
+        onTaskUpdated={onTaskUpdated}
+        projectKey={projectKey}
+        projectId={projectId}
+        workItem={tasks.length}
+        workItemCompleted={workItemCompleted}
+        workItemOpen={workItemOpen}
+      />
     </div>
   );
 };
@@ -700,20 +756,30 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
   };
 
   return (
-    <div className='p-4 space-y-4'>
-      {sprints.map((sprint) => (
-        <Section
-          key={sprint.id}
-          title={sprint.name}
-          tasks={sprint.tasks}
-          sprintId={sprint.id}
-          sprints={sprints}
-          projectId={projectId}
-          projectKey={projectKey}
-          onTaskUpdated={onTaskUpdated}
-          moveTask={moveTask}
-        />
-      ))}
+    <div className='space-y-4 w-full'>
+      {sprints.map((sprint) => {
+        const completed = sprint.tasks.filter((task) =>
+          ['DONE'].includes(
+            mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase()
+          )
+        ).length;
+        const open = sprint.tasks.length - completed;
+        return (
+          <Section
+            key={sprint.id}
+            title={sprint.name}
+            tasks={sprint.tasks}
+            sprintId={sprint.id}
+            sprints={sprints}
+            projectId={projectId}
+            projectKey={projectKey}
+            workItemCompleted={completed}
+            workItemOpen={open}
+            onTaskUpdated={onTaskUpdated}
+            moveTask={moveTask}
+          />
+        );
+      })}
       {backlogTasks.length > 0 && (
         <Section
           title='Backlog'
@@ -722,6 +788,8 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
           sprints={sprints}
           projectId={projectId}
           projectKey={projectKey}
+          workItemCompleted={0}
+          workItemOpen={backlogTasks.length}
           onTaskUpdated={onTaskUpdated}
           moveTask={moveTask}
         />
@@ -731,3 +799,21 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 };
 
 export default SprintColumn;
+
+const mapApiStatusToUI = (
+  apiStatus: string | null | undefined,
+  categories: DynamicCategory[]
+): string => {
+  if (!apiStatus) return 'TO DO';
+  const normalizedApiStatus = apiStatus
+    .trim()
+    .toUpperCase()
+    .replace(/[-_\s]/g, '');
+  const category = categories.find(
+    (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  const staticOption = staticStatusOptions.find(
+    (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
+};

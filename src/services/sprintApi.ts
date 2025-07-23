@@ -133,19 +133,19 @@ export const sprintApi = createApi({
       providesTags: ['Sprint'],
     }),
 
-updateSprintStatus: builder.mutation<SprintResponseDTO, { id: number; status: string }>({
-  query: ({ id, status }) => ({
-    url: `sprint/${id}/status`,
-    method: 'PATCH',
-    body: JSON.stringify(status), // Ép thành chuỗi JSON đơn
-    headers: {
-      accept: '*/*',
-      'Content-Type': 'application/json',
-    },
-  }),
-  transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
-  invalidatesTags: ['Sprint'],
-}),
+    updateSprintStatus: builder.mutation<SprintResponseDTO, { id: number; status: string }>({
+      query: ({ id, status }) => ({
+        url: `sprint/${id}/status`,
+        method: 'PATCH',
+        body: JSON.stringify(status), // Ép thành chuỗi JSON đơn
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      invalidatesTags: ['Sprint'],
+    }),
 
     updateSprintDetails: builder.mutation<SprintResponseDTO, UpdateSprintDetailsRequestDTO>({
       query: ({ id, ...body }) => ({
@@ -227,6 +227,17 @@ updateSprintStatus: builder.mutation<SprintResponseDTO, { id: number; status: st
       transformResponse: (response: ApiResponse<null>) => response,
       invalidatesTags: ['Sprint'],
     }),
+
+    getActiveSprintByProjectKey: builder.query<SprintResponseDTO, string>({
+      query: (projectKey) => ({
+        url: `sprint/active-with-tasks/${projectKey}`,
+        headers: {
+          accept: '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
+      providesTags: ['Sprint'],
+    }),
   }),
 });
 
@@ -242,4 +253,5 @@ export const {
   useCheckWithinProjectMutation,
   useDeleteSprintMutation,
   useMoveTasksMutation,
+  useGetActiveSprintByProjectKeyQuery,
 } = sprintApi;

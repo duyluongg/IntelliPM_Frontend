@@ -21,7 +21,6 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import avatarIcon from '../../../assets/account.png';
 import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';

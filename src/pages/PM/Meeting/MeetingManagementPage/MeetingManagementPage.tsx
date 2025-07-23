@@ -50,6 +50,18 @@ useEffect(() => {
   }
 }, [accountId]);
 
+useEffect(() => {
+  if (attendanceOpen && participants.length > 0) {
+    const initialDraft: Record<number, 'Present' | 'Absent'> = {};
+    participants.forEach((p) => {
+      if (p.status === 'Present' || p.status === 'Absent') {
+        initialDraft[p.id] = p.status;
+      }
+    });
+    setAttendanceDraft(initialDraft);
+  }
+}, [attendanceOpen, participants]);
+
 
   // … các hàm handle* giữ nguyên …
 
@@ -377,24 +389,15 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
 
 <Dialog
   open={attendanceOpen && selectedMeeting?.id === m.id} 
-  onOpenChange={(open) => {
+onOpenChange={(open) => {
   setAttendanceOpen(open);
   if (open) {
     setSelectedMeeting(m);
-
-    // Cập nhật trạng thái ban đầu cho attendanceDraft
-    const initialDraft: Record<number, 'Present' | 'Absent'> = {};
-    participants.forEach((p) => {
-      if (p.status === 'Present' || p.status === 'Absent') {
-        initialDraft[p.id] = p.status;
-      }
-    });
-    setAttendanceDraft(initialDraft);
   } else {
-    // Reset khi đóng dialog
     setAttendanceDraft({});
   }
 }}
+
 
 >
   <DialogTrigger asChild>

@@ -1,8 +1,8 @@
-import { Search, Plus, Bell, HelpCircle, Settings, AppWindow, PanelLeftClose } from 'lucide-react';
+import { Plus, HelpCircle, Settings, AppWindow, PanelLeftClose } from 'lucide-react';
 
 import logo from '../assets/Logo_IntelliPM/Logo_NoText_NoBackgroud.png';
 import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
-// import Login from './Login';
+
 import { Link } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
 import NotificationBell from '../components/NotificationBell';
@@ -30,25 +30,15 @@ export default function Header() {
   return (
     <header className='w-full flex items-center justify-between p-1 bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40'>
       <div className='flex items-center space-x-2'>
-        <button className='p-1 rounded hover:bg-gray-200 block '>
+        <button className='p-1 rounded hover:bg-gray-200'>
           <PanelLeftClose className='w-5 h-5 text-gray-700' />
         </button>
-
         <button className='p-1 rounded hover:bg-gray-200'>
           <AppWindow className='w-5 h-5 text-gray-700' />
         </button>
-
         <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
-          <img
-            src={logo}
-            className='h-10 w-auto object-contain scale-[1.2]'
-            style={{ transformOrigin: 'left center', marginRight: '-8px' }}
-          />
-          <img
-            src={textLogo}
-            className='h-9 w-auto object-contain scale-[0.36]'
-            style={{ transformOrigin: 'left center' }}
-          />
+          <img src={logo} className='h-10 w-auto scale-[1.2]' style={{ marginRight: '-8px' }} />
+          <img src={textLogo} className='h-9 w-auto scale-[0.36]' />
         </Link>
       </div>
 
@@ -62,8 +52,7 @@ export default function Header() {
             style={{ all: 'unset', width: '100%' }}
           />
         </div>
-
-        <button className='bg-blue-500 text-white flex items-center px-3 py-1.5 rounded-md text-sm hover:bg-blue-600 transition-colors'>
+        <button className='bg-blue-500 text-white flex items-center px-3 py-1.5 rounded-md text-sm hover:bg-blue-600'>
           <Plus className='w-4 h-4 mr-1' />
           <span className='hidden sm:inline'>Create</span>
         </button>
@@ -84,14 +73,12 @@ export default function Header() {
         </button>
 
         {user ? (
-          <>
-            <button className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
-              {user.username.slice(0, 2).toUpperCase()}
-            </button>
-          </>
+          <button className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
+            {user.username.slice(0, 2).toUpperCase()}
+          </button>
         ) : (
           <Link to='/login'>
-            <button className='px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'>
+            <button className='px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700'>
               Login
             </button>
           </Link>

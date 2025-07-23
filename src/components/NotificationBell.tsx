@@ -5,6 +5,7 @@ import {
   useMarkAsReadMutation,
 } from '../services/recipientNotificationApi';
 import { useGetAllNotificationsQuery } from '../services/notificationApi';
+import { connection } from '../services/SignalR/signalRConnection';
 
 interface NotificationBellProps {
   accountId: number;
@@ -18,16 +19,44 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
   const { data: allNotis, refetch: refetchNotis } = useGetAllNotificationsQuery();
   const [markAsRead] = useMarkAsReadMutation();
 
-  const unreadCount = recipientNotis?.filter(n => !n.isRead).length || 0;
+  const unreadCount = recipientNotis?.filter((n) => !n.isRead).length || 0;
 
-  const toggleDropdown = () => setIsOpen(prev => !prev);
+  const toggleDropdown = () => setIsOpen((prev) => !prev);
 
   const handleMarkAsRead = async (notificationId: number) => {
     await markAsRead({ accountId, notificationId });
     refetch();
   };
 
-  // Đóng dropdown khi click ra ngoài
+  
+  useEffect(() => {
+    if (!accountId) return;
+
+    if (connection.state === 'Disconnected') {
+      connection
+        .start()
+        .then(() => {
+          console.log('✅ SignalR connected (Bell)');
+          return connection.invoke('JoinNotificationGroup', accountId.toString());
+        })
+        .then(() => {
+          console.log('📡 Joined notification group:', accountId);
+        })
+        .catch((err) => console.error('❌ SignalR connection error (Bell):', err));
+    }
+
+    connection.on('ReceiveNotification', (message) => {
+      console.log('🔔 Realtime notification received:', message);
+      refetch();
+      refetchNotis();
+    });
+
+    return () => {
+      connection.off('ReceiveNotification');
+      connection.stop();
+    };
+  }, [accountId]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -62,7 +91,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
             <div className="p-4 text-gray-500 text-sm">Không có thông báo nào.</div>
           ) : (
             recipientNotis?.map((recipient) => {
-              const notification = allNotis?.find(n => n.id === recipient.notificationId);
+              const notification = allNotis?.find((n) => n.id === recipient.notificationId);
               const isUnread = !recipient.isRead;
 
               return (

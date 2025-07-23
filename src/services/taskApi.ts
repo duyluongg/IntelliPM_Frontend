@@ -207,6 +207,18 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+    updateTaskReporter: builder.mutation<void, { id: string; reporterId: number; createdBy: number }>({
+      query: ({ id, reporterId, createdBy }) => ({
+        url: `task/${id}/reporter`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({reporterId, createdBy}),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
     getTasksByEpicId: builder.query<TaskResponseDTO[], string>({
       query: (epicId) => ({
         url: 'task/by-epic-id',
@@ -255,10 +267,20 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updatePlannedStartDate: builder.mutation<
-      void,
-      { id: string; plannedStartDate: string; createdBy: number }
-    >({
+
+    updateTaskPriority: builder.mutation<void, { id: string; priority: string; createdBy: number }>({
+      query: ({ id, priority, createdBy }) => ({
+        url: `task/${id}/priority`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({priority, createdBy}),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string; createdBy: number }>({
       query: ({ id, plannedStartDate, createdBy }) => ({
         url: `task/${id}/planned-start-date`,
         method: 'PATCH',
@@ -385,5 +407,7 @@ export const {
   useGetTaskWithSubtasksQuery,
   useGetTasksFromBacklogQuery,
   useUpdateTaskSprintMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
   useGetTasksBySprintIdAndStatusQuery,
 } = taskApi;

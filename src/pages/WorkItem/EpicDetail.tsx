@@ -482,6 +482,7 @@ const EpicDetail: React.FC = () => {
                                           try {
                                             await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                             await refetch();
+                                            await refetchActivityLogs();
                                           } catch (err) {
                                             console.error('❌ Failed to update title:', err);
                                           }
@@ -644,6 +645,7 @@ const EpicDetail: React.FC = () => {
                                         createdBy: accountId
                                       }).unwrap();
                                       await refetch();
+                                      await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Error updating status:', err);
                                     }

@@ -151,6 +151,8 @@ import { meetingRescheduleRequestApi } from '../services/ProjectManagement/Meeti
 import { epicCommentApi } from '../services/epicCommentApi';
 import { workLogApi } from '../services/workLogApi';
 import { activityLogApi } from '../services/activityLogApi';
+import { notificationApi } from '../services/notificationApi';
+import { recipientNotificationApi } from '../services/recipientNotificationApi';
 import docReducer from '../components/slices/Document/documentSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
 
@@ -196,6 +198,8 @@ const rootReducer = combineReducers({
   [epicCommentApi.reducerPath]: epicCommentApi.reducer,
   [workLogApi.reducerPath]: workLogApi.reducer,
   [activityLogApi.reducerPath]: activityLogApi.reducer,
+  [notificationApi.reducerPath]: notificationApi.reducer,
+  [recipientNotificationApi.reducerPath]: recipientNotificationApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -245,6 +249,8 @@ export const store = configureStore({
       epicCommentApi.middleware, 
       workLogApi.middleware,
       activityLogApi.middleware,
+      notificationApi.middleware,
+      recipientNotificationApi.middleware,
     ),
 });
 

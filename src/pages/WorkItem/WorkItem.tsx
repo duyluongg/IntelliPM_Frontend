@@ -45,7 +45,7 @@ import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 // import type { useState } from 'react';
 import { WorkLogModal } from './WorkLogModal';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -114,12 +114,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteTaskFile(id).unwrap();
+      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -231,8 +232,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
-    skip: !taskData?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByTaskIdQuery(taskId, {
+    skip: !taskId,
   });
 
   const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
@@ -317,6 +318,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setIsDropdownOpen(false);
       await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Error update work type:', err);
     }
@@ -375,6 +377,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       key={type}
                       className={`dropdown-item ${workType === type ? 'selected' : ''}`}
                       onClick={() => handleWorkTypeChange(type)}
+      
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -406,14 +409,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
               style={{ width: '500px' }}
+              disabled={!canEdit}
             />
-          </div>
-          <div className='header-actions'>
-            <button className='close-btn' onClick={onClose}>
-              ✖
-            </button>
+            <div className="modal-cont">
+              <button className="close-btn" onClick={onClose}>✖</button>
+            </div>
           </div>
         </div>
+
 
         {/* Modal Content */}
         <div className='modal-content'>
@@ -463,9 +466,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         taskId,
                         title: file.name,
                         file: file,
+                        createdBy: accountId,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -482,6 +487,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => handleDescriptionTaskChange()}
+                disabled={!canEdit}
               />
 
               {attachments.length > 0 && (
@@ -524,7 +530,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
                             className='delete-file-btn'
                             title='Delete file'
                           >
@@ -1236,6 +1242,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={status}
                 onChange={(e) => handleTaskStatusChange(e.target.value)}
                 className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+
               >
                 <option value='TO_DO'>To Do</option>
                 <option value='IN_PROGRESS'>In Progress</option>
@@ -1350,33 +1357,42 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </div>
               <div className='detail-item'>
                 <label>Start date</label>
-                <input
-                  type='date'
-                  value={plannedStartDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedStartDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedStartDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedStartDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedStartDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Due date</label>
-                <input
-                  type='date'
-                  value={plannedEndDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedEndDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedEndDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedEndDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedEndDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Reporter</label>
                 <span>{taskData?.reporterName ?? 'None'}</span>

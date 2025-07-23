@@ -32,7 +32,7 @@ import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉn
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -153,12 +153,13 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
-    if (!window.confirm('Bạn có chắc muốn xoá file này?')) return;
+  const handleDeleteFile = async (id: number, createdBy: number) => {
+    if (!window.confirm('Are you sure delete file?')) return;
     try {
-      await deleteTaskFile(id).unwrap();
+      await deleteTaskFile({id, createdBy: accountId}).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -198,8 +199,8 @@ const WorkItemDetail: React.FC = () => {
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
-      skip: !taskData?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByTaskIdQuery(taskId, {
+      skip: !taskId,
     });
 
   const {
@@ -352,6 +353,7 @@ const WorkItemDetail: React.FC = () => {
               defaultValue={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
+              disabled={!canEdit} 
             />
           </div>
         </div>
@@ -395,9 +397,11 @@ const WorkItemDetail: React.FC = () => {
                         taskId,
                         title: file.name,
                         file: file,
+                        createdBy: accountId,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -415,6 +419,7 @@ const WorkItemDetail: React.FC = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => handleDescriptionTaskChange()}
+                disabled={!canEdit} 
               />
 
               {attachments.length > 0 && (
@@ -454,7 +459,7 @@ const WorkItemDetail: React.FC = () => {
                         {/* Nút xóa file */}
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
                             className="delete-file-btn"
                             title="Xoá file"
                           >
@@ -1120,6 +1125,7 @@ const WorkItemDetail: React.FC = () => {
                   value={status}
                   onChange={(e) => handleTaskStatusChange(e.target.value)}
                   className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                  
                 >
                   <option value="TO_DO">To Do</option>
                   <option value="IN_PROGRESS">In Progress</option>
@@ -1223,35 +1229,43 @@ const WorkItemDetail: React.FC = () => {
                 </span>
               </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
-              <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintId ?? 'None'}</span></div>
-              <div className="detail-item">
+              <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintName ?? 'None'}</span></div>
+              <div className='detail-item'>
                 <label>Start date</label>
-                <input
-                  type="date"
-                  value={plannedStartDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedStartDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedStartDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedStartDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedStartDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
 
-              <div className="detail-item">
+              <div className='detail-item'>
                 <label>Due date</label>
-                <input
-                  type="date"
-                  value={plannedEndDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedEndDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedEndDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedEndDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedEndDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
               <div className="detail-item"><label>Reporter</label><span>{taskData?.reporterName ?? 'None'}</span></div>
             </div>

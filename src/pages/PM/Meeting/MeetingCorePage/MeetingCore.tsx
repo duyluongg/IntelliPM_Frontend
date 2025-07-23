@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../services/AuthContext';
 import './MeetingCore.css';
@@ -63,13 +63,15 @@ export default function MeetingCore() {
     <span className="text-sm opacity-80 text-center">Request to reschedule a meeting</span>
   </div>
 
-  <div
+ <div
     onClick={() => navigate('/meeting-feedback')}
-    className={`${boxBase} bg-orange-600 text-white hover:bg-orange-700`}
+    className={`${boxBase} bg-orange-600 text-white hover:bg-orange-700 col-span-full py-10`}
   >
-    <span className="text-2xl">💬</span>
-    <span className="mt-2 text-lg font-semibold">Meeting Feedback</span>
-    <span className="text-sm opacity-80 text-center">View or submit feedback</span>
+    <span className="text-3xl">💬</span>
+    <span className="mt-3 text-xl font-semibold">Meeting Feedback</span>
+    <span className="text-base opacity-80 text-center mt-1">
+      View or submit feedback about your meetings
+    </span>
   </div>
 </div>
 

@@ -38,48 +38,93 @@ import {
 import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
-import {
-  type UpdateEpicRequestDTO,
-  type EpicResponseDTO,
-} from '../../../services/epicApi';
-import {
-  type UpdateTaskRequestDTO,
-  type TaskResponseDTO,
-  type SubtaskViewDTO,
-  type AccountDTO,
-  type TaskBacklogResponseDTO,
-  type TaskAssignmentResponseDTO,
-} from '../../../services/taskApi';
-import {
-  type SubtaskResponseDTO,
-} from '../../../services/subtaskApi';
 
-// Extend WorkItemList interface to include projectName and epicId
-interface ExtendedWorkItemList extends WorkItemList {
-  projectName?: string;
-  epicId?: string | null;
+interface UpdateTaskRequestDTO {
+  reporterId: number | null;
+  projectId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  type: string;
+  title: string;
+  description: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  status: string;
+  assignedBy: number | null;
+  priority: string;
+  createdBy: number;
 }
 
-// Update SubtaskResponseDTO to include plannedEndDate
-interface SubtaskResponseDTO {
-  id: string;
-  taskId: string | null;
-  title: string;
-  description: string | null;
-  plannedEndDate: string | null; // Added plannedEndDate
+interface UpdateEpicRequestDTO {
+  projectId: number;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
   status: string;
-  priority: string;
-  manualInput: boolean;
-  generationAiInput: boolean;
-  createdAt: string;
-  updatedAt: string;
-  startDate: string | null;
-  endDate: string | null;
   reporterId: number | null;
-  reporterName: string | null;
-  createdBy: number | null;
   assignedBy: number | null;
-  assignedByName: string | null;
+}
+
+interface UpdateSubtaskRequestDTO {
+  id: string;
+  taskId: string;
+  title: string;
+  description: string;
+  plannedEndDate: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  reporterId: number;
+  assignedBy: number;
+  priority: string;
+  createdBy: number;
+}
+
+interface Reporter {
+  id?: number | null;
+  fullName: string;
+  initials: string;
+  avatarColor: string;
+  picture?: string | null;
+}
+
+interface TaskAssignee {
+  id?: number | null;
+  fullName: string;
+  initials: string;
+  avatarColor: string;
+  picture?: string | null;
+}
+
+interface ProjectMember {
+  id: number;
+  accountId: number;
+  fullName: string;
+  picture: string | null;
+  status: string;
+}
+
+interface TaskItem {
+  id: string;
+  type: 'epic' | 'task' | 'bug' | 'subtask' | 'story';
+  key: string;
+  taskId: string | null;
+  summary: string;
+  status: string;
+  comments: number;
+  sprint?: number | null;
+  sprintName?: string | null;
+  assignees: TaskAssignee[];
+  dueDate?: string | null;
+  labels?: string[];
+  created: string;
+  updated: string;
+  reporter: Reporter;
+  reporterId?: number | null;
+  projectId?: number;
+  epicId?: string | null;
+  description: string;
 }
 
 // Status Component
@@ -125,16 +170,16 @@ const DateWithIcon = ({
   status,
   isDueDate,
 }: {
-  date?: string | Date | null;
+  date?: string | null;
   status: string;
   isDueDate?: boolean;
 }) => {
-  const formatDate = (dateStr?: string | Date | null) => {
+  const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '';
-    const dateObj = dateStr instanceof Date ? dateStr : new Date(dateStr);
-    const month = dateObj.toLocaleString('en-US', { month: 'short' });
-    const day = dateObj.getDate();
-    const year = dateObj.getFullYear();
+    const date = new Date(dateStr);
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const day = date.getDate();
+    const year = date.getFullYear();
     return `${month} ${day}, ${year}`;
   };
 
@@ -142,7 +187,7 @@ const DateWithIcon = ({
   const currentDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   const dueDate = date
-    ? (date instanceof Date ? date : new Date(date))
+    ? new Date(new Date(date).getFullYear(), new Date(date).getMonth(), new Date(date).getDate())
     : null;
 
   let icon = (
@@ -216,26 +261,11 @@ const Avatar = ({
   person,
   onDelete,
 }: {
-  person: AccountDTO | SubtaskViewDTO | TaskAssignmentResponseDTO;
+  person: Reporter | TaskAssignee;
   onDelete?: () => Promise<void>;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const displayName =
-    'fullName' in person
-      ? person.fullName || '-'
-      : 'assignedByName' in person
-      ? person.assignedByName || '-'
-      : 'accountFullname' in person
-      ? person.accountFullname || '-'
-      : '-';
-
-  const initials = typeof displayName === 'string' && displayName !== '-' && displayName !== 'Unknown'
-    ? displayName
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .substring(0, 2)
-    : '';
+  const displayName = person.fullName || '-';
 
   return displayName !== '-' && displayName !== 'Unknown' ? (
     <div
@@ -245,19 +275,19 @@ const Avatar = ({
       data-tooltip-id={`assignee-tooltip-${person.id ?? displayName}`}
       data-tooltip-content={`Assignee: ${displayName}`}
     >
-      {('picture' in person && person.picture) || ('accountPicture' in person && person.accountPicture) ? (
+      {person.picture ? (
         <img
-          src={('picture' in person && person.picture) || ('accountPicture' in person && person.accountPicture) || ''}
+          src={person.picture}
           alt={`${displayName}'s avatar`}
           className='w-[22px] h-[22px] rounded-full object-cover'
-          style={{ backgroundColor: '#f3eded' }}
+          style={{ backgroundColor: person.avatarColor }}
         />
       ) : (
         <div
           className='w-[22px] h-[22px] rounded-full flex justify-center items-center text-white text-xs font-bold'
-          style={{ backgroundColor: '#f3eded' }}
+          style={{ backgroundColor: person.avatarColor }}
         >
-          {initials}
+          {person.initials}
         </div>
       )}
       <span className='text-xs text-gray-800'>{displayName}</span>
@@ -287,8 +317,7 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
-
-  const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
       viewBox='0 0 16 16'
@@ -304,14 +333,13 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
       />
     </svg>
   );
-
   const members =
     membersData?.data
       ?.filter((member) => member.status.toUpperCase() === 'IN_PROGRESS')
       ?.map((member) => ({
         id: member.id,
         name: member.fullName || member.accountName || 'Unknown',
-        avatar: member.picture || 'https://via.placeholder.com/32',
+        avatar: member.picture || 'https://via.placeholder.com/32', 
       })) || [];
 
   const toggleMembers = () => {
@@ -419,7 +447,6 @@ const ProjectTaskList: React.FC = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
-
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -432,22 +459,33 @@ const ProjectTaskList: React.FC = () => {
     error,
     refetch: refetchWorkItems,
   } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
-
   const {
     data: projectMembersResponse,
     isLoading: isMembersLoading,
     error: membersError,
   } = useGetProjectMembersWithPositionsQuery(projectId || 0, { skip: !projectId });
+  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] =
+    useUpdateTaskDatMutation();
+  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] =
+    useUpdateEpicMutation();
+  const [updateSubtask, { isLoading: isUpdatingSubtask, error: updateSubtaskError }] =
+    useUpdateSubtaskMutation();
+  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] =
+    useCreateTaskAssignmentQuickMutation();
+  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
+    useDeleteTaskAssignmentMutation();
 
-  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskDatMutation();
-  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
-  const [updateSubtask, { isLoading: isUpdatingSubtask, error: updateSubtaskError }] = useUpdateSubtaskMutation();
-  const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] = useCreateTaskAssignmentQuickMutation();
-  const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] = useDeleteTaskAssignmentMutation();
-
-  const [selectedTaskType, setSelectedTaskType] = useState<'epic' | 'task' | 'bug' | 'subtask' | 'story' | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<
+    'epic' | 'task' | 'bug' | 'subtask' | 'story' | null
+  >(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const shouldShowWorkItem =
+    isPopupOpen &&
+    selectedTaskId &&
+    selectedTaskType !== null &&
+    ['task', 'bug', 'story'].includes(selectedTaskType);
+
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [docTaskId, setDocTaskId] = useState<string | null>(null);
   const [docTaskType, setDocTaskType] = useState<'task' | 'epic' | 'subtask'>('task');
@@ -469,7 +507,18 @@ const ProjectTaskList: React.FC = () => {
     { skip: !projectId || !user?.id }
   );
 
-  const projectMembers: ProjectMemberWithPositionsResponse[] = projectMembersResponse?.data ?? [];
+  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
+    (member: ProjectMemberWithPositionsResponse) => ({
+      id: member.id,
+      accountId: member.accountId,
+      fullName: member.fullName,
+      picture: member.picture,
+      status: member.status,
+    })
+  );
+
+  // Lấy accountId từ localStorage
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -480,7 +529,9 @@ const ProjectTaskList: React.FC = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -508,7 +559,7 @@ const ProjectTaskList: React.FC = () => {
           title: 'Untitled Document',
           template: 'blank',
           content: '',
-          createdBy: user.id,
+          createdBy: accountId, // Sử dụng accountId từ localStorage
         };
 
         const res = await createDocument(payload).unwrap();
@@ -525,7 +576,7 @@ const ProjectTaskList: React.FC = () => {
     }
   };
 
-  const handleOpenPopup = (taskId: string, taskType: 'epic' | 'task' | 'bug' | 'subtask' | 'story') => {
+  const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
     setSelectedTaskType(taskType);
     setIsPopupOpen(true);
@@ -539,35 +590,36 @@ const ProjectTaskList: React.FC = () => {
     setSearchParams(searchParams);
   };
 
-  const handleEditClick = (id: string, field: string, value: string | number | Date | null) => {
+  const handleEditClick = (id: string, field: string, value: string) => {
     setEditingCell({ id, field });
-    setEditValue(value?.toString() || '');
+    setEditValue(value);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditValue(e.target.value);
   };
 
-  const handleInputBlur = async (item: TaskBacklogResponseDTO) => {
+  const handleInputBlur = async (item: TaskItem) => {
     if (!editingCell) return;
 
     const { id, field } = editingCell;
-    const currentValue = item[field as keyof TaskBacklogResponseDTO];
-    if (!editValue || editValue === (currentValue?.toString() || '')) {
+    if (!editValue || editValue === (item[field as keyof TaskItem] as string)) {
       setEditingCell(null);
       setEditValue('');
       return;
     }
 
-    if (field === 'title' && !editValue.trim()) {
+    // Validation
+    if (field === 'summary' && !editValue.trim()) {
       alert('Summary cannot be empty.');
       setEditingCell(null);
       setEditValue('');
       return;
     }
 
+    const isDateField = field === 'dueDate';
     let formattedDate = editValue;
-    if (field === 'plannedEndDate' && editValue) {
+    if (isDateField && editValue) {
       try {
         const newDate = new Date(editValue);
         const today = new Date();
@@ -588,55 +640,51 @@ const ProjectTaskList: React.FC = () => {
     }
 
     try {
-      if (item.type?.toLowerCase() === 'epic') {
+      if (item.type === 'epic') {
         const epicData: UpdateEpicRequestDTO = {
-          projectId: item.projectId || 0,
-          name: field === 'title' ? editValue : (item.title as string) || '',
+          projectId: item.projectId || projectId || 0,
+          name: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
-          startDate: item.createdAt || new Date().toISOString(),
-          endDate: field === 'plannedEndDate' ? (formattedDate as string) : (item.plannedEndDate as string) || '',
-          status: item.status || '',
-          reporterId: item.reporterId as number || 0,
-          assignedBy: item.taskAssignments[0]?.accountId || null,
+          startDate: item.created || new Date().toISOString(),
+          endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || null,
+          assignedBy: item.assignees[0]?.id || null,
         };
-        await updateEpic({ id: item.id, data: epicData }).unwrap();
-      } else if (item.type?.toLowerCase() === 'subtask') {
-        const subtaskData: SubtaskResponseDTO = {
-          id: item.id,
-          taskId: item.epicId || '',
-          title: field === 'title' ? editValue : (item.title as string) || '',
+        await updateEpic({ id: item.key, data: epicData }).unwrap();
+      } else if (item.type === 'subtask') {
+        const subtaskData: UpdateSubtaskRequestDTO = {
+          id: item.key,
+          taskId: item.taskId || '',
+          title: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
-          plannedEndDate: field === 'plannedEndDate' ? (formattedDate as string) : (item.plannedEndDate as string) || '',
-          status: item.status || '',
+          plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || 0, // Already correct
+          assignedBy: item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
-          manualInput: item.manualInput || false,
-          generationAiInput: item.generationAiInput || false,
-          createdAt: item.createdAt || '',
-          updatedAt: item.updatedAt || '',
-          startDate: (item.plannedStartDate as string) || '',
-          endDate: (item.plannedEndDate as string) || '',
-          reporterId: item.reporterId as number || 0,
-          reporterName: item.reporterName || '',
-          createdBy: item.taskAssignments[0]?.accountId || 0,
-          assignedBy: item.taskAssignments[0]?.accountId || 0,
-          assignedByName: item.taskAssignments[0]?.accountFullname || '',
+          startDate: item.created || new Date().toISOString(),
+          endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
         const taskData: UpdateTaskRequestDTO = {
-          reporterId: item.reporterId as number || 0,
-          projectId: item.projectId || 0,
+          reporterId: item.reporterId || null,
+          projectId: item.projectId || projectId || 0,
           epicId: item.epicId || null,
-          sprintId: item.sprintId as number || null,
-          type: item.type || 'task',
-          title: field === 'title' ? editValue : (item.title as string) || '',
+          sprintId: item.sprint || null,
+          type: item.type as 'task' | 'bug' | 'story',
+          title: field === 'summary' ? editValue : item.summary,
           description: item.description || '',
-          plannedStartDate: (item.plannedStartDate as string) || new Date().toISOString(),
-          plannedEndDate: field === 'plannedEndDate' ? (formattedDate as string) : (item.plannedEndDate as string) || '',
-          status: item.status || '',
-          createdBy: item.taskAssignments[0]?.accountId || 0,
+          plannedStartDate: item.created || new Date().toISOString(),
+          plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          status: item.status,
+          assignedBy: item.assignees[0]?.id || null,
+          priority: 'MEDIUM',
+          createdBy: accountId,
         };
-        await updateTask({ id: item.id, body: taskData }).unwrap();
+        await updateTask({ id: item.key, body: taskData }).unwrap();
       }
       setEditingCell(null);
       setEditValue('');
@@ -649,15 +697,15 @@ const ProjectTaskList: React.FC = () => {
   };
 
   const handleMemberSelect = async (
-    item: TaskBacklogResponseDTO,
+    item: TaskItem,
     field: 'reporter' | 'assignees',
-    member: ProjectMemberWithPositionsResponse
+    member: ProjectMember
   ) => {
     if (field === 'assignees') {
-      const isAlreadyAssigned = item.taskAssignments.some(
-        (assignee: TaskAssignmentResponseDTO) => assignee.accountId === member.accountId
+      const isAlreadyAssigned = item.assignees.some(
+        (assignee: TaskAssignee) => assignee.id === member.accountId
       );
-      const isReporter = item.reporterId === member.accountId;
+      const isReporter = item.reporter.id === member.accountId;
       if (isAlreadyAssigned || isReporter) {
         alert(
           isAlreadyAssigned
@@ -669,60 +717,56 @@ const ProjectTaskList: React.FC = () => {
     }
 
     try {
-      if (item.type?.toLowerCase() === 'epic') {
+      if (item.type === 'epic') {
         const epicData: UpdateEpicRequestDTO = {
-          projectId: item.projectId || 0,
-          name: item.title || '',
+          projectId: item.projectId || projectId || 0,
+          name: item.summary,
           description: item.description || '',
-          startDate: item.createdAt || new Date().toISOString(),
-          endDate: (item.plannedEndDate as string) || '',
-          status: item.status || '',
-          reporterId: field === 'reporter' ? (member.accountId as number) : (item.reporterId as number) || 0,
-          assignedBy: field === 'assignees' ? (member.accountId as number) : item.taskAssignments[0]?.accountId || null,
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          status: item.status,
+          reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
+          assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
         };
-        await updateEpic({ id: item.id, data: epicData }).unwrap();
-      } else if (item.type?.toLowerCase() === 'subtask') {
-        const subtaskData: SubtaskResponseDTO = {
-          id: item.id,
-          taskId: item.epicId || '',
-          title: item.title || '',
+        await updateEpic({ id: item.key, data: epicData }).unwrap();
+      } else if (item.type === 'subtask') {
+        const subtaskData: UpdateSubtaskRequestDTO = {
+          id: item.key,
+          taskId: item.taskId || '',
+          title: item.summary,
           description: item.description || '',
-          plannedEndDate: (item.plannedEndDate as string) || '',
-          status: item.status || '',
+          plannedEndDate: item.dueDate || '',
+          status: item.status,
+          reporterId: field === 'reporter' ? member.accountId : item.reporterId || 0, // Already correct
+          assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
-          manualInput: item.manualInput || false,
-          generationAiInput: item.generationAiInput || false,
-          createdAt: item.createdAt || '',
-          updatedAt: item.updatedAt || '',
-          startDate: (item.plannedStartDate as string) || '',
-          endDate: (item.plannedEndDate as string) || '',
-          reporterId: field === 'reporter' ? (member.accountId as number) : (item.reporterId as number) || 0,
-          reporterName: member.fullName || '',
-          createdBy: item.taskAssignments[0]?.accountId || 0,
-          assignedBy: field === 'assignees' ? (member.accountId as number) : item.taskAssignments[0]?.accountId || 0,
-          assignedByName: member.fullName || '',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
         if (field === 'reporter') {
           const taskData: UpdateTaskRequestDTO = {
-            reporterId: member.accountId as number,
-            projectId: item.projectId || 0,
+            reporterId: member.accountId,
+            projectId: item.projectId || projectId || 0,
             epicId: item.epicId || null,
-            sprintId: item.sprintId as number || null,
-            type: item.type || 'task',
-            title: item.title || '',
+            sprintId: item.sprint || null,
+            type: item.type as 'task' | 'bug' | 'story',
+            title: item.summary,
             description: item.description || '',
-            plannedStartDate: (item.plannedStartDate as string) || new Date().toISOString(),
-            plannedEndDate: (item.plannedEndDate as string) || '',
-            status: item.status || '',
-            createdBy: item.taskAssignments[0]?.accountId || 0,
+            plannedStartDate: item.created || new Date().toISOString(),
+            plannedEndDate: item.dueDate || '',
+            status: item.status,
+            assignedBy: item.assignees[0]?.id || null,
+            priority: 'MEDIUM',
+            createdBy: accountId,
           };
-          await updateTask({ id: item.id, body: taskData }).unwrap();
+          await updateTask({ id: item.key, body: taskData }).unwrap();
         } else {
           await createTaskAssignment({
-            taskId: item.id,
-            accountId: member.accountId as number,
+            taskId: item.key,
+            accountId: member.accountId,
           }).unwrap();
         }
       }
@@ -738,45 +782,39 @@ const ProjectTaskList: React.FC = () => {
   const handleDeleteAssignment = async (
     itemId: string,
     assigneeId: number,
-    itemType: 'epic' | 'task' | 'bug' | 'subtask' | 'story'
+    itemType: TaskItem['type']
   ) => {
     try {
       if (itemType === 'epic') {
-        const item = tasks.find((t) => t.id === itemId);
+        const item = tasks.find((t) => t.key === itemId);
         if (!item) throw new Error('Item not found');
         const epicData: UpdateEpicRequestDTO = {
-          projectId: item.projectId || 0,
-          name: item.title || '',
+          projectId: item.projectId || projectId || 0,
+          name: item.summary,
           description: item.description || '',
-          startDate: item.createdAt || new Date().toISOString(),
-          endDate: (item.plannedEndDate as string) || '',
-          status: item.status || '',
-          reporterId: item.reporterId as number || 0,
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || null,
           assignedBy: null,
         };
         await updateEpic({ id: itemId, data: epicData }).unwrap();
       } else if (itemType === 'subtask') {
-        const item = tasks.find((t) => t.id === itemId);
+        const item = tasks.find((t) => t.key === itemId);
         if (!item) throw new Error('Item not found');
-        const subtaskData: SubtaskResponseDTO = {
+        const subtaskData: UpdateSubtaskRequestDTO = {
           id: itemId,
-          taskId: item.epicId || '',
-          title: item.title || '',
+          taskId: item.taskId || '',
+          title: item.summary,
           description: item.description || '',
-          plannedEndDate: (item.plannedEndDate as string) || '',
-          status: item.status || '',
-          priority: 'MEDIUM',
-          manualInput: item.manualInput || false,
-          generationAiInput: item.generationAiInput || false,
-          createdAt: item.createdAt || '',
-          updatedAt: item.updatedAt || '',
-          startDate: (item.plannedStartDate as string) || '',
-          endDate: (item.plannedEndDate as string) || '',
-          reporterId: item.reporterId as number || 0,
-          reporterName: item.reporterName || '',
-          createdBy: 0,
+          plannedEndDate: item.dueDate || '',
+          status: item.status,
+          reporterId: item.reporterId || 0, // Already correct
           assignedBy: 0,
-          assignedByName: '',
+          priority: 'MEDIUM',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
@@ -789,11 +827,10 @@ const ProjectTaskList: React.FC = () => {
       alert(`Failed to delete assignment: ${errorMessage}`);
     }
   };
-
   const handleShowMemberDropdown = (
     id: string,
     field: 'reporter' | 'assignees',
-    type: 'epic' | 'task' | 'bug' | 'subtask' | 'story'
+    type: 'task' | 'epic' | 'subtask' | 'bug' | 'story'
   ) => {
     setShowMemberDropdown({ id, field, type });
   };
@@ -860,57 +897,65 @@ const ProjectTaskList: React.FC = () => {
     }
   };
 
-  const tasks: TaskBacklogResponseDTO[] =
+const tasks: TaskItem[] =  
     isLoading || error || !workItemsData?.data
       ? []
-      : workItemsData.data.map((item: ExtendedWorkItemList) => {
+      : workItemsData.data.map((item: WorkItemList) => {
           const uniqueAssignees = Array.from(
             new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
-          ) as ApiAssignee[];
+          );
 
-          const assignments: TaskAssignmentResponseDTO[] = uniqueAssignees
-            .filter((assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown')
+          const assignments: TaskAssignee[] = uniqueAssignees
+            .filter(
+              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+            )
             .map((assignee: ApiAssignee) => ({
-              id: assignee.accountId as number,
-              taskId: item.key || '',
-              accountId: assignee.accountId as number,
-              accountFullname: assignee.fullname || 'Unknown',
-              accountPicture: assignee.picture || undefined,
-              status: 'ASSIGNED',
-              assignedAt: new Date().toISOString(),
-              completedAt: null,
-              hourlyRate: null,
+              id: assignee.accountId,
+              fullName: assignee.fullname || 'Unknown',
+              initials:
+                assignee.fullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: assignee.picture || undefined,
             }));
 
           return {
             id: item.key || '',
-            reporterId: item.reporterId as number || null,
-            reporterName: item.reporterFullname || 'Unknown',
-            reporterPicture: item.reporterPicture || null,
-            projectId: item.projectId || projectId || 0,
-            projectName: item.projectName || '',
-            epicId: item.epicId || null,
-            epicName: item.epicName || null,
-            sprintId: item.sprintId as number || null,
-            sprintName: item.sprintName || null,
-            type: item.type || '',
-            manualInput: item.manualInput || false,
-            generationAiInput: item.generationAiInput || false,
-            title: item.summary || '',
-            description: item.description || '',
-            plannedStartDate: item.createdAt || '',
-            plannedEndDate: item.dueDate || null,
-            actualStartDate: item.actualStartDate || null,
-            actualEndDate: item.actualEndDate || null,
-            duration: item.duration || '',
-            priority: item.priority || '',
-            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-            createdAt: item.createdAt || '',
-            updatedAt: item.updatedAt || '',
-            taskAssignments: assignments,
-          } as TaskBacklogResponseDTO;
-        });
+            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+            key: item.key || '',
+            taskId: item.taskId || null,
+            summary: item.summary || '',
 
+            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+            comments: item.commentCount || 0,
+            sprint: item.sprintId || null,
+            sprintName: item.sprintName || null,
+            assignees: assignments,
+            dueDate: item.dueDate || null,
+            labels: item.labels || [],
+            created: item.createdAt || '',
+            updated: item.updatedAt || '',
+            reporter: {
+              id: item.reporterId || null,
+              fullName: item.reporterFullname || 'Unknown',
+              initials:
+                item.reporterFullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: item.reporterPicture || undefined,
+            },
+            reporterId: item.reporterId || null,
+            projectId: item.projectId || projectId,
+            epicId: item.taskId || null,
+             description: '',
+          };
+        });
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -943,7 +988,11 @@ const ProjectTaskList: React.FC = () => {
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
       <HeaderBar projectId={projectId || 0} />
-      {(isUpdatingTask || isUpdatingEpic || isUpdatingSubtask || isCreatingAssignment || isDeletingAssignment) && (
+      {(isUpdatingTask ||
+        isUpdatingEpic ||
+        isUpdatingSubtask ||
+        isCreatingAssignment ||
+        isDeletingAssignment) && (
         <div className='text-center py-4 text-blue-500'>Processing...</div>
       )}
       <div className='overflow-x-auto bg-white w-full block'>
@@ -1092,19 +1141,19 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.type}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.type?.toLowerCase() === 'task' && (
+                  {task.type === 'task' && (
                     <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
                   )}
-                  {task.type?.toLowerCase() === 'subtask' && (
+                  {task.type === 'subtask' && (
                     <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
                   )}
-                  {task.type?.toLowerCase() === 'bug' && (
+                  {task.type === 'bug' && (
                     <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
                   )}
-                  {task.type?.toLowerCase() === 'epic' && (
+                  {task.type === 'epic' && (
                     <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
                   )}
-                  {task.type?.toLowerCase() === 'story' && (
+                  {task.type === 'story' && (
                     <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
                   )}
                 </td>
@@ -1112,9 +1161,9 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.key}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.type?.toLowerCase() === 'subtask' && task.epicId && task.epicId !== 'Unknown' ? (
+                  {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
                     <div className='flex flex-col items-start w-full'>
-                      <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.epicId}</span>
+                      <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
                       <div className='flex items-center gap-1'>
                         <svg
                           role='presentation'
@@ -1149,9 +1198,9 @@ const ProjectTaskList: React.FC = () => {
                         </svg>
                         <span
                           className='text-xs text-black cursor-pointer hover:underline'
-                          onClick={() => handleOpenPopup(task.id, task.type as 'epic' | 'task' | 'bug' | 'subtask' | 'story')}
+                          onClick={() => handleOpenPopup(task.key, task.type)}
                         >
-                          {task.id}
+                          {task.key}
                         </span>
                       </div>
                     </div>
@@ -1159,9 +1208,9 @@ const ProjectTaskList: React.FC = () => {
                     <div className='flex flex-col items-start w-full'>
                       <span
                         className='text-xs text-black cursor-pointer hover:underline'
-                        onClick={() => handleOpenPopup(task.id, task.type as 'epic' | 'task' | 'bug' | 'subtask' | 'story')}
+                        onClick={() => handleOpenPopup(task.key, task.type)}
                       >
-                        {task.id}
+                        {task.key}
                       </span>
                     </div>
                   )}
@@ -1170,7 +1219,7 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.summary}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {editingCell?.id === task.id && editingCell?.field === 'title' ? (
+                  {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
                     <input
                       type='text'
                       value={editValue}
@@ -1180,8 +1229,8 @@ const ProjectTaskList: React.FC = () => {
                       className='w-full p-1 border border-gray-300 rounded'
                     />
                   ) : (
-                    <span onClick={() => handleEditClick(task.id, 'title', task.title || '')}>
-                      {task.title}
+                    <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
+                      {task.summary}
                     </span>
                   )}
                 </td>
@@ -1189,7 +1238,7 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.status}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  <Status status={task.status || ''} />
+                  <Status status={task.status} />
                 </td>
                 <td
                   style={{ width: `${columnWidths.comments}px` }}
@@ -1230,7 +1279,7 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.sprint}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.sprintId && task.sprintId !== 0 ? (
+                  {task.sprint && task.sprint !== 0 ? (
                     <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
                       {task.sprintName}
                     </span>
@@ -1242,16 +1291,17 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.assignee}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                 >
-                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'assignees' ? (
+                  {showMemberDropdown?.id === task.id &&
+                  showMemberDropdown?.field === 'assignees' ? (
                     <div
                       ref={dropdownRef}
                       className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                     >
                       {projectMembers.length ? (
-                        projectMembers.map((member: ProjectMemberWithPositionsResponse) => {
+                        projectMembers.map((member: ProjectMember) => {
                           const isDisabled =
-                            task.taskAssignments.some((a: TaskAssignmentResponseDTO) => a.accountId === member.accountId) ||
-                            task.reporterId === member.accountId;
+                            task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
+                            task.reporter.id === member.accountId;
                           return (
                             <div
                               key={member.accountId}
@@ -1260,7 +1310,9 @@ const ProjectTaskList: React.FC = () => {
                                   ? 'opacity-50 cursor-not-allowed'
                                   : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                               }`}
-                              onClick={() => !isDisabled && handleMemberSelect(task, 'assignees', member)}
+                              onClick={() =>
+                                !isDisabled && handleMemberSelect(task, 'assignees', member)
+                              }
                             >
                               <div className='relative'>
                                 {member.picture ? (
@@ -1282,7 +1334,9 @@ const ProjectTaskList: React.FC = () => {
                                   </div>
                                 )}
                               </div>
-                              <span className='text-gray-900 font-medium truncate'>{member.fullName}</span>
+                              <span className='text-gray-900 font-medium truncate'>
+                                {member.fullName}
+                              </span>
                             </div>
                           );
                         })
@@ -1292,17 +1346,22 @@ const ProjectTaskList: React.FC = () => {
                     </div>
                   ) : (
                     <div
-                      onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type as 'epic' | 'task' | 'bug' | 'subtask' | 'story')}
+                      onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
                       className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
                     >
-                      {task.taskAssignments.length ? (
-                        task.taskAssignments.map((assignee: TaskAssignmentResponseDTO, index: number) => (
+                      {task.assignees.length ? (
+                        task.assignees.map((assignee: TaskAssignee, index: number) => (
                           <Avatar
                             key={assignee.id ?? index}
                             person={assignee}
                             onDelete={
-                              assignee.accountId != null && assignee.accountId !== 0
-                                ? () => handleDeleteAssignment(task.id, assignee.accountId as number, task.type as 'epic' | 'task' | 'bug' | 'subtask' | 'story')
+                              assignee.id != null && assignee.id !== 0
+                                ? () =>
+                                    handleDeleteAssignment(
+                                      task.key,
+                                      assignee.id as number,
+                                      task.type
+                                    )
                                 : undefined
                             }
                           />
@@ -1317,7 +1376,7 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.dueDate}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {editingCell?.id === task.id && editingCell?.field === 'plannedEndDate' ? (
+                  {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
                     <input
                       type='date'
                       value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
@@ -1327,9 +1386,9 @@ const ProjectTaskList: React.FC = () => {
                       className='w-full p-1 border border-gray-300 rounded'
                     />
                   ) : (
-                    <span onClick={() => handleEditClick(task.id, 'plannedEndDate', task.plannedEndDate || '')}>
-                      {task.plannedEndDate && task.plannedEndDate !== 'Unknown' ? (
-                        <DateWithIcon date={task.plannedEndDate} status={task.status || ''} isDueDate={true} />
+                    <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
+                      {task.dueDate && task.dueDate !== 'Unknown' ? (
+                        <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
                       ) : (
                         ''
                       )}
@@ -1355,8 +1414,8 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.created}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.createdAt !== 'Unknown' ? (
-                    <DateWithIcon date={task.createdAt} status={task.status || ''} />
+                  {task.created !== 'Unknown' ? (
+                    <DateWithIcon date={task.created} status={task.status} />
                   ) : (
                     ''
                   )}
@@ -1365,8 +1424,8 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.updated}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                 >
-                  {task.updatedAt !== 'Unknown' ? (
-                    <DateWithIcon date={task.updatedAt} status={task.status || ''} />
+                  {task.updated !== 'Unknown' ? (
+                    <DateWithIcon date={task.updated} status={task.status} />
                   ) : (
                     ''
                   )}
@@ -1375,13 +1434,14 @@ const ProjectTaskList: React.FC = () => {
                   style={{ width: `${columnWidths.reporter}px` }}
                   className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                 >
-                  {showMemberDropdown?.id === task.id && showMemberDropdown?.field === 'reporter' ? (
+                  {showMemberDropdown?.id === task.id &&
+                  showMemberDropdown?.field === 'reporter' ? (
                     <div
                       ref={dropdownRef}
                       className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                     >
-                      {projectMembers.map((member: ProjectMemberWithPositionsResponse) => {
-                        const isDisabled = task.reporterId === member.accountId;
+                      {projectMembers.map((member: ProjectMember) => {
+                        const isDisabled = task.reporter.id === member.accountId;
                         return (
                           <div
                             key={member.accountId}
@@ -1390,7 +1450,9 @@ const ProjectTaskList: React.FC = () => {
                                 ? 'opacity-50 cursor-not-allowed'
                                 : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                             }`}
-                            onClick={() => !isDisabled && handleMemberSelect(task, 'reporter', member)}
+                            onClick={() =>
+                              !isDisabled && handleMemberSelect(task, 'reporter', member)
+                            }
                           >
                             <div className='relative'>
                               {member.picture ? (
@@ -1412,46 +1474,37 @@ const ProjectTaskList: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            <span className='text-gray-900 font-medium truncate'>{member.fullName}</span>
+                            <span className='text-gray-900 font-medium truncate'>
+                              {member.fullName}
+                            </span>
                           </div>
                         );
                       })}
                     </div>
                   ) : (
                     <div
-                      onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type as 'epic' | 'task' | 'bug' | 'subtask' | 'story')}
+                      onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
                       className='hover:bg-gray-200 cursor-pointer p-1 rounded'
                     >
-                      <Avatar
-                        person={{
-                          id: task.reporterId || 0,
-                          accountId: task.reporterId as number || 0,
-                          accountFullname: task.reporterName || 'Unknown',
-                          accountPicture: task.reporterPicture || null,
-                          status: 'ASSIGNED',
-                          assignedAt: task.createdAt || '',
-                          completedAt: null,
-                          hourlyRate: null,
-                        }}
-                      />
+                      <Avatar person={task.reporter} />
                     </div>
                   )}
                 </td>
                 <td
                   style={{ width: `${columnWidths.document}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden '
                 >
-                  {createdDocIds[task.id] ? (
+                  {createdDocIds[task.key] ? (
                     <button
                       className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
-                      onClick={() => handleAddOrViewDocument(task.id, task.type || 'task')}
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
                       <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
                   ) : (
                     <button
                       className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
-                      onClick={() => handleAddOrViewDocument(task.id, task.type || 'task')}
+                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
                     >
                       <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                     </button>
@@ -1478,7 +1531,7 @@ const ProjectTaskList: React.FC = () => {
               <Doc
                 docId={createdDocIds[docTaskId]}
                 onClose={() => setIsDocModalOpen(false)}
-                updatedBy={user.id}
+                updatedBy={accountId} // Sử dụng accountId từ localStorage
               />
             </div>
           </div>
@@ -1500,8 +1553,8 @@ const ProjectTaskList: React.FC = () => {
           }}
         />
       )}
-      {(isPopupOpen && selectedTaskId && ['task', 'bug', 'story'].includes(selectedTaskType!)) && (
-        <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId} />
+      {shouldShowWorkItem && (
+        <WorkItem isOpen={true} onClose={handleClosePopup} taskId={selectedTaskId as string} />
       )}
     </section>
   );

@@ -111,6 +111,25 @@ const MeetingRoom: FC = () => {
         <p className="text-center text-red-500">Lỗi khi tải lịch.</p>
       ) : (
         <div className="bg-white p-4 rounded-xl shadow-lg">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+  <div className="flex items-center gap-2">
+    <div className="w-4 h-4 rounded bg-green-500"></div>
+    <span className="text-sm text-gray-700">Present</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <div className="w-4 h-4 rounded bg-red-500"></div>
+    <span className="text-sm text-gray-700">Absent</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <div className="w-4 h-4 rounded bg-blue-500"></div>
+    <span className="text-sm text-gray-700">Active (Upcoming)</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <div className="w-4 h-4 rounded bg-gray-300"></div>
+    <span className="text-sm text-gray-700">Past</span>
+  </div>
+</div>
+
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="dayGridMonth"

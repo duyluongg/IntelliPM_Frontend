@@ -138,6 +138,14 @@ export const meetingApi = createApi({
         method: 'GET',
       }),
     }),
+
+  checkMeetingConflict: builder.query<any, { date: string; startTime: string; endTime: string }>({
+  query: ({ date, startTime, endTime }) => ({
+    url: `meetings/check-conflict?date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+    method: 'GET',
+  }),
+}),
+
     
     updateParticipantStatus: builder.mutation<void, { id: number; data: Partial<MeetingParticipant> }>({
       query: ({ id, data }) => ({
@@ -227,5 +235,6 @@ export const {
   useUpdateParticipantStatusMutation,
   useGetMeetingsWithParticipantStatusQuery,
   useCreateInternalMeetingMutation,
+  useCheckMeetingConflictQuery,
 
 } = meetingApi;

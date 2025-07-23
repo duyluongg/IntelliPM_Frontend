@@ -6,6 +6,8 @@ export interface SubtaskResponseDTO {
   taskId: string;
   assignedBy: number;
   assignedByName: string;
+  plannedEndDate: string | null;
+  
   title: string;
   description: string;
   status: string;
@@ -18,6 +20,7 @@ export interface SubtaskResponseDTO {
   endDate: string;
   reporterId: number;
   reporterName: string;
+  createdBy: number;
 }
 
 interface ApiResponse<T> {

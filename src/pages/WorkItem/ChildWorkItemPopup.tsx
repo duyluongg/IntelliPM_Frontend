@@ -10,7 +10,7 @@ import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation, } from '../../services/subtaskCommentApi';
 import { WorkLogModal } from './WorkLogModal';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 
 interface SubtaskDetail {
   id: string;
@@ -101,8 +101,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskDetail?.projectId!, {
-    skip: !taskDetail?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
   });
 
   const fetchSubtask = async () => {
@@ -139,7 +139,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       newReporterId === undefined &&
       newAssignedBy === undefined
     ) {
-      return; 
+      return;
     }
 
     try {
@@ -152,11 +152,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
         reporterId: newReporterId ?? subtaskDetail.reporterId,
         assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
-        createdBy: accountId, 
+        createdBy: accountId,
       }).unwrap();
 
       console.log("✅ Subtask updated");
       await fetchSubtask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error("❌ Failed to update subtask", err);
       alert("❌ Update failed");
@@ -172,10 +173,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         subtaskId: subtaskDetail.id,
         title: file.name,
         file,
+        createdBy: accountId,
       }).unwrap();
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
       refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Upload failed:', error);
       alert('❌ Upload failed!');
@@ -184,12 +187,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteSubtaskFile(id).unwrap();
+      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ File deleted!');
-      refetchAttachments();
+      await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Delete failed:', error);
       alert('❌ Delete failed!');
@@ -215,6 +219,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
     }
@@ -345,7 +350,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
+                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
                           className='delete-file-btn'
                           title='Delete file'
                         >
@@ -445,9 +450,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                                             subtaskId: subtaskDetail.id,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert('✅ Comment updated');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
                                           alert('❌ Update failed');
@@ -466,9 +473,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                                         )
                                       ) {
                                         try {
-                                          await deleteSubtaskComment(comment.id).unwrap();
+                                          await deleteSubtaskComment({ id: comment.id, createdBy: accountId }).unwrap();
                                           alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to delete comment', err);
                                           alert('❌ Delete failed');
@@ -505,6 +513,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                             subtaskId: subtaskDetail.id,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert('✅ Comment posted');
                           setCommentContent('');
@@ -565,6 +574,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                         }).unwrap();
                         alert('✅ Updated subtask assignee');
                         await fetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update subtask');
                         console.error(err);
@@ -656,6 +666,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                         }).unwrap();
                         alert('✅ Updated subtask reporter');
                         await fetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update reporter');
                         console.error(err);

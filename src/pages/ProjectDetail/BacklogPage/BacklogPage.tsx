@@ -105,7 +105,7 @@ const BacklogPage: React.FC = () => {
     : epicData;
 
   return (
-    <div className="bg-gray-100 min-h-screen p-4">
+    <div className="min-h-screen p-0.1">
       <BacklogHeader onSearch={handleSearch} projectId={projectData?.data?.id || 0} />
       <DndProvider backend={HTML5Backend}>
         <BacklogBody

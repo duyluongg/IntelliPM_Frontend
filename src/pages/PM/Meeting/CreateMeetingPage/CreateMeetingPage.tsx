@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import {
   useGetProjectsByAccountIdQuery,
   useGetProjectDetailsQuery,
   useCreateMeetingMutation,
   useCreateInternalMeetingMutation,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingServices';
+import "./CreateMeetingPage.css";
 
 import { useAuth } from '../../../../services/AuthContext';
 
 const CreateMeetingPage: React.FC = () => {
   const { user } = useAuth();
   const accountId = user?.id;
+  const navigate = useNavigate();
+
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -37,12 +42,27 @@ const CreateMeetingPage: React.FC = () => {
     setParticipantIds((prev) =>
       prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
     );
-    console.log(`🟩 ${participantIds.includes(accountId) ? 'Bỏ chọn' : 'Chọn'} account ID: ${accountId}`);
+    // console.log(`🟩 ${participantIds.includes(accountId) ? 'Bỏ chọn' : 'Chọn'} account ID: ${accountId}`);
   };
   
+  const isValidMeetingUrl = (url: string): boolean => {
+  const zoomRegex = /https:\/\/.*zoom\.us\/j\/\d+/i;
+  const googleMeetRegex = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i;
+  return zoomRegex.test(url) || googleMeetRegex.test(url);
+};
+
+const timeSlots = [
+  { label: '08:00 - 10:30', start: '08:00', end: '10:30' },
+  { label: '10:30 - 13:00', start: '10:30', end: '13:00' },
+  { label: '13:00 - 15:30', start: '13:00', end: '15:30' },
+  { label: '15:30 - 18:00', start: '15:30', end: '18:00' },
+  { label: '18:00 - 20:30', start: '18:00', end: '20:30' },
+  { label: '20:30 - 23:00', start: '20:30', end: '23:00' },
+];
+
 
 const handleCreateMeeting = async () => {
-  console.log("🔍 Bắt đầu handleCreateMeeting");
+  // console.log("🔍 Bắt đầu handleCreateMeeting");
   setErrorMessage(null);
 
   if (
@@ -54,9 +74,14 @@ const handleCreateMeeting = async () => {
     !endTime ||
     participantIds.length === 0
   ) {
-    setErrorMessage('Vui lòng điền đầy đủ thông tin và chọn ít nhất 1 thành viên.');
+    setErrorMessage('Please fill in all information and select at least 1 member.');
     return;
   }
+  if (!isValidMeetingUrl(meetingUrl)) {
+  setErrorMessage('Meeting link must be a valid Zoom or Google Meet.');
+  return;
+}
+
 
   // Đảm bảo user.id được thêm vào đầu danh sách, không bị trùng
   const finalParticipantIds = [user!.id, ...participantIds.filter(id => id !== user!.id)];
@@ -75,36 +100,59 @@ const handleCreateMeeting = async () => {
     participantIds: finalParticipantIds,
   };
 
-  console.log("📤 Payload gửi đi:", meetingPayload);
-  console.log("👥 Danh sách ID người tham gia:", finalParticipantIds);
+  // console.log("📤 Payload gửi đi:", meetingPayload);
+  // console.log("👥 Danh sách ID người tham gia:", finalParticipantIds);
 
   try {
     const role = user?.role as string;
 
     const mutationToUse =
-      role === 'TEAM_LEADER'
+      role === 'TEAM_LEADER'|| role === 'TEAM_MEMBER'
         ? createInternalMeeting
         : role === 'PROJECT_MANAGER'
         ? createMeeting
         : null;
 
     if (!mutationToUse) {
-      setErrorMessage('❌ Bạn không có quyền tạo cuộc họp.');
+      setErrorMessage('❌ You do not have permission to create a meeting.');
       return;
     }
 
     const response = await mutationToUse(meetingPayload).unwrap();
 
-    alert('✅ Cuộc họp đã được tạo thành công!');
+    // alert('✅ Cuộc họp đã được tạo thành công!');
     console.log('📥 Response:', response);
     setErrorMessage(null);
+    navigate('/meeting-room');
   } catch (error: any) {
     const apiError = error?.data;
-    const message =
-      apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
+    let message =
+  apiError?.innerDetails ?? apiError?.details ?? apiError?.message ?? 'Đã xảy ra lỗi không xác định.';
+
+const conflictMatch = message.match(/Participant (\d+) has a conflicting meeting/);
+if (conflictMatch) {
+  const conflictId = Number(conflictMatch[1]);
+
+  if (conflictId === user?.id) {
+    message = '⚠️ You have a meeting during this time.';
+  } else {
+    const conflictedMember = projectDetails?.data.projectMembers.find(
+      (m) => m.accountId === conflictId
+    );
+
+    if (conflictedMember) {
+      message = `⚠️ Member "${conflictedMember.fullName}" had a meeting during this time.`;
+    } else {
+      console.warn(`⚠️ No member found with accountId: ${conflictId}`);
+    }
+  }
+}
+
+setErrorMessage(message);
+
     setErrorMessage(message);
-    console.error('❌ Lỗi tạo cuộc họp:', error);
-    console.error('📦 Dữ liệu gửi đi:', meetingPayload);
+    // console.error('❌ Lỗi tạo cuộc họp:', error);
+    // console.error('📦 Dữ liệu gửi đi:', meetingPayload);
   }
 };
 
@@ -114,7 +162,7 @@ const handleCreateMeeting = async () => {
   if (!accountId) {
     return (
       <div className="text-red-500 text-center mt-6 font-medium">
-        ⚠️ Bạn chưa đăng nhập hoặc thiếu thông tin người dùng.
+        ⚠️ You are not logged in
       </div>
     );
   }
@@ -122,19 +170,19 @@ const handleCreateMeeting = async () => {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="bg-white shadow-xl rounded-2xl p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800">Tạo cuộc họp mới</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Create Meeting Room</h1>
 
         {loadingProjects ? (
-          <p className="text-gray-600">Đang tải danh sách dự án...</p>
+          <p className="text-gray-600">Loading project list...</p>
         ) : (
           <div>
-            <label className="block mb-1 font-medium text-gray-700">Dự án</label>
+            <label className="block mb-1 font-medium text-gray-700">Project</label>
             <select
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
               onChange={(e) => setSelectedProjectId(Number(e.target.value))}
               value={selectedProjectId ?? ''}
             >
-              <option value="" disabled>-- Chọn dự án --</option>
+              <option value="" disabled>--Select project--</option>
               {projectsData?.data.map((project) => (
                 <option key={project.projectId} value={project.projectId}>
                   {project.projectName}
@@ -147,9 +195,9 @@ const handleCreateMeeting = async () => {
         {selectedProjectId && projectDetails && (
           <>
             <div>
-              <label className="block mb-2 font-medium text-gray-700">Chọn thành viên tham dự</label>
+              <label className="block mb-2 font-medium text-gray-700">Select participants</label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {projectDetails.data.projectMembers.map((member) => {
+              {projectDetails.data.projectMembers.filter((member) => member.accountId !== user?.id).map((member) => {
   const isSelected = participantIds.includes(member.accountId); // ✅
   return (
     <label
@@ -174,18 +222,18 @@ const handleCreateMeeting = async () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Chủ đề</label>
+                <label className="block text-sm font-medium text-gray-700">Meeting Title</label>
                 <input
                   type="text"
                   value={meetingTopic}
                   onChange={(e) => setMeetingTopic(e.target.value)}
                   className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  placeholder="VD: Họp Sprint Planning"
+                  placeholder="VD: Meeting Sprint Planning"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Link họp</label>
+                <label className="block text-sm font-medium text-gray-700">Link Meeting</label>
                 <input
                   type="text"
                   value={meetingUrl}
@@ -196,53 +244,79 @@ const handleCreateMeeting = async () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Ngày</label>
+                <label className="block text-sm font-medium text-gray-700">Day</label>
                 <input
                   type="date"
                   value={meetingDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setMeetingDate(e.target.value)}
                   className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
                 />
               </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700">Time:</label>
+  <select
+    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
+    onChange={(e) => {
+      const [start, end] = e.target.value.split('|');
+      setStartTime(start);
+      setEndTime(end);
+    }}
+    defaultValue=""
+  >
+    <option value="" disabled>-- Select Time Slot --</option>
+    {timeSlots.map((slot) => (
+      <option key={slot.label} value={`${slot.start}|${slot.end}`}>
+        {slot.label}
+      </option>
+    ))}
+  </select>
+</div>
 
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Giờ bắt đầu</label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700">Giờ kết thúc</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400"
-                  />
-                </div>
-              </div>
+
             </div>
 
             {errorMessage && (
               <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
-                <strong className="font-semibold">Lỗi:</strong> <span>{errorMessage}</span>
+                <strong className="font-semibold">Error:</strong> <span>{errorMessage}</span>
               </div>
             )}
 
-            <button
-              onClick={handleCreateMeeting}
-              disabled={isCreating}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium disabled:opacity-50 transition"
-            >
-              {isCreating ? 'Đang tạo cuộc họp...' : 'Tạo cuộc họp'}
-            </button>
+<button
+  onClick={handleCreateMeeting}
+  disabled={isCreating}
+  className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
+              ${isCreating ? 'bg-blue-400 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+>
+  {isCreating ? (
+    <div className="loadermeeting scale-75" />
+  ) : (
+    'Create Meeting'
+  )}
+</button>
+
+
           </>
         )}
       </div>
+      <div className="mt-6 p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded-lg shadow-sm">
+  <h2 className="text-lg font-semibold text-yellow-700 flex items-center">
+    <svg
+      className="w-5 h-5 mr-2 text-yellow-600"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+    </svg>
+    Business Rule
+  </h2>
+  <p className="text-sm text-yellow-700 mt-2">
+    A <strong>Project Manager</strong> can only create <strong>one meeting per project</strong> for <strong>each working day</strong>. 
+    Please ensure you haven’t already scheduled a meeting today for this project.
+  </p>
+</div>
+
     </div>
   );
 };

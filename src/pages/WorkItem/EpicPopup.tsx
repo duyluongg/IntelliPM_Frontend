@@ -10,7 +10,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
@@ -35,6 +35,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [epicId, setEpicId] = React.useState("");
     const [updateEpicStatus] = useUpdateEpicStatusMutation();
     const [updateTaskStatus] = useUpdateTaskStatusMutation();
+    const [updateTaskPriority] = useUpdateTaskPriorityMutation();
     const navigate = useNavigate();
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
@@ -478,6 +479,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                                 try {
                                                                                     await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                                                                     await refetch();
+                                                                                    await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error('❌ Failed to update title:', err);
                                                                                 }
@@ -509,15 +511,17 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                     value={task.priority}
                                                                     onChange={async (e) => {
                                                                         const newPriority = e.target.value;
-                                                                        // try {
-                                                                        //     await updateTaskStatus({
-                                                                        //         id: task.id,
-                                                                        //         priority: newPriority,
-                                                                        //     }).unwrap();
-                                                                        //     await refetch(); // refresh task list
-                                                                        // } catch (err) {
-                                                                        //     console.error('❌ Error updating priority:', err);
-                                                                        // }
+                                                                        try {
+                                                                            await updateTaskPriority({
+                                                                                id: task.id,
+                                                                                priority: newPriority,
+                                                                                createdBy: accountId,
+                                                                            }).unwrap();
+                                                                            await refetch(); 
+                                                                            await refetchActivityLogs();
+                                                                        } catch (err) {
+                                                                            console.error('❌ Error updating priority:', err);
+                                                                        }
                                                                     }}
                                                                     style={{
                                                                         padding: '4px 8px',
@@ -641,6 +645,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                             createdBy: accountId,
                                                                         }).unwrap();
                                                                         await refetch();
+                                                                        await refetchActivityLogs();
                                                                     } catch (err) {
                                                                         console.error('❌ Error updating status:', err);
                                                                     }

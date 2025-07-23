@@ -21,7 +21,9 @@ import {
   useUpdateTaskTitleMutation,
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
-  useUpdatePlannedEndDateMutation
+  useUpdatePlannedEndDateMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
 } from '../../services/taskApi';
 import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 import { useGetCommentsByTaskIdQuery, useCreateTaskCommentMutation, useUpdateTaskCommentMutation, useDeleteTaskCommentMutation } from '../../services/taskCommentApi';
@@ -83,7 +85,9 @@ const WorkItemDetail: React.FC = () => {
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-
+  const [updateTaskPriority] = useUpdateTaskPriorityMutation();
+  const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
+  const [updateTaskReporter] = useUpdateTaskReporterMutation();
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
 
   const { data: attachments = [], isLoading: isAttachmentsLoading, refetch: refetchAttachments } = useGetTaskFilesByTaskIdQuery(taskId, {
@@ -111,6 +115,7 @@ const WorkItemDetail: React.FC = () => {
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ Start date updated');
     } catch (err) {
       console.error('❌ Failed to update start date', err);
@@ -125,6 +130,7 @@ const WorkItemDetail: React.FC = () => {
         plannedEndDate: toISO(plannedEndDate),
         createdBy: accountId
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ End date updated');
     } catch (err) {
       console.error('❌ Failed to update end date', err);
@@ -135,6 +141,7 @@ const WorkItemDetail: React.FC = () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
+      await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
       alert('✅ Error update task title!');
@@ -147,6 +154,7 @@ const WorkItemDetail: React.FC = () => {
 
     try {
       await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -156,7 +164,7 @@ const WorkItemDetail: React.FC = () => {
   const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure delete file?')) return;
     try {
-      await deleteTaskFile({id, createdBy: accountId}).unwrap();
+      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
       await refetchActivityLogs();
@@ -200,8 +208,8 @@ const WorkItemDetail: React.FC = () => {
   }, [assignees, taskId]);
 
   const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByTaskIdQuery(taskId, {
-      skip: !taskId,
-    });
+    skip: !taskId,
+  });
 
   const {
     data: subtaskData = [],
@@ -228,6 +236,7 @@ const WorkItemDetail: React.FC = () => {
       setPlannedStartDate(taskData.plannedStartDate);
       setProjectName(taskData.projectName ?? '');
       setProjectId(String(taskData.projectId));
+      setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
 
@@ -353,7 +362,7 @@ const WorkItemDetail: React.FC = () => {
               defaultValue={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
-              disabled={!canEdit} 
+              disabled={!canEdit}
             />
           </div>
         </div>
@@ -419,7 +428,7 @@ const WorkItemDetail: React.FC = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => handleDescriptionTaskChange()}
-                disabled={!canEdit} 
+                disabled={!canEdit}
               />
 
               {attachments.length > 0 && (
@@ -771,6 +780,7 @@ const WorkItemDetail: React.FC = () => {
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetchSubtask();
+                                        await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
                                         alert('❌ Failed to update summary');
@@ -840,7 +850,7 @@ const WorkItemDetail: React.FC = () => {
                                         assignedBy: newAssigneeId,
                                         priority: item.priority,
                                         title: item.summary,
-                                        description: item?.description ?? '', 
+                                        description: item?.description ?? '',
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
@@ -1125,7 +1135,7 @@ const WorkItemDetail: React.FC = () => {
                   value={status}
                   onChange={(e) => handleTaskStatusChange(e.target.value)}
                   className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
-                  
+
                 >
                   <option value="TO_DO">To Do</option>
                   <option value="IN_PROGRESS">In Progress</option>
@@ -1179,6 +1189,7 @@ const WorkItemDetail: React.FC = () => {
                           } catch (err) {
                             console.error("Error assigning task", err);
                           }
+
                         }}
                         defaultValue=""
                       >
@@ -1230,6 +1241,43 @@ const WorkItemDetail: React.FC = () => {
               </div>
               <div className="detail-item"><label>Parent</label><span>{subtaskData[0]?.taskId ?? 'None'}</span></div>
               <div className="detail-item"><label>Sprint</label><span>{taskData?.sprintName ?? 'None'}</span></div>
+
+              <div className='detail-item'>
+                <label>Priority</label>
+                {canEdit ? (
+                  <select
+                    value={taskData?.priority}
+                    onChange={async (e) => {
+                      const newPriority = e.target.value;
+                      try {
+                        await updateTaskPriority({
+                          id: taskId,
+                          priority: newPriority,
+                          createdBy: accountId,
+                        }).unwrap();
+                        await refetchTask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        console.error('❌ Error updating priority:', err);
+                      }
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      width: '150px',
+                    }}
+                  >
+                    <option value="HIGHEST">Highest</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="LOWEST">Lowest</option>
+                  </select>
+                ) : (
+                  <span>{taskData?.priority ?? 'NONE'}</span>
+                )}
+              </div>
+
               <div className='detail-item'>
                 <label>Start date</label>
                 {canEdit ? (
@@ -1267,7 +1315,44 @@ const WorkItemDetail: React.FC = () => {
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
                 )}
               </div>
-              <div className="detail-item"><label>Reporter</label><span>{taskData?.reporterName ?? 'None'}</span></div>
+
+              <div className='detail-item'>
+                <label>Reporter</label>
+                {canEdit ? (
+                  <select
+                    value={selectedReporter ?? 0}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateTaskReporter({
+                          id: taskId,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Cập nhật Reporter thành công');
+                        await refetchTask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Cập nhật Reporter thất bại');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ width: '150px' }}
+                  >
+                    <option value={0}>Unassigned</option>
+                    {projectMembers?.map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.accountName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{taskData?.reporterName ?? 'None'}</span>
+                )}
+              </div>
+
             </div>
           </div>
         </div>

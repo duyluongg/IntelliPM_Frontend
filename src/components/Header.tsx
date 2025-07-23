@@ -5,9 +5,12 @@ import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
 // import Login from './Login';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
+import NotificationBell from '../components/NotificationBell';
+
 
 export default function Header() {
   const { user } = useAuth();
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   return (
     <header className='w-full flex items-center justify-between p-1 bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40'>
       <div className='flex items-center space-x-2'>
@@ -54,9 +57,8 @@ export default function Header() {
           <span className='mr-1'>💬</span> Chat
         </button>
 
-        <button className='p-2 hover:bg-gray-100 rounded-full'>
-          <Bell className='w-5 h-5 text-gray-700' />
-        </button>
+        <NotificationBell accountId={accountId} />
+
         <button className='p-2 hover:bg-gray-100 rounded-full'>
           <HelpCircle className='w-5 h-5 text-gray-700' />
         </button>

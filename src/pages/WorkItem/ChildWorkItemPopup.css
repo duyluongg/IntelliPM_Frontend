@@ -242,16 +242,6 @@
   cursor: pointer;
 }
 
-.btn-close {
-  background-color: transparent;
-  color: #6b778c;
-  border: none;
-  align-self: flex-start;
-  margin-top: 16px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
 .status-dropdown-select {
   -webkit-appearance: none;
   -moz-appearance: none;

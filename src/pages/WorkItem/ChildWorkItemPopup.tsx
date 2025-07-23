@@ -10,7 +10,7 @@ import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation, } from '../../services/subtaskCommentApi';
 import { WorkLogModal } from './WorkLogModal';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 
 interface SubtaskDetail {
   id: string;
@@ -101,8 +101,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskDetail?.projectId!, {
-    skip: !taskDetail?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
   });
 
   const fetchSubtask = async () => {
@@ -173,10 +173,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         subtaskId: subtaskDetail.id,
         title: file.name,
         file,
+        createdBy: accountId,
       }).unwrap();
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
       refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Upload failed:', error);
       alert('❌ Upload failed!');
@@ -185,12 +187,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteSubtaskFile(id).unwrap();
+      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ File deleted!');
-      refetchAttachments();
+      await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Delete failed:', error);
       alert('❌ Delete failed!');
@@ -347,7 +350,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
+                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
                           className='delete-file-btn'
                           title='Delete file'
                         >

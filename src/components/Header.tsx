@@ -7,10 +7,26 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
 import NotificationBell from '../components/NotificationBell';
 
-
 export default function Header() {
   const { user } = useAuth();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+      fill='none'
+      viewBox='0 0 16 16'
+      role='presentation'
+      {...props}
+      style={{ color: 'var(--ds-icon, #44546F)' }}
+    >
+      <path
+        fill='currentColor'
+        fillRule='evenodd'
+        d='M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9M1 7a6 6 0 1 1 10.74 3.68l3.29 3.29-1.06 1.06-3.29-3.29A6 6 0 0 1 1 7'
+        clipRule='evenodd'
+      />
+    </svg>
+  );
+
   return (
     <header className='w-full flex items-center justify-between p-1 bg-white border-b shadow-sm fixed top-0 left-0 right-0 z-40'>
       <div className='flex items-center space-x-2'>
@@ -37,12 +53,13 @@ export default function Header() {
       </div>
 
       <div className='flex-1 mx-4 flex items-center justify-center space-x-2'>
-        <div className='relative flex-1 max-w-xs'>
-          <Search className='absolute left-3 top-2.5 w-4 h-4 text-gray-500' />
+        <div className='flex items-center border border-gray-300 rounded-md w-80 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
+          <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
           <input
             type='text'
             placeholder='Search'
-            className='w-full pl-10 pr-4 py-1.5 border rounded-md border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+            className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
+            style={{ all: 'unset', width: '100%' }}
           />
         </div>
 

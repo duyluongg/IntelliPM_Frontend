@@ -8,7 +8,7 @@ import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUp
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation } from '../../services/subtaskCommentApi';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 
 interface SubtaskDetail {
@@ -99,8 +99,8 @@ const ChildWorkItem: React.FC = () => {
     fetchSubtask();
   }, [subtaskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(taskDetail?.projectId!, {
-    skip: !taskDetail?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
   });
 
   const toISO = (localDate: string) => {
@@ -154,6 +154,7 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail.id,
         title: file.name,
         file,
+        createdBy: accountId,
       }).unwrap();
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
@@ -166,12 +167,13 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteSubtaskFile(id).unwrap();
+      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ File deleted!');
-      refetchAttachments();
+      await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Delete failed:', error);
       alert('❌ Delete failed!');
@@ -300,7 +302,7 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
+                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
                           className="delete-file-btn"
                           title="Delete file"
                         >

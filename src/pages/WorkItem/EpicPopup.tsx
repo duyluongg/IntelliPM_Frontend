@@ -237,7 +237,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     if (isLoading || !epic) {
         return (
             <div className="modal-overlay">
-                <div className="work-item-modal">Đang tải Epic...</div>
+                <div className="work-item-modal">Loading Epic...</div>
             </div>
         );
     }
@@ -267,11 +267,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             defaultValue={epic.name}
                             onChange={(e) => setNewName(e.target.value)}
                             onBlur={handleUpdateEpic}
+                            disabled={!canEdit}
+                            style={{ width: 300 }}
                         />
+                        <div className="modal-container">
+                            <button className="close-btn" onClick={onClose}>✖</button>
+                        </div>
                     </div>
-                    <div className="header-actions">
-                        <button className="close-btn" onClick={onClose}>✖</button>
-                    </div>
+
                 </div>
 
                 {/* Content */}
@@ -330,6 +333,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 value={newDescription ?? epic?.description ?? ''}
                                 onChange={(e) => setNewDescription(e.target.value)}
                                 onBlur={handleUpdateEpic}
+                                disabled={!canEdit}
                             />
                         </div>
 

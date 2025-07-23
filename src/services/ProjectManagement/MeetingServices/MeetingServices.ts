@@ -139,7 +139,7 @@ export const meetingApi = createApi({
       }),
     }),
 
-    checkMeetingConflict: builder.query<any, { date: string; startTime: string; endTime: string }>({
+  checkMeetingConflict: builder.query<any, { date: string; startTime: string; endTime: string }>({
   query: ({ date, startTime, endTime }) => ({
     url: `meetings/check-conflict?date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
     method: 'GET',

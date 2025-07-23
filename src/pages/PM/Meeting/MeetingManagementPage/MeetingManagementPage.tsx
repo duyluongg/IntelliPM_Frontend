@@ -121,7 +121,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-800">
-        🛠 Quản lý cuộc họp bạn tạo
+        🛠 Manage the meetings you create
       </h1>
 <div className="mb-6 flex gap-4">
   <button
@@ -130,7 +130,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       currentTab === 'ACTIVE' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
     }`}
   >
-    📆 Sắp diễn ra
+    📆 Coming soon
   </button>
   <button
     onClick={() => setCurrentTab('COMPLETED')}
@@ -138,7 +138,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       currentTab === 'COMPLETED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
     }`}
   >
-    ✅ Đã diễn ra
+    ✅ Completed
   </button>
   <button
     onClick={() => setCurrentTab('CANCELLED')}
@@ -146,13 +146,13 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       currentTab === 'CANCELLED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
     }`}
   >
-    ❌ Đã huỷ
+    ❌ Cancelled
   </button>
 </div>
 <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
   <input
     type="text"
-    placeholder="🔍 Tìm theo chủ đề..."
+    placeholder="🔍 Find..."
     className="w-full rounded border px-3 py-2 md:w-1/2"
     value={searchKeyword}
     onChange={(e) => setSearchKeyword(e.target.value)}
@@ -163,8 +163,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
     value={dateFilter}
     onChange={(e) => setDateFilter(e.target.value as 'ALL' | 'TODAY')}
   >
-    <option value="ALL">📋 Tất cả ngày</option>
-    <option value="TODAY">📅 Chỉ hôm nay</option>
+    <option value="ALL">📋 ALL</option>
+    <option value="TODAY">📅 Today</option>
   </select>
 </div>
 
@@ -176,14 +176,20 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
          .filter((m) =>
     m.meetingTopic.toLowerCase().includes(searchKeyword.toLowerCase())
   )
-  .filter((m) => {
-    if (dateFilter === 'TODAY') {
-      const today = new Date().toISOString().split('T')[0];
-      const meetingDate = new Date(m.meetingDate).toISOString().split('T')[0];
-      return meetingDate === today;
-    }
-    return true; // nếu 'ALL', thì cho qua tất cả
-  })
+.filter((m) => {
+  if (dateFilter === 'TODAY') {
+    const now = new Date();
+    const meetingDate = new Date(m.startTime); // dùng startTime đáng tin cậy hơn
+
+    return (
+      meetingDate.getDate() === now.getDate() &&
+      meetingDate.getMonth() === now.getMonth() &&
+      meetingDate.getFullYear() === now.getFullYear()
+    );
+  }
+  return true;
+})
+
          
   .map((m) => (
     <div
@@ -208,13 +214,24 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
 
             <h2 className="text-lg font-semibold text-blue-700">{m.meetingTopic}</h2>
             {m.status === 'CANCELLED' && (
-  <p className="mt-1 text-sm font-bold text-red-600">🚫 Đã huỷ</p>
+  <p className="mt-1 text-sm font-bold text-red-600">🚫 Cancelled</p>
 )}
-            <p className="text-sm text-gray-600">
-              📅 {new Date(m.meetingDate).toLocaleString()}
-            </p>
+<p className="text-sm text-gray-600">
+  📅 {new Date(m.startTime).toLocaleDateString('vi-VN')} — 🕒{' '}
+  {new Date(m.startTime).toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })} -{' '}
+  {new Date(m.endTime).toLocaleTimeString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })}
+</p>
+
             <p className="text-sm text-gray-700">
-              🧑‍🤝‍🧑 {m.attendees} người tham gia
+              🧑‍🤝‍🧑 {m.attendees} member
             </p>
             <p className="text-sm text-gray-700">
               🔗{' '}
@@ -224,7 +241,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
                 rel="noreferrer"
                 className="text-blue-500 underline"
               >
-                Link họp
+                Link meeting
               </a>
             </p>
 <div className="mt-3 flex gap-2">
@@ -246,20 +263,20 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
             setEditOpen(true);
           }}
         >
-          ✏️ Sửa
+          ✏️ Edit
         </button>
       </DialogTrigger>
       <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
-        <h3 className="mb-4 text-lg font-semibold">✏️ Cập nhật cuộc họp</h3>
+        <h3 className="mb-4 text-lg font-semibold">✏️ Meeting Update</h3>
 
-        <label className="mb-2 block text-sm font-medium">Chủ đề</label>
+        <label className="mb-2 block text-sm font-medium">Meeting Title:</label>
         <input
           className="w-full rounded border px-3 py-2"
           value={formData.meetingTopic || ''}
           onChange={(e) => setFormData({ ...formData, meetingTopic: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Link họp</label>
+        <label className="mb-2 mt-4 block text-sm font-medium">Link Meeting:</label>
         <input
           type="url"
           className="w-full rounded border px-3 py-2"
@@ -267,7 +284,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           onChange={(e) => setFormData({ ...formData, meetingUrl: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Ngày họp</label>
+        <label className="mb-2 mt-4 block text-sm font-medium">Day:</label>
         <input
           type="date"
           className="w-full rounded border px-3 py-2"
@@ -275,7 +292,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Giờ bắt đầu</label>
+        <label className="mb-2 mt-4 block text-sm font-medium">Start time</label>
         <input
           type="time"
           className="w-full rounded border px-3 py-2"
@@ -283,7 +300,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Giờ kết thúc</label>
+        <label className="mb-2 mt-4 block text-sm font-medium">End time</label>
         <input
           type="time"
           className="w-full rounded border px-3 py-2"
@@ -316,7 +333,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
             setEditOpen(false);
           }}
         >
-          💾 Lưu
+          💾 Save
         </button>
       </DialogContent>
     </Dialog>
@@ -333,11 +350,11 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
             setDeleteOpen(true);
           }}
         >
-          🗑️ Xoá
+          🗑️ Delete
         </button>
       </DialogTrigger>
       <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
-        <h3 className="mb-4 text-lg font-semibold">❗ Xác nhận xoá</h3>
+        <h3 className="mb-4 text-lg font-semibold">❗ Confirm delete</h3>
         <p>
           Bạn chắc chắn muốn xoá cuộc họp{' '}
           <strong>{selectedMeeting?.meetingTopic}</strong>?
@@ -350,7 +367,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
             setDeleteOpen(false);
           }}
         >
-          🗑️ Xoá
+          🗑️ delete
         </button>
       </DialogContent>
     </Dialog>
@@ -389,12 +406,12 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
         setAttendanceOpen(true); // Mở dialog
       }}
     >
-      📋 Điểm danh
+      📋 Check Attendance:
     </button>
   </DialogTrigger>
   <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
     <h3 className="mb-4 text-lg font-semibold">
-      📋 Điểm danh: {selectedMeeting?.meetingTopic}
+      📋 Attendance: {selectedMeeting?.meetingTopic}
     </h3>
 
     {participants.map((p) => (
@@ -404,7 +421,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       >
         <div>
           <p className="font-medium">👤 ID: {p.accountId}</p>
-          <p className="text-sm text-gray-600">Vai trò: {p.role}</p>
+          <p className="text-sm text-gray-600">Role: {p.role}</p>
         </div>
         <div className="flex gap-2">
 <button
@@ -413,7 +430,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
   }`}
   onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
 >
-  Có mặt
+  Present
 </button>
 <button
   className={`rounded px-3 py-1 text-sm ${
@@ -421,7 +438,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
   }`}
   onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
 >
-  Vắng
+  Absent
 </button>
         </div>
       </div>
@@ -438,7 +455,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       setAttendanceOpen(false);
     }}
   >
-    💾 Lưu điểm danh
+    💾 Save Attendance
   </button>
   </DialogContent>
 </Dialog>

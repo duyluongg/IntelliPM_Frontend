@@ -153,6 +153,7 @@ import { workLogApi } from '../services/workLogApi';
 import { activityLogApi } from '../services/activityLogApi';
 import docReducer from '../components/slices/Document/documentSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
+import { notificationsApi } from '../services/Notification/notificationApi';
 
 const persistConfig = {
   key: 'root',
@@ -196,6 +197,7 @@ const rootReducer = combineReducers({
   [epicCommentApi.reducerPath]: epicCommentApi.reducer,
   [workLogApi.reducerPath]: workLogApi.reducer,
   [activityLogApi.reducerPath]: activityLogApi.reducer,
+  [notificationsApi.reducerPath]: notificationsApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -245,6 +247,7 @@ export const store = configureStore({
       epicCommentApi.middleware, 
       workLogApi.middleware,
       activityLogApi.middleware,
+      notificationsApi.middleware
     ),
 });
 

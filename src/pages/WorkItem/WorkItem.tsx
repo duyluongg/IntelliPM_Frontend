@@ -23,6 +23,8 @@ import {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -105,6 +107,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [updateTaskPriority] = useUpdateTaskPriorityMutation();
+  const [updateTaskReporter] = useUpdateTaskReporterMutation();
+
+  const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
 
   const {
     data: attachments = [],
@@ -159,6 +165,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ Start date updated');
     } catch (err) {
       console.error('❌ Failed to update start date', err);
@@ -173,6 +180,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         plannedEndDate: toISO(plannedEndDate),
         createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ End date updated');
     } catch (err) {
       console.error('❌ Failed to update end date', err);
@@ -183,6 +191,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
+      await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
       alert('✅ Error update task title!');
@@ -195,6 +204,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
     try {
       await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -261,6 +271,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
       setSprintId(String(taskData.sprintId));
+      setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
 
@@ -377,7 +388,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       key={type}
                       className={`dropdown-item ${workType === type ? 'selected' : ''}`}
                       onClick={() => handleWorkTypeChange(type)}
-      
+
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -1355,6 +1366,43 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Sprint</label>
                 <span>{taskData?.sprintName ?? 'None'}</span>
               </div>
+
+              <div className='detail-item'>
+                <label>Priority</label>
+                {canEdit ? (
+                  <select
+                    value={taskData?.priority}
+                    onChange={async (e) => {
+                      const newPriority = e.target.value;
+                      try {
+                        await updateTaskPriority({
+                          id: taskId,
+                          priority: newPriority,
+                          createdBy: accountId,
+                        }).unwrap();
+                        await refetch();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        console.error('❌ Error updating priority:', err);
+                      }
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      width: '150px',
+                    }}
+                  >
+                    <option value="HIGHEST">Highest</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="LOWEST">Lowest</option>
+                  </select>
+                ) : (
+                  <span>{taskData?.priority ?? 'NONE'}</span>
+                )}
+              </div>
+
               <div className='detail-item'>
                 <label>Start date</label>
                 {canEdit ? (
@@ -1395,8 +1443,41 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
               <div className='detail-item'>
                 <label>Reporter</label>
-                <span>{taskData?.reporterName ?? 'None'}</span>
+                {canEdit ? (
+                  <select
+                    value={selectedReporter ?? 0}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateTaskReporter({
+                          id: taskId,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Cập nhật Reporter thành công');
+                        await refetchTask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Cập nhật Reporter thất bại');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ width: '150px' }}
+                  >
+                    <option value={0}>Unassigned</option>
+                    {projectMembers?.map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.accountName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{taskData?.reporterName ?? 'None'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Time Tracking</label>
                 <span

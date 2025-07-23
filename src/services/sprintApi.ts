@@ -137,7 +137,7 @@ updateSprintStatus: builder.mutation<SprintResponseDTO, { id: number; status: st
   query: ({ id, status }) => ({
     url: `sprint/${id}/status`,
     method: 'PATCH',
-    body: { status }, // Sends { "status": "COMPLETED" } as a JSON object
+    body: JSON.stringify(status), // Ép thành chuỗi JSON đơn
     headers: {
       accept: '*/*',
       'Content-Type': 'application/json',

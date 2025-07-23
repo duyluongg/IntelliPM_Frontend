@@ -47,6 +47,8 @@ interface SectionProps {
   sprints: SprintWithTaskListResponseDTO[];
   projectId: number;
   projectKey: string;
+  workItemCompleted: number;
+  workItemOpen: number;
   onTaskUpdated: () => void;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
@@ -345,6 +347,8 @@ const Section: React.FC<SectionProps> = ({
   sprints,
   projectId,
   projectKey,
+  workItemCompleted,
+  workItemOpen,
   onTaskUpdated,
   moveTask,
 }) => {
@@ -435,6 +439,11 @@ const Section: React.FC<SectionProps> = ({
   const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (sprintId) {
+      // Đếm workItemCompleted và workItemOpen trước khi mở popup
+      const completed = tasks.filter((task) =>
+        ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
+      ).length;
+      const open = tasks.length - completed;
       setIsCompletePopupOpen(true);
     }
   };
@@ -461,6 +470,24 @@ const Section: React.FC<SectionProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const mapApiStatusToUI = (
+    apiStatus: string | null | undefined,
+    categories: DynamicCategory[]
+  ): string => {
+    if (!apiStatus) return 'TO DO';
+    const normalizedApiStatus = apiStatus
+      .trim()
+      .toUpperCase()
+      .replace(/[-_\s]/g, '');
+    const category = categories.find(
+      (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+    );
+    const staticOption = staticStatusOptions.find(
+      (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+    );
+    return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
+  };
 
   return (
     <div
@@ -534,7 +561,7 @@ const Section: React.FC<SectionProps> = ({
                       className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                         tasks.length === 0 || hasActiveSprint
                           ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
                         hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
@@ -549,7 +576,7 @@ const Section: React.FC<SectionProps> = ({
                       className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                         tasks.length === 0 || hasActiveSprint
                           ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
                         hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
@@ -567,7 +594,7 @@ const Section: React.FC<SectionProps> = ({
                   className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
                     tasks.length === 0
                       ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                      : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                   }`}
                 >
                   Complete Sprint
@@ -664,10 +691,13 @@ const Section: React.FC<SectionProps> = ({
         isOpen={isCompletePopupOpen}
         onClose={() => setIsCompletePopupOpen(false)}
         sprintId={sprintId || 0}
+        sprintName={sprint?.name || ''}
         onTaskUpdated={onTaskUpdated}
         projectKey={projectKey}
-        projectId = {projectId}
+        projectId={projectId}
         workItem={tasks.length}
+        workItemCompleted={workItemCompleted}
+        workItemOpen={workItemOpen}
       />
     </div>
   );
@@ -705,19 +735,27 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 
   return (
     <div className='p-4 space-y-4'>
-      {sprints.map((sprint) => (
-        <Section
-          key={sprint.id}
-          title={sprint.name}
-          tasks={sprint.tasks}
-          sprintId={sprint.id}
-          sprints={sprints}
-          projectId={projectId}
-          projectKey={projectKey}
-          onTaskUpdated={onTaskUpdated}
-          moveTask={moveTask}
-        />
-      ))}
+      {sprints.map((sprint) => {
+        const completed = sprint.tasks.filter((task) =>
+          ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
+        ).length;
+        const open = sprint.tasks.length - completed;
+        return (
+          <Section
+            key={sprint.id}
+            title={sprint.name}
+            tasks={sprint.tasks}
+            sprintId={sprint.id}
+            sprints={sprints}
+            projectId={projectId}
+            projectKey={projectKey}
+            workItemCompleted={completed}
+            workItemOpen={open}
+            onTaskUpdated={onTaskUpdated}
+            moveTask={moveTask}
+          />
+        );
+      })}
       {backlogTasks.length > 0 && (
         <Section
           title='Backlog'
@@ -726,6 +764,8 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
           sprints={sprints}
           projectId={projectId}
           projectKey={projectKey}
+          workItemCompleted={0}
+          workItemOpen={backlogTasks.length}
           onTaskUpdated={onTaskUpdated}
           moveTask={moveTask}
         />
@@ -735,3 +775,21 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 };
 
 export default SprintColumn;
+
+const mapApiStatusToUI = (
+  apiStatus: string | null | undefined,
+  categories: DynamicCategory[]
+): string => {
+  if (!apiStatus) return 'TO DO';
+  const normalizedApiStatus = apiStatus
+    .trim()
+    .toUpperCase()
+    .replace(/[-_\s]/g, '');
+  const category = categories.find(
+    (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  const staticOption = staticStatusOptions.find(
+    (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
+};

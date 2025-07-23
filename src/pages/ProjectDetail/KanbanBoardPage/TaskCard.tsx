@@ -1,40 +1,99 @@
 import React, { forwardRef } from 'react';
 import { useDrag } from 'react-dnd';
+import { type TaskBacklogResponseDTO } from '../../../services/taskApi';
+import { mapApiStatusToUI } from './Utils';
+import taskIcon from '../../../assets/icon/type_task.svg';
+import bugIcon from '../../../assets/icon/type_bug.svg';
+import storyIcon from '../../../assets/icon/type_story.svg';
+import { User2 } from 'lucide-react'; // Biểu tượng người dùng
 
-const TaskCard = forwardRef<HTMLDivElement, {
-  task: any;
+interface TaskCardProps {
+  task: TaskBacklogResponseDTO;
   sprintId: number | null;
-  moveTask: (taskId: string, fromSprintId: number | null, toSprintId: number | null, toStatus: string) => void;
-}>(({ task, sprintId, moveTask }, ref) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'TASK',
-    item: { id: task.id, fromSprintId: sprintId || null, fromStatus: task.status },
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-  }));
+  moveTask: (
+    taskId: string,
+    fromSprintId: number | null,
+    toSprintId: number | null,
+    toStatus: string
+  ) => void;
+}
 
-  // Kết hợp ref từ useDrag và ref từ forwardRef
-  const dragRef = (node: HTMLDivElement) => {
-    drag(node);
-    if (ref) {
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if ('current' in ref) {
-        (ref as React.RefObject<HTMLDivElement>).current = node;
+const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(
+  ({ task, sprintId }, ref) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+      type: 'TASK',
+      item: {
+        id: task.id,
+        fromSprintId: sprintId,
+        fromStatus: mapApiStatusToUI(task.status),
+      },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+    }));
+
+    const dragRef = (node: HTMLDivElement | null) => {
+      if (!node) return;
+      drag(node);
+
+      if (ref) {
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if ('current' in ref) {
+          (ref as React.RefObject<HTMLDivElement>).current = node;
+        }
       }
-    }
-  };
+    };
 
-  return (
-    <div
-      ref={dragRef}
-      className={`p-2 bg-white border rounded shadow-sm mb-2 cursor-move ${isDragging ? 'opacity-50' : ''}`}
-      onClick={() => alert(`Edit task ${task.id}`)}
-    >
-      <h4 className="text-sm font-medium">{task.title || 'No title'}</h4>
-      <p className="text-xs text-gray-500">ID: {task.id}</p>
-    </div>
-  );
-});
+    const getIconSrc = (type: string | null | undefined): string | undefined => {
+      switch (type) {
+        case 'TASK':
+          return taskIcon;
+        case 'BUG':
+          return bugIcon;
+        case 'STORY':
+          return storyIcon;
+        default:
+          return undefined;
+      }
+    };
+
+    return (
+      <div
+        ref={dragRef}
+        className={`bg-white rounded-md border shadow p-3 mb-2 cursor-move transition-opacity ${
+          isDragging ? 'opacity-40' : ''
+        }`}
+        onClick={() => alert(`Edit task ${task.id}`)}
+      >
+        {/* Title */}
+        <div className="text-sm font-medium text-gray-900 mb-2">
+          {task.title || 'No title'}
+        </div>
+
+        {/* Label - Epic name */}
+        {task.epicName && (
+          <div className="inline-block text-xs font-bold uppercase text-purple-800 bg-purple-100 px-2 py-1 rounded mb-2 truncate max-w-full">
+            {task.epicName}
+          </div>
+        )}
+
+        {/* Bottom: ID and icon */}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            {/* Task type icon */}
+            <input type="checkbox" checked readOnly className="text-blue-600 w-4 h-4" />
+            <span>{`TB-${task.id}`}</span>
+
+          </div>
+
+          {/* Assignee icon */}
+          <User2 size={18} className="text-gray-400" />
+        </div>
+      </div>
+    );
+  }
+);
 
 TaskCard.displayName = 'TaskCard';
 

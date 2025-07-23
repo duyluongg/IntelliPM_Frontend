@@ -184,7 +184,7 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({status, createdBy}),
+        body: JSON.stringify({ status, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -202,7 +202,7 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({type, createdBy}),
+        body: JSON.stringify({ type, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -235,43 +235,52 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({title, createdBy}),
+        body: JSON.stringify({ title, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updateTaskDescription: builder.mutation<void, { id: string; description: string; createdBy: number }>({
+    updateTaskDescription: builder.mutation<
+      void,
+      { id: string; description: string; createdBy: number }
+    >({
       query: ({ id, description, createdBy }) => ({
         url: `task/${id}/description`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({description, createdBy}),
+        body: JSON.stringify({ description, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string; createdBy: number }>({
+    updatePlannedStartDate: builder.mutation<
+      void,
+      { id: string; plannedStartDate: string; createdBy: number }
+    >({
       query: ({ id, plannedStartDate, createdBy }) => ({
         url: `task/${id}/planned-start-date`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({plannedStartDate, createdBy}),
+        body: JSON.stringify({ plannedStartDate, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updatePlannedEndDate: builder.mutation<void, { id: string; plannedEndDate: string; createdBy: number }>({
+    updatePlannedEndDate: builder.mutation<
+      void,
+      { id: string; plannedEndDate: string; createdBy: number }
+    >({
       query: ({ id, plannedEndDate, createdBy }) => ({
         url: `task/${id}/planned-end-date`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({plannedEndDate, createdBy}),
+        body: JSON.stringify({ plannedEndDate, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -334,10 +343,25 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: sprintId, 
+        body: sprintId,
       }),
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
+    }),
+
+    getTasksBySprintIdAndStatus: builder.query<
+      TaskBacklogResponseDTO[],
+      { sprintId: number; taskStatus: string }
+    >({
+      query: ({ sprintId, taskStatus }) => ({
+        url: `task/by-sprint-id/${sprintId}/task-status`,
+        params: { taskStatus },
+        headers: {
+          accept: '*/*',
+        },
+      }),
+      transformResponse: (response: TaskBackLogResponse) => response.data,
+      providesTags: ['Task'],
     }),
 
 
@@ -361,4 +385,5 @@ export const {
   useGetTaskWithSubtasksQuery,
   useGetTasksFromBacklogQuery,
   useUpdateTaskSprintMutation,
+  useGetTasksBySprintIdAndStatusQuery,
 } = taskApi;

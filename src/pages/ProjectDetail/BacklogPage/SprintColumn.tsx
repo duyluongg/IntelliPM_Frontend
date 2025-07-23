@@ -55,13 +55,7 @@ interface SectionProps {
 
 const staticStatusOptions = [
   { label: 'TO DO', value: 'TO DO', name: 'TO_DO', bg: 'bg-gray-200', text: 'text-gray-800' },
-  {
-    label: 'IN PROGRESS',
-    value: 'IN PROGRESS',
-    name: 'IN_PROGRESS',
-    bg: 'bg-blue-200',
-    text: 'text-blue-800',
-  },
+  { label: 'IN PROGRESS', value: 'IN PROGRESS', name: 'IN_PROGRESS', bg: 'bg-blue-200', text: 'text-blue-800' },
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
@@ -94,7 +88,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }),
   }));
 
-  drag(ref);
+  useEffect(() => {
+    drag(ref);
+  }, [drag]);
 
   const mapApiStatusToUI = (
     apiStatus: string | null | undefined,
@@ -141,11 +137,15 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         };
       }) || staticStatusOptions;
 
+  const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
+
   const [title, setTitle] = useState(task.title || '');
   const [editingTitle, setEditingTitle] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const [titleOverflow, setTitleOverflow] = useState(false);
 
   type TaskType = 'story' | 'bug' | 'epic' | 'task';
   const getTaskIcon = (type: string | null | undefined): string => {
@@ -208,19 +208,33 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     name: a.accountFullname || 'Unknown',
     picture: a.accountPicture || null,
   }));
-  const isNarrow = window.innerWidth < 640;
   const epicRef = useRef<HTMLSpanElement>(null);
-  let isMultiline = (task.epicName || '').length > 12;
 
   useEffect(() => {
-    if (epicRef.current && !isNarrow && !isMultiline) {
-      isMultiline =
-        epicRef.current.offsetHeight >
-        parseFloat(getComputedStyle(epicRef.current).lineHeight) * 1.2;
+    if (titleRef.current) {
+      const titleElement = titleRef.current;
+      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
     }
-  }, [task.epicName, isNarrow]);
+  }, [title]);
 
-  const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
+  const renderEpicName = () => {
+    if (!task.epicName) return <span className='text-xs text-gray-400'>-</span>;
+
+    let displayEpicName = task.epicName;
+    if (displayEpicName.length > 12) {
+      displayEpicName = displayEpicName.substring(0, 12) + '...';
+    }
+
+    return (
+      <span
+        ref={epicRef}
+        className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
+        title={task.epicName || ''}
+      >
+        {displayEpicName}
+      </span>
+    );
+  };
 
   if (isStatusLoading) return <div className='text-xs text-gray-500'>LOADING STATUS...</div>;
   if (categoryError)
@@ -253,27 +267,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         />
       ) : (
         <span
+          ref={titleRef}
           className='text-sm text-gray-700 truncate cursor-pointer hover:underline w-full'
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
-      <div className='flex justify-end pl-2 mr-5'>
-        {(task.epicName || '') &&
-          (isNarrow || isMultiline ? (
-            <span className='w-3 h-3 rounded-sm bg-[#c97cf4]' title={task.epicName || ''} />
-          ) : (
-            <span
-              ref={epicRef}
-              className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
-              title={task.epicName || ''}
-            >
-              {task.epicName}
-            </span>
-          ))}
-        {!task.epicName && <span className='text-xs text-gray-400'>-</span>}
-      </div>
+      <div className='flex justify-end pl-2 mr-5'>{renderEpicName()}</div>
       <div className='flex items-center justify-start relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
@@ -439,7 +440,6 @@ const Section: React.FC<SectionProps> = ({
   const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (sprintId) {
-      // Đếm workItemCompleted và workItemOpen trước khi mở popup
       const completed = tasks.filter((task) =>
         ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
       ).length;
@@ -734,7 +734,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
   };
 
   return (
-    <div className='p-4 space-y-4'>
+    <div className='space-y-4 w-full'>
       {sprints.map((sprint) => {
         const completed = sprint.tasks.filter((task) =>
           ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())

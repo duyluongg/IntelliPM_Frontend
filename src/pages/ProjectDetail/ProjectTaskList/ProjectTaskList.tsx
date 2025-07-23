@@ -138,6 +138,8 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
     }
   };
 
+
+
   const getStatusStyle = () => {
     switch (status.toLowerCase()) {
       case 'to_do':
@@ -313,8 +315,22 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
-
-  // Filter members with status IN_PROGRESS
+const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    fill='none'
+    viewBox='0 0 16 16'
+    role='presentation'
+    {...props} // Spread props to allow className and other SVG attributes
+    style={{ color: 'var(--ds-icon, #44546F)' }}
+  >
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      d='M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9M1 7a6 6 0 1 1 10.74 3.68l3.29 3.29-1.06 1.06-3.29-3.29A6 6 0 0 1 1 7'
+      clipRule='evenodd'
+    />
+  </svg>
+);
   const members =
     membersData?.data
       ?.filter((member) => member.status.toUpperCase() === 'IN_PROGRESS')
@@ -343,12 +359,13 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   return (
     <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
       <div className='flex items-center gap-2.5'>
-        <div className='relative flex items-center'>
-          <FaSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4 pointer-events-none' />
+         <div className='flex items-center border border-gray-300 rounded-md w-64 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
+          <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
           <input
             type='text'
-            className='pl-12 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]'
             placeholder='Search list'
+            className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
+            style={{ all: 'unset', width: '100%' }}
           />
         </div>
 

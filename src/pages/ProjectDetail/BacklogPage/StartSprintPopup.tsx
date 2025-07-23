@@ -62,10 +62,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   const [hasChangedEnd, setHasChangedEnd] = useState(false);
   const [validWeeks, setValidWeeks] = useState<number[]>([1, 2, 3, 4]);
 
-  // Sử dụng useRef để theo dõi trạng thái khởi tạo
   const isInitialized = useRef(false);
 
-  // Initialize sprint data only when form opens
   useEffect(() => {
     if (isOpen && sprint && !isInitialized.current) {
       const start = sprint.startDate ? dayjs(sprint.startDate) : dayjs();

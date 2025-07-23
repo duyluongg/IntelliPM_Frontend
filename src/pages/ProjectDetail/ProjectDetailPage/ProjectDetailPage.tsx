@@ -9,6 +9,7 @@ import ProjectDashboard from '../../PM/Dashboard/ProjectDashboard';
 import Risk from '../../PM/Risk/Risk';
 import Doc from '../../PM/YourProject/Doc';
 import Backlog from '../BacklogPage/BacklogPage';
+import KanbanBoardPage from '../KanbanBoardPage/KanbanBoardPage';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -36,6 +37,7 @@ const ProjectDetailPage = () => {
         {activeTab === 'risk' && <Risk />}
         {activeTab === 'tests' && <Doc/>}
         {activeTab === 'backlog' && <Backlog />}
+        {activeTab === 'board' && <KanbanBoardPage />}
       </div>
     </div>
   );

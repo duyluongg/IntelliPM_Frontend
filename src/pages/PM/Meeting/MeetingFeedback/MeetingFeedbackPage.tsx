@@ -5,11 +5,25 @@ import {
   useSubmitFeedbackMutation,
   useApproveMilestoneMutation,
   useGetRejectedFeedbacksQuery,
+  useGetMyMeetingsQuery,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
+import { API_BASE_URL } from '../../../../constants/api';
+import { useGetMeetingsManagedByQuery } from '../../../../services/ProjectManagement/MeetingServices/MeetingLogServices';
 
 const MeetingFeedbackPage: React.FC = () => {
   const { user } = useAuth();
   const accountId = user?.id;
+
+const { data: managedMeetings = [] } = useGetMeetingsManagedByQuery(accountId!, {
+  skip: !accountId, // đảm bảo không gọi khi accountId chưa có
+});
+const { data: myMeetings = [] } = useGetMyMeetingsQuery();
+
+const meetingIdToTopicMap = new Map<number, string>();
+myMeetings.forEach((meeting) => {
+  meetingIdToTopicMap.set(meeting.id, meeting.meetingTopic);
+});
+
 
   const {
     data: feedbacks = [],
@@ -78,7 +92,8 @@ const MeetingFeedbackPage: React.FC = () => {
     formData.append('audioFile', file);
 
     try {
-      const response = await fetch('https://localhost:7128/api/meeting-transcripts', {
+      const response = await fetch(`${API_BASE_URL}meeting-transcripts`, {
+
         method: 'POST',
         headers: {
           accept: '*/*',
@@ -158,9 +173,10 @@ const MeetingFeedbackPage: React.FC = () => {
               onClick={() => handleMeetingSelection(feedback.meetingTranscriptId)} // Handle meeting selection
             >
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-semibold text-blue-700">
-                  📌 {feedback.meetingTopic}
-                </h2>
+<h2 className="text-xl font-semibold text-blue-700">
+  📌 {meetingIdToTopicMap.get(feedback.meetingTranscriptId) || 'Không có tiêu đề'}
+</h2>
+
                 {feedback.isApproved && (
                   <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-600">
                     ✅ Đã duyệt
@@ -188,7 +204,11 @@ const MeetingFeedbackPage: React.FC = () => {
 )}
 
               {/* Chỉ hiển thị nút "Tải lên video/audio" nếu cuộc họp đang được chọn và đã có file */}
-              {selectedMeetingId === feedback.meetingTranscriptId && (user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER') && feedback.summaryText === 'Chờ cập nhật' && (
+{selectedMeetingId === feedback.meetingTranscriptId &&
+  feedback.summaryText === 'Chờ cập nhật' &&
+  (user?.role === 'PROJECT_MANAGER' ||
+    managedMeetings.some(m => m.id === feedback.meetingTranscriptId)) && (
+
                 <div className="mb-4">
                   <input
                     type="file"

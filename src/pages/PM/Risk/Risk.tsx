@@ -178,7 +178,7 @@ const Risk = () => {
         className='responsible-dropdown'
         value={selectedId ?? ''}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
+        style={{ padding: '8px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
       >
         <option value='' disabled>
           -- Select --
@@ -451,13 +451,6 @@ const Risk = () => {
             setSelectedRisk(null);
             refetch();
           }}
-          assignees={assignees}
-          updateResponsible={({ id, responsibleId }) => {
-            if (responsibleId !== null) {
-              updateResponsible({ id, responsibleId }); // OK
-            }
-          }}
-          refetch={refetch}
         />
       )}
       {showCreateModal && (

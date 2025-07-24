@@ -391,6 +391,7 @@
   margin-top: 16px;
   border-top: 1px solid #e5e7eb;
   padding-top: 12px;
+  display: flex;
 }
 
 .comment-input input {
@@ -570,9 +571,9 @@
   flex: 11;
 }
 
-.todo-item input {
+/* .todo-item input {
   flex: 1;
-}
+} */
 
 .todo-item .todo-index {
   flex: 1;
@@ -596,4 +597,8 @@
   -webkit-appearance: none;
   -moz-appearance: none;
   background-image: none;
+}
+
+.edit-todo-input {
+  padding: 4px 8px;
 }

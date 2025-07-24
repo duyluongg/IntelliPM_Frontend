@@ -7,7 +7,6 @@ import KanbanColumn from './KanbanColumn';
 import {
   useGetSprintsByProjectKeyWithTasksQuery,
   useGetActiveSprintByProjectKeyQuery,
-  type SprintResponseDTO,
 } from '../../../services/sprintApi';
 import {
   useGetTasksBySprintIdAndStatusQuery,
@@ -70,7 +69,7 @@ const KanbanBoardPage: React.FC = () => {
   const { data: backlogTasks = [], isLoading: isBacklogLoading, error: backlogError } = useGetTasksFromBacklogQuery(projectKey);
   const { refetch } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
-
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [tasks, setTasks] = useState<{ [key: string]: TaskBacklogResponseDTO[] }>({});
 
   const statuses = useMemo(
@@ -80,7 +79,6 @@ const KanbanBoardPage: React.FC = () => {
 
   const sprintId = activeSprint?.id;
 
-  // Call hooks at the top level
   const taskQueriesArray = statuses.map((status) =>
     useGetTasksBySprintIdAndStatusQuery(
       { sprintId: sprintId!, taskStatus: status.replace(' ', '_').toUpperCase() },
@@ -88,7 +86,6 @@ const KanbanBoardPage: React.FC = () => {
     )
   );
 
-  // Map queries to statuses
   const taskQueries = useMemo(() => {
     return statuses.reduce((acc, status, index) => {
       acc[status] = taskQueriesArray[index];
@@ -133,7 +130,7 @@ const KanbanBoardPage: React.FC = () => {
       await updateTaskStatus({
         id: taskId,
         status: toStatus.replace(' ', '_').toUpperCase(),
-        createdBy: 1, // Replace with real user ID if needed
+        createdBy: accountId,
       }).unwrap();
 
       setTasks((prev) => {

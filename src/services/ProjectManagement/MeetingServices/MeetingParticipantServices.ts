@@ -24,6 +24,7 @@ export interface MeetingParticipant {
   /**  Trạng thái điểm danh */
   status: 'Present' | 'Absent' | 'Active';  // thêm Present | Absent
   createdAt: string;
+  fullName:string;
 }
 
 /* ========== Phản hồi trả về ========= */

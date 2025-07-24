@@ -207,14 +207,17 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTaskReporter: builder.mutation<void, { id: string; reporterId: number; createdBy: number }>({
+    updateTaskReporter: builder.mutation<
+      void,
+      { id: string; reporterId: number; createdBy: number }
+    >({
       query: ({ id, reporterId, createdBy }) => ({
         url: `task/${id}/reporter`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({reporterId, createdBy}),
+        body: JSON.stringify({ reporterId, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -267,20 +270,24 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+    updateTaskPriority: builder.mutation<void, { id: string; priority: string; createdBy: number }>(
+      {
+        query: ({ id, priority, createdBy }) => ({
+          url: `task/${id}/priority`,
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ priority, createdBy }),
+        }),
+        invalidatesTags: ['Task'],
+      }
+    ),
 
-    updateTaskPriority: builder.mutation<void, { id: string; priority: string; createdBy: number }>({
-      query: ({ id, priority, createdBy }) => ({
-        url: `task/${id}/priority`,
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({priority, createdBy}),
-      }),
-      invalidatesTags: ['Task'],
-    }),
-
-    updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string; createdBy: number }>({
+    updatePlannedStartDate: builder.mutation<
+      void,
+      { id: string; plannedStartDate: string; createdBy: number }
+    >({
       query: ({ id, plannedStartDate, createdBy }) => ({
         url: `task/${id}/planned-start-date`,
         method: 'PATCH',
@@ -371,6 +378,17 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+    getTasksBySprintId: builder.query<TaskBacklogResponseDTO[], number>({
+      query: (sprintId) => ({
+        url: `task/by-sprint-id/${sprintId}`,
+        headers: {
+          accept: '*/*',
+        },
+      }),
+      transformResponse: (response: TaskBackLogResponse) => response.data,
+      providesTags: ['Task'],
+    }),
+
     getTasksBySprintIdAndStatus: builder.query<
       TaskBacklogResponseDTO[],
       { sprintId: number; taskStatus: string }
@@ -385,8 +403,6 @@ export const taskApi = createApi({
       transformResponse: (response: TaskBackLogResponse) => response.data,
       providesTags: ['Task'],
     }),
-
-
   }),
 });
 
@@ -409,5 +425,6 @@ export const {
   useUpdateTaskSprintMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
+  useGetTasksBySprintIdQuery,
   useGetTasksBySprintIdAndStatusQuery,
 } = taskApi;

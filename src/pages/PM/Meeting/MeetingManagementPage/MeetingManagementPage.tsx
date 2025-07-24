@@ -26,6 +26,8 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
+  
+
 
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
@@ -61,6 +63,33 @@ useEffect(() => {
     setAttendanceDraft(initialDraft);
   }
 }, [attendanceOpen, participants]);
+
+useEffect(() => {
+  if (!meetings || meetings.length === 0) return;
+
+  const now = new Date();
+
+  meetings.forEach(async (meeting) => {
+    // Điều kiện: chưa điểm danh (ACTIVE) + quá 24h kể từ meetingDate
+    if (meeting.status === 'ACTIVE') {
+      const meetingDate = new Date(meeting.meetingDate);
+      const deadline = new Date(meetingDate);
+      deadline.setDate(meetingDate.getDate() + 1); // +24h
+
+      if (now > deadline) {
+        try {
+          await deleteMeeting(meeting.id); // dùng API cũ
+          toast.success(`🗑️ Cuộc họp "${meeting.meetingTopic}" đã bị xoá vì quá hạn`);
+          await refetch(); // cập nhật lại danh sách
+        } catch (error) {
+          console.error(`❌ Lỗi khi xoá cuộc họp ${meeting.id}:`, error);
+        }
+      }
+    }
+  });
+}, [meetings]);
+
+
 
 
   // … các hàm handle* giữ nguyên …
@@ -230,15 +259,15 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
 )}
 <p className="text-sm text-gray-600">
   📅 {new Date(m.startTime).toLocaleDateString('vi-VN')} — 🕒{' '}
-  {new Date(m.startTime).toLocaleTimeString('vi-VN', {
+  {new Date(m.startTime).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   })} -{' '}
-  {new Date(m.endTime).toLocaleTimeString('vi-VN', {
+  {new Date(m.endTime).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   })}
 </p>
 

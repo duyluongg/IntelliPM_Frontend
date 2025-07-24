@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { GanttChart } from 'smart-webcomponents-react/ganttchart';
 import 'smart-webcomponents-react/source/styles/smart.default.css';
-import { useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useGetFullProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import TaskPopupEditor from './TaskPopupEditor';
 import './Gantt.css';
@@ -10,8 +10,11 @@ import { useUpdateTaskMutation } from '../../../services/taskApi';
 
 const Gantt = () => {
   const ganttRef = useRef<any>(null);
+  const { projectKey: paramKey } = useParams<{ projectKey?: string }>();
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const searchKey = searchParams.get('projectKey');
+
+  const projectKey = paramKey || searchKey || 'NotFound';
   const customWindowRef = useRef<HTMLDivElement>(document.createElement('div'));
   const selectedTaskRef = useRef<any>(null);
 
@@ -298,6 +301,7 @@ const Gantt = () => {
   };
 
   const dataSource = buildDataSource();
+  console.log(projectData, 'Project Data');
 
   return (
     <div>

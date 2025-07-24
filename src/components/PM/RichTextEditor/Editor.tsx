@@ -5,24 +5,25 @@ import { Color } from '@tiptap/extension-color';
 import TextStyle from '@tiptap/extension-text-style';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Edit3, FileText, LucideLock, LucideSun, Sparkles, X } from 'lucide-react';
 import WriteWithAIModal from '../ModalAI/WriteWithAIModal';
 import { HiOutlineTemplate, HiOutlineTable, HiOutlineChartBar } from 'react-icons/hi'; // Các biểu tượng khác
-
+import { SlashCommandExtension } from './SlashCommandExtension';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useAuth } from '../../../services/AuthContext';
 import { useGetProjectMembersNoStatusQuery } from '../../../services/projectMemberApi';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../app/store';
 import { createMentionExtension } from './MentionExtension';
+import ModalEditor from './ModalEditor';
+import { IframeExtension } from './IframeExtension';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -32,6 +33,7 @@ const MenuBar = ({ editor }: MenuBarProps) => {
   const [showAIOptions, setShowAIOptions] = useState(false);
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [showSummarizeModal, setShowSummarizeModal] = useState(false);
+
   if (!editor) return null;
 
   const headingLevels: (1 | 2 | 3 | 4 | 5 | 6)[] = [1, 2, 3, 4, 5, 6];
@@ -542,6 +544,24 @@ export default function RichTextEditor({
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   console.log('Project ID:', projectId);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [showGanttModal, setShowGanttModal] = useState(false);
+  const onGanttCallbackRef = useRef(() => setShowGanttModal(true));
+
+  // 👇 BƯỚC 2: Luôn cập nhật ref với hàm mới nhất mỗi khi component render lại
+  onGanttCallbackRef.current = () => setShowGanttModal(true);
+
+  const handleGanttInsert = (projectKey: string) => {
+    const cleanKey = projectKey.trim();
+    const iframeHTML = `
+  <div class="my-4">
+    <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+  </div>
+  <p><br></p>
+`;
+    editor?.commands.insertContent(iframeHTML);
+
+    setShowGanttModal(false);
+  };
 
   const { data: members = [] } = useGetProjectMembersNoStatusQuery(projectId!, {
     skip: !projectId,
@@ -557,36 +577,6 @@ export default function RichTextEditor({
     [members]
   );
 
-  // const extensions = [
-  //   Color.configure({ types: [TextStyle.name, ListItem.name] }),
-  //   TextStyle.configure(),
-  //   StarterKit.configure({
-  //     bulletList: { keepMarks: true, keepAttributes: false },
-  //     orderedList: { keepMarks: true, keepAttributes: false },
-  //   }),
-  //   Table.configure({
-  //     resizable: true,
-  //   }),
-  //   TableRow,
-  //   TableHeader,
-  //   TableCell,
-  //   TaskList,
-  //   TaskItem.configure({
-  //     nested: true,
-  //   }),
-  //   mentionExtension,
-  // ];
-
-  // const editor = useEditor({
-  //   extensions,
-  //   content: cleanedValue,
-  //   onUpdate: ({ editor }) => {
-  //     const html = editor.getHTML();
-  //     if (html !== value) {
-  //       onChange(html);
-  //     }
-  //   },
-  // });
   useEffect(() => {
     if (mentionItems.length === 0 || editor) return;
 
@@ -602,6 +592,14 @@ export default function RichTextEditor({
         TaskList,
         TaskItem.configure({ nested: true }),
         createMentionExtension(mentionItems),
+
+        SlashCommandExtension.configure({
+          onGanttCommand: () => onGanttCallbackRef.current(),
+        }),
+
+        // SlashCommandExtension,
+
+        IframeExtension,
       ],
       content: value,
       onUpdate: ({ editor }) => {
@@ -672,7 +670,6 @@ export default function RichTextEditor({
 
         <EditorContent editor={editor} />
 
-
         {isEmptyContent(value) && (
           <div className='space-y-4'>
             <OptionItem
@@ -729,8 +726,16 @@ export default function RichTextEditor({
             </div>
           </div>
         )}
-
       </div>
+      {showGanttModal && (
+        <>
+          {console.log('ModalEditor rendered 🟩')}
+          <ModalEditor
+            onClose={() => setShowGanttModal(false)}
+            onSelectProject={handleGanttInsert}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -753,7 +758,6 @@ const OptionItem: React.FC<OptionItemProps> = ({ icon, text, onClick }) => {
       className='flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'
       onClick={onClick}
     >
-
       <div className='text-purple-500 mr-3'>{icon}</div>
       <span className='text-gray-700 font-medium'>{text}</span>
     </div>

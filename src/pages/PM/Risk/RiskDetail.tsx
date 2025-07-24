@@ -54,7 +54,7 @@ interface Risk {
   createdAt?: string;
   updatedAt?: string;
   dueDate?: string;
-  responsibleId?: number;
+  responsibleId?: number | null;
   responsibleFullName?: string;
   responsibleUserName?: string;
   responsiblePicture?: string;
@@ -128,8 +128,8 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
       picture: m.picture,
     })) || [];
 
-  const commentCount = 0;
-  const attachmentCount = 0;
+  const attachmentCount = attachments?.length ?? 0;
+  const commentCount = comments?.length ?? 0;
 
   const [showResponsibleDropdown, setShowResponsibleDropdown] = useState(false);
 
@@ -171,7 +171,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
     if (riskSolutionRes?.isSuccess && riskSolutionRes.data) {
       const dataArray = Array.isArray(riskSolutionRes.data)
         ? riskSolutionRes.data
-        : [riskSolutionRes.data]; // Đảm bảo luôn là mảng
+        : [riskSolutionRes.data];
 
       const allContingencyItems = dataArray.flatMap((solution) =>
         solution.contingencyPlan
@@ -347,7 +347,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
   }: {
     assignees: Assignee[];
     selectedId: number | null;
-    onChange: (id: number) => void;
+    onChange: (id: number | null) => void;
   }) => {
     const getInitials = (name?: string | null) => {
       if (!name) return '';
@@ -360,13 +360,19 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
       <select
         className='responsible-dropdown'
         ref={dropdownRef}
-        value={selectedId ?? ''}
-        onChange={(e) => onChange(Number(e.target.value))}
+        // value={selectedId ?? ''}
+        value={selectedId?.toString() ?? ''}
+        // onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          const selectedValue = e.target.value;
+          onChange(selectedValue === '' ? null : Number(selectedValue));
+        }}
         style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
       >
-        <option value='' disabled>
+        {/* <option value='' disabled>
           -- Select --
-        </option>
+        </option> */}
+        <option value=''>No Assignee</option>
         {assignees.map((user) => (
           <option key={user.id} value={user.id}>
             {user.fullName || user.userName}
@@ -431,7 +437,10 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
                     <span>{attachmentCount}</span>
                   </div>
                 </div>
-                <div className='reporter-avatar'>
+                <div
+                  className='reporter-avatar'
+                  title={editableRisk.creatorFullName || editableRisk.creatorUserName || 'Unknown'}
+                >
                   {editableRisk.creatorPicture ? (
                     <img
                       src={editableRisk.creatorPicture}
@@ -517,49 +526,95 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
 
               <span className='meta-separator'>·</span>
 
-              <div
-                className='meta-value responsible-info cursor-pointer'
-                onClick={() => setShowResponsibleDropdown(true)}
-              >
-                {showResponsibleDropdown ? (
-                  <ResponsibleDropdown
-                    assignees={assignees}
-                    selectedId={editableRisk.responsibleId ?? null}
-                    onChange={async (newId) => {
-                      try {
-                        await updateResponsible({
-                          id: editableRisk.id,
-                          responsibleId: newId,
-                        }).unwrap();
-                        const updated = assignees.find((u) => u.id === newId);
-                        setEditableRisk(
-                          (prev) =>
-                            ({
+              <div className='meta-value responsible-info cursor-pointer'>
+                {editableRisk.responsibleId ? (
+                  <>
+                    {renderAvatar()}
+                    <ResponsibleDropdown
+                      assignees={assignees}
+                      selectedId={editableRisk.responsibleId ?? null}
+                      onChange={async (newId) => {
+                        try {
+                          await updateResponsible({
+                            id: editableRisk.id,
+                            responsibleId: newId,
+                          }).unwrap();
+
+                          const updated = assignees.find((u) => u.id === newId);
+                          setEditableRisk((prev) => ({
+                            ...prev,
+                            responsibleId: newId,
+                            responsibleFullName: updated?.fullName || '',
+                            responsibleUserName: updated?.userName || '',
+                            responsiblePicture: updated?.picture || '',
+                          }));
+                        } catch (err) {
+                          console.error('Update failed', err);
+                        }
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className='unassigned-avatar'
+                      onClick={() => setShowResponsibleDropdown(true)}
+                    >
+                      <UserPlus size={14} />
+                    </div>
+                    <ResponsibleDropdown
+                      assignees={assignees}
+                      selectedId={null}
+                      onChange={async (newId) => {
+                        try {
+                          await updateResponsible({
+                            id: editableRisk.id,
+                            responsibleId: newId,
+                          }).unwrap();
+
+                          const updated = assignees.find((u) => u.id === newId);
+                          setEditableRisk((prev) => ({
+                            ...prev,
+                            responsibleId: newId,
+                            responsibleFullName: updated?.fullName || '',
+                            responsibleUserName: updated?.userName || '',
+                            responsiblePicture: updated?.picture || '',
+                          }));
+
+                          setShowResponsibleDropdown(false);
+                        } catch (err) {
+                          console.error('Update failed', err);
+                        }
+                      }}
+                    />
+                    {/* {showResponsibleDropdown && (
+                      <ResponsibleDropdown
+                        assignees={assignees}
+                        selectedId={null}
+                        onChange={async (newId) => {
+                          try {
+                            await updateResponsible({
+                              id: editableRisk.id,
+                              responsibleId: newId,
+                            }).unwrap();
+
+                            const updated = assignees.find((u) => u.id === newId);
+                            setEditableRisk((prev) => ({
                               ...prev,
                               responsibleId: newId,
                               responsibleFullName: updated?.fullName || '',
                               responsibleUserName: updated?.userName || '',
                               responsiblePicture: updated?.picture || '',
-                            } as Risk)
-                        );
-                        // refetch();
-                        setShowResponsibleDropdown(false);
-                      } catch (err) {
-                        console.error('Update failed', err);
-                      }
-                    }}
-                  />
-                ) : editableRisk.responsibleFullName || editableRisk.responsibleUserName ? (
-                  <>
-                    {renderAvatar()}
-                    <span className='clickable-name'>
-                      {editableRisk.responsibleFullName || editableRisk.responsibleUserName}
-                    </span>
+                            }));
+
+                            setShowResponsibleDropdown(false);
+                          } catch (err) {
+                            console.error('Update failed', err);
+                          }
+                        }}
+                      />
+                    )} */}
                   </>
-                ) : (
-                  <div className='unassigned-avatar'>
-                    <UserPlus size={14} />
-                  </div>
                 )}
               </div>
             </div>

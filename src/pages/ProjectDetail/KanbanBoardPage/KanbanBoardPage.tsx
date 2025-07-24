@@ -75,12 +75,13 @@ const KanbanBoardPage: React.FC = () => {
     [categoriesData]
   );
 
-  const sprintId = activeSprint?.id;
+  const sprintId = activeSprint?.id ?? 0;
+  const isNoActiveSprint = !activeSprint;
 
   const taskQueriesArray = statuses.map((status) =>
     useGetTasksBySprintIdAndStatusQuery(
-      { sprintId: sprintId!, taskStatus: status.replace(' ', '_').toUpperCase() },
-      { skip: !sprintId }
+      { sprintId, taskStatus: status.replace(' ', '_').toUpperCase() },
+      { skip: sprintId === 0 }
     )
   );
 
@@ -100,7 +101,7 @@ const KanbanBoardPage: React.FC = () => {
         mappedTasks[status] = query.data.map((task: TaskBacklogResponseDTO) => ({
           ...task,
           status: mapApiStatusToUI(task.status ?? 'To Do'),
-          sprintId: sprintId ?? null,
+          sprintId: sprintId,
           reporterName: task.reporterName ?? null,
         }));
       } else {
@@ -146,25 +147,25 @@ const KanbanBoardPage: React.FC = () => {
   };
 
   if (isSprintLoading || isCategoriesLoading) return <div>Loading...</div>;
-  if (sprintError) return <div>Error: {getErrorMessage(sprintError)}</div>;
   if (categoriesError) return <div>Error loading statuses: {getErrorMessage(categoriesError)}</div>;
-  if (!activeSprint) return <div>No active sprint found for project {projectKey}</div>;
+  if (sprintError && sprintId !== 0) return <div>Error: {getErrorMessage(sprintError)}</div>;
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen p-4">
+      <div className="min-h-screen p-2">
         <KanbanHeader
           projectKey={projectKey}
-          sprintName={activeSprint.name}
-          projectId={activeSprint.projectId}
+          sprintName={activeSprint?.name || 'No Active Sprint'}
+          projectId={activeSprint?.projectId || 0}
           onSearch={(query) => console.log('Search query:', query)}
         />
+
         <DndProvider backend={HTML5Backend}>
           <div className="flex space-x-4 overflow-x-auto">
             {statuses.map((status) => (
               <KanbanColumn
                 key={status}
-                sprint={activeSprint}
+                sprint={activeSprint || { id: 0, name: 'No Sprint', projectId: 0 }}
                 tasks={tasks[status] || []}
                 moveTask={moveTask}
                 status={status}

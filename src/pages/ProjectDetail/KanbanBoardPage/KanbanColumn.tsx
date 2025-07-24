@@ -32,7 +32,7 @@ const KanbanColumn = forwardRef<HTMLDivElement, {
   return (
     <div
       ref={dropRef}
-      className={`w-80 shrink-0 p-2 rounded ${isActive ? 'bg-gray-100' : 'bg-gray-50'}`}
+      className={`w-64 shrink-0 p-2 rounded ${isActive ? 'bg-gray-100' : 'bg-gray-50'}`}
     >
       <h2 className="text-lg font-semibold mb-2">
         {status} ({tasks.length})

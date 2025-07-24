@@ -5,7 +5,7 @@ import { mapApiStatusToUI } from './Utils';
 import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import { User2 } from 'lucide-react'; // Biểu tượng người dùng
+import { User2 } from 'lucide-react';
 
 interface TaskCardProps {
   task: TaskBacklogResponseDTO;
@@ -66,7 +66,6 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(
         }`}
         onClick={() => alert(`Edit task ${task.id}`)}
       >
-        {/* Title */}
         <div className="text-sm font-medium text-gray-900 mb-2">
           {task.title || 'No title'}
         </div>
@@ -78,17 +77,36 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(
           </div>
         )}
 
-        {/* Bottom: ID and icon */}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1 text-xs text-gray-600">
-            {/* Task type icon */}
             <input type="checkbox" checked readOnly className="text-blue-600 w-4 h-4" />
             <span>{`TB-${task.id}`}</span>
-
           </div>
 
-          {/* Assignee icon */}
-          <User2 size={18} className="text-gray-400" />
+          <div className="flex items-center gap-1">
+            {task.taskAssignments && task.taskAssignments.length > 0 ? (
+              task.taskAssignments.map((assignment) => (
+                <div key={assignment.id} className="relative group">
+                  {assignment.accountPicture ? (
+                    <img
+                      src={assignment.accountPicture}
+                      alt={assignment.accountFullname || 'Assignee'}
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <User2 size={18} className="text-gray-400" />
+                  )}
+                  {assignment.accountFullname && (
+                    <div className="absolute bottom-[-1.5rem] left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {assignment.accountFullname}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <User2 size={18} className="text-gray-400" />
+            )}
+          </div>
         </div>
       </div>
     );

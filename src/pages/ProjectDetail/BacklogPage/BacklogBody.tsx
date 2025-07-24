@@ -22,24 +22,25 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics,
   const { refetch: refetchBacklog } = useGetTasksFromBacklogQuery(projectKey);
 
   const handleTaskUpdated = () => {
-    refetchSprints(); 
-    refetchBacklog(); 
-  }
+    refetchSprints();
+    refetchBacklog();
+  };
 
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
-      <div className="flex flex-col sm:flex-row gap-4 min-w-[640px]">
-        {/* Epic Column */}
-        <div className="w-full sm:w-1/3 md:w-1/4 min-w-[250px]">
+      <div className="flex flex-col sm:flex-row gap-0 min-w-[250px]">
+        {/* Epic Column - Cố định độ rộng */}
+        <div className="w-[250px] shrink-0">
           <EpicColumn epics={epics} onCreateEpic={onCreateEpic} />
         </div>
 
-        {/* Sprint Column */}
-        <div className="w-full sm:w-2/3 md:w-3/4">
+        {/* Sprint Column - Giãn ngang với padding trái p-2 */}
+        <div className="flex-1 pl-2">
           <SprintColumn
             sprints={sprints}
             backlogTasks={backlogTasks}
             projectId={projectId}
+            projectKey={projectKey}
             onTaskUpdated={handleTaskUpdated}
           />
         </div>

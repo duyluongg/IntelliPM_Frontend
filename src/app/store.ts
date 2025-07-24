@@ -151,11 +151,14 @@ import { meetingRescheduleRequestApi } from '../services/ProjectManagement/Meeti
 import { epicCommentApi } from '../services/epicCommentApi';
 import { workLogApi } from '../services/workLogApi';
 import { activityLogApi } from '../services/activityLogApi';
+import { notificationApi } from '../services/notificationApi';
+import { recipientNotificationApi } from '../services/recipientNotificationApi';
 import docReducer from '../components/slices/Document/documentSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
 import { riskSolutionApi } from '../services/riskSolutionApi';
 import { riskFileApi } from '../services/riskFileApi';
 import { riskCommentApi } from '../services/riskCommentApi';
+import { notificationsApi } from '../services/Notification/notificationApi';
 
 const persistConfig = {
   key: 'root',
@@ -202,6 +205,9 @@ const rootReducer = combineReducers({
   [riskSolutionApi.reducerPath]: riskSolutionApi.reducer,
   [riskFileApi.reducerPath]: riskFileApi.reducer,
   [riskCommentApi.reducerPath]: riskCommentApi.reducer,
+  [notificationsApi.reducerPath]: notificationsApi.reducer,
+  [notificationApi.reducerPath]: notificationApi.reducer,
+  [recipientNotificationApi.reducerPath]: recipientNotificationApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -254,6 +260,9 @@ export const store = configureStore({
       riskSolutionApi.middleware,
       riskFileApi.middleware,
       riskCommentApi.middleware,
+      notificationsApi.middleware,
+      notificationApi.middleware,
+      recipientNotificationApi.middleware,
     ),
 });
 

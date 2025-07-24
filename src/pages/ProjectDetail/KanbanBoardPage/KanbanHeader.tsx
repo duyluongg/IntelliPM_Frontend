@@ -8,7 +8,7 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     fill='none'
     viewBox='0 0 16 16'
     role='presentation'
-    {...props} // Spread props to allow className and other SVG attributes
+    {...props} 
     style={{ color: 'var(--ds-icon, #44546F)' }}
   >
     <path
@@ -21,8 +21,10 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 interface BacklogHeaderProps {
-  onSearch: (query: string) => void;
+  projectKey: string;
+  sprintName?: string;
   projectId: number;
+  onSearch: (query: string) => void;
 }
 
 interface Member {
@@ -31,7 +33,7 @@ interface Member {
   avatar: string;
 }
 
-const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) => {
+const KanbanHeader: React.FC<BacklogHeaderProps> = ({ projectKey, sprintName, projectId, onSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
 
@@ -77,6 +79,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
   return (
     <div className='flex items-center justify-between px-6 py-3 bg-white'>
       <div className='flex items-center gap-4'>
+        <h1 className='text-lg font-semibold'>{sprintName || 'No Active Sprint'}</h1>
         <div className='flex items-center border border-gray-300 rounded-md w-64 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
           <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
           <input
@@ -165,4 +168,4 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
   );
 };
 
-export default BacklogHeader;
+export default KanbanHeader;

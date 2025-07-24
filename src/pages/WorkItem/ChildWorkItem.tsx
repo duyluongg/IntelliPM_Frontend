@@ -8,7 +8,7 @@ import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUp
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation } from '../../services/subtaskCommentApi';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 
 interface SubtaskDetail {
@@ -99,8 +99,8 @@ const ChildWorkItem: React.FC = () => {
     fetchSubtask();
   }, [subtaskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskDetail?.projectId!, {
-    skip: !taskDetail?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
   });
 
   const toISO = (localDate: string) => {
@@ -154,6 +154,7 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail.id,
         title: file.name,
         file,
+        createdBy: accountId,
       }).unwrap();
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
@@ -166,12 +167,13 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteSubtaskFile(id).unwrap();
+      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ File deleted!');
-      refetchAttachments();
+      await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Delete failed:', error);
       alert('❌ Delete failed!');
@@ -300,7 +302,7 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
+                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
                           className="delete-file-btn"
                           title="Delete file"
                         >
@@ -392,9 +394,11 @@ const ChildWorkItem: React.FC = () => {
                                             subtaskId: subtaskDetail.id,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert("✅ Comment updated");
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to update comment", err);
                                           alert("❌ Update failed");
@@ -407,14 +411,19 @@ const ChildWorkItem: React.FC = () => {
                                   <button
                                     className="delete-btn"
                                     onClick={async () => {
-                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                      if (
+                                        window.confirm(
+                                          '🗑️ Are you sure you want to delete this comment?'
+                                        )
+                                      ) {
                                         try {
-                                          await deleteSubtaskComment(comment.id).unwrap();
-                                          alert("🗑️ Deleted successfully");
+                                          await deleteSubtaskComment({ id: comment.id, createdBy: accountId }).unwrap();
+                                          alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error("❌ Failed to delete comment", err);
-                                          alert("❌ Delete failed");
+                                          console.error('❌ Failed to delete comment', err);
+                                          alert('❌ Delete failed');
                                         }
                                       }
                                     }}
@@ -448,10 +457,12 @@ const ChildWorkItem: React.FC = () => {
                             subtaskId: subtaskDetail.id,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

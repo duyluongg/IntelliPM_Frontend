@@ -38,6 +38,7 @@ export interface TaskResponseDTO {
   priority: string;
   evaluate: string | null;
   status: string;
+  createdBy: number;
   dependencies: TaskDependency[];
 }
 
@@ -81,6 +82,7 @@ export interface UpdateTaskRequestDTO {
   plannedStartDate: string;
   plannedEndDate: string;
   status: string;
+  createdBy: number;
 }
 
 export interface SubtaskViewDTO {
@@ -175,14 +177,14 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-    updateTaskStatus: builder.mutation<void, { id: string; status: string }>({
-      query: ({ id, status }) => ({
+    updateTaskStatus: builder.mutation<void, { id: string; status: string; createdBy: number }>({
+      query: ({ id, status, createdBy }) => ({
         url: `task/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(status),
+        body: JSON.stringify({ status, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -193,14 +195,26 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-    updateTaskType: builder.mutation<void, { id: string; type: string }>({
-      query: ({ id, type }) => ({
+    updateTaskType: builder.mutation<void, { id: string; type: string; createdBy: number }>({
+      query: ({ id, type, createdBy }) => ({
         url: `task/${id}/type`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(type),
+        body: JSON.stringify({ type, createdBy }),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updateTaskReporter: builder.mutation<void, { id: string; reporterId: number; createdBy: number }>({
+      query: ({ id, reporterId, createdBy }) => ({
+        url: `task/${id}/reporter`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({reporterId, createdBy}),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -226,50 +240,69 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTaskTitle: builder.mutation<void, { id: string; title: string }>({
-      query: ({ id, title }) => ({
+    updateTaskTitle: builder.mutation<void, { id: string; title: string; createdBy: number }>({
+      query: ({ id, title, createdBy }) => ({
         url: `task/${id}/title`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(title),
+        body: JSON.stringify({ title, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updateTaskDescription: builder.mutation<void, { id: string; description: string }>({
-      query: ({ id, description }) => ({
+    updateTaskDescription: builder.mutation<
+      void,
+      { id: string; description: string; createdBy: number }
+    >({
+      query: ({ id, description, createdBy }) => ({
         url: `task/${id}/description`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(description),
+        body: JSON.stringify({ description, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string }>({
-      query: ({ id, plannedStartDate }) => ({
+
+    updateTaskPriority: builder.mutation<void, { id: string; priority: string; createdBy: number }>({
+      query: ({ id, priority, createdBy }) => ({
+        url: `task/${id}/priority`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({priority, createdBy}),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updatePlannedStartDate: builder.mutation<void, { id: string; plannedStartDate: string; createdBy: number }>({
+      query: ({ id, plannedStartDate, createdBy }) => ({
         url: `task/${id}/planned-start-date`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(plannedStartDate),
+        body: JSON.stringify({ plannedStartDate, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
 
-    updatePlannedEndDate: builder.mutation<void, { id: string; plannedEndDate: string }>({
-      query: ({ id, plannedEndDate }) => ({
+    updatePlannedEndDate: builder.mutation<
+      void,
+      { id: string; plannedEndDate: string; createdBy: number }
+    >({
+      query: ({ id, plannedEndDate, createdBy }) => ({
         url: `task/${id}/planned-end-date`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(plannedEndDate),
+        body: JSON.stringify({ plannedEndDate, createdBy }),
       }),
       invalidatesTags: ['Task'],
     }),
@@ -332,10 +365,25 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: sprintId, 
+        body: sprintId,
       }),
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
+    }),
+
+    getTasksBySprintIdAndStatus: builder.query<
+      TaskBacklogResponseDTO[],
+      { sprintId: number; taskStatus: string }
+    >({
+      query: ({ sprintId, taskStatus }) => ({
+        url: `task/by-sprint-id/${sprintId}/task-status`,
+        params: { taskStatus },
+        headers: {
+          accept: '*/*',
+        },
+      }),
+      transformResponse: (response: TaskBackLogResponse) => response.data,
+      providesTags: ['Task'],
     }),
 
 
@@ -359,4 +407,7 @@ export const {
   useGetTaskWithSubtasksQuery,
   useGetTasksFromBacklogQuery,
   useUpdateTaskSprintMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
+  useGetTasksBySprintIdAndStatusQuery,
 } = taskApi;

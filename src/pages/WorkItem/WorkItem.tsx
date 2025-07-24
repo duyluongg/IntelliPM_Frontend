@@ -23,6 +23,8 @@ import {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -45,7 +47,7 @@ import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 // import type { useState } from 'react';
 import { WorkLogModal } from './WorkLogModal';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -105,6 +107,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [updateTaskPriority] = useUpdateTaskPriorityMutation();
+  const [updateTaskReporter] = useUpdateTaskReporterMutation();
+
+  const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
 
   const {
     data: attachments = [],
@@ -114,12 +120,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteTaskFile(id).unwrap();
+      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -156,7 +163,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
+        createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ Start date updated');
     } catch (err) {
       console.error('❌ Failed to update start date', err);
@@ -169,7 +178,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
+        createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ End date updated');
     } catch (err) {
       console.error('❌ Failed to update end date', err);
@@ -178,8 +189,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title }).unwrap();
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
+      await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
       alert('✅ Error update task title!');
@@ -191,7 +203,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (description === taskData?.description) return;
 
     try {
-      await updateTaskDescription({ id: taskId, description }).unwrap();
+      await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -229,8 +242,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
-    skip: !taskData?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByTaskIdQuery(taskId, {
+    skip: !taskId,
   });
 
   const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
@@ -258,6 +271,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
       setSprintId(String(taskData.sprintId));
+      setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
 
@@ -287,6 +301,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       }).unwrap();
 
       refetch();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -294,7 +309,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       setStatus(newStatus);
       await refetchTask();
     } catch (err) {
@@ -312,8 +327,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       setWorkType(type);
       setIsDropdownOpen(false);
-      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Error update work type:', err);
     }
@@ -372,6 +388,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       key={type}
                       className={`dropdown-item ${workType === type ? 'selected' : ''}`}
                       onClick={() => handleWorkTypeChange(type)}
+
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -403,14 +420,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
               style={{ width: '500px' }}
+              disabled={!canEdit}
             />
-          </div>
-          <div className='header-actions'>
-            <button className='close-btn' onClick={onClose}>
-              ✖
-            </button>
+            <div className="modal-cont">
+              <button className="close-btn" onClick={onClose}>✖</button>
+            </div>
           </div>
         </div>
+
 
         {/* Modal Content */}
         <div className='modal-content'>
@@ -460,9 +477,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         taskId,
                         title: file.name,
                         file: file,
+                        createdBy: accountId,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -479,6 +498,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => handleDescriptionTaskChange()}
+                disabled={!canEdit}
               />
 
               {attachments.length > 0 && (
@@ -521,7 +541,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
                             className='delete-file-btn'
                             title='Delete file'
                           >
@@ -730,6 +750,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             setShowSuggestionList(false);
                             setSelectedSuggestions([]);
                             await refetch();
+                            await refetchActivityLogs();
                           }}
                           disabled={selectedSuggestions.length === 0}
                           style={{
@@ -861,6 +882,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetch();
+                                        await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
                                         alert('❌ Failed to update summary');
@@ -902,6 +924,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     }).unwrap();
                                     console.log('✅ Updated priority');
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
                                     alert('❌ Failed to update priority');
@@ -943,6 +966,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
                                       await refetch();
+                                      await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Failed to update subtask:', err);
                                       alert('❌ Failed to update subtask');
@@ -1011,6 +1035,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     setNewSubtaskTitle('');
                                     setShowSubtaskInput(false);
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('Error create subtask:', err);
                                   }
@@ -1136,9 +1161,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             taskId,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert('✅ Comment updated');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
                                           alert('❌ Update failed');
@@ -1157,9 +1184,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         )
                                       ) {
                                         try {
-                                          await deleteTaskComment(comment.id).unwrap();
+                                          await deleteTaskComment({ id: comment.id, createdBy: accountId }).unwrap();
                                           alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to delete comment', err);
                                           alert('❌ Delete failed');
@@ -1196,10 +1224,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             taskId,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
@@ -1223,6 +1253,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={status}
                 onChange={(e) => handleTaskStatusChange(e.target.value)}
                 className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+
               >
                 <option value='TO_DO'>To Do</option>
                 <option value='IN_PROGRESS'>In Progress</option>
@@ -1335,39 +1366,118 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Sprint</label>
                 <span>{taskData?.sprintName ?? 'None'}</span>
               </div>
+
+              <div className='detail-item'>
+                <label>Priority</label>
+                {canEdit ? (
+                  <select
+                    value={taskData?.priority}
+                    onChange={async (e) => {
+                      const newPriority = e.target.value;
+                      try {
+                        await updateTaskPriority({
+                          id: taskId,
+                          priority: newPriority,
+                          createdBy: accountId,
+                        }).unwrap();
+                        await refetch();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        console.error('❌ Error updating priority:', err);
+                      }
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      width: '150px',
+                    }}
+                  >
+                    <option value="HIGHEST">Highest</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="LOWEST">Lowest</option>
+                  </select>
+                ) : (
+                  <span>{taskData?.priority ?? 'NONE'}</span>
+                )}
+              </div>
+
               <div className='detail-item'>
                 <label>Start date</label>
-                <input
-                  type='date'
-                  value={plannedStartDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedStartDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedStartDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedStartDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedStartDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Due date</label>
-                <input
-                  type='date'
-                  value={plannedEndDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedEndDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedEndDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedEndDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedEndDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Reporter</label>
-                <span>{taskData?.reporterName ?? 'None'}</span>
+                {canEdit ? (
+                  <select
+                    value={selectedReporter ?? 0}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateTaskReporter({
+                          id: taskId,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Cập nhật Reporter thành công');
+                        await refetchTask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Cập nhật Reporter thất bại');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ width: '150px' }}
+                  >
+                    <option value={0}>Unassigned</option>
+                    {projectMembers?.map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.accountName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{taskData?.reporterName ?? 'None'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Time Tracking</label>
                 <span

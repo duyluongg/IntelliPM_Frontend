@@ -3,7 +3,11 @@ import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal } from 'lucid
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import CompleteSprintPopup from '../BacklogPage/CompleteSprintPopup';
 import { useGetTasksBySprintIdQuery } from '../../../services/taskApi';
-import { useGetActiveSprintByProjectKeyQuery, type SprintResponseDTO } from '../../../services/sprintApi'; 
+import {
+  useGetActiveSprintByProjectKeyQuery,
+  type SprintResponseDTO,
+} from '../../../services/sprintApi';
+import { User2 } from 'lucide-react';
 
 const SprintIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -154,7 +158,9 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
         )
       : Math.max(
           0,
-          Math.ceil((new Date('Aug 3, 2025').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+          Math.ceil(
+            (new Date('Aug 3, 2025').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+          )
         ),
   };
 
@@ -170,7 +176,11 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   if (membersError || tasksError || sprintError) {
     return (
       <div className='p-4 text-center text-red-500'>
-        Error loading data: {(membersError as any)?.data?.message || (tasksError as any)?.data?.message || (sprintError as any)?.data?.message || 'Unknown error'}
+        Error loading data:{' '}
+        {(membersError as any)?.data?.message ||
+          (tasksError as any)?.data?.message ||
+          (sprintError as any)?.data?.message ||
+          'Unknown error'}
       </div>
     );
   }
@@ -190,7 +200,6 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
           />
         </div>
 
-        {/* Members */}
         <div className='flex items-center'>
           {members.length > 0 ? (
             isMembersExpanded ? (
@@ -235,7 +244,9 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
               </div>
             )
           ) : (
-            <div className='text-xs text-gray-500'>No active members</div>
+            <div className='w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center'>
+              <User2 size={18} className='text-gray-400' />
+            </div>
           )}
         </div>
 
@@ -245,63 +256,65 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
       </div>
 
       <div className='flex items-center gap-2'>
-        {/* Complete Sprint Button with Popup */}
-        <button
-          onClick={toggleCompletePopup}
-          className='bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700'
-        >
-          Complete sprint
-        </button>
+        {sprintData && (
+          <>
+            <button
+              onClick={toggleCompletePopup}
+              className='bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700'
+            >
+              Complete sprint
+            </button>
 
-        {/* Render the CompleteSprintPopup */}
-        <CompleteSprintPopup
-          isOpen={isCompletePopupOpen}
-          onClose={toggleCompletePopup}
-          sprintId={sprintData?.id ?? projectId} // Fallback to projectId if sprintData.id is undefined
-          sprintName={sprint.name}
-          onTaskUpdated={() => {}}
-          projectKey={projectKey}
-          projectId={projectId}
-          workItem={workItem}
-          workItemCompleted={workItemCompleted}
-          workItemOpen={workItemOpen}
-          refetchSprint={() => {}}
-        />
+            {/* Render the CompleteSprintPopup */}
+            <CompleteSprintPopup
+              isOpen={isCompletePopupOpen}
+              onClose={toggleCompletePopup}
+              sprintId={sprintData?.id ?? projectId}
+              sprintName={sprint.name}
+              onTaskUpdated={() => {}}
+              projectKey={projectKey}
+              projectId={projectId}
+              workItem={workItem}
+              workItemCompleted={workItemCompleted}
+              workItemOpen={workItemOpen}
+              refetchSprint={() => {}}
+            />
 
-        <div className='relative'>
-          <button
-            onClick={toggleSprintDropdown}
-            className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
-          >
-            <SprintIcon />
-            Sprint <ChevronDown className='w-4 h-4 ml-1' />
-          </button>
+            <div className='relative'>
+              <button
+                onClick={toggleSprintDropdown}
+                className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
+              >
+                <SprintIcon />
+                Sprint <ChevronDown className='w-4 h-4 ml-1' />
+              </button>
 
-          {isSprintDropdownOpen && (
-            <div className='absolute right-0 mt-2 w-64 bg-white border rounded shadow-md p-4 z-10'>
-              <h3 className='text-sm font-semibold text-gray-800 mb-1'>{sprint.name}</h3>
-              {sprintData?.goal && (
-                <p className='text-sm text-gray-600 mb-2'>Goal: {sprintData.goal}</p>
-              )}
-              <p className='text-sm text-gray-600 mb-2'>{sprint.daysLeft} days left</p>
-              <div className='flex justify-between text-xs text-gray-500'>
-                <div>
-                  <p className='font-medium'>Start date</p>
-                  <p>{sprint.startDate}</p>
+              {isSprintDropdownOpen && (
+                <div className='absolute right-0 mt-2 w-64 bg-white border rounded shadow-md p-4 z-10'>
+                  <h3 className='text-sm font-semibold text-gray-800 mb-1'>{sprint.name}</h3>
+                  {sprintData?.goal && (
+                    <p className='text-sm text-gray-600 mb-2'>Goal: {sprintData.goal}</p>
+                  )}
+                  <p className='text-sm text-gray-600 mb-2'>{sprint.daysLeft} days left</p>
+                  <div className='flex justify-between text-xs text-gray-500'>
+                    <div>
+                      <p className='font-medium'>Start date</p>
+                      <p>{sprint.startDate}</p>
+                    </div>
+                    <div>
+                      <p className='font-medium'>End date</p>
+                      <p>{sprint.endDate}</p>
+                    </div>
+                  </div>
+                  {sprintData?.status && (
+                    <p className='text-xs text-gray-500 mt-2'>Status: {sprintData.status}</p>
+                  )}
                 </div>
-                <div>
-                  <p className='font-medium'>End date</p>
-                  <p>{sprint.endDate}</p>
-                </div>
-              </div>
-              {sprintData?.status && (
-                <p className='text-xs text-gray-500 mt-2'>Status: {sprintData.status}</p>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
-        {/* Icons */}
         <button className='p-2 rounded hover:bg-gray-100'>
           <LineChart className='w-5 h-5 text-gray-700' />
         </button>

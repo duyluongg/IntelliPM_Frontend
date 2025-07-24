@@ -441,7 +441,7 @@ onOpenChange={(open) => {
       📋 Check Attendance:
     </button>
   </DialogTrigger>
-  <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
+  {/* <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
     <h3 className="mb-4 text-lg font-semibold">
       📋 Attendance: {selectedMeeting?.meetingTopic}
     </h3>
@@ -452,7 +452,7 @@ onOpenChange={(open) => {
         className="mb-2 flex items-center justify-between rounded border p-3"
       >
         <div>
-          <p className="font-medium">👤 ID: {p.accountId}</p>
+          <p className="font-medium">👤 Name: {p.fullName}</p>
           <p className="text-sm text-gray-600">Role: {p.role}</p>
         </div>
         <div className="flex gap-2">
@@ -489,7 +489,66 @@ onOpenChange={(open) => {
   >
     💾 Save Attendance
   </button>
-  </DialogContent>
+  </DialogContent> */}
+
+<DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
+  <h3 className="mb-4 text-lg font-semibold">
+    📋 Attendance: {selectedMeeting?.meetingTopic}
+  </h3>
+
+  {participants.map((p) => (
+    <div
+      key={p.id}
+      className="mb-3 flex flex-col rounded border p-4 shadow-sm md:flex-row md:items-start md:justify-between"
+    >
+      <div className="mb-2 md:mb-0">
+        <p className="font-semibold text-gray-800">👤 Name: {p.fullName}</p>
+        <p className="text-sm text-gray-600">Role: {p.role}</p>
+      </div>
+
+      {/* Nút dọc: flex-col */}
+      <div className="flex w-full flex-col gap-2 md:w-28">
+        <button
+          className={`w-full rounded px-4 py-2 text-sm font-medium ${
+            attendanceDraft[p.id] === 'Present'
+              ? 'bg-blue-600 text-white'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+          }`}
+          onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
+        >
+          Present
+        </button>
+        <button
+          className={`w-full rounded px-4 py-2 text-sm font-medium ${
+            attendanceDraft[p.id] === 'Absent'
+              ? 'bg-red-600 text-white'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+          }`}
+          onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
+        >
+          Absent
+        </button>
+      </div>
+    </div>
+  ))}
+
+  <button
+    className="mt-6 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+    onClick={async () => {
+      for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
+        const participantId = Number(participantIdStr);
+        await handleAttendance(participantId, newStatus);
+      }
+
+      setAttendanceDraft({});
+      setAttendanceOpen(false);
+    }}
+  >
+    💾 Save Attendance
+  </button>
+</DialogContent>
+
+
 </Dialog>
 
 

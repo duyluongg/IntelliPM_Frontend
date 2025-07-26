@@ -3,6 +3,8 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Doc from './Doc';
 import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../app/store';
 
 export default function DocWrapper() {
   const { id, type } = useParams();
@@ -12,7 +14,9 @@ export default function DocWrapper() {
   const [createDocument] = useCreateDocumentMutation();
   const { user } = useAuth();
   const navigate = useNavigate();
-
+  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+  console.log('projectId:', projectId);
+  
   const [docId, setDocId] = useState<number | null>(null);
   console.log(type, 'type');
 
@@ -22,7 +26,7 @@ export default function DocWrapper() {
 
       try {
         const res = await createDocument({
-          projectId: Number(projectKey),
+          projectId,
           title: 'New Document',
           type: type || 'default',
           content: '',

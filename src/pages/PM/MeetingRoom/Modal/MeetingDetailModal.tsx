@@ -33,11 +33,25 @@ const ModalDetailRoom: FC<Props> = ({ meeting, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg relative">
-        <h2 className="text-xl font-bold mb-4">📋 Chi tiết cuộc họp</h2>
-        <p><strong>Tiêu đề:</strong> {meeting.title}</p>
-        <p><strong>Thời gian:</strong> {meeting.startTime} - {meeting.endTime}</p>
-        <p><strong>Người tham dự:</strong> {meeting.participants}</p>
-        <p><strong>Phòng họp:</strong> <a href={meeting.roomUrl} className="text-blue-500 underline" target="_blank" rel="noopener noreferrer">{meeting.roomUrl}</a></p>
+        <h2 className="text-xl font-bold mb-4">📋 Meeting details</h2>
+        <p><strong>Title:</strong> {meeting.title}</p>
+        <p><strong>Meeting Time:</strong> {meeting.startTime} - {meeting.endTime}</p>
+        <p><strong>Participants:</strong> {parseInt(meeting.participants)} member</p>
+
+        <p>
+  <strong>Room Meeting URL:</strong>{' '}
+  <a
+    href={meeting.roomUrl}
+    className="text-blue-500 underline break-all"
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {meeting.roomUrl.length > 50
+      ? meeting.roomUrl.slice(0, 35) + '...' + meeting.roomUrl.slice(-10)
+      : meeting.roomUrl}
+  </a>
+</p>
+
 
         {isClient && meeting.status === 'Active' && (
           <div className="mt-4">
@@ -55,7 +69,7 @@ const ModalDetailRoom: FC<Props> = ({ meeting, onClose }) => {
             className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded"
             onClick={onClose}
           >
-            Đóng
+            Close
           </button>
         </div>
       </div>

@@ -47,7 +47,7 @@ const MeetingRoom: FC = () => {
   useEffect(() => {
     if (meetingData && Array.isArray(meetingData)) {
       const mapped: MeetingEvent[] = meetingData
-        .filter((m) => m.meetingStatus !== 'CANCELLED') // 👈 Ẩn sự kiện bị huỷ
+        .filter((m) => m.meetingStatus !== 'CANCELLED') 
         .map((m) => {
           const startDate = new Date(m.start);
           const endDate = new Date(m.end);
@@ -62,7 +62,7 @@ const MeetingRoom: FC = () => {
             participants: m.participants,
             roomUrl: m.roomUrl,
             status: m.status,
-            meetingStatus: m.meetingStatus, // 👈 Lưu để dùng nếu cần
+            meetingStatus: m.meetingStatus, 
           };
         });
 

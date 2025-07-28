@@ -74,26 +74,18 @@ const MeetingRoom: FC = () => {
     const event = events.find((e) => e.id === info.event.id);
     if (event) setSelectedEvent(event);
   };
+  const getStatusColor = (status: MeetingEvent['status']) => {
+  switch (status) {
+    case 'Present':
+      return '#22c55e'; // Xanh lá
+    case 'Absent':
+      return '#ef4444'; // Đỏ
+    case 'Active':
+    default:
+      return '#3b82f6'; // Xanh dương
+  }
+};
 
-  const getStatusColor = (status: MeetingEvent['status'], startDateStr: string) => {
-    const eventDate = new Date(startDateStr);
-    const now = new Date();
-
-    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    if (eventDay < today) return '#d1d5db'; // Xám cho sự kiện trong quá khứ
-
-    switch (status) {
-      case 'Present':
-        return '#22c55e'; // Xanh lá
-      case 'Absent':
-        return '#ef4444'; // Đỏ
-      case 'Active':
-      default:
-        return '#3b82f6'; // Xanh dương
-    }
-  };
 
   if (!accountId) {
     return <div className="text-red-500 text-center mt-6 font-medium">⚠️ Bạn chưa đăng nhập.</div>;
@@ -139,7 +131,7 @@ const MeetingRoom: FC = () => {
               right: 'dayGridMonth,timeGridWeek',
             }}
             events={events.map((ev) => {
-              const color = getStatusColor(ev.status, ev.start);
+              const color = getStatusColor(ev.status);
               return {
                 id: ev.id,
                 title: ev.title,

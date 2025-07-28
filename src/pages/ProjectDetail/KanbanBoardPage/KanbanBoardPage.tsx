@@ -7,12 +7,10 @@ import KanbanColumn from './KanbanColumn';
 import {
   useGetSprintsByProjectKeyWithTasksQuery,
   useGetActiveSprintByProjectKeyQuery,
-  type SprintResponseDTO,
 } from '../../../services/sprintApi';
 import {
   useGetTasksBySprintIdAndStatusQuery,
   useUpdateTaskStatusMutation,
-  useGetTasksFromBacklogQuery,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
@@ -67,10 +65,9 @@ const KanbanBoardPage: React.FC = () => {
 
   const { data: activeSprint, isLoading: isSprintLoading, error: sprintError } = useGetActiveSprintByProjectKeyQuery(projectKey);
   const { data: categoriesData, isLoading: isCategoriesLoading, error: categoriesError } = useGetCategoriesByGroupQuery('task_status');
-  const { data: backlogTasks = [], isLoading: isBacklogLoading, error: backlogError } = useGetTasksFromBacklogQuery(projectKey);
   const { refetch } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
-
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [tasks, setTasks] = useState<{ [key: string]: TaskBacklogResponseDTO[] }>({});
 
   const statuses = useMemo(
@@ -78,17 +75,16 @@ const KanbanBoardPage: React.FC = () => {
     [categoriesData]
   );
 
-  const sprintId = activeSprint?.id;
+  const sprintId = activeSprint?.id ?? 0;
+  const isNoActiveSprint = !activeSprint;
 
-  // Call hooks at the top level
   const taskQueriesArray = statuses.map((status) =>
     useGetTasksBySprintIdAndStatusQuery(
-      { sprintId: sprintId!, taskStatus: status.replace(' ', '_').toUpperCase() },
-      { skip: !sprintId }
+      { sprintId, taskStatus: status.replace(' ', '_').toUpperCase() },
+      { skip: sprintId === 0 }
     )
   );
 
-  // Map queries to statuses
   const taskQueries = useMemo(() => {
     return statuses.reduce((acc, status, index) => {
       acc[status] = taskQueriesArray[index];
@@ -105,7 +101,7 @@ const KanbanBoardPage: React.FC = () => {
         mappedTasks[status] = query.data.map((task: TaskBacklogResponseDTO) => ({
           ...task,
           status: mapApiStatusToUI(task.status ?? 'To Do'),
-          sprintId: sprintId ?? null,
+          sprintId: sprintId,
           reporterName: task.reporterName ?? null,
         }));
       } else {
@@ -113,15 +109,8 @@ const KanbanBoardPage: React.FC = () => {
       }
     });
 
-    mappedTasks['backlog'] = backlogTasks.map((task: TaskBacklogResponseDTO) => ({
-      ...task,
-      status: mapApiStatusToUI(task.status ?? 'To Do'),
-      sprintId: null,
-      reporterName: task.reporterName ?? null,
-    }));
-
     setTasks(mappedTasks);
-  }, [taskQueries, statuses, backlogTasks, sprintId]);
+  }, [taskQueries, statuses, sprintId]);
 
   const moveTask = async (
     taskId: string,
@@ -133,7 +122,7 @@ const KanbanBoardPage: React.FC = () => {
       await updateTaskStatus({
         id: taskId,
         status: toStatus.replace(' ', '_').toUpperCase(),
-        createdBy: 1, // Replace with real user ID if needed
+        createdBy: accountId,
       }).unwrap();
 
       setTasks((prev) => {
@@ -157,41 +146,32 @@ const KanbanBoardPage: React.FC = () => {
     }
   };
 
-  if (isSprintLoading || isCategoriesLoading || isBacklogLoading) return <div>Loading...</div>;
-  if (sprintError) return <div>Error: {getErrorMessage(sprintError)}</div>;
+  if (isSprintLoading || isCategoriesLoading) return <div>Loading...</div>;
   if (categoriesError) return <div>Error loading statuses: {getErrorMessage(categoriesError)}</div>;
-  if (backlogError) return <div>Error loading backlog: {getErrorMessage(backlogError)}</div>;
-  if (!activeSprint) return <div>No active sprint found for project {projectKey}</div>;
+  if (sprintError && sprintId !== 0) return <div>Error: {getErrorMessage(sprintError)}</div>;
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen p-4">
+      <div className="min-h-screen p-2">
         <KanbanHeader
           projectKey={projectKey}
-          sprintName={activeSprint.name}
-          projectId={activeSprint.projectId}
+          sprintName={activeSprint?.name || 'No Active Sprint'}
+          projectId={activeSprint?.projectId || 0}
           onSearch={(query) => console.log('Search query:', query)}
         />
+
         <DndProvider backend={HTML5Backend}>
           <div className="flex space-x-4 overflow-x-auto">
             {statuses.map((status) => (
               <KanbanColumn
                 key={status}
-                sprint={activeSprint}
+                sprint={activeSprint || { id: 0, name: 'No Sprint', projectId: 0 }}
                 tasks={tasks[status] || []}
                 moveTask={moveTask}
                 status={status}
                 isActive={true}
               />
             ))}
-            <KanbanColumn
-              key="backlog"
-              sprint={{ id: null, name: 'Backlog', tasks: [] }}
-              tasks={tasks['backlog'] || []}
-              moveTask={moveTask}
-              status="Backlog"
-              isActive={false}
-            />
           </div>
         </DndProvider>
       </div>

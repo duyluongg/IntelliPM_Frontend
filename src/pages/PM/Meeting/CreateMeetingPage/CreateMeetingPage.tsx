@@ -52,12 +52,12 @@ const CreateMeetingPage: React.FC = () => {
 };
 
 const timeSlots = [
-  { label: '08:00 - 10:30', start: '08:00', end: '10:30' },
-  { label: '10:30 - 13:00', start: '10:30', end: '13:00' },
-  { label: '13:00 - 15:30', start: '13:00', end: '15:30' },
-  { label: '15:30 - 18:00', start: '15:30', end: '18:00' },
-  { label: '18:00 - 20:30', start: '18:00', end: '20:30' },
-  { label: '20:30 - 23:00', start: '20:30', end: '23:00' },
+  { label: '08:00 AM - 10:30 AM', start: '08:00', end: '10:30' },
+  { label: '10:30 AM - 1:00 PM', start: '10:30', end: '13:00' },
+  { label: '1:00 PM - 3:30 PM', start: '13:00', end: '15:30' },
+  { label: '3:30 PM - 6:00 PM', start: '15:30', end: '18:00' },
+  { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
+  { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
 ];
 
 

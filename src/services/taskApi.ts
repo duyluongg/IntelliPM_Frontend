@@ -379,6 +379,17 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+    getTasksBySprintId: builder.query<TaskBacklogResponseDTO[], number>({
+      query: (sprintId) => ({
+        url: `task/by-sprint-id/${sprintId}`,
+        headers: {
+          accept: '*/*',
+        },
+      }),
+      transformResponse: (response: TaskBackLogResponse) => response.data,
+      providesTags: ['Task'],
+    }),
+
     getTasksBySprintIdAndStatus: builder.query<
       TaskBacklogResponseDTO[],
       { sprintId: number; taskStatus: string }
@@ -408,6 +419,7 @@ export const taskApi = createApi({
       }),
       invalidatesTags: ['Task'],
     }),
+
   }),
 });
 
@@ -430,6 +442,7 @@ export const {
   useUpdateTaskSprintMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
+  useGetTasksBySprintIdQuery,
   useGetTasksBySprintIdAndStatusQuery,
   useUpdatePlannedHoursMutation,
 } = taskApi;

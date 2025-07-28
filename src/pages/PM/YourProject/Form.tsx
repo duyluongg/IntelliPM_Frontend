@@ -14,8 +14,8 @@ const templates = [
 
   { id: 'feature', label: 'Feature request', icon: <Zap size={16} /> },
   { id: 'bug', label: 'Bug report', icon: <Bug size={16} /> },
-  { id: 'incident', label: 'Incident report', icon: <AlertTriangle size={16} /> },
-  { id: 'review', label: 'Technical review', icon: <SlidersHorizontal size={16} /> },
+  // { id: 'incident', label: 'Incident report', icon: <AlertTriangle size={16} /> },
+  // { id: 'review', label: 'Technical review', icon: <SlidersHorizontal size={16} /> },
   { id: 'change', label: 'Change request', icon: <Shuffle size={16} /> },
 ];
 
@@ -56,14 +56,14 @@ export default function Form() {
     <div className='min-h-screen bg-white'>
       {/* <ProjectTabs /> */}
 
-      {userRole === 'TEAM_LEADER' && (
+      {/* {userRole === 'TEAM_LEADER' && (
         <button
           onClick={() =>handleSelectFormRQ(projectId) }
           className='inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-indigo-700 transition duration-200'
         >
           All Request Form
         </button>
-      )}
+      )} */}
 
       {!formId || formId === 'blank' ? (
         <div className='p-4 space-y-3  '>

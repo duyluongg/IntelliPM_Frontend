@@ -286,6 +286,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
               </a>
             </p>
 <div className="mt-3 flex gap-2">
+    {!(attendanceOpen && selectedMeeting?.id === m.id) && (
+    <>
   {/* Sửa */}
   {m.status !== 'COMPLETED' && (
     <Dialog open={editOpen && selectedMeeting?.id === m.id} onOpenChange={setEditOpen}>
@@ -413,7 +415,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       </DialogContent>
     </Dialog>
   )}
-
+  </>
+ )}
   {/* Điểm danh */}
 
 <Dialog
@@ -441,56 +444,7 @@ onOpenChange={(open) => {
       📋 Check Attendance:
     </button>
   </DialogTrigger>
-  {/* <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
-    <h3 className="mb-4 text-lg font-semibold">
-      📋 Attendance: {selectedMeeting?.meetingTopic}
-    </h3>
-
-    {participants.map((p) => (
-      <div
-        key={p.id}
-        className="mb-2 flex items-center justify-between rounded border p-3"
-      >
-        <div>
-          <p className="font-medium">👤 Name: {p.fullName}</p>
-          <p className="text-sm text-gray-600">Role: {p.role}</p>
-        </div>
-        <div className="flex gap-2">
-<button
-  className={`rounded px-3 py-1 text-sm ${
-    attendanceDraft[p.id] === 'Present' ? 'bg-blue-600 text-white' : 'border hover:bg-gray-100'
-  }`}
-  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
->
-  Present
-</button>
-<button
-  className={`rounded px-3 py-1 text-sm ${
-    attendanceDraft[p.id] === 'Absent' ? 'bg-red-600 text-white' : 'border hover:bg-gray-100'
-  }`}
-  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
->
-  Absent
-</button>
-        </div>
-      </div>
-    ))}
-    <button
-    className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-    onClick={async () => {
-      for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
-        const participantId = Number(participantIdStr);
-        await handleAttendance(participantId, newStatus);
-      }
-
-      setAttendanceDraft({});
-      setAttendanceOpen(false);
-    }}
-  >
-    💾 Save Attendance
-  </button>
-  </DialogContent> */}
-
+ 
 <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
   <h3 className="mb-4 text-lg font-semibold">
     📋 Attendance: {selectedMeeting?.meetingTopic}

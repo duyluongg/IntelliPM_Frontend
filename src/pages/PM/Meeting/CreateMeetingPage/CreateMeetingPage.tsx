@@ -42,7 +42,7 @@ const CreateMeetingPage: React.FC = () => {
     setParticipantIds((prev) =>
       prev.includes(accountId) ? prev.filter((id) => id !== accountId) : [...prev, accountId]
     );
-    // console.log(`🟩 ${participantIds.includes(accountId) ? 'Bỏ chọn' : 'Chọn'} account ID: ${accountId}`);
+    
   };
   
   const isValidMeetingUrl = (url: string): boolean => {
@@ -88,10 +88,13 @@ const handleCreateMeeting = async () => {
 
   const startDateTime = new Date(`${meetingDate}T${startTime}`).toISOString();
   const endDateTime = new Date(`${meetingDate}T${endTime}`).toISOString();
+  const selectedProject = projectsData?.data.find(p => p.projectId === selectedProjectId);
+  const fullMeetingTopic = `${meetingTopic} - ${selectedProject?.projectName ?? 'Unknown Project'}`;
+
 
   const meetingPayload = {
     projectId: selectedProjectId,
-    meetingTopic,
+    meetingTopic:fullMeetingTopic,
     meetingDate: new Date(meetingDate).toISOString(),
     meetingUrl,
     startTime: startDateTime,

@@ -109,14 +109,6 @@ const ProjectDashboard = () => {
             </div>
           </div>
 
-          {/* {!showRecommendations && (
-            <button
-              onClick={onShowAIRecommendations}
-              className='self-start bg-blue-600 text-white px-4 py-1.5 mt-1 rounded hover:bg-blue-700 text-sm'
-            >
-              📥 Xem gợi ý từ AI
-            </button>
-          )} */}
           {!showRecommendations && (
             <button
               onClick={onShowAIRecommendations}
@@ -266,29 +258,6 @@ const ProjectDashboard = () => {
         <WorkloadChart />
       </DashboardCard>
 
-      {/* {showRecommendations && (
-        <div className='col-span-full space-y-4 mt-4'>
-          {isRecLoading ? (
-            <p>Đang lấy gợi ý...</p>
-          ) : (
-            <>
-              <h2>📌 Suggested actions from AI</h2>
-              {recommendations.length > 0 ? (
-                recommendations.map((rec, idx) => (
-                  <RecommendationCard
-                    key={idx}
-                    rec={rec}
-                    index={idx}
-                    projectId={metricData?.data?.projectId}
-                  />
-                ))
-              ) : (
-                <p className='text-sm text-gray-600'>Không có gợi ý nào từ AI.</p>
-              )}
-            </>
-          )}
-        </div>
-      )} */}
       {showRecommendations && (
         <div className='fixed inset-0 z-50 bg-black bg-opacity-30 flex justify-center items-center'>
           <div className='bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto'>

@@ -11,6 +11,7 @@ import {
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
+import { useCreateRiskSolutionMutation } from '../../../services/riskSolutionApi';
 import './Risk.css';
 import { Check } from 'lucide-react';
 import { useState } from 'react';
@@ -21,6 +22,9 @@ import SuggestedRisksModal from './SuggestedRisksModal';
 const Risk = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const userJson = localStorage.getItem('user');
+  const accountId = userJson ? JSON.parse(userJson).id : null;
+
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
 
@@ -40,6 +44,7 @@ const Risk = () => {
   const [updateRiskType] = useUpdateRiskTypeMutation();
   const [updateResponsible] = useUpdateRiskResponsibleMutation();
   const [updateRiskDueDate] = useUpdateRiskDueDateMutation();
+  const [createRiskSolution] = useCreateRiskSolutionMutation();
   const [editingResponsibleId, setEditingResponsibleId] = useState<number | null>(null);
 
   const { data: categoryData, isLoading: isCategoryLoading } =
@@ -153,7 +158,8 @@ const Risk = () => {
   }: {
     assignees: Assignee[];
     selectedId: number | null;
-    onChange: (id: number) => void;
+    // onChange: (id: number) => void;
+    onChange: (id: number | null) => void;
   }) => {
     const getInitials = (name?: string | null) => {
       if (!name) return '';
@@ -162,27 +168,27 @@ const Risk = () => {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     };
 
-    // if (!isEditing) {
-    //   return (
-    //     <button
-    //       onClick={() => setIsEditing(true)}
-    //       className='text-xs text-gray-600 underline bg-transparent border-none cursor-pointer'
-    //     >
-    //       {selectedUser ? selectedUser.fullName || selectedUser.userName : 'No Assign'}
-    //     </button>
-    //   );
-    // }
-
     return (
+      // <select
+      //   className='responsible-dropdown'
+      //   value={selectedId ?? ''}
+      //   onChange={(e) => onChange(Number(e.target.value))}
+      //   style={{ padding: '8px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
+      // >
       <select
         className='responsible-dropdown'
-        value={selectedId ?? ''}
-        onChange={(e) => onChange(Number(e.target.value))}
+        value={selectedId?.toString() ?? ''}
+        // onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => {
+          const selectedValue = e.target.value;
+          onChange(selectedValue === '' ? null : Number(selectedValue));
+        }}
         style={{ padding: '8px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
       >
-        <option value='' disabled>
+        {/* <option value='' disabled>
           -- Select --
-        </option>
+        </option> */}
+        <option value=''>No Assignee</option>
         {assignees.map((user) => (
           <option key={user.id} value={user.id}>
             {user.fullName || user.userName}
@@ -261,6 +267,7 @@ const Risk = () => {
       const request = {
         projectKey: projectKey,
         responsibleId: null,
+        createdBy: accountId,
         taskId: null,
         riskScope: 'GENERAL',
         title: newRisk.title,
@@ -270,12 +277,12 @@ const Risk = () => {
         generatedBy: 'Manual',
         probability: newRisk.probability || newRisk.likelihood,
         impactLevel: newRisk.impactLevel || newRisk.impact,
-        severityLevel: 'Moderate',
         isApproved: true,
         dueDate: newRisk.dueDate + 'T00:00:00Z',
       };
 
       const res = await createRisk(request).unwrap();
+      refetch();
       console.log('Created risk:', res.data);
     } catch (error) {
       console.error('Failed to create risk:', error);
@@ -290,8 +297,42 @@ const Risk = () => {
     setShowSuggestedModal(false);
   };
 
-  const handleApproveSuggestedRisk = (risk: any) => {
-    console.log('Approved suggested risk:', risk);
+  const handleApproveSuggestedRisk = async (risk: any) => {
+    const today = new Date();
+    const isoDate = today.toISOString().split('T')[0] + 'T00:00:00Z';
+
+    try {
+      const request = {
+        projectKey: projectKey,
+        responsibleId: null,
+        createdBy: accountId,
+        taskId: null,
+        riskScope: "PROJECT",
+        title: risk.title,
+        description: risk.description,
+        status: 'OPEN',
+        type: risk.type,
+        generatedBy: 'AI',
+        probability: risk.probability || risk.likelihood,
+        impactLevel: risk.impactLevel || risk.impact,
+        isApproved: true,
+        dueDate: isoDate,
+      };
+
+      console.log("Creating risk with request:", request);
+      const res = await createRisk(request).unwrap();
+      if (risk.mitigationPlan || risk.contingencyPlan) {
+        await createRiskSolution({
+          riskId: res.data.id,
+          mitigationPlan: risk.mitigationPlan,
+          contingencyPlan: risk.contingencyPlan,
+        });
+      }
+      refetch();
+      console.log('Created risk:', res.data);
+    } catch (error) {
+      console.error('Failed to create risk:', error);
+    }
   };
 
   return (
@@ -347,7 +388,7 @@ const Risk = () => {
                     }}
                   >
                     {riskTypes.map((type: any) => (
-                      <option key={type.name} value={type.name}>
+                      <option key={type.id} value={type.name}>
                         {type.name}
                       </option>
                     ))}
@@ -373,7 +414,7 @@ const Risk = () => {
                     <Severity status={risk.severityLevel} />
                   </span>
                 </td>
-                <td style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                {/* <td style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                   {risk.responsiblePicture ? (
                     <img
                       src={risk.responsiblePicture}
@@ -402,6 +443,51 @@ const Risk = () => {
                   <ResponsibleDropdown
                     assignees={assignees}
                     selectedId={risk.responsibleId}
+                    onChange={async (newId) => {
+                      try {
+                        await updateResponsible({ id: risk.id, responsibleId: newId }).unwrap();
+                        refetch();
+                      } catch (error) {
+                        console.error('Failed to update responsible:', error);
+                      }
+                    }}
+                  />
+                </td> */}
+
+                <td style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {risk.responsibleId ? (
+                    risk.responsiblePicture ? (
+                      <img
+                        src={risk.responsiblePicture}
+                        alt='avatar'
+                        className='avatar'
+                        style={{ width: 24, height: 24, borderRadius: '50%' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          backgroundColor: '#4C9AFF',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 10,
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {getInitials(risk.responsibleFullName || risk.responsibleUserName)}
+                      </div>
+                    )
+                  ) : (
+                    <span style={{ fontSize: 13, color: '#888' }}></span>
+                  )}
+
+                  <ResponsibleDropdown
+                    assignees={assignees}
+                    selectedId={risk.responsibleId ?? ''}
                     onChange={async (newId) => {
                       try {
                         await updateResponsible({ id: risk.id, responsibleId: newId }).unwrap();

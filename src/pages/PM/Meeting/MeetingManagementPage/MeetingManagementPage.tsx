@@ -397,9 +397,9 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
         </button>
       </DialogTrigger>
       <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
-        <h3 className="mb-4 text-lg font-semibold">❗ Confirm delete</h3>
+        <h3 className="mb-4 text-lg font-semibold">❗ Confirm Delete</h3>
         <p>
-          Bạn chắc chắn muốn xoá cuộc họp{' '}
+          Are you sure you want to delete the meeting{' '}
           <strong>{selectedMeeting?.meetingTopic}</strong>?
         </p>
         <button
@@ -501,15 +501,8 @@ onOpenChange={(open) => {
     💾 Save Attendance
   </button>
 </DialogContent>
-
-
 </Dialog>
-
-
-
 </div>
-
-
           </div>
            </div>
         ))}

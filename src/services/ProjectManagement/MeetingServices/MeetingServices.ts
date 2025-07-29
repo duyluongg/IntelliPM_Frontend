@@ -201,8 +201,8 @@ results.push({
   end: endDate.toISOString(),
   participants: `${meeting.attendees} người`,
   roomUrl: meeting.meetingUrl,
-  status: current?.status ?? 'Active',     // từ participant
-  meetingStatus: meeting.status,           // ✅ từ bảng meeting
+  status: current?.status ?? 'Active',     
+  meetingStatus: meeting.status,           
 });
 
           }

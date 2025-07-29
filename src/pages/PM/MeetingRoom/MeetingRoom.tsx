@@ -44,31 +44,71 @@ const MeetingRoom: FC = () => {
 }, [accountId]);
 
 
-  useEffect(() => {
-    if (meetingData && Array.isArray(meetingData)) {
-      const mapped: MeetingEvent[] = meetingData
-        .filter((m) => m.meetingStatus !== 'CANCELLED') 
-        .map((m) => {
-          const startDate = new Date(m.start);
-          const endDate = new Date(m.end);
+  // useEffect(() => {
+  //   if (meetingData && Array.isArray(meetingData)) {
+  //     const mapped: MeetingEvent[] = meetingData
+  //       .filter((m) => m.meetingStatus !== 'CANCELLED') 
+  //       .map((m) => {
+  //         const startDate = new Date(m.start);
+  //         const endDate = new Date(m.end);
 
-          return {
-            id: m.id,
-            title: m.title,
-            start: m.start,
-            end: m.end,
-            startTime: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            participants: m.participants,
-            roomUrl: m.roomUrl,
-            status: m.status,
-            meetingStatus: m.meetingStatus, 
-          };
-        });
+  //         return {
+  //           id: m.id,
+  //           title: m.title,
+  //           start: m.start,
+  //           end: m.end,
+  //           startTime: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  //           endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  //           participants: m.participants,
+  //           roomUrl: m.roomUrl,
+  //           status: m.status,
+  //           meetingStatus: m.meetingStatus, 
+  //         };
+  //       });
 
-      setEvents(mapped);
-    }
-  }, [meetingData]);
+  //     setEvents(mapped);
+  //   }
+  // }, [meetingData]);
+useEffect(() => {
+  if (meetingData && Array.isArray(meetingData)) {
+    console.log(meetingData);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // reset time to 00:00
+
+    const mapped: MeetingEvent[] = meetingData
+      .filter((m) => m.meetingStatus !== 'CANCELLED')
+      .filter((m) => {
+        const endDate = new Date(m.end);
+        const meetingDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+
+        // Chỉ ẩn các cuộc họp có status là ACTIVE mà đã kết thúc (ngày họp < hôm nay)
+        const isOutdatedActive = m.meetingStatus === 'ACTIVE' && meetingDay < today;
+
+        return !isOutdatedActive;
+      })
+      .map((m) => {
+        const startDate = new Date(m.start);
+        const endDate = new Date(m.end);
+
+        return {
+          id: m.id,
+          title: m.title,
+          start: m.start,
+          end: m.end,
+          startTime: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          participants: m.participants,
+          roomUrl: m.roomUrl,
+          status: m.status,
+          meetingStatus: m.meetingStatus,
+        };
+      });
+
+    setEvents(mapped);
+  }
+}, [meetingData]);
+
+
 
   const handleEventClick = (info: EventClickArg) => {
     const event = events.find((e) => e.id === info.event.id);
@@ -88,7 +128,7 @@ const MeetingRoom: FC = () => {
 
 
   if (!accountId) {
-    return <div className="text-red-500 text-center mt-6 font-medium">⚠️ Bạn chưa đăng nhập.</div>;
+    return <div className="text-red-500 text-center mt-6 font-medium">⚠️ You are not logged in.</div>;
   }
 
   return (
@@ -100,7 +140,7 @@ const MeetingRoom: FC = () => {
     <span className="loader"></span>
   </div>
 ) : isError ? (
-        <p className="text-center text-red-500">Lỗi khi tải lịch.</p>
+        <p className="text-center text-red-500">Error loading calendar.</p>
       ) : (
         <div className="bg-white p-4 rounded-xl shadow-lg">
           <div className="flex flex-wrap items-center gap-4 mb-4">
@@ -114,12 +154,12 @@ const MeetingRoom: FC = () => {
   </div>
   <div className="flex items-center gap-2">
     <div className="w-4 h-4 rounded bg-blue-500"></div>
-    <span className="text-sm text-gray-700">Active (Upcoming)</span>
+    <span className="text-sm text-gray-700">Upcoming</span>
   </div>
-  <div className="flex items-center gap-2">
+  {/* <div className="flex items-center gap-2">
     <div className="w-4 h-4 rounded bg-gray-300"></div>
     <span className="text-sm text-gray-700">Past</span>
-  </div>
+  </div> */}
 </div>
 
           <FullCalendar

@@ -8,6 +8,7 @@ import {
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
 import { useDeleteMeetingMutation } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 import toast from 'react-hot-toast';
+import { useGetMyMeetingsQuery } from '../../../../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
 
 const StatusBadge = ({ status }: { status: string }) => {
   let color = '';
@@ -105,6 +106,13 @@ const MeetingRescheduleRequestSend = () => {
     }
   };
 
+  const { data: myMeetings } = useGetMyMeetingsQuery();
+  const meetingMap = new Map<number, string>();
+myMeetings?.forEach((meeting) => {
+  meetingMap.set(meeting.id, meeting.meetingTopic);
+});
+
+
   const rawRequests =
     role === 'CLIENT'
       ? clientData?.data || []
@@ -126,20 +134,20 @@ const MeetingRescheduleRequestSend = () => {
     });
 
   if (!accountId) {
-    return <p className="mt-4 text-center font-semibold text-red-600">⚠️ Bạn chưa đăng nhập.</p>;
+    return <p className="mt-4 text-center font-semibold text-red-600">⚠️ You are not logged in.</p>;
   }
   if (loadingAll || loadingClient) {
-    return <p className="mt-4 text-gray-500">⏳ Đang tải dữ liệu…</p>;
+    return <p className="mt-4 text-gray-500">⏳ Loading data…</p>;
   }
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">📋 Danh Sách Yêu Cầu Dời Lịch</h1>
+      <h1 className="text-2xl font-bold mb-4">📋 Reschedule Request List</h1>
 
       <div className="flex flex-col md:flex-row justify-between gap-3 mb-6">
         <input
           type="text"
-          placeholder="🔍 Tìm theo Meeting ID hoặc Lý do..."
+          placeholder="🔍 Search by Meeting ID or Reason..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 border rounded-md px-3 py-2"
@@ -149,10 +157,10 @@ const MeetingRescheduleRequestSend = () => {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="ALL">Tất cả trạng thái</option>
-          <option value="PENDING">Chờ duyệt</option>
-          <option value="APPROVED">Đã duyệt</option>
-          <option value="REJECTED">Từ chối</option>
+          <option value="ALL">ALL</option>
+          <option value="PENDING">PENDING</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
         </select>
       </div>
 
@@ -163,25 +171,25 @@ const MeetingRescheduleRequestSend = () => {
             className="border rounded-xl p-5 shadow hover:shadow-lg transition bg-white"
           >
             <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg font-semibold">Meeting #{req.meetingId}</h2>
+              📌 {meetingMap.get(req.meetingId) ?? `Meeting #${req.meetingId}`}
               <StatusBadge status={req.status} />
             </div>
             <p className="text-gray-600 mb-1">
-              <span className="font-medium">Ngày đề xuất:</span>{' '}
+              <span className="font-medium">Proposed date:</span>{' '}
               {new Date(req.requestedDate).toLocaleString()}
             </p>
             <p className="text-gray-600 mb-1">
-              <span className="font-medium">Lý do:</span> {req.reason}
+              <span className="font-medium">Reason:</span> {req.reason}
             </p>
             {req.pmProposedDate && (
               <p className="text-gray-600">
-                <span className="font-medium">PM đề xuất:</span>{' '}
+                <span className="font-medium">Suggested date:</span>{' '}
                 {new Date(req.pmProposedDate).toLocaleString()}
               </p>
             )}
             {req.pmNote && (
               <p className="text-gray-600">
-                <span className="font-medium">Ghi chú PM:</span> {req.pmNote}
+                <span className="font-medium">PM Note:</span> {req.pmNote}
               </p>
             )}
             <div className="mt-3 flex flex-col gap-2">
@@ -190,7 +198,7 @@ const MeetingRescheduleRequestSend = () => {
                   className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
                   onClick={() => handleDeleteRescheduleRequest(req.id!)}
                 >
-                  🗑️ Huỷ yêu cầu
+                  🗑️ Cancel request
                 </button>
               )}
 
@@ -212,13 +220,13 @@ onChange={(e) =>
                       className="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
                       onClick={() => handleUpdateRequestStatus(req, 'APPROVED')}
                     >
-                      ✅ Duyệt đơn
+                      ✅ APPROVED
                     </button>
                     <button
                       className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
                       onClick={() => handleUpdateRequestStatus(req, 'REJECTED')}
                     >
-                      ❌ Không duyệt
+                      ❌ REJECTED
                     </button>
                   </div>
                 </>

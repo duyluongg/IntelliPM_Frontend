@@ -76,7 +76,10 @@ const ChildWorkItem: React.FC = () => {
   const [selectedReporter, setSelectedReporter] = useState<number | undefined>(
     subtaskDetail?.reporterId
   );
-  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '');
+  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
+    skip: !subtaskDetail?.taskId,
+  });
+
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
 

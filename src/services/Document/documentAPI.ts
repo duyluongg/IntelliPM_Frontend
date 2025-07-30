@@ -30,7 +30,7 @@ export const documentApi = createApi({
         body,
       }),
     }),
-      createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
+    createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
         url: 'documents/create',
         method: 'POST',
@@ -100,22 +100,31 @@ export const documentApi = createApi({
     summarizeAI: builder.query<{ summary: string }, number>({
       query: (id) => `documents/${id}/summary`,
     }),
-    documentStatus: builder.query<DocumentType[], {projectId: number, status: string}>({
-      query: ({projectId, status}) =>  `documents/project/${projectId}/status/${status}`,
+    documentStatus: builder.query<DocumentType[], { projectId: number; status: string }>({
+      query: ({ projectId, status }) => `documents/project/${projectId}/status/${status}`,
     }),
 
-    approveDocument: builder.mutation<DocumentType, { documentId: number; status: string; comment: string }>(
-      {
-        query: ({ documentId, status, comment }) => ({
-          url: `documents/${documentId}/approve`,
-          method: 'POST',
-          body: {
-            status,
-            comment,
-          },
-        }),
-      }
-    ),
+    approveDocument: builder.mutation<
+      DocumentType,
+      { documentId: number; status: string; comment: string }
+    >({
+      query: ({ documentId, status, comment }) => ({
+        url: `documents/${documentId}/approve`,
+        method: 'POST',
+        body: {
+          status,
+          comment,
+        },
+      }),
+    }),
+
+    generateFromTasks: builder.mutation<string, number>({
+      query: (documentId) => ({
+        url: `documents/${documentId}/generate-from-tasks`,
+        method: 'POST',
+      }),
+      transformResponse: (response: { content: string }) => response.content,
+    }),
   }),
 });
 
@@ -131,5 +140,6 @@ export const {
   useAskAIMutation,
   useSummarizeAIQuery,
   useDocumentStatusQuery,
-  useApproveDocumentMutation
+  useApproveDocumentMutation,
+  useGenerateFromTasksMutation,
 } = documentApi;

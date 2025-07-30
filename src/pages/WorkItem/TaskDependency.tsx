@@ -55,7 +55,6 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
 
   const handleSubmit = async () => {
     const payload = dependencies
-      // .filter((dep) => typeof dep.id === 'string') // chỉ giữ lại các id là string
       .filter((dep) => isNaN(Number(dep.id)))
       .map((dep) => ({
         id: dep.key, // Nếu = 0 hoặc không có nghĩa là tạo mới
@@ -65,7 +64,12 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
         linkedTo: dep.id,
         type: dep.type,
       }));
-      console.log('📤 Payload gửi về API:', payload);
+    console.log('📤 Payload gửi về API:', payload);
+
+    if (payload.length === 0) {
+      onClose();
+      return;
+    }
 
     try {
       // const response = await createTaskDependencies(payload).unwrap();

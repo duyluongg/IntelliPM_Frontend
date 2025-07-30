@@ -22,6 +22,7 @@ import {
   useCreateSubtaskCommentMutation,
 } from '../../../services/subtaskCommentApi';
 import { WorkLogModal } from '../../WorkItem/WorkLogModal';
+import TaskDependency from '../../WorkItem/TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../../services/activityLogApi';
 
 interface SubtaskDetail {
@@ -68,6 +69,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
   const [commentContent, setCommentContent] = React.useState('');
   const [createSubtaskComment] = useCreateSubtaskCommentMutation();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [assignedBy, setAssignedBy] = React.useState('');
@@ -722,6 +724,21 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}
+                workItemId={subtaskDetail.id}
+                type='subtask'
+              />
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
                 workItemId={subtaskDetail.id}
                 type='subtask'
               />

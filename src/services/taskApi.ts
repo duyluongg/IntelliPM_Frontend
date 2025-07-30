@@ -103,6 +103,7 @@ export interface TaskWithSubtasksDTO {
   id: string;
   plannedHours: number;
   actualHours: number;
+  remainingHours: number;
   accounts: AccountDTO[];
   subtasks: SubtaskViewDTO[];
 }
@@ -403,6 +404,22 @@ export const taskApi = createApi({
       transformResponse: (response: TaskBackLogResponse) => response.data,
       providesTags: ['Task'],
     }),
+
+    updatePlannedHours: builder.mutation<
+      void,
+      { id: string; plannedHours: number }
+    >({
+      query: ({ id, plannedHours }) => ({
+        url: `task/${id}/planned-hours`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(plannedHours),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
   }),
 });
 
@@ -427,4 +444,5 @@ export const {
   useUpdateTaskReporterMutation,
   useGetTasksBySprintIdQuery,
   useGetTasksBySprintIdAndStatusQuery,
+  useUpdatePlannedHoursMutation,
 } = taskApi;

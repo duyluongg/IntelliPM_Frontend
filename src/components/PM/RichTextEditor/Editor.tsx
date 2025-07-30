@@ -31,6 +31,7 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
+import { useExportDocumentMutation } from '../../../services/Document/documentExportApi';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -44,6 +45,7 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
   const [showSummarizeModal, setShowSummarizeModal] = useState(false);
   const [generateFromTasks, { isLoading: isGenerating }] = useGenerateFromTasksMutation();
   const documentId = useDocumentId();
+  const [exportDocument] = useExportDocumentMutation();
 
   if (!editor) return null;
 
@@ -62,17 +64,21 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
     }
   };
 
-  const exportToPDF = async (elementId: string) => {
+  const exportToPDFAndUpload = async (
+    elementId: string,
+    documentId: number,
+    exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
+  ) => {
     const input = document.getElementById(elementId);
     if (!input) return;
 
     const canvas = await html2canvas(input, {
       scale: 2,
       useCORS: true,
-      backgroundColor: '#ffffff', // đảm bảo nền trắng
+      backgroundColor: '#ffffff',
     });
 
-    const imgData = canvas.toDataURL('image/png');
+    const imgData = canvas.toDataURL('image/jpeg', 0.9);
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth(); // = 210mm
@@ -81,90 +87,118 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
     const imgWidth = pdfWidth;
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    // Nếu chiều cao ảnh > khổ A4 thì scale lại
+    let finalWidth = imgWidth;
+    let finalHeight = imgHeight;
+
+    // 👉 Nếu hình quá cao, scale lại cho vừa A4
     if (imgHeight > pdfHeight) {
       const ratio = pdfHeight / imgHeight;
-      const finalWidth = imgWidth * ratio;
-      const finalHeight = pdfHeight;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
-    } else {
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      finalWidth = imgWidth * ratio;
+      finalHeight = pdfHeight;
     }
 
-    pdf.save('document.pdf');
+    pdf.addImage(imgData, 'JPEG', 0, 0, finalWidth, finalHeight);
+
+    // 👉 Chuyển thành Blob để mở tab
+    const pdfBlob = pdf.output('blob');
+
+    // 👉 Mở trong tab mới
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+
+    // 👉 Upload lên server (Cloudinary)
+    const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
+      type: 'application/pdf',
+    });
+
+    try {
+      const result = await exportDocument({ documentId, file: pdfFile });
+      console.log('🌐 Full result:', result);
+
+      if ('data' in result && result.data?.fileUrl) {
+        console.log('✅ Upload success:', result.data.fileUrl);
+      } else {
+        console.warn('⚠️ Upload succeeded but response is unexpected:', result);
+        alert('Lỗi khi upload file PDF');
+      }
+    } catch (error) {
+      console.error('❌ Upload failed (network or server error):', error);
+      alert('Lỗi khi upload file PDF');
+    }
   };
 
   // Đặt hàm này bên trong component MenuBar của bạn
- const exportTablesToExcel = (htmlContent: string, filename = 'document.xlsx') => {
-  // In ra toàn bộ HTML để kiểm tra
-  console.log('--- Raw HTML Content ---', htmlContent);
+  const exportTablesToExcel = (htmlContent: string, filename = 'document.xlsx') => {
+    // In ra toàn bộ HTML để kiểm tra
+    console.log('--- Raw HTML Content ---', htmlContent);
 
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = htmlContent;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
 
-  const tables = tempDiv.querySelectorAll('table');
-  // BƯỚC QUAN TRỌNG: Kiểm tra xem đã tìm thấy bao nhiêu bảng
-  console.log(`Found ${tables.length} table(s) to process.`); 
+    const tables = tempDiv.querySelectorAll('table');
+    // BƯỚC QUAN TRỌNG: Kiểm tra xem đã tìm thấy bao nhiêu bảng
+    console.log(`Found ${tables.length} table(s) to process.`);
 
-  if (tables.length === 0) {
-    alert('Không tìm thấy bảng nào trong tài liệu để xuất ra Excel.');
-    return;
-  }
+    if (tables.length === 0) {
+      alert('Không tìm thấy bảng nào trong tài liệu để xuất ra Excel.');
+      return;
+    }
 
-  const workbook = XLSX.utils.book_new();
-  let successfulExports = 0;
+    const workbook = XLSX.utils.book_new();
+    let successfulExports = 0;
 
-  tables.forEach((table, index) => {
-    console.log(`Processing table #${index + 1}`);
-    // In ra HTML của từng bảng để kiểm tra cấu trúc
-    console.log(table.outerHTML); 
+    tables.forEach((table, index) => {
+      console.log(`Processing table #${index + 1}`);
+      // In ra HTML của từng bảng để kiểm tra cấu trúc
+      console.log(table.outerHTML);
 
-    try {
-      // Chuyển đổi HTML của bảng thành một worksheet
-      const worksheet = XLSX.utils.table_to_sheet(table);
+      try {
+        // Chuyển đổi HTML của bảng thành một worksheet
+        const worksheet = XLSX.utils.table_to_sheet(table);
 
-      // (Tùy chọn) Tự động điều chỉnh độ rộng cột
-      const colWidths = Array.from(table.querySelectorAll('tr:first-child > *')).map(
-        (cell: Element) => {
-          return { wch: (cell.textContent?.length ?? 10) + 5 };
-        }
+        // (Tùy chọn) Tự động điều chỉnh độ rộng cột
+        const colWidths = Array.from(table.querySelectorAll('tr:first-child > *')).map(
+          (cell: Element) => {
+            return { wch: (cell.textContent?.length ?? 10) + 5 };
+          }
+        );
+        worksheet['!cols'] = colWidths;
+
+        // Thêm worksheet vào workbook với một tên duy nhất
+        XLSX.utils.book_append_sheet(workbook, worksheet, `Bảng ${index + 1}`);
+
+        successfulExports++;
+      } catch (error) {
+        // Nếu có lỗi, log ra và tiếp tục xử lý các bảng tiếp theo
+        console.error(`❌ Error processing table #${index + 1}:`, error);
+        console.error('Problematic table HTML:', table.outerHTML);
+      }
+    });
+
+    // Chỉ tạo file nếu có ít nhất một bảng được xuất thành công
+    if (successfulExports > 0) {
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        type: 'array',
+      });
+
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
+      });
+
+      saveAs(blob, filename);
+
+      if (successfulExports < tables.length) {
+        alert(
+          `Đã xuất thành công ${successfulExports}/${tables.length} bảng. Một số bảng bị lỗi, vui lòng kiểm tra console (F12).`
+        );
+      }
+    } else {
+      alert(
+        'Không thể xuất bảng nào ra Excel do lỗi định dạng. Vui lòng kiểm tra console (F12) để biết chi tiết.'
       );
-      worksheet['!cols'] = colWidths;
-
-      // Thêm worksheet vào workbook với một tên duy nhất
-      XLSX.utils.book_append_sheet(workbook, worksheet, `Bảng ${index + 1}`);
-
-      successfulExports++;
-
-    } catch (error) {
-      // Nếu có lỗi, log ra và tiếp tục xử lý các bảng tiếp theo
-      console.error(`❌ Error processing table #${index + 1}:`, error);
-      console.error('Problematic table HTML:', table.outerHTML);
     }
-  });
-
-  // Chỉ tạo file nếu có ít nhất một bảng được xuất thành công
-  if (successfulExports > 0) {
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: 'xlsx',
-      type: 'array',
-    });
-
-    const blob = new Blob([excelBuffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
-    });
-
-    saveAs(blob, filename);
-
-    if (successfulExports < tables.length) {
-        alert(`Đã xuất thành công ${successfulExports}/${tables.length} bảng. Một số bảng bị lỗi, vui lòng kiểm tra console (F12).`);
-    }
-
-  } else {
-    alert('Không thể xuất bảng nào ra Excel do lỗi định dạng. Vui lòng kiểm tra console (F12) để biết chi tiết.');
-  }
-};
+  };
 
   //   const exportTextToExcel = (html: string) => {
   //   const plainText = html.replace(/<[^>]+>/g, '').trim(); // loại bỏ thẻ HTML
@@ -516,11 +550,10 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
         </div>
         <div>
           <button
-            onClick={() => exportToPDF('pdf-content')}
-            className='px-3 py-2 text-sm font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition-colors'
-            title='Export to Word'
+            onClick={() => exportToPDFAndUpload('pdf-content', documentId, exportDocument)}
+            className='px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors'
           >
-            Export Word
+            Export & Upload PDF
           </button>
 
           <button

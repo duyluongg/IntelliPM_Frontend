@@ -141,10 +141,19 @@ interface TaskItem {
   subtasks: SubtaskItem[];
 }
 
+// interface TaskDependency {
+//   id: number;
+//   taskId: string;
+//   linkedFrom: string;
+//   linkedTo: string;
+//   type: string;
+// }
+
 interface TaskDependency {
   id: number;
-  taskId: string;
+  FromType: string;
   linkedFrom: string;
+  ToType: string;
   linkedTo: string;
   type: string;
 }
@@ -179,6 +188,7 @@ interface SubtaskItem {
   updatedAt: string;
   startDate: string | null;
   endDate: string | null;
+  dependencies: TaskDependency[];
 }
 
 interface SprintItem {
@@ -195,6 +205,7 @@ interface SprintItem {
 
 interface MilestoneItem {
   id: number;
+  key: string;
   projectId: number;
   sprintId: number | null;
   name: string;
@@ -204,6 +215,7 @@ interface MilestoneItem {
   createdAt: string;
   updatedAt: string;
   status: string;
+  dependencies: TaskDependency[];
 }
 
 interface ProjectDetailsFull {
@@ -323,6 +335,18 @@ export interface SendEmailRejectToLeaderRequest {
   reason: string;
 }
 
+export interface ProjectItem {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface GetProjectItemsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectItem[];
+}
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -433,6 +457,14 @@ export const projectApi = createApi({
       }),
       invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
     }),
+
+    getProjectItemsByKey: builder.query<GetProjectItemsResponse, string>({
+      query: (projectKey) => ({
+        url: `project/items?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
+    }),
   }),
 });
 
@@ -449,4 +481,5 @@ export const {
   useSendInvitationsMutation,
   useSendEmailRejectToLeaderMutation,
   useRejectProjectMutation,
+  useGetProjectItemsByKeyQuery,
 } = projectApi;

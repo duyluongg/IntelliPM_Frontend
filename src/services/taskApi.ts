@@ -39,6 +39,7 @@ export interface TaskResponseDTO {
   evaluate: string | null;
   status: string;
   createdBy: number;
+  dependencies: TaskDependency[];
 }
 
 interface TaskDependency {
@@ -81,7 +82,7 @@ export interface UpdateTaskRequestDTO {
   plannedStartDate: string;
   plannedEndDate: string;
   status: string;
-  createdBy: number;
+  createdBy: number | null;
 }
 
 export interface SubtaskViewDTO {

@@ -92,7 +92,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                   }
                 >
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-700" />
+                    <ChevronDown className="w-4 h-4 text--700" />
                   ) : (
                     <ChevronRight className="w-4 h-4 text-gray-700" />
                   )}
@@ -107,7 +107,6 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                 <MoreHorizontal className="w-4 h-4 text-gray-600" />
               </div>
 
-              {/* Progress */}
               <div className="flex h-2 overflow-hidden rounded-full bg-gray-200">
                 <div
                   className="bg-green-500"
@@ -126,7 +125,6 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                 />
               </div>
 
-              {/* Detail */}
               {isExpanded && (
                 <div className="text-sm text-gray-600 space-y-1">
                   <div>

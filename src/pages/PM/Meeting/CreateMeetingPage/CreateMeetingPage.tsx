@@ -10,6 +10,7 @@ import {
 import './CreateMeetingPage.css';
 
 import { useAuth } from '../../../../services/AuthContext';
+import { useShareDocumentViaEmailMutation } from '../../../../services/Document/documentAPI';
 
 const CreateMeetingPage: React.FC = () => {
   const { user } = useAuth();
@@ -24,6 +25,9 @@ const CreateMeetingPage: React.FC = () => {
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
   const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [customMessage, setCustomMessage] = useState('');
+  const [shareDocumentViaEmail] = useShareDocumentViaEmailMutation();
 
   const { data: projectsData, isLoading: loadingProjects } = useGetProjectsByAccountIdQuery(
     accountId!,
@@ -60,22 +64,6 @@ const CreateMeetingPage: React.FC = () => {
     { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
   ];
 
-  const getAvailableTimeSlots = () => {
-    if (meetingDate !== new Date().toISOString().split('T')[0]) {
-      return timeSlots; // nếu không phải hôm nay thì show tất cả slot
-    }
-
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
-
-    return timeSlots.filter((slot) => {
-      const [h, m] = slot.end.split(':').map(Number);
-      const endInMinutes = h * 60 + m;
-      return endInMinutes > currentTime;
-    });
-  };
   const handleCreateMeeting = async () => {
     // console.log("🔍 Bắt đầu handleCreateMeeting");
     setErrorMessage(null);
@@ -137,6 +125,13 @@ const CreateMeetingPage: React.FC = () => {
       }
 
       const response = await mutationToUse(meetingPayload).unwrap();
+      if (uploadedFile) {
+        await shareDocumentViaEmail({
+          userIds: finalParticipantIds,
+          customMessage: customMessage,
+          file: uploadedFile,
+        }).unwrap();
+      }
 
       // alert('✅ Cuộc họp đã được tạo thành công!');
       console.log('📥 Response:', response);
@@ -276,18 +271,41 @@ const CreateMeetingPage: React.FC = () => {
                     setStartTime(start);
                     setEndTime(end);
                   }}
-                  value={startTime && endTime ? `${startTime}|${endTime}` : ''}
+                  defaultValue=''
                 >
                   <option value='' disabled>
                     -- Select Time Slot --
                   </option>
-                  {getAvailableTimeSlots().map((slot) => (
+                  {timeSlots.map((slot) => (
                     <option key={slot.label} value={`${slot.start}|${slot.end}`}>
                       {slot.label}
                     </option>
                   ))}
                 </select>
               </div>
+            </div>
+
+            {/* Upload file */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700'>Upload File</label>
+              <input
+                type='file'
+                accept='.pdf,.doc,.docx'
+                onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+                className='w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400'
+              />
+            </div>
+
+            {/* Custom note */}
+            <div>
+              <label className='block text-sm font-medium text-gray-700'>Custom Message</label>
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                rows={3}
+                className='w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400'
+                placeholder='Nội dung ghi chú gửi kèm email'
+              />
             </div>
 
             {errorMessage && (

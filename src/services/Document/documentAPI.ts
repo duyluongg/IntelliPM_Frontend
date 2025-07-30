@@ -2,6 +2,12 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
 import type { DocumentType } from '../../types/DocumentType';
 
+interface ShareDocumentViaEmailRequest {
+  userIds: number[];
+  customMessage: string;
+  file: File;
+}
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
   baseQuery: fetchBaseQuery({
@@ -125,6 +131,21 @@ export const documentApi = createApi({
       }),
       transformResponse: (response: { content: string }) => response.content,
     }),
+
+    shareDocumentViaEmail: builder.mutation<any, ShareDocumentViaEmailRequest>({
+      query: ({ userIds, customMessage, file }) => {
+        const formData = new FormData();
+        userIds.forEach((id) => formData.append('userIds', id.toString()));
+        formData.append('customMessage', customMessage);
+        formData.append('file', file);
+
+        return {
+          url: 'documents/share-via-email',
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
   }),
 });
 
@@ -142,4 +163,5 @@ export const {
   useDocumentStatusQuery,
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
+  useShareDocumentViaEmailMutation,
 } = documentApi;

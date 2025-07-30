@@ -63,78 +63,77 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
       console.error('Lỗi khi gọi API generate-from-tasks:', err);
     }
   };
-const exportToPDFAndUpload = async (
-  elementId: string,
-  documentId: number,
-  exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
-) => {
-  const input = document.getElementById(elementId);
-  if (!input) return;
+  const exportToPDFAndUpload = async (
+    elementId: string,
+    documentId: number,
+    exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
+  ) => {
+    const input = document.getElementById(elementId);
+    if (!input) return;
 
-  const canvas = await html2canvas(input, {
-    scale: 3,
-    useCORS: true,
-    backgroundColor: '#ffffff',
-  });
+    const canvas = await html2canvas(input, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
 
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
-  const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
-  const canvasWidth = canvas.width;
-  const canvasHeight = canvas.height;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
 
-  const pageHeightPx = (canvasWidth / pdfWidth) * pdfHeight;
-  const totalPages = Math.ceil(canvasHeight / pageHeightPx);
+    const pageHeightPx = (canvasWidth / pdfWidth) * pdfHeight;
+    const totalPages = Math.ceil(canvasHeight / pageHeightPx);
 
-  for (let page = 0; page < totalPages; page++) {
-    const pageCanvas = document.createElement('canvas');
-    pageCanvas.width = canvasWidth;
-    pageCanvas.height = pageHeightPx;
+    for (let page = 0; page < totalPages; page++) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvasWidth;
+      pageCanvas.height = pageHeightPx;
 
-    const pageContext = pageCanvas.getContext('2d')!;
-    pageContext.fillStyle = '#ffffff';
-    pageContext.fillRect(0, 0, canvasWidth, pageHeightPx);
+      const pageContext = pageCanvas.getContext('2d')!;
+      pageContext.fillStyle = '#ffffff';
+      pageContext.fillRect(0, 0, canvasWidth, pageHeightPx);
 
-    pageContext.drawImage(
-      canvas,
-      0,
-      page * pageHeightPx,
-      canvasWidth,
-      pageHeightPx,
-      0,
-      0,
-      canvasWidth,
-      pageHeightPx
-    );
+      pageContext.drawImage(
+        canvas,
+        0,
+        page * pageHeightPx,
+        canvasWidth,
+        pageHeightPx,
+        0,
+        0,
+        canvasWidth,
+        pageHeightPx
+      );
 
-    const imgData = pageCanvas.toDataURL('image/jpeg', 1.0);
-    if (page > 0) pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-  }
+      const imgData = pageCanvas.toDataURL('image/jpeg', 1.0);
+      if (page > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    }
 
-  const pdfBlob = pdf.output('blob');
-  const blobUrl = URL.createObjectURL(pdfBlob);
-  window.open(blobUrl, '_blank');
+    const pdfBlob = pdf.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
 
-  const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
-    type: 'application/pdf',
-  });
+    const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
+      type: 'application/pdf',
+    });
 
-  try {
-    const result = await exportDocument({ documentId, file: pdfFile });
-    if ('data' in result && result.data?.fileUrl) {
-      console.log('✅ Upload success:', result.data.fileUrl);
-    } else {
-      console.warn('⚠️ Unexpected response:', result);
+    try {
+      const result = await exportDocument({ documentId, file: pdfFile });
+      if ('data' in result && result.data?.fileUrl) {
+        console.log('✅ Upload success:', result.data.fileUrl);
+      } else {
+        console.warn('⚠️ Unexpected response:', result);
+        alert('Lỗi khi upload file PDF');
+      }
+    } catch (error) {
+      console.error('❌ Upload failed:', error);
       alert('Lỗi khi upload file PDF');
     }
-  } catch (error) {
-    console.error('❌ Upload failed:', error);
-    alert('Lỗi khi upload file PDF');
-  }
-};
-
+  };
 
   // Đặt hàm này bên trong component MenuBar của bạn
   const exportTablesToExcel = (htmlContent: string, filename = 'document.xlsx') => {
@@ -760,16 +759,26 @@ export default function RichTextEditor({
   // 👇 BƯỚC 2: Luôn cập nhật ref với hàm mới nhất mỗi khi component render lại
   onGanttCallbackRef.current = () => setShowGanttModal(true);
 
-  const handleGanttInsert = (projectKey: string) => {
-    const cleanKey = projectKey.trim();
-    const iframeHTML = `
-  <div class="my-4">
-    <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-  </div>
-  <p><br></p>
-`;
-    editor?.commands.insertContent(iframeHTML);
+  //   const handleGanttInsert = (projectId) => {
+  //     const cleanKey = projectKey.trim();
+  //     const iframeHTML = `
+  //   <div class="my-4">
+  //     <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+  //   </div>
+  //   <p><br></p>
+  // `;
+  //     editor?.commands.insertContent(iframeHTML);
 
+  //     setShowGanttModal(false);
+  //   };
+  const handleGanttInsert = (projectId: number) => {
+    const iframeHTML = `
+    <div class="my-4">
+      <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+    </div>
+    <p><br></p>
+  `;
+    editor?.commands.insertContent(iframeHTML);
     setShowGanttModal(false);
   };
 

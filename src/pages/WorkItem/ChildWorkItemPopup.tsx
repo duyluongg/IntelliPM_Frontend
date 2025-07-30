@@ -511,8 +511,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                             createdBy: accountId,
                           }).unwrap();
                           alert('✅ Comment posted');
+                          console.error('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs()
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

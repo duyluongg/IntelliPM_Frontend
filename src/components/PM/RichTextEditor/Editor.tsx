@@ -63,69 +63,78 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
       console.error('Lỗi khi gọi API generate-from-tasks:', err);
     }
   };
+const exportToPDFAndUpload = async (
+  elementId: string,
+  documentId: number,
+  exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
+) => {
+  const input = document.getElementById(elementId);
+  if (!input) return;
 
-  const exportToPDFAndUpload = async (
-    elementId: string,
-    documentId: number,
-    exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
-  ) => {
-    const input = document.getElementById(elementId);
-    if (!input) return;
+  const canvas = await html2canvas(input, {
+    scale: 3,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+  });
 
-    const canvas = await html2canvas(input, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-    });
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
+  const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+  const canvasWidth = canvas.width;
+  const canvasHeight = canvas.height;
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = pdf.internal.pageSize.getWidth(); // = 210mm
-    const pdfHeight = pdf.internal.pageSize.getHeight(); // = 297mm
+  const pageHeightPx = (canvasWidth / pdfWidth) * pdfHeight;
+  const totalPages = Math.ceil(canvasHeight / pageHeightPx);
 
-    const imgWidth = pdfWidth;
-    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+  for (let page = 0; page < totalPages; page++) {
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvasWidth;
+    pageCanvas.height = pageHeightPx;
 
-    let finalWidth = imgWidth;
-    let finalHeight = imgHeight;
+    const pageContext = pageCanvas.getContext('2d')!;
+    pageContext.fillStyle = '#ffffff';
+    pageContext.fillRect(0, 0, canvasWidth, pageHeightPx);
 
-    // 👉 Nếu hình quá cao, scale lại cho vừa A4
-    if (imgHeight > pdfHeight) {
-      const ratio = pdfHeight / imgHeight;
-      finalWidth = imgWidth * ratio;
-      finalHeight = pdfHeight;
-    }
+    pageContext.drawImage(
+      canvas,
+      0,
+      page * pageHeightPx,
+      canvasWidth,
+      pageHeightPx,
+      0,
+      0,
+      canvasWidth,
+      pageHeightPx
+    );
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, finalWidth, finalHeight);
+    const imgData = pageCanvas.toDataURL('image/jpeg', 1.0);
+    if (page > 0) pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+  }
 
-    // 👉 Chuyển thành Blob để mở tab
-    const pdfBlob = pdf.output('blob');
+  const pdfBlob = pdf.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  window.open(blobUrl, '_blank');
 
-    // 👉 Mở trong tab mới
-    const blobUrl = URL.createObjectURL(pdfBlob);
-    window.open(blobUrl, '_blank');
+  const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
+    type: 'application/pdf',
+  });
 
-    // 👉 Upload lên server (Cloudinary)
-    const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
-      type: 'application/pdf',
-    });
-
-    try {
-      const result = await exportDocument({ documentId, file: pdfFile });
-      console.log('🌐 Full result:', result);
-
-      if ('data' in result && result.data?.fileUrl) {
-        console.log('✅ Upload success:', result.data.fileUrl);
-      } else {
-        console.warn('⚠️ Upload succeeded but response is unexpected:', result);
-        alert('Lỗi khi upload file PDF');
-      }
-    } catch (error) {
-      console.error('❌ Upload failed (network or server error):', error);
+  try {
+    const result = await exportDocument({ documentId, file: pdfFile });
+    if ('data' in result && result.data?.fileUrl) {
+      console.log('✅ Upload success:', result.data.fileUrl);
+    } else {
+      console.warn('⚠️ Unexpected response:', result);
       alert('Lỗi khi upload file PDF');
     }
-  };
+  } catch (error) {
+    console.error('❌ Upload failed:', error);
+    alert('Lỗi khi upload file PDF');
+  }
+};
+
 
   // Đặt hàm này bên trong component MenuBar của bạn
   const exportTablesToExcel = (htmlContent: string, filename = 'document.xlsx') => {

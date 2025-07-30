@@ -83,9 +83,7 @@ const EpicDetail: React.FC = () => {
     skip: !epicIdFromUrl,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
-    skip: !epic?.projectId,
-  });
+  
 
   React.useEffect(() => {
     if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
@@ -120,6 +118,10 @@ const EpicDetail: React.FC = () => {
   }, [tasks]);
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
+    skip: !epic?.projectId,
+  });
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
     skip: !epic?.projectId,
   });
 
@@ -197,14 +199,6 @@ const EpicDetail: React.FC = () => {
       alert("❌ Update failed");
     }
   };
-
-  if (isLoading || !epic) {
-    return (
-      <div className="modal-overlay">
-        <div className="work-item-modal">Đang tải Epic...</div>
-      </div>
-    );
-  }
 
   React.useEffect(() => {
     if (epic) setStatus(epic.status);

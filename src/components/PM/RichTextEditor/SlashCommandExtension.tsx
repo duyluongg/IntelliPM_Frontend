@@ -93,7 +93,7 @@ import { commands } from './SlashCommands/commands';
 import { SlashCommandList } from './SlashCommands/SlashCommandList';
 
 interface SlashCommandExtensionOptions {
-  onGanttCommand: () => void;
+  onGanttCommand: (projectKey: string) => void;
   onBoardCommand: () => void;
 }
 
@@ -111,8 +111,6 @@ export const SlashCommandExtension = Extension.create<SlashCommandExtensionOptio
     const extensionOptions = this.options;
 
     return [
-      // Fix: avoid importing non-existent type SuggestionOptions
-      // and cast Suggestion call as any to bypass TS limitations
       (Suggestion({
         editor: this.editor,
         char: '/',

@@ -39,7 +39,6 @@ export interface TaskResponseDTO {
   evaluate: string | null;
   status: string;
   createdBy: number;
-  dependencies: TaskDependency[];
 }
 
 interface TaskDependency {

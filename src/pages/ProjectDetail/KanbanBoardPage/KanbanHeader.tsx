@@ -5,7 +5,6 @@ import CompleteSprintPopup from '../BacklogPage/CompleteSprintPopup';
 import { useGetTasksBySprintIdQuery } from '../../../services/taskApi';
 import {
   useGetActiveSprintByProjectKeyQuery,
-  type SprintResponseDTO,
 } from '../../../services/sprintApi';
 import { User2 } from 'lucide-react';
 
@@ -42,8 +41,6 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
-
-// Helper function to format ISO date to "MMM d, yyyy" format
 const formatDate = (isoDate: string | null | undefined): string => {
   if (!isoDate) return 'N/A';
   return new Date(isoDate).toLocaleDateString('en-US', {
@@ -128,7 +125,6 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
     setIsCompletePopupOpen(!isCompletePopupOpen);
   };
 
-  // Derive sprint details from sprintData, using planned dates if available
   const sprint = {
     name: sprintData?.name || sprintName || 'Sprint 1',
     startDate: sprintData?.plannedStartDate
@@ -163,11 +159,9 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
           )
         ),
   };
-
-  // Calculate work item counts from fetched tasks
-  const workItem = tasks.length; // Total number of tasks
-  const workItemCompleted = tasks.filter((task) => task.status === 'DONE').length; // Tasks with DONE status
-  const workItemOpen = workItem - workItemCompleted; // All tasks except DONE
+  const workItem = tasks.length;
+  const workItemCompleted = tasks.filter((task) => task.status === 'DONE').length;
+  const workItemOpen = workItem - workItemCompleted; 
 
   if (membersLoading || tasksLoading || sprintLoading) {
     return <div className='p-4 text-center text-gray-500'>Loading...</div>;

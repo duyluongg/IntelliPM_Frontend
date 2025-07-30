@@ -159,6 +159,7 @@ import { riskSolutionApi } from '../services/riskSolutionApi';
 import { riskFileApi } from '../services/riskFileApi';
 import { riskCommentApi } from '../services/riskCommentApi';
 import { notificationsApi } from '../services/Notification/notificationApi';
+import { taskDependencyApi } from '../services/taskDependencyApi';
 
 const persistConfig = {
   key: 'root',
@@ -208,6 +209,7 @@ const rootReducer = combineReducers({
   [notificationsApi.reducerPath]: notificationsApi.reducer,
   [notificationApi.reducerPath]: notificationApi.reducer,
   [recipientNotificationApi.reducerPath]: recipientNotificationApi.reducer,
+  [taskDependencyApi.reducerPath]: taskDependencyApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -263,6 +265,7 @@ export const store = configureStore({
       notificationsApi.middleware,
       notificationApi.middleware,
       recipientNotificationApi.middleware,
+      taskDependencyApi.middleware,
     ),
 });
 

@@ -44,6 +44,7 @@ interface TableRow {
   projectId?: number;
   epicId?: string | null;
   sprintId?: number | null;
+  createdBy?: number; 
 }
 
 interface ProjectMember {
@@ -237,6 +238,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
   const [assignmentsMap, setAssignmentsMap] = useState<Record<string, TaskAssignmentDTO[]>>({});
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [editValue, setEditValue] = useState<string>('');
   const [showMemberDropdown, setShowMemberDropdown] = useState<{
     id: string;
@@ -414,6 +416,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           plannedStartDate: field === 'startDate' ? formattedDate : item.startDate,
           plannedEndDate: field === 'endDate' ? formattedDate : item.endDate,
           status: item.status,
+          createdBy: accountId || 0, 
         };
 
         await updateTask({
@@ -495,6 +498,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           plannedStartDate: item.startDate,
           plannedEndDate: item.endDate,
           status: item.status,
+          createdBy: item.createdBy || 0, // Added createdBy, fallback to 0 if undefined
         };
         await updateTask({
           id: item.id,
@@ -653,6 +657,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       projectId: task.projectId,
       epicId: task.epicId,
       sprintId: task.sprintId,
+      createdBy: task.createdBy, // Store createdBy from TaskResponseDTO
     };
   });
 

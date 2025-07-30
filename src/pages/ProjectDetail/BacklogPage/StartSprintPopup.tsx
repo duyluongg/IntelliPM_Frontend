@@ -1,4 +1,5 @@
 import React, { useEffect, useState, Fragment, useRef } from 'react';
+import { useNavigate } from 'react-router-dom'; 
 import { useGetSprintByIdQuery, useUpdateSprintDetailsMutation, useCheckSprintDatesMutation, useCheckWithinProjectMutation } from '../../../services/sprintApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import dayjs from 'dayjs';
@@ -27,6 +28,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   projectKey,
   workItem,
 }) => {
+  const navigate = useNavigate(); // Initialize useNavigate
   const {
     data: sprint,
     isLoading: isSprintLoading,
@@ -41,8 +43,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   } = useGetProjectDetailsByKeyQuery(projectKey, {
     skip: !isOpen || !projectKey,
   });
-
-
 
   const [updateSprintDetails] = useUpdateSprintDetailsMutation();
   const [checkSprintDates] = useCheckSprintDatesMutation();
@@ -89,10 +89,9 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         setEndTime(newEnd.format('HH:mm'));
       }
       setGoal(sprint.goal || '');
-      isInitialized.current = true; // Đánh dấu đã khởi tạo
+      isInitialized.current = true;
     }
 
-    // Reset khi form đóng
     if (!isOpen) {
       isInitialized.current = false;
       setSprintName('');
@@ -111,7 +110,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     }
   }, [isOpen, sprint]);
 
-  // Update end date and time when duration or start date/time changes
   useEffect(() => {
     if (duration !== 'custom' && startDate && startTime) {
       const weeks = parseInt(duration.split(' ')[0]) || 1;
@@ -125,7 +123,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     }
   }, [duration, startDate, startTime, validWeeks]);
 
-  // Validate start date and determine valid weeks
   useEffect(() => {
     if (!hasChangedStart || !startDate || !startTime || !projectKey || !project) return;
 
@@ -143,12 +140,9 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           setStartDateError(null);
         }
 
-        // Check if startDate is within project duration
         const start = dayjs(`${startDate}T${startTime}`);
         const projectStart = dayjs(project.data.startDate);
         const projectEnd = dayjs(project.data.endDate);
-
-        // Validate project dates
         if (!projectStart.isValid() || !projectEnd.isValid()) {
           setStartDateError('Invalid project dates');
           setValidWeeks([]);
@@ -163,7 +157,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
           return;
         }
 
-        // Check valid weeks (1 to 4)
         const newValidWeeks: number[] = [];
         for (let weeks = 1; weeks <= 4; weeks++) {
           const sprintEnd = start.add(weeks, 'week');
@@ -173,8 +166,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         }
 
         setValidWeeks(newValidWeeks);
-
-        // Set duration to custom if no valid weeks, or adjust if current duration is invalid
         if (newValidWeeks.length === 0) {
           setGeneralError('Sprint duration cannot exceed project end date. Please use custom duration.');
           setDuration('custom');
@@ -191,7 +182,6 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     checkStartDate();
   }, [startDate, startTime, hasChangedStart, projectKey, project, checkSprintDates]);
 
-  // Validate end date when changed (only for custom duration)
   useEffect(() => {
     if (!hasChangedEnd || !endDate || !endTime || duration !== 'custom' || !projectKey) return;
 
@@ -234,37 +224,41 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         return;
       }
 
-      if (startDate && startTime) {
-        const checkDate = dayjs(`${startDate}T${startTime}`).toISOString();
-        const result = await checkSprintDates({ projectKey, checkDate }).unwrap();
-        if (!result.data.isValid) {
-          setStartDateError(result.message);
-          alert(`Invalid start date: ${result.message}`);
-          return;
-        }
-
-        // Additional validation: startDate must be within project duration
-        const start = dayjs(`${startDate}T${startTime}`);
-        const projectStart = dayjs(project.data.startDate);
-        const projectEnd = dayjs(project.data.endDate);
-        if (!projectStart.isValid() || !projectEnd.isValid()) {
-          setStartDateError('Invalid project dates');
-          alert('Invalid project dates');
-          return;
-        }
-        if (start.isBefore(projectStart) || start.isAfter(projectEnd)) {
-          setStartDateError('Start date is not within project duration');
-          alert('Start date is not within project duration');
-          return;
-        }
-      } else {
+      if (!startDate || !startTime) {
         setStartDateError('Please select a valid start date and time.');
         alert('Please select a valid start date and time.');
         return;
       }
 
-      // Validate endDate if duration is custom
-      if (duration === 'custom' && endDate && endTime) {
+      const checkDate = dayjs(`${startDate}T${startTime}`).toISOString();
+      const result = await checkSprintDates({ projectKey, checkDate }).unwrap();
+      if (!result.data.isValid) {
+        setStartDateError(result.message);
+        alert(`Invalid start date: ${result.message}`);
+        return;
+      }
+
+      const start = dayjs(`${startDate}T${startTime}`);
+      const projectStart = dayjs(project.data.startDate);
+      const projectEnd = dayjs(project.data.endDate);
+      if (!projectStart.isValid() || !projectEnd.isValid()) {
+        setStartDateError('Invalid project dates');
+        alert('Invalid project dates');
+        return;
+      }
+      if (start.isBefore(projectStart) || start.isAfter(projectEnd)) {
+        setStartDateError('Start date is not within project duration');
+        alert('Start date is not within project duration');
+        return;
+      }
+
+      if (duration === 'custom' && (!endDate || !endTime)) {
+        setEndDateError('Please select a valid end date and time.');
+        alert('Please select a valid end date and time.');
+        return;
+      }
+
+      if (duration === 'custom') {
         const checkDate = dayjs(`${endDate}T${endTime}`).toISOString();
         const result = await checkWithinProject({ projectKey, checkDate }).unwrap();
         if (!result.isWithin) {
@@ -274,13 +268,11 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         }
       }
 
-      // Prepare dates for API
       const startDateTime = dayjs(`${startDate}T${startTime}`).toISOString();
-      const endDateTime = duration === 'custom' 
-        ? dayjs(`${endDate}T${endTime}`).toISOString() 
+      const endDateTime = duration === 'custom'
+        ? dayjs(`${endDate}T${endTime}`).toISOString()
         : dayjs(`${startDate}T${startTime}`).add(parseInt(duration.split(' ')[0]) || 1, 'week').toISOString();
 
-      // Call updateSprintDetails with status set to ACTIVE
       await updateSprintDetails({
         id: sprintId.toString(),
         projectId: project.data.id,
@@ -295,6 +287,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
 
       onTaskUpdated();
       onClose();
+      navigate(`/project?projectKey=${projectKey}#board`);
     } catch (err: any) {
       setGeneralError(err?.data?.message || 'Failed to update sprint');
       alert(`Failed to update sprint: ${err?.data?.message || 'Unknown error'}`);

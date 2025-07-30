@@ -24,19 +24,201 @@ import type { RootState } from '../../../app/store';
 import { createMentionExtension } from './MentionExtension';
 import ModalEditor from './ModalEditor';
 import { IframeExtension } from './IframeExtension';
+import { useGenerateFromTasksMutation } from '../../../services/Document/documentAPI';
+import { useDocumentId } from '../../context/DocumentContext';
+// import { Document, Packer, Paragraph } from 'docx';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+import { useExportDocumentMutation } from '../../../services/Document/documentExportApi';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
+  onChange: (value: string) => void;
+  value: string;
 };
 
-const MenuBar = ({ editor }: MenuBarProps) => {
+const MenuBar = ({ editor, onChange }: MenuBarProps) => {
   const [showAIOptions, setShowAIOptions] = useState(false);
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [showSummarizeModal, setShowSummarizeModal] = useState(false);
+  const [generateFromTasks, { isLoading: isGenerating }] = useGenerateFromTasksMutation();
+  const documentId = useDocumentId();
+  const [exportDocument] = useExportDocumentMutation();
 
   if (!editor) return null;
 
   const headingLevels: (1 | 2 | 3 | 4 | 5 | 6)[] = [1, 2, 3, 4, 5, 6];
+
+  const handleGenerateFromTasks = async () => {
+    if (!editor || !documentId) return;
+
+    try {
+      const response = await generateFromTasks(documentId).unwrap();
+
+      editor.commands.setContent(response);
+      onChange(response);
+    } catch (err) {
+      console.error('Lỗi khi gọi API generate-from-tasks:', err);
+    }
+  };
+  const exportToPDFAndUpload = async (
+    elementId: string,
+    documentId: number,
+    exportDocument: ReturnType<typeof useExportDocumentMutation>[0]
+  ) => {
+    const input = document.getElementById(elementId);
+    if (!input) return;
+
+    const canvas = await html2canvas(input, {
+      scale: 3,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+    });
+
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    const pageHeightPx = (canvasWidth / pdfWidth) * pdfHeight;
+    const totalPages = Math.ceil(canvasHeight / pageHeightPx);
+
+    for (let page = 0; page < totalPages; page++) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvasWidth;
+      pageCanvas.height = pageHeightPx;
+
+      const pageContext = pageCanvas.getContext('2d')!;
+      pageContext.fillStyle = '#ffffff';
+      pageContext.fillRect(0, 0, canvasWidth, pageHeightPx);
+
+      pageContext.drawImage(
+        canvas,
+        0,
+        page * pageHeightPx,
+        canvasWidth,
+        pageHeightPx,
+        0,
+        0,
+        canvasWidth,
+        pageHeightPx
+      );
+
+      const imgData = pageCanvas.toDataURL('image/jpeg', 1.0);
+      if (page > 0) pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    }
+
+    const pdfBlob = pdf.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    window.open(blobUrl, '_blank');
+
+    const pdfFile = new File([pdfBlob], `document-${documentId}.pdf`, {
+      type: 'application/pdf',
+    });
+
+    try {
+      const result = await exportDocument({ documentId, file: pdfFile });
+      if ('data' in result && result.data?.fileUrl) {
+        console.log('✅ Upload success:', result.data.fileUrl);
+      } else {
+        console.warn('⚠️ Unexpected response:', result);
+        alert('Lỗi khi upload file PDF');
+      }
+    } catch (error) {
+      console.error('❌ Upload failed:', error);
+      alert('Lỗi khi upload file PDF');
+    }
+  };
+
+  // Đặt hàm này bên trong component MenuBar của bạn
+  const exportTablesToExcel = (htmlContent: string, filename = 'document.xlsx') => {
+    // In ra toàn bộ HTML để kiểm tra
+    console.log('--- Raw HTML Content ---', htmlContent);
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+
+    const tables = tempDiv.querySelectorAll('table');
+    // BƯỚC QUAN TRỌNG: Kiểm tra xem đã tìm thấy bao nhiêu bảng
+    console.log(`Found ${tables.length} table(s) to process.`);
+
+    if (tables.length === 0) {
+      alert('Không tìm thấy bảng nào trong tài liệu để xuất ra Excel.');
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    let successfulExports = 0;
+
+    tables.forEach((table, index) => {
+      console.log(`Processing table #${index + 1}`);
+      // In ra HTML của từng bảng để kiểm tra cấu trúc
+      console.log(table.outerHTML);
+
+      try {
+        // Chuyển đổi HTML của bảng thành một worksheet
+        const worksheet = XLSX.utils.table_to_sheet(table);
+
+        // (Tùy chọn) Tự động điều chỉnh độ rộng cột
+        const colWidths = Array.from(table.querySelectorAll('tr:first-child > *')).map(
+          (cell: Element) => {
+            return { wch: (cell.textContent?.length ?? 10) + 5 };
+          }
+        );
+        worksheet['!cols'] = colWidths;
+
+        // Thêm worksheet vào workbook với một tên duy nhất
+        XLSX.utils.book_append_sheet(workbook, worksheet, `Bảng ${index + 1}`);
+
+        successfulExports++;
+      } catch (error) {
+        // Nếu có lỗi, log ra và tiếp tục xử lý các bảng tiếp theo
+        console.error(`❌ Error processing table #${index + 1}:`, error);
+        console.error('Problematic table HTML:', table.outerHTML);
+      }
+    });
+
+    // Chỉ tạo file nếu có ít nhất một bảng được xuất thành công
+    if (successfulExports > 0) {
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: 'xlsx',
+        type: 'array',
+      });
+
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8',
+      });
+
+      saveAs(blob, filename);
+
+      if (successfulExports < tables.length) {
+        alert(
+          `Đã xuất thành công ${successfulExports}/${tables.length} bảng. Một số bảng bị lỗi, vui lòng kiểm tra console (F12).`
+        );
+      }
+    } else {
+      alert(
+        'Không thể xuất bảng nào ra Excel do lỗi định dạng. Vui lòng kiểm tra console (F12) để biết chi tiết.'
+      );
+    }
+  };
+
+  //   const exportTextToExcel = (html: string) => {
+  //   const plainText = html.replace(/<[^>]+>/g, '').trim(); // loại bỏ thẻ HTML
+
+  //   const worksheet = XLSX.utils.aoa_to_sheet([[plainText]]);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, 'Document');
+
+  //   const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  //   const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
+  //   saveAs(data, 'document.xlsx');
+  // };
 
   return (
     <div className='bg-white border border-gray-200 rounded-lg shadow-sm p-3 mb-4'>
@@ -337,6 +519,17 @@ const MenuBar = ({ editor }: MenuBarProps) => {
                     <FileText className='w-4 h-4 text-green-500' />
                     <span>Summarize</span>
                   </button>
+
+                  <button
+                    onClick={() => {
+                      setShowAIOptions(false);
+                      handleGenerateFromTasks();
+                    }}
+                    className='w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 rounded-md transition-colors'
+                  >
+                    <FileText className='w-4 h-4 text-green-500' />
+                    <span>Task Summary</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -362,6 +555,22 @@ const MenuBar = ({ editor }: MenuBarProps) => {
               />
             </div>
           )}
+        </div>
+        <div>
+          <button
+            onClick={() => exportToPDFAndUpload('pdf-content', documentId, exportDocument)}
+            className='px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors'
+          >
+            Export & Upload PDF
+          </button>
+
+          <button
+            onClick={() => exportTablesToExcel(editor.getHTML(), 'tables-export.xlsx')}
+            className='px-3 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors'
+            title='Export Excel'
+          >
+            Export Excel
+          </button>
         </div>
       </div>
     </div>
@@ -550,16 +759,26 @@ export default function RichTextEditor({
   // 👇 BƯỚC 2: Luôn cập nhật ref với hàm mới nhất mỗi khi component render lại
   onGanttCallbackRef.current = () => setShowGanttModal(true);
 
-  const handleGanttInsert = (projectKey: string) => {
-    const cleanKey = projectKey.trim();
-    const iframeHTML = `
-  <div class="my-4">
-    <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-  </div>
-  <p><br></p>
-`;
-    editor?.commands.insertContent(iframeHTML);
+  //   const handleGanttInsert = (projectId) => {
+  //     const cleanKey = projectKey.trim();
+  //     const iframeHTML = `
+  //   <div class="my-4">
+  //     <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+  //   </div>
+  //   <p><br></p>
+  // `;
+  //     editor?.commands.insertContent(iframeHTML);
 
+  //     setShowGanttModal(false);
+  //   };
+  const handleGanttInsert = (projectId: number) => {
+    const iframeHTML = `
+    <div class="my-4">
+      <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+    </div>
+    <p><br></p>
+  `;
+    editor?.commands.insertContent(iframeHTML);
     setShowGanttModal(false);
   };
 
@@ -633,7 +852,9 @@ export default function RichTextEditor({
 
   return (
     <div>
-      <div className='sticky top-0 z-10 bg-white'>{editor && <MenuBar editor={editor} />}</div>
+      <div className='sticky top-0 z-10 bg-white'>
+        {editor && <MenuBar editor={editor} onChange={onChange} value={value} />}
+      </div>
 
       <div className='prose max-w-none'>
         <div className='flex items-center mb-6'>
@@ -668,7 +889,9 @@ export default function RichTextEditor({
           </div>
         </div>
 
-        <EditorContent editor={editor} />
+        <div id='pdf-content' className='p-8 bg-white'>
+          <EditorContent editor={editor} />
+        </div>
 
         {isEmptyContent(value) && (
           <div className='space-y-4'>

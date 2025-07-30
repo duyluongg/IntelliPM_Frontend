@@ -32,6 +32,7 @@ import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
 import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleRequest';
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
 import Gantt from '../pages/PM/Gantt/Gantt';
+import RecentForm from '../pages/PM/YourProject/RecentForm';
 // import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
 
 export const router = createBrowserRouter([
@@ -187,6 +188,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects/form/:type/:id',
         element: <DocWrapper />,
+      },
+      {
+        path: 'projects/form/recent_form',
+        element: <RecentForm />,
       },
     ],
   },

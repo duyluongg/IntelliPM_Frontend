@@ -111,14 +111,12 @@ export const SlashCommandExtension = Extension.create<SlashCommandExtensionOptio
     const extensionOptions = this.options;
 
     return [
-      (Suggestion({
+      Suggestion({
         editor: this.editor,
         char: '/',
         items: ({ query }) =>
           commands
-            .filter((item) =>
-              item.title.toLowerCase().startsWith(query.toLowerCase())
-            )
+            .filter((item) => item.title.toLowerCase().startsWith(query.toLowerCase()))
             .map((item) => ({
               ...item,
               onGanttCommand: extensionOptions.onGanttCommand,
@@ -140,8 +138,9 @@ export const SlashCommandExtension = Extension.create<SlashCommandExtensionOptio
                 editor: props.editor,
               });
 
-              popup = tippy('body', {
-                getReferenceClientRect: props.clientRect,
+              popup = tippy(document.body, {
+                getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
+
                 appendTo: () => document.body,
                 content: component.element,
                 showOnCreate: true,
@@ -153,7 +152,7 @@ export const SlashCommandExtension = Extension.create<SlashCommandExtensionOptio
             onUpdate(props) {
               component.updateProps(props);
               popup[0].setProps({
-                getReferenceClientRect: props.clientRect,
+                getReferenceClientRect: () => props.clientRect?.() ?? new DOMRect(),
               });
             },
             onKeyDown(props) {
@@ -169,7 +168,7 @@ export const SlashCommandExtension = Extension.create<SlashCommandExtensionOptio
             },
           };
         },
-      }) as any),
+      }) as any,
     ];
   },
 });

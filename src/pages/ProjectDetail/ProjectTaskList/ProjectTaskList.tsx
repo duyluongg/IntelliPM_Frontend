@@ -504,7 +504,7 @@ const ProjectTaskList: React.FC = () => {
   const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
   const shouldFetchMapping = !!projectId && !!user?.id;
   const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery(
-    { projectId, userId: user?.id },
+    { projectId: projectId!, userId: user!.id },
     { skip: !shouldFetchMapping }
   );
 

@@ -39,7 +39,7 @@ export default function SimpleEditor({ content, onChange }: Props) {
   extensions: [
     StarterKit.configure({
       // Important: Disable table from StarterKit to avoid conflicts
-      table: false,
+      // table: false,
     }),
     Table.configure({
       resizable: false,

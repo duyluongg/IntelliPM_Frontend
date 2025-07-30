@@ -38,6 +38,16 @@ const MeetingManagementPage: React.FC = () => {
   const [updateParticipantStatus] = useUpdateParticipantStatusMutation();
   const [completeMeeting] = useCompleteMeetingMutation();
 
+  const timeSlots = [
+  { label: '08:00 AM - 10:30 AM', start: '08:00', end: '10:30' },
+  { label: '10:30 AM - 1:00 PM', start: '10:30', end: '13:00' },
+  { label: '1:00 PM - 3:30 PM', start: '13:00', end: '15:30' },
+  { label: '3:30 PM - 6:00 PM', start: '15:30', end: '18:00' },
+  { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
+  { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
+];
+
+
 const {
   data: participants = [],
   refetch: refetchParticipants,
@@ -335,7 +345,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Start time</label>
+        {/* <label className="mb-2 mt-4 block text-sm font-medium">Start time</label>
         <input
           type="time"
           className="w-full rounded border px-3 py-2"
@@ -349,7 +359,31 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           className="w-full rounded border px-3 py-2"
           value={formData.endTime || ''}
           onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-        />
+        /> */}
+<label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
+<select
+  className="w-full rounded border px-3 py-2"
+  value={`${formData.startTime}|${formData.endTime}`}
+  onChange={(e) => {
+    const [start, end] = e.target.value.split('|');
+    setFormData({ ...formData, startTime: start, endTime: end });
+  }}
+>
+  {timeSlots.map((slot) => {
+    const isSelected =
+      slot.start === formData.startTime && slot.end === formData.endTime;
+
+    return (
+      <option
+        key={slot.label}
+        value={`${slot.start}|${slot.end}`}
+        disabled={isSelected}
+      >
+        {slot.label} {isSelected ? '(Current)' : ''}
+      </option>
+    );
+  })}
+</select>
 
         <button
           className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"

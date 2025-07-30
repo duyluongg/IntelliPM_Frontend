@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
-import { useUpdateSubtaskStatusMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
+import { useUpdateSubtaskStatusMutation, useUpdateSubtaskMutation, useGetSubtaskByIdQuery  } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
@@ -105,22 +105,17 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id!,
   });
 
-  const fetchSubtask = async () => {
-    try {
-      const res = await fetch(`https://localhost:7128/api/subtask/${item.key}`);
-      const json = await res.json();
-      if (json.isSuccess && json.data) {
-        setSubtaskDetail(json.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch subtask', err);
-    }
-  };
+  const {
+  data: fetchedSubtask,
+  isLoading: isSubtaskLoading,
+  refetch: refetchSubtask,
+} = useGetSubtaskByIdQuery(item.key, { skip: !item.key });
 
   useEffect(() => {
-    fetchSubtask();
-  }, [item.key]);
-
+  if (fetchedSubtask) {
+    setSubtaskDetail(fetchedSubtask);
+  }
+}, [fetchedSubtask]);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -156,7 +151,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       }).unwrap();
 
       console.log("✅ Subtask updated");
-      await fetchSubtask();
+      await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
       console.error("❌ Failed to update subtask", err);
@@ -573,7 +568,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           createdBy: accountId,
                         }).unwrap();
                         alert('✅ Updated subtask assignee');
-                        await fetchSubtask();
+                        await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update subtask');
@@ -665,7 +660,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           createdBy: accountId,
                         }).unwrap();
                         alert('✅ Updated subtask reporter');
-                        await fetchSubtask();
+                        await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update reporter');

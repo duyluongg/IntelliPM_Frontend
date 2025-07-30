@@ -162,7 +162,6 @@ myMeetings.forEach((meeting) => {
 
   const filteredFeedbacks = feedbacks
   .filter((f) => {
-    // 🎯 Lọc theo Today nếu được chọn
     if (filterOption === 'Today') {
       const today = new Date().toISOString().slice(0, 10);
       return f.createdAt.slice(0, 10) === today;
@@ -170,15 +169,18 @@ myMeetings.forEach((meeting) => {
     return true;
   })
   .filter((f) => {
-    // 🔍 Lọc theo từ khóa tìm kiếm (tiêu đề hoặc nội dung)
     const topic = meetingIdToTopicMap.get(f.meetingTranscriptId) || '';
     return (
       topic.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      f.summaryText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      f.transcriptText.toLowerCase().includes(searchTerm.toLowerCase())
+      (f.summaryText || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (f.transcriptText || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   })
-  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  .sort((a, b) => {
+    const dateA = a.createdAt === '0001-01-01T00:00:00' ? 0 : new Date(a.createdAt).getTime();
+    const dateB = b.createdAt === '0001-01-01T00:00:00' ? 0 : new Date(b.createdAt).getTime();
+    return dateB - dateA;
+  });
 
   return (
     <div className="mx-auto max-w-6xl p-6">

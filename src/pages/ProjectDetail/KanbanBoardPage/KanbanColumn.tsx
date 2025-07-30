@@ -45,7 +45,7 @@ const KanbanColumn = forwardRef<
   const isToDoColumn = status.toLowerCase() === 'to do';
   const isDoneColumn = status.toLowerCase() === 'done';
   const isEmpty = !tasks || tasks.length === 0;
-
+  const isFromSprintId = sprint.id === null;
   return (
     <div
       ref={dropRef}
@@ -73,7 +73,7 @@ const KanbanColumn = forwardRef<
         </div>
       </div>
 
-      {isToDoColumn && isEmpty ? (
+      {isToDoColumn && isEmpty && isFromSprintId ? (
         <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-2 space-y-4'>
           <img
             src='https://res.cloudinary.com/didnsp4p0/image/upload/v1753332373/agile.52407441_vr4hl4.svg'

@@ -44,8 +44,9 @@ export interface TaskResponseDTO {
 
 interface TaskDependency {
   id: number;
-  taskId: string;
+  FromType: string;
   linkedFrom: string;
+  ToType: string;
   linkedTo: string;
   type: string;
 }

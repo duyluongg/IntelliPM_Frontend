@@ -180,6 +180,14 @@ export const router = createBrowserRouter([
         element: <ChildWorkItem />,
       },
       {
+        path: 'child-work',
+        element: <ChildWorkItem />,
+      },
+      {
+        path: 'epic',
+        element: <EpicDetail />,
+      },
+      {
         path: 'epic/:epicId',
         element: <EpicDetail />,
       },

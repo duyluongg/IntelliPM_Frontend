@@ -6,6 +6,7 @@ import {
 } from '../services/recipientNotificationApi';
 import { useGetAllNotificationsQuery } from '../services/notificationApi';
 import { connection } from '../services/SignalR/signalRConnection';
+import { useNavigate } from 'react-router-dom';
 
 interface NotificationBellProps {
   accountId: number;
@@ -14,21 +15,33 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
+  const navigate = useNavigate();
   const { data: recipientNotis, refetch } = useGetRecipientNotificationsByAccountIdQuery(accountId);
   const { data: allNotis, refetch: refetchNotis } = useGetAllNotificationsQuery();
   const [markAsRead] = useMarkAsReadMutation();
-
   const unreadCount = recipientNotis?.filter((n) => !n.isRead).length || 0;
-
   const toggleDropdown = () => setIsOpen((prev) => !prev);
-
   const handleMarkAsRead = async (notificationId: number) => {
     await markAsRead({ accountId, notificationId });
     refetch();
   };
 
-  
+  const handleNotificationClick = async (recipientId: number, message: string) => {
+    await handleMarkAsRead(recipientId);
+
+    const taskMatch = message.match(/task (\w+-\d+)/i);
+    const subtaskMatch = message.match(/subtask (\w+-\d+)/i);
+    const epicMatch = message.match(/epic (\w+-\d+)/i);
+
+    if (subtaskMatch?.[1]) {
+      navigate(`/project/child-work/${subtaskMatch[1]}`);
+    } else if (epicMatch?.[1]) {
+      navigate(`/project/epic/${epicMatch[1]}`);
+    } else if (taskMatch?.[1]) {
+      navigate(`/project/work-item-detail?taskId=${taskMatch[1]}`);
+    }
+  };
+
   useEffect(() => {
     if (!accountId) return;
 
@@ -97,10 +110,12 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
               return (
                 <div
                   key={recipient.notificationId}
-                  onClick={() => handleMarkAsRead(recipient.notificationId)}
-                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 transition duration-200 ${
-                    isUnread ? 'bg-gray-100 hover:bg-gray-200' : 'hover:bg-gray-50'
-                  }`}
+                  onClick={async () => {
+                    await handleMarkAsRead(recipient.notificationId);
+                    handleNotificationClick(recipient.notificationId, notification?.message ?? '');
+                  }}
+                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 transition duration-200 ${isUnread ? 'bg-gray-100 hover:bg-gray-200' : 'hover:bg-gray-50'
+                    }`}
                 >
                   <div className={`text-sm ${isUnread ? 'font-semibold text-gray-800' : 'text-gray-700'}`}>
                     {notification?.createdByName}:

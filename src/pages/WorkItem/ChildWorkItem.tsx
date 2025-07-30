@@ -4,6 +4,7 @@ import './ChildWorkItem.css';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
+  useGetSubtaskByIdQuery
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
@@ -76,7 +77,10 @@ const ChildWorkItem: React.FC = () => {
   const [selectedReporter, setSelectedReporter] = useState<number | undefined>(
     subtaskDetail?.reporterId
   );
-  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '');
+  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
+    skip: !subtaskDetail?.taskId,
+  });
+
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
 
@@ -105,21 +109,17 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.id,
   });
 
-  const fetchSubtask = async () => {
-    try {
-      const res = await fetch(`https://localhost:7128/api/subtask/${subtaskId}`);
-      const json = await res.json();
-      if (json.isSuccess && json.data) {
-        setSubtaskDetail(json.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch subtask', err);
-    }
-  };
+  const {
+    data: fetchedSubtask,
+    isLoading: isSubtaskLoading,
+    refetch: refetchSubtask,
+  } = useGetSubtaskByIdQuery(subtaskId ?? '', { skip: !subtaskId });
 
   useEffect(() => {
-    fetchSubtask();
-  }, [subtaskId]);
+    if (fetchedSubtask) {
+      setSubtaskDetail(fetchedSubtask);
+    }
+  }, [fetchedSubtask]);
 
   const {
     data: activityLogs = [],
@@ -164,7 +164,8 @@ const ChildWorkItem: React.FC = () => {
 
       alert('✅ Subtask updated');
       console.log('✅ Subtask updated');
-      await fetchSubtask();
+      await refetchSubtask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask', err);
       alert('❌ Update failed');
@@ -571,7 +572,8 @@ const ChildWorkItem: React.FC = () => {
                           createdBy: accountId,
                         }).unwrap();
                         alert('✅ Updated subtask assignee');
-                        await fetchSubtask();
+                        await refetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update subtask');
                         console.error(err);
@@ -663,7 +665,8 @@ const ChildWorkItem: React.FC = () => {
                           createdBy: accountId,
                         }).unwrap();
                         alert('✅ Updated subtask reporter');
-                        await fetchSubtask();
+                        await refetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update reporter');
                         console.error(err);

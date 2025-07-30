@@ -26,6 +26,7 @@ import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
 import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
+import ProjectSummary from '../pages/ProjectDetail/ProjectSummary/ProjectSummary';
 // import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
 import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
@@ -33,7 +34,8 @@ import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleR
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
 import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
-// import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
+import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
+
 
 export const router = createBrowserRouter([
   {
@@ -147,6 +149,15 @@ export const router = createBrowserRouter([
         path: `:projectKey/overviewpm`,
         element: <ProjectOverviewPM />,
       },
+      {
+        path: 'invitation',
+        element: <InviteAccept />,
+      },
+      {
+        path: `:projectKey/summary`,
+        element: <ProjectSummary />,
+      },
+
       {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,

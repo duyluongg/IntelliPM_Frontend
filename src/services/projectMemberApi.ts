@@ -120,7 +120,7 @@ export const projectMemberApi = createApi({
       query: (projectId) => `project/${projectId}/projectmember`,
       transformResponse: (response: any) => {
         if (response?.isSuccess && Array.isArray(response.data)) {
-          return response.data; 
+          return response.data;
         }
         return [];
       },
@@ -130,6 +130,15 @@ export const projectMemberApi = createApi({
       query: (projectId) => ({
         url: `project/${projectId}/projectmember/with-positions`,
         method: 'GET',
+      }),
+    }),
+    updateProjectMemberStatus: builder.mutation<
+      ApiResponse<ProjectMemberResponse>,
+      { projectId: number; memberId: number; status: string }
+    >({
+      query: ({ projectId, memberId, status }) => ({
+        url: `project/${projectId}/projectmember/${memberId}/status/${status}`,
+        method: 'PATCH',
       }),
     }),
   }),
@@ -142,4 +151,6 @@ export const {
   useGetProjectMembersQuery,
   useGetProjectMembersNoStatusQuery,
   useGetProjectMembersWithPositionsQuery,
+  useUpdateProjectMemberStatusMutation,
+
 } = projectMemberApi;

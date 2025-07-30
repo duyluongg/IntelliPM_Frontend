@@ -31,8 +31,9 @@ import DocWrapper from '../pages/PM/YourProject/DocWrapper';
 import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
 import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleRequest';
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
+import Gantt from '../pages/PM/Gantt/Gantt';
+import RecentForm from '../pages/PM/YourProject/RecentForm';
 // import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
-
 
 export const router = createBrowserRouter([
   {
@@ -85,12 +86,12 @@ export const router = createBrowserRouter([
         path: 'meeting',
         element: <MeetingCore />,
       },
-            {
+      {
         path: 'meeting-reschedule-request-send',
         element: <MeetingRescheduleRequestSend />,
       },
 
-            {
+      {
         path: 'meeting-reschedule-request',
         element: <MeetingRescheduleRequest />,
       },
@@ -180,7 +181,16 @@ export const router = createBrowserRouter([
         path: 'projects/form/:type/:id',
         element: <DocWrapper />,
       },
+      {
+        path: 'projects/form/recent_form',
+        element: <RecentForm />,
+      },
     ],
+  },
+
+  {
+    path: '/gantt-view/:projectKey',
+    element: <Gantt />,
   },
 
   {

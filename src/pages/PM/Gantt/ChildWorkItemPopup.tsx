@@ -1,28 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import './ChildWorkItem.css';
+import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './../../WorkItem/ChildWorkItemPopup.css';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
-} from '../../services/subtaskApi';
-import { useGetTaskByIdQuery } from '../../services/taskApi';
-import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
+} from '../../../services/subtaskApi';
+import { useGetTaskByIdQuery } from '../../../services/taskApi';
+import { useGetProjectMembersQuery } from '../../../services/projectMemberApi';
+import { useGetWorkItemLabelsBySubtaskQuery } from '../../../services/workItemLabelApi';
 import {
   useDeleteSubtaskFileMutation,
   useGetSubtaskFilesBySubtaskIdQuery,
   useUploadSubtaskFileMutation,
-} from '../../services/subtaskFileApi';
-import deleteIcon from '../../assets/delete.png';
-import accountIcon from '../../assets/account.png';
+} from '../../../services/subtaskFileApi';
+import deleteIcon from '../../../assets/delete.png';
+import accountIcon from '../../../assets/account.png';
 import {
   useGetSubtaskCommentsBySubtaskIdQuery,
   useDeleteSubtaskCommentMutation,
   useUpdateSubtaskCommentMutation,
   useCreateSubtaskCommentMutation,
-} from '../../services/subtaskCommentApi';
-import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
-import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
-import { WorkLogModal } from './WorkLogModal';
+} from '../../../services/subtaskCommentApi';
+import { WorkLogModal } from '../../WorkItem/WorkLogModal';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../../services/activityLogApi';
 
 interface SubtaskDetail {
   id: string;
@@ -36,24 +36,38 @@ interface SubtaskDetail {
   startDate: string;
   endDate: string;
   reporterId: number;
+  reporterName: string;
 }
 
-const ChildWorkItem: React.FC = () => {
-  const { key: subtaskId } = useParams();
-  const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
-  const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
+interface ChildWorkItemPopupProps {
+  //   item: {
+  //     key: string;
+  //     // summary: string;
+  //     // assignee: string;
+  //     // parent: string;
+  //     // status: string;
+  //   };
+  subtaskId: string;
+  taskId: string;
+  onClose: () => void;
+}
+
+const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, taskId, onClose }) => {
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
+  const [subtaskDetail, setSubtaskDetail] = React.useState<SubtaskDetail | null>(null);
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
-  const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
+  const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
   const [deleteSubtaskComment] = useDeleteSubtaskCommentMutation();
   const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
   const [commentContent, setCommentContent] = React.useState('');
   const [createSubtaskComment] = useCreateSubtaskCommentMutation();
+  const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [assignedBy, setAssignedBy] = React.useState('');
@@ -68,7 +82,6 @@ const ChildWorkItem: React.FC = () => {
   const [newEndDate, setNewEndDate] = useState<string>();
   const [newReporterId, setNewReporterId] = useState<number>();
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
-  const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
@@ -105,6 +118,14 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.id,
   });
 
+  const {
+    data: activityLogs = [],
+    isLoading: isActivityLogsLoading,
+    refetch: refetchActivityLogs,
+  } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
+  });
+
   const fetchSubtask = async () => {
     try {
       const res = await fetch(`https://localhost:7128/api/subtask/${subtaskId}`);
@@ -120,14 +141,6 @@ const ChildWorkItem: React.FC = () => {
   useEffect(() => {
     fetchSubtask();
   }, [subtaskId]);
-
-  const {
-    data: activityLogs = [],
-    isLoading: isActivityLogsLoading,
-    refetch: refetchActivityLogs,
-  } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
-    skip: !subtaskDetail?.id!,
-  });
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -146,7 +159,7 @@ const ChildWorkItem: React.FC = () => {
       newReporterId === undefined &&
       newAssignedBy === undefined
     ) {
-      return; // Không có gì thay đổi
+      return;
     }
 
     try {
@@ -159,12 +172,12 @@ const ChildWorkItem: React.FC = () => {
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
         reporterId: newReporterId ?? subtaskDetail.reporterId,
         assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
-        createdBy: accountId, // giữ nguyên
+        createdBy: accountId,
       }).unwrap();
 
-      alert('✅ Subtask updated');
       console.log('✅ Subtask updated');
       await fetchSubtask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask', err);
       alert('❌ Update failed');
@@ -185,6 +198,7 @@ const ChildWorkItem: React.FC = () => {
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
       refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Upload failed:', error);
       alert('❌ Upload failed!');
@@ -212,10 +226,6 @@ const ChildWorkItem: React.FC = () => {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(subtaskId ?? '', {
-    skip: !subtaskId,
-  });
-
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     if (!subtaskDetail) return;
@@ -229,6 +239,7 @@ const ChildWorkItem: React.FC = () => {
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
     }
@@ -238,17 +249,35 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.taskId,
   });
 
-  if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
+  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(subtaskId, {
+    skip: !subtaskId,
+  });
+
+  if (!subtaskDetail)
+    return (
+      <div className='modal-overlay'>
+        <div className='child-work-item-popup-container'>Loading...</div>
+      </div>
+    );
 
   return (
-    <div className='child-work-item-page'>
-      <div className='child-work-item-container'>
-        <div className='child-header'>
+    <div className='modal-overlay' onClick={onClose}>
+      <div className='child-work-item-popup-container' onClick={(e) => e.stopPropagation()}>
+        <div className='child-popup-header'>
           <div className='breadcrumb'>
             Projects / <span>{parentTask?.projectName || '...'}</span> /{' '}
             <span>{subtaskDetail.taskId}</span> /{' '}
-            <span className='child-key'>{subtaskDetail.id}</span>
+            <span
+              className='child-popup-key'
+              style={{ cursor: 'pointer', textDecoration: 'underline' }}
+              onClick={() => navigate(`/project/child-work/${subtaskDetail.id}`)}
+            >
+              {subtaskDetail.id}
+            </span>
           </div>
+          <button className='btn-close' onClick={onClose}>
+            ✖
+          </button>
         </div>
 
         <input
@@ -262,9 +291,9 @@ const ChildWorkItem: React.FC = () => {
           }}
         />
 
-        <div className='child-content'>
-          <div className='child-main'>
-            <div className='child-header-row'>
+        <div className='child-popup-content'>
+          <div className='child-popup-main'>
+            <div className='child-popup-header-row'>
               <div className='add-menu-wrapper'>
                 <button
                   className='btn-add'
@@ -297,7 +326,6 @@ const ChildWorkItem: React.FC = () => {
                 onBlur={handleUpdateSubtask}
               />
             </div>
-
             {attachments.length > 0 && (
               <div className='attachments-section'>
                 <label>
@@ -378,7 +406,6 @@ const ChildWorkItem: React.FC = () => {
                 </button>
               </div>
 
-              {/* Tab Content */}
               {activeTab === 'HISTORY' && (
                 <div className='history-list'>
                   {isActivityLogsLoading ? (
@@ -515,7 +542,6 @@ const ChildWorkItem: React.FC = () => {
                           alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
-                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
@@ -572,6 +598,7 @@ const ChildWorkItem: React.FC = () => {
                         }).unwrap();
                         alert('✅ Updated subtask assignee');
                         await fetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update subtask');
                         console.error(err);
@@ -664,6 +691,7 @@ const ChildWorkItem: React.FC = () => {
                         }).unwrap();
                         alert('✅ Updated subtask reporter');
                         await fetchSubtask();
+                        await refetchActivityLogs();
                       } catch (err) {
                         alert('❌ Failed to update reporter');
                         console.error(err);
@@ -705,4 +733,4 @@ const ChildWorkItem: React.FC = () => {
   );
 };
 
-export default ChildWorkItem;
+export default ChildWorkItemPopup;

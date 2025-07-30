@@ -317,7 +317,7 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
-const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
       viewBox='0 0 16 16'
@@ -339,7 +339,7 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
       ?.map((member) => ({
         id: member.id,
         name: member.fullName || member.accountName || 'Unknown',
-        avatar: member.picture || 'https://via.placeholder.com/32', 
+        avatar: member.picture || 'https://via.placeholder.com/32',
       })) || [];
 
   const toggleMembers = () => {
@@ -502,9 +502,10 @@ const ProjectTaskList: React.FC = () => {
   const [createDocument] = useCreateDocumentMutation();
   const { user } = useAuth();
   const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
+  const shouldFetchMapping = !!projectId && !!user?.id;
   const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery(
-    { projectId: projectId!, userId: user?.id! },
-    { skip: !projectId || !user?.id }
+    { projectId: projectId!, userId: user!.id },
+    { skip: !shouldFetchMapping }
   );
 
   const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
@@ -897,7 +898,7 @@ const ProjectTaskList: React.FC = () => {
     }
   };
 
-const tasks: TaskItem[] =  
+  const tasks: TaskItem[] =
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
@@ -953,7 +954,7 @@ const tasks: TaskItem[] =
             reporterId: item.reporterId || null,
             projectId: item.projectId || projectId,
             epicId: item.taskId || null,
-             description: '',
+            description: '',
           };
         });
   if (isLoading || isMembersLoading || isLoadingMapping) {

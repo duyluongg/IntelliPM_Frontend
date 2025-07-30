@@ -40,6 +40,7 @@ export interface GetRisksByProjectKeyResponse {
 export interface CreateRiskRequest {
   projectKey: string;
   responsibleId: number | null;
+  createdBy: number;
   taskId?: string | null;
   riskScope: string;
   title: string;
@@ -49,7 +50,6 @@ export interface CreateRiskRequest {
   generatedBy?: string;
   probability?: string;
   impactLevel?: string;
-  severityLevel?: string;
   isApproved?: boolean;
   dueDate?: string;
 }
@@ -73,7 +73,7 @@ export interface UpdateRiskTypeRequest {
 
 export interface UpdateRiskResponsibleRequest {
   id: number;
-  responsibleId: number;
+  responsibleId: number | null;
 }
 
 export interface UpdateRiskDueDateRequest {
@@ -106,6 +106,26 @@ export interface UpdateRiskResponse {
   code: number;
   message: string;
   data: RiskItem;
+}
+
+export interface AiSuggestedRisk {
+  projectId: number;
+  taskId: string | null;
+  riskScope: string;
+  title: string;
+  description: string;
+  type: string;
+  probability: string;
+  impactLevel: string;
+  mitigationPlan: string;
+  contingencyPlan: string;
+}
+
+export interface GetAiSuggestedRisksResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: AiSuggestedRisk[];
 }
 
 export const riskApi = createApi({
@@ -197,6 +217,13 @@ export const riskApi = createApi({
         body: JSON.stringify(probability),
       }),
     }),
+
+    getAiSuggestedRisks: builder.query<GetAiSuggestedRisksResponse, string>({
+      query: (projectKey) => ({
+        url: `risk/ai-suggestion?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -211,4 +238,6 @@ export const {
   useUpdateRiskDescriptionMutation,
   useUpdateRiskImpactLevelMutation,
   useUpdateRiskProbabilityMutation,
+  useGetAiSuggestedRisksQuery,
+  useLazyGetAiSuggestedRisksQuery,
 } = riskApi;

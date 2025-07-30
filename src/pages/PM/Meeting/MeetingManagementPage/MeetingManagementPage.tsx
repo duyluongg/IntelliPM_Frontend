@@ -26,6 +26,8 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
+  
+
 
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
@@ -35,6 +37,16 @@ const MeetingManagementPage: React.FC = () => {
   const [updateMeeting] = useUpdateMeetingMutation();
   const [updateParticipantStatus] = useUpdateParticipantStatusMutation();
   const [completeMeeting] = useCompleteMeetingMutation();
+
+  const timeSlots = [
+  { label: '08:00 AM - 10:30 AM', start: '08:00', end: '10:30' },
+  { label: '10:30 AM - 1:00 PM', start: '10:30', end: '13:00' },
+  { label: '1:00 PM - 3:30 PM', start: '13:00', end: '15:30' },
+  { label: '3:30 PM - 6:00 PM', start: '15:30', end: '18:00' },
+  { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
+  { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
+];
+
 
 const {
   data: participants = [],
@@ -61,6 +73,33 @@ useEffect(() => {
     setAttendanceDraft(initialDraft);
   }
 }, [attendanceOpen, participants]);
+
+useEffect(() => {
+  if (!meetings || meetings.length === 0) return;
+
+  const now = new Date();
+
+  meetings.forEach(async (meeting) => {
+    // Điều kiện: chưa điểm danh (ACTIVE) + quá 24h kể từ meetingDate
+    if (meeting.status === 'ACTIVE') {
+      const meetingDate = new Date(meeting.meetingDate);
+      const deadline = new Date(meetingDate);
+      deadline.setDate(meetingDate.getDate() + 1); // +24h
+
+      if (now > deadline) {
+        try {
+          await deleteMeeting(meeting.id); // dùng API cũ
+          toast.success(`🗑️ Cuộc họp "${meeting.meetingTopic}" đã bị xoá vì quá hạn`);
+          await refetch(); // cập nhật lại danh sách
+        } catch (error) {
+          console.error(`❌ Lỗi khi xoá cuộc họp ${meeting.id}:`, error);
+        }
+      }
+    }
+  });
+}, [meetings]);
+
+
 
 
   // … các hàm handle* giữ nguyên …
@@ -230,15 +269,15 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
 )}
 <p className="text-sm text-gray-600">
   📅 {new Date(m.startTime).toLocaleDateString('vi-VN')} — 🕒{' '}
-  {new Date(m.startTime).toLocaleTimeString('vi-VN', {
+  {new Date(m.startTime).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   })} -{' '}
-  {new Date(m.endTime).toLocaleTimeString('vi-VN', {
+  {new Date(m.endTime).toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
+    hour12: true,
   })}
 </p>
 
@@ -257,6 +296,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
               </a>
             </p>
 <div className="mt-3 flex gap-2">
+    {!(attendanceOpen && selectedMeeting?.id === m.id) && (
+    <>
   {/* Sửa */}
   {m.status !== 'COMPLETED' && (
     <Dialog open={editOpen && selectedMeeting?.id === m.id} onOpenChange={setEditOpen}>
@@ -304,7 +345,7 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
         />
 
-        <label className="mb-2 mt-4 block text-sm font-medium">Start time</label>
+        {/* <label className="mb-2 mt-4 block text-sm font-medium">Start time</label>
         <input
           type="time"
           className="w-full rounded border px-3 py-2"
@@ -318,7 +359,31 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
           className="w-full rounded border px-3 py-2"
           value={formData.endTime || ''}
           onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-        />
+        /> */}
+<label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
+<select
+  className="w-full rounded border px-3 py-2"
+  value={`${formData.startTime}|${formData.endTime}`}
+  onChange={(e) => {
+    const [start, end] = e.target.value.split('|');
+    setFormData({ ...formData, startTime: start, endTime: end });
+  }}
+>
+  {timeSlots.map((slot) => {
+    const isSelected =
+      slot.start === formData.startTime && slot.end === formData.endTime;
+
+    return (
+      <option
+        key={slot.label}
+        value={`${slot.start}|${slot.end}`}
+        disabled={isSelected}
+      >
+        {slot.label} {isSelected ? '(Current)' : ''}
+      </option>
+    );
+  })}
+</select>
 
         <button
           className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -366,9 +431,9 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
         </button>
       </DialogTrigger>
       <DialogContent className="rounded-lg bg-white p-6 shadow-lg">
-        <h3 className="mb-4 text-lg font-semibold">❗ Confirm delete</h3>
+        <h3 className="mb-4 text-lg font-semibold">❗ Confirm Delete</h3>
         <p>
-          Bạn chắc chắn muốn xoá cuộc họp{' '}
+          Are you sure you want to delete the meeting{' '}
           <strong>{selectedMeeting?.meetingTopic}</strong>?
         </p>
         <button
@@ -384,7 +449,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       </DialogContent>
     </Dialog>
   )}
-
+  </>
+ )}
   {/* Điểm danh */}
 
 <Dialog
@@ -412,42 +478,50 @@ onOpenChange={(open) => {
       📋 Check Attendance:
     </button>
   </DialogTrigger>
-  <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
-    <h3 className="mb-4 text-lg font-semibold">
-      📋 Attendance: {selectedMeeting?.meetingTopic}
-    </h3>
+ 
+<DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
+  <h3 className="mb-4 text-lg font-semibold">
+    📋 Attendance: {selectedMeeting?.meetingTopic}
+  </h3>
 
-    {participants.map((p) => (
-      <div
-        key={p.id}
-        className="mb-2 flex items-center justify-between rounded border p-3"
-      >
-        <div>
-          <p className="font-medium">👤 ID: {p.accountId}</p>
-          <p className="text-sm text-gray-600">Role: {p.role}</p>
-        </div>
-        <div className="flex gap-2">
-<button
-  className={`rounded px-3 py-1 text-sm ${
-    attendanceDraft[p.id] === 'Present' ? 'bg-blue-600 text-white' : 'border hover:bg-gray-100'
-  }`}
-  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
->
-  Present
-</button>
-<button
-  className={`rounded px-3 py-1 text-sm ${
-    attendanceDraft[p.id] === 'Absent' ? 'bg-red-600 text-white' : 'border hover:bg-gray-100'
-  }`}
-  onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
->
-  Absent
-</button>
-        </div>
+  {participants.map((p) => (
+    <div
+      key={p.id}
+      className="mb-3 flex flex-col rounded border p-4 shadow-sm md:flex-row md:items-start md:justify-between"
+    >
+      <div className="mb-2 md:mb-0">
+        <p className="font-semibold text-gray-800">👤 Name: {p.fullName}</p>
+        <p className="text-sm text-gray-600">Role: {p.role}</p>
       </div>
-    ))}
-    <button
-    className="mt-4 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+
+      {/* Nút dọc: flex-col */}
+      <div className="flex w-full flex-col gap-2 md:w-28">
+        <button
+          className={`w-full rounded px-4 py-2 text-sm font-medium ${
+            attendanceDraft[p.id] === 'Present'
+              ? 'bg-blue-600 text-white'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+          }`}
+          onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
+        >
+          Present
+        </button>
+        <button
+          className={`w-full rounded px-4 py-2 text-sm font-medium ${
+            attendanceDraft[p.id] === 'Absent'
+              ? 'bg-red-600 text-white'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+          }`}
+          onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
+        >
+          Absent
+        </button>
+      </div>
+    </div>
+  ))}
+
+  <button
+    className="mt-6 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
     onClick={async () => {
       for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
         const participantId = Number(participantIdStr);
@@ -460,14 +534,9 @@ onOpenChange={(open) => {
   >
     💾 Save Attendance
   </button>
-  </DialogContent>
+</DialogContent>
 </Dialog>
-
-
-
 </div>
-
-
           </div>
            </div>
         ))}

@@ -7,7 +7,7 @@ export interface SubtaskResponseDTO {
   assignedBy: number;
   assignedByName: string;
   plannedEndDate: string | null;
-  
+
   title: string;
   description: string;
   status: string;
@@ -20,6 +20,39 @@ export interface SubtaskResponseDTO {
   endDate: string;
   reporterId: number;
   reporterName: string;
+  createdBy: number;
+}
+
+export interface SubtaskFullResponseDTO {
+  id: string;
+  taskId: string;
+  assignedBy: number;
+  title: string;
+  description: string;
+  reporterId: number;
+  status: string;
+  priority: string;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  sprintId: number | null;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  duration: number;
+  actualStartDate: string;
+  actualEndDate: string;
+  percentComplete: number;
+  plannedHours: number;
+  actualHours: number;
+  remainingHours: number;
+  plannedCost: number;
+  plannedResourceCost: number;
+  actualCost: number;
+  actualResourceCost: number;
+  evaluate: string;
+  createdAt: string;
+  updatedAt: string;
+  startDate: string;
+  endDate: string;
   createdBy: number;
 }
 
@@ -76,22 +109,40 @@ export const subtaskApi = createApi({
       transformResponse: (response: ApiResponse<SubtaskResponseDTO>) => response.data,
     }),
 
-
-    updateSubtask: builder.mutation<any, {
-      id: string;
-      assignedBy: number;
-      priority: string;
-      title: string;
-      description: string;
-      startDate: string;
-      endDate: string;
-      reporterId: number;
-      createdBy: number;
-    }>({
+    updateSubtask: builder.mutation<
+      any,
+      {
+        id: string;
+        assignedBy: number;
+        priority: string;
+        title: string;
+        description: string;
+        startDate: string;
+        endDate: string;
+        reporterId: number;
+        createdBy: number;
+      }
+    >({
       query: ({ id, ...body }) => ({
         url: `subtask/${id}`,
         method: 'PUT',
         body,
+      }),
+    }),
+
+    getSubtaskFullDetailedById: builder.query<SubtaskFullResponseDTO, string>({
+      query: (id) => `subtask/${id}/full-detailed`,
+      transformResponse: (response: ApiResponse<SubtaskFullResponseDTO>) => response.data,
+    }),
+
+    updateSubtaskPlannedHours: builder.mutation<void, { id: string; hours: number }>({
+      query: ({ id, hours }) => ({
+        url: `subtask/${id}/planned-hours`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(hours),
       }),
     }),
   }),
@@ -103,4 +154,6 @@ export const {
   useCreateSubtaskMutation,
   useUpdateSubtaskMutation,
   useGetSubtaskByIdQuery,
+  useGetSubtaskFullDetailedByIdQuery,
+  useUpdateSubtaskPlannedHoursMutation,
 } = subtaskApi;

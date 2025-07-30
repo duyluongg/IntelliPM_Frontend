@@ -60,6 +60,22 @@ const CreateMeetingPage: React.FC = () => {
     { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
   ];
 
+  const getAvailableTimeSlots = () => {
+    if (meetingDate !== new Date().toISOString().split('T')[0]) {
+      return timeSlots; // nếu không phải hôm nay thì show tất cả slot
+    }
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+
+    return timeSlots.filter((slot) => {
+      const [h, m] = slot.end.split(':').map(Number);
+      const endInMinutes = h * 60 + m;
+      return endInMinutes > currentTime;
+    });
+  };
   const handleCreateMeeting = async () => {
     // console.log("🔍 Bắt đầu handleCreateMeeting");
     setErrorMessage(null);
@@ -260,12 +276,12 @@ const CreateMeetingPage: React.FC = () => {
                     setStartTime(start);
                     setEndTime(end);
                   }}
-                  defaultValue=''
+                  value={startTime && endTime ? `${startTime}|${endTime}` : ''}
                 >
                   <option value='' disabled>
                     -- Select Time Slot --
                   </option>
-                  {timeSlots.map((slot) => (
+                  {getAvailableTimeSlots().map((slot) => (
                     <option key={slot.label} value={`${slot.start}|${slot.end}`}>
                       {slot.label}
                     </option>

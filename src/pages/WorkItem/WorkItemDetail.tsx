@@ -1269,6 +1269,15 @@ const WorkItemDetail: React.FC = () => {
                   <option value='IN_PROGRESS'>In Progress</option>
                   <option value='DONE'>Done</option>
                 </select>
+                {taskData?.warnings && taskData.warnings.length > 0 && (
+                  <div className='warning-box'>
+                    {taskData.warnings.map((warning, idx) => (
+                      <div key={idx} className='warning-text'>
+                        ⚠️ {warning}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className='detail-item'>
                 <label>Assignee</label>

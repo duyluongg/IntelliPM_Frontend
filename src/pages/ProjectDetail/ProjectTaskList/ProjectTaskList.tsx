@@ -589,6 +589,7 @@ const ProjectTaskList: React.FC = () => {
     setSelectedTaskType(null);
     searchParams.delete('taskId');
     setSearchParams(searchParams);
+    refetchWorkItems();
   };
 
   const handleEditClick = (id: string, field: string, value: string) => {

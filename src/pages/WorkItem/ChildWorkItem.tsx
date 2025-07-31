@@ -232,6 +232,7 @@ const ChildWorkItem: React.FC = () => {
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      await refetchSubtask();
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
     }
@@ -548,6 +549,15 @@ const ChildWorkItem: React.FC = () => {
                 <option value='IN_PROGRESS'>In Progress</option>
                 <option value='DONE'>Done</option>
               </select>
+              {fetchedSubtask?.warnings && fetchedSubtask.warnings.length > 0 && (
+                <div className='warning-box'>
+                  {fetchedSubtask.warnings.map((warning, idx) => (
+                    <div key={idx} className='warning-text'>
+                      ⚠️ {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className='details-content'>

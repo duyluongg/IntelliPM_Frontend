@@ -122,7 +122,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
 
-  console.log("ProjectKey: ", projectKey);
+  console.log('ProjectKey: ', projectKey);
 
   const {
     data: attachments = [],
@@ -1297,6 +1297,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <option value='IN_PROGRESS'>In Progress</option>
                 <option value='DONE'>Done</option>
               </select>
+              {taskData?.warnings && taskData.warnings.length > 0 && (
+                <div className='warning-box'>
+                  {taskData.warnings.map((warning, idx) => (
+                    <div key={idx} className='warning-text'>
+                      ⚠️ {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className='details-content'>
               <h4>Details</h4>

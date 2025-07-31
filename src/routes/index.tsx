@@ -176,11 +176,11 @@ export const router = createBrowserRouter([
         element: <ProjectIntroduction />,
       },
       {
-        path: 'work-item-detail',
+        path: ':projectKey/work-item-detail',
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key',
+        path: ':projectKey/child-work/:key',
         element: <ChildWorkItem />,
       },
       {

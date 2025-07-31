@@ -50,10 +50,14 @@ import {
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
+import { useParams } from 'react-router-dom';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const taskId = searchParams.get('taskId') || '';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const navigate = useNavigate();
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -835,7 +839,9 @@ const WorkItemDetail: React.FC = () => {
                             <td>
                               <span
                                 className='hover-underline'
-                                onClick={() => navigate(`/project/child-work/${item.key}`)}
+                                onClick={() =>
+                                  navigate(`/project/${projectKey}/child-work/${item.key}`)
+                                }
                                 style={{ cursor: 'pointer' }}
                               >
                                 {item.key}
@@ -1263,6 +1269,15 @@ const WorkItemDetail: React.FC = () => {
                   <option value='IN_PROGRESS'>In Progress</option>
                   <option value='DONE'>Done</option>
                 </select>
+                {taskData?.warnings && taskData.warnings.length > 0 && (
+                  <div className='warning-box'>
+                    {taskData.warnings.map((warning, idx) => (
+                      <div key={idx} className='warning-text'>
+                        ⚠️ {warning}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className='detail-item'>
                 <label>Assignee</label>

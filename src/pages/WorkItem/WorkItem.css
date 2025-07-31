@@ -926,3 +926,16 @@ bottom: 25px;
   color: #333;
 }
 
+.warning-box {
+  background-color: #fff7d6;
+  color: #664d03;
+  border-left: 4px solid #facc15;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-top: 8px;
+  font-size: 0.875rem;
+}
+.warning-text {
+  margin-left: 1rem;
+  list-style-type: disc;
+}

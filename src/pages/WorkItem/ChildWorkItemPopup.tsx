@@ -25,6 +25,7 @@ import {
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
+import { useSearchParams } from 'react-router-dom';
 
 interface SubtaskDetail {
   id: string;
@@ -54,6 +55,8 @@ interface ChildWorkItemPopupProps {
 }
 
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const [subtaskDetail, setSubtaskDetail] = React.useState<SubtaskDetail | null>(null);
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
@@ -237,6 +240,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
@@ -268,7 +272,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             <span
               className='child-popup-key'
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={() => navigate(`/project/child-work/${subtaskDetail.id}`)}
+              onClick={() => navigate(`/project/${projectKey}/child-work/${subtaskDetail.id}`)}
             >
               {subtaskDetail.id}
             </span>
@@ -571,6 +575,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 <option value='IN_PROGRESS'>In Progress</option>
                 <option value='DONE'>Done</option>
               </select>
+              {fetchedSubtask?.warnings && fetchedSubtask.warnings.length > 0 && (
+                <div className='warning-box'>
+                  {fetchedSubtask.warnings.map((warning, idx) => (
+                    <div key={idx} className='warning-text'>
+                      ⚠️ {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className='details-content'>

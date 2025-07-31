@@ -49,6 +49,7 @@ import {
 } from '../../services/taskAssignmentApi';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
+import TaskDependency from './TaskDependency';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -93,6 +94,7 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
@@ -1493,6 +1495,22 @@ const WorkItemDetail: React.FC = () => {
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}
+                workItemId={taskId}
+                type='task'
+              />
+
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
                 workItemId={taskId}
                 type='task'
               />

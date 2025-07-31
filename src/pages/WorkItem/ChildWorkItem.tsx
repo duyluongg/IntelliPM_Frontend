@@ -4,7 +4,7 @@ import './ChildWorkItem.css';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
-  useGetSubtaskByIdQuery
+  useGetSubtaskByIdQuery,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
@@ -24,6 +24,7 @@ import {
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
+import TaskDependency from './TaskDependency';
 
 interface SubtaskDetail {
   id: string;
@@ -70,6 +71,7 @@ const ChildWorkItem: React.FC = () => {
   const [newReporterId, setNewReporterId] = useState<number>();
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
@@ -697,6 +699,21 @@ const ChildWorkItem: React.FC = () => {
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}
+                workItemId={subtaskDetail.id}
+                type='subtask'
+              />
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
                 workItemId={subtaskDetail.id}
                 type='subtask'
               />

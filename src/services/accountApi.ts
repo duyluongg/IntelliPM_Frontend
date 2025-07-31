@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-interface Project {
+export interface Project {
   projectId: number;
   projectName: string;
   projectKey: string;
@@ -12,7 +12,7 @@ interface Project {
   status: string;
 }
 
-interface GetProjectsResponse {
+export interface GetProjectsResponse {
   isSuccess: boolean;
   code: number;
   data: Project[];

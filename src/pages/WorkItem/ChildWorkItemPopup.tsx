@@ -25,6 +25,7 @@ import {
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
+import { useSearchParams } from 'react-router-dom';
 
 interface SubtaskDetail {
   id: string;
@@ -54,6 +55,8 @@ interface ChildWorkItemPopupProps {
 }
 
 const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }) => {
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const [subtaskDetail, setSubtaskDetail] = React.useState<SubtaskDetail | null>(null);
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
@@ -268,7 +271,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
             <span
               className='child-popup-key'
               style={{ cursor: 'pointer', textDecoration: 'underline' }}
-              onClick={() => navigate(`/project/child-work/${subtaskDetail.id}`)}
+              onClick={() => navigate(`/project/${projectKey}/child-work/${subtaskDetail.id}`)}
             >
               {subtaskDetail.id}
             </span>

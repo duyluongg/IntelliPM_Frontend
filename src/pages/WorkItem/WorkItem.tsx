@@ -63,6 +63,7 @@ interface WorkItemProps {
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
   const [searchParams] = useSearchParams();
   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [plannedStartDate, setPlannedStartDate] = React.useState('');
@@ -120,6 +121,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
 
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
+
+  console.log("ProjectKey: ", projectKey);
 
   const {
     data: attachments = [],
@@ -372,7 +375,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const navigate = useNavigate();
 
   const handleKeyClick = () => {
-    navigate(`/project/work-item-detail?taskId=${taskId}`);
+    navigate(`/project/${projectKey}/work-item-detail?taskId=${taskId}`);
   };
 
   if (!isOpen) return null;

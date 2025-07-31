@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 import { useAuth } from '../../services/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import projectIcon from '../../assets/projectManagement.png';
 
 interface RecentProject {
@@ -43,6 +44,7 @@ const menuItems = [
 
 export default function Sidebar() {
   const [showProjects, setShowProjects] = useState(false);
+  const [showManageProjects, setShowManageProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [searchParams] = useSearchParams();
   const selectedProjectKey = searchParams.get('projectKey');
@@ -73,6 +75,11 @@ export default function Sidebar() {
     navigate('/login');
   };
 
+  const handleViewAllProjects = () => {
+    setShowManageProjects(false);
+    navigate('/project/list');
+  };
+
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
       <div className='pt-4'>
@@ -83,12 +90,18 @@ export default function Sidebar() {
                 key={index}
                 className='relative group'
                 onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
+                onMouseLeave={() => {
+                  setHovered(false);
+                  setShowManageProjects(false);
+                }}
               >
                 {/* Mục Projects */}
                 <div
                   className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
-                  onClick={() => setShowProjects((prev) => !prev)}
+                  onClick={() => {
+                    setShowProjects((prev) => !prev);
+                    setShowManageProjects(false);
+                  }}
                 >
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-2'>
@@ -104,7 +117,7 @@ export default function Sidebar() {
                       <span>{item.label}</span>
                     </div>
                     {(hovered || showProjects) && (
-                      <div className='flex items-center space-x-2'>
+                      <div className='flex items-center space-x-2 relative'>
                         {isRole && (
                           <Plus
                             className='w-4 h-4 hover:text-blue-500 cursor-pointer'
@@ -114,7 +127,33 @@ export default function Sidebar() {
                             }}
                           />
                         )}
-                        <MoreHorizontal className='w-4 h-4 hover:text-blue-500' />
+                        <MoreHorizontal
+                          className='w-4 h-4 hover:text-blue-500 cursor-pointer'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowManageProjects((prev) => !prev);
+                          }}
+                        />
+                        {/* Manage Projects Dropdown */}
+                        <AnimatePresence>
+                          {showManageProjects && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
+                              className='absolute top-0 left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                            >
+                              <div
+                                onClick={handleViewAllProjects}
+                                className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                              >
+                                <Rocket className='w-5 h-5 text-gray-500' />
+                                <span>Manage Projects</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>

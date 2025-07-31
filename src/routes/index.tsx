@@ -35,7 +35,7 @@ import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleR
 import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
 import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
-
+import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
 
 export const router = createBrowserRouter([
   {
@@ -139,6 +139,10 @@ export const router = createBrowserRouter([
       {
         path: `createform`,
         element: <ProjectCreation />,
+      },
+      {
+        path: `list`,
+        element: <ProjectList />,
       },
 
       {

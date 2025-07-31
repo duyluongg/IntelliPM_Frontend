@@ -1,13 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ChildWorkItem.css';
-import { useUpdateSubtaskStatusMutation } from '../../services/subtaskApi';
+import {
+  useUpdateSubtaskStatusMutation,
+  useUpdateSubtaskMutation,
+  useGetSubtaskByIdQuery,
+} from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
-import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation } from '../../services/subtaskFileApi';
+import {
+  useDeleteSubtaskFileMutation,
+  useGetSubtaskFilesBySubtaskIdQuery,
+  useUploadSubtaskFileMutation,
+} from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetSubtaskCommentsBySubtaskIdQuery, useDeleteSubtaskCommentMutation, useUpdateSubtaskCommentMutation, useCreateSubtaskCommentMutation } from '../../services/subtaskCommentApi';
+import {
+  useGetSubtaskCommentsBySubtaskIdQuery,
+  useDeleteSubtaskCommentMutation,
+  useUpdateSubtaskCommentMutation,
+  useCreateSubtaskCommentMutation,
+} from '../../services/subtaskCommentApi';
+import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
+import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
+import { WorkLogModal } from './WorkLogModal';
+import TaskDependency from './TaskDependency';
 
 interface SubtaskDetail {
   id: string;
@@ -33,38 +50,129 @@ const ChildWorkItem: React.FC = () => {
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
   const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
-  const accountId = parseInt(localStorage.getItem("accountId") || "0");
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
   const [deleteSubtaskComment] = useDeleteSubtaskCommentMutation();
   const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
   const [commentContent, setCommentContent] = React.useState('');
   const [createSubtaskComment] = useCreateSubtaskCommentMutation();
-  
-  const { data: attachments = [], refetch: refetchAttachments } = useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
-    skip: !subtaskDetail?.id,
+  const [description, setDescription] = React.useState('');
+  const [title, setTitle] = React.useState('');
+  const [assignedBy, setAssignedBy] = React.useState('');
+  const [priority, setPriority] = React.useState('');
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
+  const [reporterId, setReporterId] = React.useState('');
+  const [newTitle, setNewTitle] = useState<string>();
+  const [newDescription, setNewDescription] = useState<string>();
+  const [newPriority, setNewPriority] = useState<string>();
+  const [newStartDate, setNewStartDate] = useState<string>();
+  const [newEndDate, setNewEndDate] = useState<string>();
+  const [newReporterId, setNewReporterId] = useState<number>();
+  const [newAssignedBy, setNewAssignedBy] = useState<number>();
+  const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+  const [updateSubtask] = useUpdateSubtaskMutation();
+  const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
+    subtaskDetail?.assignedBy
+  );
+  const [selectedReporter, setSelectedReporter] = useState<number | undefined>(
+    subtaskDetail?.reporterId
+  );
+  const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
+    skip: !subtaskDetail?.taskId,
   });
 
-  const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
+  const projectId = taskDetail?.projectId;
+  const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
+
+  React.useEffect(() => {
+    if (subtaskDetail) {
+      setDescription(subtaskDetail.description || '');
+      setTitle(subtaskDetail.title || '');
+      setAssignedBy(String(subtaskDetail.assignedBy) || '');
+      setPriority(subtaskDetail.priority || '');
+      setStartDate(subtaskDetail.startDate || '');
+      setEndDate(subtaskDetail.endDate || '');
+      setReporterId(String(subtaskDetail.reporterId) || '');
+    }
+  }, [subtaskDetail]);
+
+  const { data: attachments = [], refetch: refetchAttachments } =
+    useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
       skip: !subtaskDetail?.id,
     });
 
-  useEffect(() => {
-    const fetchSubtask = async () => {
-      try {
-        const res = await fetch(`https://localhost:7128/api/subtask/${subtaskId}`);
-        const json = await res.json();
-        if (json.isSuccess && json.data) {
-          setSubtaskDetail(json.data);
-        }
-      } catch (error) {
-        console.error('Error:', error);
-      }
-    };
+  const {
+    data: comments = [],
+    isLoading: isCommentsLoading,
+    refetch: refetchComments,
+  } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
+    skip: !subtaskDetail?.id,
+  });
 
-    if (subtaskId) {
-      fetchSubtask();
+  const {
+    data: fetchedSubtask,
+    isLoading: isSubtaskLoading,
+    refetch: refetchSubtask,
+  } = useGetSubtaskByIdQuery(subtaskId ?? '', { skip: !subtaskId });
+
+  useEffect(() => {
+    if (fetchedSubtask) {
+      setSubtaskDetail(fetchedSubtask);
     }
-  }, [subtaskId]);
+  }, [fetchedSubtask]);
+
+  const {
+    data: activityLogs = [],
+    isLoading: isActivityLogsLoading,
+    refetch: refetchActivityLogs,
+  } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
+    skip: !subtaskDetail?.id!,
+  });
+
+  const toISO = (localDate: string) => {
+    const date = new Date(localDate);
+    return date.toISOString(); // "2025-07-21T00:00:00.000Z"
+  };
+
+  const handleUpdateSubtask = async () => {
+    if (!subtaskDetail) return;
+
+    if (
+      newTitle === undefined &&
+      newDescription === undefined &&
+      newPriority === undefined &&
+      newStartDate === undefined &&
+      newEndDate === undefined &&
+      newReporterId === undefined &&
+      newAssignedBy === undefined
+    ) {
+      return; // Không có gì thay đổi
+    }
+
+    try {
+      await updateSubtask({
+        id: subtaskDetail.id,
+        title: newTitle ?? subtaskDetail.title,
+        description: newDescription ?? subtaskDetail.description,
+        priority: newPriority ?? subtaskDetail.priority,
+        startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
+        endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
+        reporterId: newReporterId ?? subtaskDetail.reporterId,
+        assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
+        createdBy: accountId, // giữ nguyên
+      }).unwrap();
+
+      alert('✅ Subtask updated');
+      console.log('✅ Subtask updated');
+      await refetchSubtask();
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update subtask', err);
+      alert('❌ Update failed');
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -75,6 +183,7 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail.id,
         title: file.name,
         file,
+        createdBy: accountId,
       }).unwrap();
 
       alert(`✅ Uploaded file "${file.name}" successfully!`);
@@ -87,12 +196,13 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteSubtaskFile(id).unwrap();
+      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ File deleted!');
-      refetchAttachments();
+      await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Delete failed:', error);
       alert('❌ Delete failed!');
@@ -117,7 +227,7 @@ const ChildWorkItem: React.FC = () => {
       await updateSubtaskStatus({
         id: subtaskDetail.id,
         status: newStatus,
-        createdBy: accountId, 
+        createdBy: accountId,
       }).unwrap();
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
@@ -134,71 +244,100 @@ const ChildWorkItem: React.FC = () => {
   if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
 
   return (
-    <div className="child-work-item-page">
-      <div className="child-work-item-container">
-        <div className="child-header">
-          <div className="breadcrumb">
-            Projects / <span>{parentTask?.projectName || '...'}</span> / <span>{subtaskDetail.taskId}</span> / <span className="child-key">{subtaskDetail.id}</span>
+    <div className='child-work-item-page'>
+      <div className='child-work-item-container'>
+        <div className='child-header'>
+          <div className='breadcrumb'>
+            Projects / <span>{parentTask?.projectName || '...'}</span> /{' '}
+            <span>{subtaskDetail.taskId}</span> /{' '}
+            <span className='child-key'>{subtaskDetail.id}</span>
           </div>
         </div>
 
-        <div className="child-content">
-          <div className="child-main">
-            <div className="child-header-row">
-              <h2 className="child-title">{subtaskDetail.title}</h2>
-              <div className="add-menu-wrapper">
-                <button className="btn-add" onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}>+ Add</button>
+        <input
+          className='subtask-input'
+          defaultValue={subtaskDetail?.title}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onBlur={handleUpdateSubtask}
+          style={{
+            width: '500px',
+            fontWeight: 'bold',
+          }}
+        />
+
+        <div className='child-content'>
+          <div className='child-main'>
+            <div className='child-header-row'>
+              <div className='add-menu-wrapper'>
+                <button
+                  className='btn-add'
+                  onClick={() => setIsAddDropdownOpen(!isAddDropdownOpen)}
+                >
+                  + Add
+                </button>
                 {isAddDropdownOpen && (
-                  <div className="add-dropdown">
-                    <div className="add-item" onClick={() => fileInputRef.current?.click()}>
+                  <div className='add-dropdown'>
+                    <div className='add-item' onClick={() => fileInputRef.current?.click()}>
                       📎 Attachment
                     </div>
                   </div>
                 )}
-                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
+                <input
+                  type='file'
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                />
               </div>
             </div>
 
-            <div className="field-group">
+            <div className='field-group'>
               <label>Description</label>
-              <textarea placeholder="Add a description..." defaultValue={subtaskDetail.description} />
+              <textarea
+                className='subtask-description'
+                defaultValue={subtaskDetail?.description}
+                onChange={(e) => setNewDescription(e.target.value)}
+                onBlur={handleUpdateSubtask}
+              />
             </div>
 
             {attachments.length > 0 && (
-              <div className="attachments-section">
+              <div className='attachments-section'>
                 <label>
                   Attachments <span>({attachments.length})</span>
                 </label>
-                <div className="attachments-grid">
+                <div className='attachments-grid'>
                   {attachments.map((file) => (
                     <div
-                      className="attachment-card"
+                      className='attachment-card'
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
                     >
                       <a
                         href={file.urlFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        target='_blank'
+                        rel='noopener noreferrer'
                         style={{ textDecoration: 'none', color: 'inherit' }}
                       >
-                        <div className="thumbnail">
+                        <div className='thumbnail'>
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                             <img src={file.urlFile} alt={file.title} />
                           ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">
-                                {file.title.length > 15 ? file.title.slice(0, 15) + '...' : file.title}
+                            <div className='doc-thumbnail'>
+                              <span className='doc-text'>
+                                {file.title.length > 15
+                                  ? file.title.slice(0, 15) + '...'
+                                  : file.title}
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>
+                        <div className='file-meta'>
+                          <div className='file-name' title={file.title}>
                             {file.title}
                           </div>
-                          <div className="file-date">
+                          <div className='file-date'>
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -206,11 +345,15 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
-                          title="Delete file"
+                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
+                          className='delete-file-btn'
+                          title='Delete file'
                         >
-                          <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          <img
+                            src={deleteIcon}
+                            alt='Delete'
+                            style={{ width: '25px', height: '25px' }}
+                          />
                         </button>
                       )}
                     </div>
@@ -219,11 +362,11 @@ const ChildWorkItem: React.FC = () => {
               </div>
             )}
 
-            <div className="activity-section">
+            <div className='activity-section'>
               <h4 style={{ marginBottom: '8px' }}>Activity</h4>
 
               {/* Tabs */}
-              <div className="activity-tabs">
+              <div className='activity-tabs'>
                 <button
                   className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
                   onClick={() => setActiveTab('COMMENTS')}
@@ -239,9 +382,32 @@ const ChildWorkItem: React.FC = () => {
               </div>
 
               {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className='history-list'>
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className='history-item'>
+                        <div className='history-header'>
+                          <span className='history-user'>{log.createdByName}</span>
+                          <span className='history-time'>
+                            {new Date(log.createdAt).toLocaleTimeString()}{' '}
+                            {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className='history-message'>{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === 'COMMENTS' ? (
                 <>
-                  <div className="comment-list">
+                  <div className='comment-list'>
                     {isCommentsLoading ? (
                       <p>Loading comments...</p>
                     ) : comments.length === 0 ? (
@@ -251,24 +417,29 @@ const ChildWorkItem: React.FC = () => {
                         .slice()
                         .reverse()
                         .map((comment) => (
-                          <div key={comment.id} className="simple-comment">
-                            <div className="avatar-circle">
-                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                          <div key={comment.id} className='simple-comment'>
+                            <div className='avatar-circle'>
+                              <img src={comment.accountPicture || accountIcon} alt='avatar' />
                             </div>
-                            <div className="comment-content">
-                              <div className="comment-header">
-                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
-                                <span className="comment-time">
+                            <div className='comment-content'>
+                              <div className='comment-header'>
+                                <strong>
+                                  {comment.accountName || `User #${comment.accountId}`}
+                                </strong>{' '}
+                                <span className='comment-time'>
                                   {new Date(comment.createdAt).toLocaleString('vi-VN')}
                                 </span>
                               </div>
-                              <div className="comment-text">{comment.content}</div>
+                              <div className='comment-text'>{comment.content}</div>
                               {comment.accountId === accountId && (
-                                <div className="comment-actions">
+                                <div className='comment-actions'>
                                   <button
-                                    className="edit-btn"
+                                    className='edit-btn'
                                     onClick={async () => {
-                                      const newContent = prompt("✏ Edit your comment:", comment.content);
+                                      const newContent = prompt(
+                                        '✏ Edit your comment:',
+                                        comment.content
+                                      );
                                       if (newContent && newContent !== comment.content) {
                                         try {
                                           await updateSubtaskComment({
@@ -276,12 +447,14 @@ const ChildWorkItem: React.FC = () => {
                                             subtaskId: subtaskDetail.id,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
-                                          alert("✅ Comment updated");
+                                          alert('✅ Comment updated');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error("❌ Failed to update comment", err);
-                                          alert("❌ Update failed");
+                                          console.error('❌ Failed to update comment', err);
+                                          alert('❌ Update failed');
                                         }
                                       }
                                     }}
@@ -289,16 +462,24 @@ const ChildWorkItem: React.FC = () => {
                                     ✏ Edit
                                   </button>
                                   <button
-                                    className="delete-btn"
+                                    className='delete-btn'
                                     onClick={async () => {
-                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                      if (
+                                        window.confirm(
+                                          '🗑️ Are you sure you want to delete this comment?'
+                                        )
+                                      ) {
                                         try {
-                                          await deleteSubtaskComment(comment.id).unwrap();
-                                          alert("🗑️ Deleted successfully");
+                                          await deleteSubtaskComment({
+                                            id: comment.id,
+                                            createdBy: accountId,
+                                          }).unwrap();
+                                          alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error("❌ Failed to delete comment", err);
-                                          alert("❌ Delete failed");
+                                          console.error('❌ Failed to delete comment', err);
+                                          alert('❌ Delete failed');
                                         }
                                       }
                                     }}
@@ -314,9 +495,9 @@ const ChildWorkItem: React.FC = () => {
                   </div>
 
                   {/* Comment Input */}
-                  <div className="simple-comment-input">
+                  <div className='simple-comment-input'>
                     <textarea
-                      placeholder="Add a comment..."
+                      placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
                     />
@@ -332,10 +513,12 @@ const ChildWorkItem: React.FC = () => {
                             subtaskId: subtaskDetail.id,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
-                          alert("✅ Comment posted");
+                          alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
@@ -347,30 +530,70 @@ const ChildWorkItem: React.FC = () => {
                   </div>
                 </>
               ) : (
-                <div className="activity-placeholder">
-                  Chưa có nhật ký hoạt động.
-                </div>
+                <div className='activity-placeholder'></div>
               )}
             </div>
           </div>
 
-          <div className="details-panel">
-            <div className="panel-header">
+          <div className='details-panel'>
+            <div className='panel-header'>
               <select
                 value={subtaskDetail.status}
-                className={`status-dropdown-select status-${subtaskDetail.status.toLowerCase().replace('_', '-')}`}
+                className={`status-dropdown-select status-${subtaskDetail.status
+                  .toLowerCase()
+                  .replace('_', '-')}`}
                 onChange={handleStatusChange}
               >
-                <option value="TO_DO">To Do</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="DONE">Done</option>
+                <option value='TO_DO'>To Do</option>
+                <option value='IN_PROGRESS'>In Progress</option>
+                <option value='DONE'>Done</option>
               </select>
             </div>
 
-            <div className="details-content">
+            <div className='details-content'>
               <h4>Details</h4>
-              <div className="detail-item"><label>Assignee</label><span>{subtaskDetail.assignedByName}</span></div>
-              <div className="detail-item">
+              <div className='detail-item'>
+                <label>Assignee</label>
+                <div className='detail-item'>
+                  <select
+                    value={selectedAssignee ?? subtaskDetail?.assignedBy}
+                    onChange={async (e) => {
+                      const newAssignee = parseInt(e.target.value);
+                      setSelectedAssignee(newAssignee);
+
+                      try {
+                        await updateSubtask({
+                          id: subtaskDetail.id,
+                          assignedBy: newAssignee,
+                          title: subtaskDetail.title,
+                          description: subtaskDetail.description ?? '',
+                          priority: subtaskDetail.priority,
+                          startDate: subtaskDetail.startDate,
+                          endDate: subtaskDetail.endDate,
+                          reporterId: subtaskDetail.reporterId,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Updated subtask assignee');
+                        await refetchSubtask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Failed to update subtask');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ minWidth: '150px' }}
+                  >
+                    <option value='0'>Unassigned</option>
+                    {projectMembers?.map((m) => (
+                      <option key={m.accountId} value={m.accountId}>
+                        {m.accountName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className='detail-item'>
                 <label>Labels</label>
                 <span>
                   {subtaskLabels.length === 0
@@ -378,10 +601,122 @@ const ChildWorkItem: React.FC = () => {
                     : subtaskLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
-              <div className="detail-item"><label>Parent</label><span>{subtaskDetail.taskId}</span></div>
-              <div className="detail-item"><label>Due date</label><span>{formatDate(subtaskDetail.endDate)}</span></div>
-              <div className="detail-item"><label>Start date</label><span>{formatDate(subtaskDetail.startDate)}</span></div>
-              <div className="detail-item"><label>Reporter</label><span>{subtaskDetail.reporterId}</span></div>
+
+              <div className='detail-item'>
+                <label>Parent</label>
+                <span>{subtaskDetail.taskId}</span>
+              </div>
+
+              <div className='detail-item'>
+                <label>Priority</label>
+                <select
+                  style={{ width: '150px' }}
+                  value={newPriority ?? subtaskDetail?.priority}
+                  onChange={(e) => setNewPriority(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                >
+                  <option value='HIGH'>High</option>
+                  <option value='HIGHEST'>Highest</option>
+                  <option value='MEDIUM'>Medium</option>
+                  <option value='LOW'>Low</option>
+                  <option value='LOWEST'>Lowest</option>
+                </select>
+              </div>
+
+              <div className='detail-item'>
+                <label>Start Date</label>
+                <input
+                  type='date'
+                  value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => setNewStartDate(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                  style={{ width: '150px' }}
+                />
+              </div>
+
+              <div className='detail-item'>
+                <label>Due Date</label>
+                <input
+                  type='date'
+                  value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => setNewEndDate(e.target.value)}
+                  onBlur={handleUpdateSubtask}
+                  style={{ width: '150px' }}
+                />
+              </div>
+
+              <div className='detail-item'>
+                <label>Reporter</label>
+                <div className='detail-item'>
+                  <select
+                    value={selectedReporter ?? subtaskDetail?.reporterId}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateSubtask({
+                          id: subtaskDetail.id,
+                          assignedBy: subtaskDetail.assignedBy,
+                          title: subtaskDetail.title,
+                          description: subtaskDetail.description ?? '',
+                          priority: subtaskDetail.priority,
+                          startDate: subtaskDetail.startDate,
+                          endDate: subtaskDetail.endDate,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Updated subtask reporter');
+                        await refetchSubtask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Failed to update reporter');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ minWidth: '150px' }}
+                  >
+                    <option value='0'>Unassigned</option>
+                    {projectMembers?.map((m) => (
+                      <option key={m.accountId} value={m.accountId}>
+                        {m.accountName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className='detail-item'>
+                <label>Time Tracking</label>
+                <span
+                  onClick={() => setIsWorklogOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Log Work
+                </span>
+              </div>
+
+              <WorkLogModal
+                open={isWorklogOpen}
+                onClose={() => setIsWorklogOpen(false)}
+                workItemId={subtaskDetail.id}
+                type='subtask'
+              />
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
+                workItemId={subtaskDetail.id}
+                type='subtask'
+              />
             </div>
           </div>
         </div>

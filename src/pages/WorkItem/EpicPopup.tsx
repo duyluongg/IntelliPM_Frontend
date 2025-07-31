@@ -10,7 +10,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
@@ -18,6 +18,8 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+
 interface EpicPopupProps {
     id: string;
     onClose: () => void;
@@ -33,6 +35,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [epicId, setEpicId] = React.useState("");
     const [updateEpicStatus] = useUpdateEpicStatusMutation();
     const [updateTaskStatus] = useUpdateTaskStatusMutation();
+    const [updateTaskPriority] = useUpdateTaskPriorityMutation();
     const navigate = useNavigate();
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
@@ -88,6 +91,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         skip: !epic?.projectId,
     });
 
+    const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
+
     React.useEffect(() => {
         if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
             handleUpdateEpic();
@@ -99,7 +106,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             handleUpdateEpic();
         }
     }, [newReporterId]);
-
 
     React.useEffect(() => {
         const fetchAllTaskAssignments = async () => {
@@ -113,7 +119,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
                 }
             }
-
             setTaskAssignmentMap(result);
         };
 
@@ -230,11 +235,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         }
     };
 
-
     if (isLoading || !epic) {
         return (
             <div className="modal-overlay">
-                <div className="work-item-modal">Đang tải Epic...</div>
+                <div className="work-item-modal">Loading Epic...</div>
             </div>
         );
     }
@@ -264,11 +268,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             defaultValue={epic.name}
                             onChange={(e) => setNewName(e.target.value)}
                             onBlur={handleUpdateEpic}
+                            disabled={!canEdit}
+                            style={{ width: 300 }}
                         />
+                        <div className="modal-container">
+                            <button className="close-btn" onClick={onClose}>✖</button>
+                        </div>
                     </div>
-                    <div className="header-actions">
-                        <button className="close-btn" onClick={onClose}>✖</button>
-                    </div>
+
                 </div>
 
                 {/* Content */}
@@ -327,6 +334,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 value={newDescription ?? epic?.description ?? ''}
                                 onChange={(e) => setNewDescription(e.target.value)}
                                 onBlur={handleUpdateEpic}
+                                disabled={!canEdit}
                             />
                         </div>
 
@@ -469,8 +477,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                             const newTitle = editableTitles[task.id]?.trim();
                                                                             if (newTitle && newTitle !== task.title) {
                                                                                 try {
-                                                                                    await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                                                                    await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                                                                     await refetch();
+                                                                                    await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error('❌ Failed to update title:', err);
                                                                                 }
@@ -502,15 +511,17 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                     value={task.priority}
                                                                     onChange={async (e) => {
                                                                         const newPriority = e.target.value;
-                                                                        // try {
-                                                                        //     await updateTaskStatus({
-                                                                        //         id: task.id,
-                                                                        //         priority: newPriority,
-                                                                        //     }).unwrap();
-                                                                        //     await refetch(); // refresh task list
-                                                                        // } catch (err) {
-                                                                        //     console.error('❌ Error updating priority:', err);
-                                                                        // }
+                                                                        try {
+                                                                            await updateTaskPriority({
+                                                                                id: task.id,
+                                                                                priority: newPriority,
+                                                                                createdBy: accountId,
+                                                                            }).unwrap();
+                                                                            await refetch(); 
+                                                                            await refetchActivityLogs();
+                                                                        } catch (err) {
+                                                                            console.error('❌ Error updating priority:', err);
+                                                                        }
                                                                     }}
                                                                     style={{
                                                                         padding: '4px 8px',
@@ -631,8 +642,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                         await updateTaskStatus({
                                                                             id: task.id,
                                                                             status: e.target.value,
+                                                                            createdBy: accountId,
                                                                         }).unwrap();
                                                                         await refetch();
+                                                                        await refetchActivityLogs();
                                                                     } catch (err) {
                                                                         console.error('❌ Error updating status:', err);
                                                                     }
@@ -750,12 +763,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         epicId: epic.id,
                                                         title: newTaskTitle.trim(),
                                                         type: newTaskType,
+                                                        createdBy: accountId,
                                                     }).unwrap();
 
                                                     console.log('✅ Task created');
                                                     setNewTaskTitle('');
                                                     setShowTaskInput(false);
                                                     await refetch();
+                                                    await refetchActivityLogs();
                                                 } catch (err) {
                                                     console.error('❌ Failed to create task:', err);
                                                     alert('❌ Failed to create task');
@@ -815,6 +830,28 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             </div>
 
                             {/* Tab Content */}
+                            {activeTab === 'HISTORY' && (
+                                <div className="history-list">
+                                    {isActivityLogsLoading ? (
+                                        <div>Loading...</div>
+                                    ) : activityLogs.length === 0 ? (
+                                        <div>No history available.</div>
+                                    ) : (
+                                        activityLogs.map((log) => (
+                                            <div key={log.id} className="history-item">
+                                                <div className="history-header">
+                                                    <span className="history-user">{log.createdByName}</span>
+                                                    <span className="history-time">
+                                                        {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="history-message">{log.message}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
                             {activeTab === 'COMMENTS' ? (
                                 <>
                                     <div className="comment-list">
@@ -925,7 +962,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 </>
                             ) : (
                                 <div className="activity-placeholder">
-                                    Chưa có nhật ký hoạt động.
                                 </div>
                             )}
                         </div>

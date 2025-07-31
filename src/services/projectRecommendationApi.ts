@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../constants/api';
 export interface AIRecommendationDTO {
   recommendation: string;
   details: string;
-  type: string; // Schedule | Cost | Scope | Resource
+  type: string; 
   affectedTasks: string[];
   suggestedTask: string | null;
   expectedImpact: string;

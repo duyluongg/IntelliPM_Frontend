@@ -36,6 +36,8 @@ import {
   useGetDocumentMappingQuery,
 } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
+import { useDispatch } from 'react-redux';
+import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -50,6 +52,7 @@ interface UpdateTaskRequestDTO {
   status: string;
   assignedBy: number | null;
   priority: string;
+  createdBy: number;
 }
 
 interface UpdateEpicRequestDTO {
@@ -69,10 +72,13 @@ interface UpdateSubtaskRequestDTO {
   title: string;
   description: string;
   plannedEndDate: string;
+  startDate: string;
+  endDate: string;
   status: string;
-  reporterId: number | null;
+  reporterId: number;
   assignedBy: number;
   priority: string;
+  createdBy: number;
 }
 
 interface Reporter {
@@ -304,30 +310,49 @@ const Avatar = ({
 // HeaderBar Component
 const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
-  const { data: membersData, isLoading, error } = useGetProjectMembersWithPositionsQuery(projectId, {
+  const {
+    data: membersData,
+    isLoading,
+    error,
+  } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
-
-  // Filter members with status IN_PROGRESS
-  const members = membersData?.data
-    ?.filter(member => member.status.toUpperCase() === 'IN_PROGRESS')
-    ?.map(member => ({
-      id: member.id,
-      name: member.fullName || member.accountName || 'Unknown',
-      avatar: member.picture || 'https://via.placeholder.com/32', // Updated placeholder size
-    })) || [];
+  const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+      fill='none'
+      viewBox='0 0 16 16'
+      role='presentation'
+      {...props}
+      style={{ color: 'var(--ds-icon, #44546F)' }}
+    >
+      <path
+        fill='currentColor'
+        fillRule='evenodd'
+        d='M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9M1 7a6 6 0 1 1 10.74 3.68l3.29 3.29-1.06 1.06-3.29-3.29A6 6 0 0 1 1 7'
+        clipRule='evenodd'
+      />
+    </svg>
+  );
+  const members =
+    membersData?.data
+      ?.filter((member) => member.status.toUpperCase() === 'IN_PROGRESS')
+      ?.map((member) => ({
+        id: member.id,
+        name: member.fullName || member.accountName || 'Unknown',
+        avatar: member.picture || 'https://via.placeholder.com/32',
+      })) || [];
 
   const toggleMembers = () => {
     setIsMembersExpanded(!isMembersExpanded);
   };
 
   if (isLoading) {
-    return <div className="p-4 text-center text-gray-500">Loading members...</div>;
+    return <div className='p-4 text-center text-gray-500'>Loading members...</div>;
   }
 
   if (error) {
     return (
-      <div className="p-4 text-center text-red-500">
+      <div className='p-4 text-center text-red-500'>
         Error loading members: {(error as any)?.data?.message || 'Unknown error'}
       </div>
     );
@@ -336,51 +361,52 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
   return (
     <div className='flex items-center justify-between gap-2.5 mb-8 bg-white rounded p-3'>
       <div className='flex items-center gap-2.5'>
-        <div className='relative flex items-center'>
-          <FaSearch className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 h-4 w-4 pointer-events-none' />
+        <div className='flex items-center border border-gray-300 rounded-md w-64 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
+          <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
           <input
             type='text'
-            className='pl-12 pr-2.5 py-1 border border-gray-300 rounded text-sm bg-white min-w-[240px]'
             placeholder='Search list'
+            className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
+            style={{ all: 'unset', width: '100%' }}
           />
         </div>
 
-        <div className="flex items-center">
+        <div className='flex items-center'>
           {members.length > 0 ? (
             isMembersExpanded ? (
-              <div className="flex items-center">
+              <div className='flex items-center'>
                 {members.map((member, index) => (
                   <div
                     key={member.id}
-                    className="relative w-8 h-8 group"
+                    className='relative w-8 h-8 group'
                     style={{ marginLeft: index > 0 ? '-4px' : '0' }}
                   >
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                      className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                       onClick={toggleMembers}
                     />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                       {member.name}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="relative w-8 h-8 group">
+              <div className='relative w-8 h-8 group'>
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className="w-8 h-8 rounded-full object-cover border cursor-pointer"
+                  className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                   onClick={toggleMembers}
                 />
-                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                   {members[0].name}
                 </span>
                 {members.length > 1 && (
                   <div
-                    className="absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer"
+                    className='absolute -right-2 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1.5 py-0.5 rounded-full cursor-pointer'
                     onClick={toggleMembers}
                   >
                     +{members.length - 1}
@@ -389,7 +415,7 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
               </div>
             )
           ) : (
-            <div className="text-xs text-gray-500">No active members</div>
+            <div className='text-xs text-gray-500'>No active members</div>
           )}
         </div>
 
@@ -416,10 +442,17 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
 
 // ProjectTaskList Component
 const ProjectTaskList: React.FC = () => {
+  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
+  useEffect(() => {
+    if (projectDetails?.data?.id) {
+      dispatch(setCurrentProjectId(projectDetails.data.id));
+    }
+  }, [projectDetails, dispatch]);
+
   const {
     data: workItemsData,
     isLoading,
@@ -469,9 +502,10 @@ const ProjectTaskList: React.FC = () => {
   const [createDocument] = useCreateDocumentMutation();
   const { user } = useAuth();
   const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
+  const shouldFetchMapping = !!projectId && !!user?.id;
   const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery(
-    { projectId: projectId!, userId: user?.id! },
-    { skip: !projectId || !user?.id }
+    { projectId: projectId!, userId: user!.id },
+    { skip: !shouldFetchMapping }
   );
 
   const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
@@ -483,6 +517,9 @@ const ProjectTaskList: React.FC = () => {
       status: member.status,
     })
   );
+
+  // Lấy accountId từ localStorage
+  const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -523,7 +560,7 @@ const ProjectTaskList: React.FC = () => {
           title: 'Untitled Document',
           template: 'blank',
           content: '',
-          createdBy: user.id,
+          createdBy: accountId, // Sử dụng accountId từ localStorage
         };
 
         const res = await createDocument(payload).unwrap();
@@ -624,9 +661,12 @@ const ProjectTaskList: React.FC = () => {
           description: item.description || '',
           plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
-          reporterId: item.reporterId || null,
+          reporterId: item.reporterId || 0, // Already correct
           assignedBy: item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
+          startDate: item.created || new Date().toISOString(),
+          endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
@@ -643,6 +683,7 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           assignedBy: item.assignees[0]?.id || null,
           priority: 'MEDIUM',
+          createdBy: accountId,
         };
         await updateTask({ id: item.key, body: taskData }).unwrap();
       }
@@ -697,9 +738,12 @@ const ProjectTaskList: React.FC = () => {
           description: item.description || '',
           plannedEndDate: item.dueDate || '',
           status: item.status,
-          reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
+          reporterId: field === 'reporter' ? member.accountId : item.reporterId || 0, // Already correct
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
@@ -717,6 +761,7 @@ const ProjectTaskList: React.FC = () => {
             status: item.status,
             assignedBy: item.assignees[0]?.id || null,
             priority: 'MEDIUM',
+            createdBy: accountId,
           };
           await updateTask({ id: item.key, body: taskData }).unwrap();
         } else {
@@ -765,9 +810,12 @@ const ProjectTaskList: React.FC = () => {
           description: item.description || '',
           plannedEndDate: item.dueDate || '',
           status: item.status,
-          reporterId: item.reporterId || null,
+          reporterId: item.reporterId || 0, // Already correct
           assignedBy: 0,
           priority: 'MEDIUM',
+          startDate: item.created || new Date().toISOString(),
+          endDate: item.dueDate || '',
+          createdBy: accountId,
         };
         await updateSubtask(subtaskData).unwrap();
       } else {
@@ -780,7 +828,6 @@ const ProjectTaskList: React.FC = () => {
       alert(`Failed to delete assignment: ${errorMessage}`);
     }
   };
-
   const handleShowMemberDropdown = (
     id: string,
     field: 'reporter' | 'assignees',
@@ -855,7 +902,6 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
-          // Loại bỏ trùng lặp trong assignees
           const uniqueAssignees = Array.from(
             new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
           );
@@ -883,6 +929,7 @@ const ProjectTaskList: React.FC = () => {
             key: item.key || '',
             taskId: item.taskId || null,
             summary: item.summary || '',
+
             status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
             comments: item.commentCount || 0,
             sprint: item.sprintId || null,
@@ -906,11 +953,10 @@ const ProjectTaskList: React.FC = () => {
             },
             reporterId: item.reporterId || null,
             projectId: item.projectId || projectId,
-            epicId: null,
+            epicId: item.taskId || null,
             description: '',
           };
         });
-
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -1486,7 +1532,7 @@ const ProjectTaskList: React.FC = () => {
               <Doc
                 docId={createdDocIds[docTaskId]}
                 onClose={() => setIsDocModalOpen(false)}
-                updatedBy={user.id}
+                updatedBy={accountId} // Sử dụng accountId từ localStorage
               />
             </div>
           </div>

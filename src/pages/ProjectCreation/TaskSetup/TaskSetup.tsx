@@ -336,7 +336,7 @@ const TaskSetup: React.FC = () => {
       setErrorMessage(error.data?.message || 'Failed to save epics or send email to Project Manager.');
     } finally {
       setIsNotifyPMConfirmOpen(false);
-      setTimeout(() => navigate('/project-overview'), 1000);
+      setTimeout(() => navigate('#'), 1000);
     }
   };
 

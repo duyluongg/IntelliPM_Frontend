@@ -151,8 +151,16 @@ import { meetingRescheduleRequestApi } from '../services/ProjectManagement/Meeti
 import { epicCommentApi } from '../services/epicCommentApi';
 import { workLogApi } from '../services/workLogApi';
 import { activityLogApi } from '../services/activityLogApi';
+import { notificationApi } from '../services/notificationApi';
+import { recipientNotificationApi } from '../services/recipientNotificationApi';
 import docReducer from '../components/slices/Document/documentSlice';
 import projectCurrentReducer from '../components/slices/Project/projectCurrentSlice';
+import { riskSolutionApi } from '../services/riskSolutionApi';
+import { riskFileApi } from '../services/riskFileApi';
+import { riskCommentApi } from '../services/riskCommentApi';
+import { notificationsApi } from '../services/Notification/notificationApi';
+import { taskDependencyApi } from '../services/taskDependencyApi';
+import { documentExportApi } from '../services/Document/documentExportApi';
 
 const persistConfig = {
   key: 'root',
@@ -196,6 +204,14 @@ const rootReducer = combineReducers({
   [epicCommentApi.reducerPath]: epicCommentApi.reducer,
   [workLogApi.reducerPath]: workLogApi.reducer,
   [activityLogApi.reducerPath]: activityLogApi.reducer,
+  [riskSolutionApi.reducerPath]: riskSolutionApi.reducer,
+  [riskFileApi.reducerPath]: riskFileApi.reducer,
+  [riskCommentApi.reducerPath]: riskCommentApi.reducer,
+  [notificationsApi.reducerPath]: notificationsApi.reducer,
+  [notificationApi.reducerPath]: notificationApi.reducer,
+  [recipientNotificationApi.reducerPath]: recipientNotificationApi.reducer,
+  [taskDependencyApi.reducerPath]: taskDependencyApi.reducer,
+  [documentExportApi.reducerPath]: documentExportApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -245,6 +261,14 @@ export const store = configureStore({
       epicCommentApi.middleware, 
       workLogApi.middleware,
       activityLogApi.middleware,
+      riskSolutionApi.middleware,
+      riskFileApi.middleware,
+      riskCommentApi.middleware,
+      notificationsApi.middleware,
+      notificationApi.middleware,
+      recipientNotificationApi.middleware,
+      taskDependencyApi.middleware,
+      documentExportApi.middleware
     ),
 });
 

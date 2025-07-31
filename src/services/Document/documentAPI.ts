@@ -2,6 +2,12 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
 import type { DocumentType } from '../../types/DocumentType';
 
+interface ShareDocumentViaEmailRequest {
+  userIds: number[];
+  customMessage: string;
+  file: File;
+}
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
   baseQuery: fetchBaseQuery({
@@ -30,7 +36,7 @@ export const documentApi = createApi({
         body,
       }),
     }),
-      createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
+    createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
         url: 'documents/create',
         method: 'POST',
@@ -100,22 +106,46 @@ export const documentApi = createApi({
     summarizeAI: builder.query<{ summary: string }, number>({
       query: (id) => `documents/${id}/summary`,
     }),
-    documentStatus: builder.query<DocumentType[], {projectId: number, status: string}>({
-      query: ({projectId, status}) =>  `documents/project/${projectId}/status/${status}`,
+    documentStatus: builder.query<DocumentType[], { projectId: number; status: string }>({
+      query: ({ projectId, status }) => `documents/project/${projectId}/status/${status}`,
     }),
 
-    approveDocument: builder.mutation<DocumentType, { documentId: number; status: string; comment: string }>(
-      {
-        query: ({ documentId, status, comment }) => ({
-          url: `documents/${documentId}/approve`,
+    approveDocument: builder.mutation<
+      DocumentType,
+      { documentId: number; status: string; comment: string }
+    >({
+      query: ({ documentId, status, comment }) => ({
+        url: `documents/${documentId}/approve`,
+        method: 'POST',
+        body: {
+          status,
+          comment,
+        },
+      }),
+    }),
+
+    generateFromTasks: builder.mutation<string, number>({
+      query: (documentId) => ({
+        url: `documents/${documentId}/generate-from-tasks`,
+        method: 'POST',
+      }),
+      transformResponse: (response: { content: string }) => response.content,
+    }),
+
+    shareDocumentViaEmail: builder.mutation<any, ShareDocumentViaEmailRequest>({
+      query: ({ userIds, customMessage, file }) => {
+        const formData = new FormData();
+        userIds.forEach((id) => formData.append('userIds', id.toString()));
+        formData.append('customMessage', customMessage);
+        formData.append('file', file);
+
+        return {
+          url: 'documents/share-via-email',
           method: 'POST',
-          body: {
-            status,
-            comment,
-          },
-        }),
-      }
-    ),
+          body: formData,
+        };
+      },
+    }),
   }),
 });
 
@@ -131,5 +161,7 @@ export const {
   useAskAIMutation,
   useSummarizeAIQuery,
   useDocumentStatusQuery,
-  useApproveDocumentMutation
+  useApproveDocumentMutation,
+  useGenerateFromTasksMutation,
+  useShareDocumentViaEmailMutation,
 } = documentApi;

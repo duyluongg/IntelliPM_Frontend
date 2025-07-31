@@ -19,6 +19,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -82,6 +83,8 @@ const EpicDetail: React.FC = () => {
     skip: !epicIdFromUrl,
   });
 
+  
+
   React.useEffect(() => {
     if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
       handleUpdateEpic();
@@ -115,6 +118,10 @@ const EpicDetail: React.FC = () => {
   }, [tasks]);
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
+    skip: !epic?.projectId,
+  });
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
     skip: !epic?.projectId,
   });
 
@@ -193,21 +200,13 @@ const EpicDetail: React.FC = () => {
     }
   };
 
-  if (isLoading || !epic) {
-    return (
-      <div className="modal-overlay">
-        <div className="work-item-modal">Đang tải Epic...</div>
-      </div>
-    );
-  }
-
   React.useEffect(() => {
     if (epic) setStatus(epic.status);
   }, [epic]);
 
   const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       refetch();
     } catch (err) {
       console.error('❌ Error updating task status:', err);
@@ -475,8 +474,9 @@ const EpicDetail: React.FC = () => {
                                         const newTitle = editableTitles[task.id]?.trim();
                                         if (newTitle && newTitle !== task.title) {
                                           try {
-                                            await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
+                                            await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
                                             await refetch();
+                                            await refetchActivityLogs();
                                           } catch (err) {
                                             console.error('❌ Failed to update title:', err);
                                           }
@@ -636,8 +636,10 @@ const EpicDetail: React.FC = () => {
                                       await updateTaskStatus({
                                         id: task.id,
                                         status: e.target.value,
+                                        createdBy: accountId
                                       }).unwrap();
                                       await refetch();
+                                      await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Error updating status:', err);
                                     }
@@ -754,12 +756,14 @@ const EpicDetail: React.FC = () => {
                             epicId: epic.id,
                             title: newTaskTitle.trim(),
                             type: newTaskType,
+                            createdBy: accountId,
                           }).unwrap();
 
                           console.log('✅ Task created');
                           setNewTaskTitle('');
                           setShowTaskInput(false);
                           await refetch();
+                          await refetchActivityLogs();
                         } catch (err) {
                           console.error('❌ Failed to create task:', err);
                           alert('❌ Failed to create task');
@@ -819,6 +823,28 @@ const EpicDetail: React.FC = () => {
               </div>
 
               {/* Tab Content */}
+              {activeTab === 'HISTORY' && (
+                <div className="history-list">
+                  {isActivityLogsLoading ? (
+                    <div>Loading...</div>
+                  ) : activityLogs.length === 0 ? (
+                    <div>No history available.</div>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div key={log.id} className="history-item">
+                        <div className="history-header">
+                          <span className="history-user">{log.createdByName}</span>
+                          <span className="history-time">
+                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="history-message">{log.message}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {activeTab === 'COMMENTS' ? (
                 <>
                   <div className="comment-list">
@@ -887,7 +913,6 @@ const EpicDetail: React.FC = () => {
                                   </button>
                                 </div>
                               )}
-
                             </div>
                           </div>
                         ))
@@ -929,7 +954,6 @@ const EpicDetail: React.FC = () => {
                 </>
               ) : (
                 <div className="activity-placeholder">
-                  Chưa có nhật ký hoạt động.
                 </div>
               )}
             </div>

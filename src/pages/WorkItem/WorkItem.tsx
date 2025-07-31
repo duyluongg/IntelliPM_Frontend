@@ -23,6 +23,8 @@ import {
   useUpdateTaskDescriptionMutation,
   useUpdatePlannedStartDateMutation,
   useUpdatePlannedEndDateMutation,
+  useUpdateTaskPriorityMutation,
+  useUpdateTaskReporterMutation,
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -40,12 +42,17 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
-import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
+import {
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  useCreateTaskAssignmentQuickMutation,
+  useDeleteTaskAssignmentMutation,
+} from '../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 // import type { useState } from 'react';
 import { WorkLogModal } from './WorkLogModal';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import TaskDependency from './TaskDependency';
+import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -99,14 +106,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
+    Record<string, TaskAssignmentDTO[]>
+  >({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
+  const { data: assignees = [], isLoading: isAssigneeLoading } =
+    useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+  const [updateTaskPriority] = useUpdateTaskPriorityMutation();
+  const [updateTaskReporter] = useUpdateTaskReporterMutation();
 
-
+  const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
 
   const {
     data: attachments = [],
@@ -116,12 +129,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
-  const handleDeleteFile = async (id: number) => {
+  const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
-      await deleteTaskFile(id).unwrap();
+      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Error delete file:', error);
       alert('❌ Delete file failed');
@@ -158,7 +172,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
+        createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ Start date updated');
     } catch (err) {
       console.error('❌ Failed to update start date', err);
@@ -171,7 +187,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
+        createdBy: accountId,
       }).unwrap();
+      await refetchActivityLogs();
       console.log('✅ End date updated');
     } catch (err) {
       console.error('❌ Failed to update end date', err);
@@ -180,8 +198,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title }).unwrap();
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       alert('✅ Update title task successfully!');
+      await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
       alert('✅ Error update task title!');
@@ -193,7 +212,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (description === taskData?.description) return;
 
     try {
-      await updateTaskDescription({ id: taskId, description }).unwrap();
+      await updateTaskDescription({ id: taskId, description, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       console.log('Update description task successfully!');
     } catch (err) {
       console.error('Error update task description:', err);
@@ -231,14 +251,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading } = useGetActivityLogsByProjectIdQuery(taskData?.projectId!, {
-    skip: !taskData?.projectId,
-  });
-
-  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
+  const {
+    data: activityLogs = [],
+    isLoading: isActivityLogsLoading,
+    refetch: refetchActivityLogs,
+  } = useGetActivityLogsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
+
+  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(
+    taskId,
+    {
+      skip: !taskId,
+    }
+  );
 
   const {
     data: comments = [],
@@ -261,6 +287,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
       setSprintId(String(taskData.sprintId));
+      setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
 
@@ -271,9 +298,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     key: item.id,
     summary: item.title,
     priority: item.priority,
+    description: item.description,
     assignee: item.assignedByName ?? 'Unassigned',
     assigneeId: item.assignedBy ?? '0',
     status: item.status,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    reporterId: item.reporterId,
+    reporterName: item.reporterName,
   }));
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -285,6 +317,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       }).unwrap();
 
       refetch();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -292,7 +325,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
-      await updateTaskStatus({ id: taskId, status: newStatus }).unwrap();
+      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
       setStatus(newStatus);
       await refetchTask();
     } catch (err) {
@@ -310,8 +343,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     try {
       setWorkType(type);
       setIsDropdownOpen(false);
-      await updateTaskType({ id: taskId, type: type.toUpperCase() }).unwrap();
+      await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
+      await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Error update work type:', err);
     }
@@ -401,12 +435,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
               style={{ width: '500px' }}
+              disabled={!canEdit}
             />
-          </div>
-          <div className='header-actions'>
-            <button className='close-btn' onClick={onClose}>
-              ✖
-            </button>
+            <div className='modal-cont'>
+              <button className='close-btn' onClick={onClose}>
+                ✖
+              </button>
+            </div>
           </div>
         </div>
 
@@ -458,9 +493,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         taskId,
                         title: file.name,
                         file: file,
+                        createdBy: accountId,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -477,6 +514,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onBlur={() => handleDescriptionTaskChange()}
+                disabled={!canEdit}
               />
 
               {attachments.length > 0 && (
@@ -519,7 +557,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
                             className='delete-file-btn'
                             title='Delete file'
                           >
@@ -719,7 +757,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           onClick={async () => {
                             for (const title of selectedSuggestions) {
                               try {
-                                await createSubtask({ taskId, title, createdBy: accountId }).unwrap();
+                                await createSubtask({
+                                  taskId,
+                                  title,
+                                  createdBy: accountId,
+                                }).unwrap();
                               } catch (err) {
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
@@ -728,6 +770,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             setShowSuggestionList(false);
                             setSelectedSuggestions([]);
                             await refetch();
+                            await refetchActivityLogs();
                           }}
                           disabled={selectedSuggestions.length === 0}
                           style={{
@@ -821,14 +864,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       <tbody>
                         {childWorkItems.map((item, index) => (
                           <tr key={index}>
-                            <td><img src={subtaskIcon} alt="Subtask" /></td>
-                            <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
-                            <td onClick={() => setEditingSummaryId(item.key)} style={{
-                              cursor: 'pointer',
-                              whiteSpace: 'normal',
-                              wordBreak: 'break-word',
-                              maxWidth: '300px',
-                            }}>
+                            <td>
+                              <img src={subtaskIcon} alt='Subtask' />
+                            </td>
+                            <td>
+                              <a
+                                onClick={() => setSelectedChild(item)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                {item.key}
+                              </a>
+                            </td>
+                            <td
+                              onClick={() => setEditingSummaryId(item.key)}
+                              style={{
+                                cursor: 'pointer',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                maxWidth: '300px',
+                              }}
+                            >
                               {editingSummaryId === item.key ? (
                                 <input
                                   type='text'
@@ -849,12 +904,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             selectedAssignees[item.key] ?? item.assigneeId
                                           ),
                                           title: newTitle,
-                                          description: taskData?.description ?? '',
+                                          description: item.description ?? '',
                                           priority: item.priority,
+                                          startDate: item.startDate,
+                                          endDate: item.endDate,
+                                          reporterId: item.reporterId,
+                                          createdBy: accountId,
                                         }).unwrap();
                                         alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetch();
+                                        await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
                                         alert('❌ Failed to update summary');
@@ -887,11 +947,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         selectedAssignees[item.key] ?? item.assigneeId
                                       ),
                                       title: editableSummaries[item.key] ?? item.summary,
-                                      description: taskData?.description ?? '',
+                                      description: item?.description ?? '',
                                       priority: newPriority,
+                                      startDate: item.startDate,
+                                      endDate: item.endDate,
+                                      reporterId: item.reporterId,
+                                      createdBy: accountId,
                                     }).unwrap();
                                     console.log('✅ Updated priority');
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
                                     alert('❌ Failed to update priority');
@@ -924,11 +989,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         assignedBy: newAssigneeId,
                                         priority: item.priority,
                                         title: item.summary,
-                                        description: taskData?.description ?? '', // giữ nguyên
+                                        description: item?.description ?? '',
+                                        startDate: item.startDate,
+                                        endDate: item.endDate,
+                                        reporterId: item.reporterId,
+                                        createdBy: accountId,
                                       }).unwrap();
                                       alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
                                       await refetch();
+                                      await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Failed to update subtask:', err);
                                       alert('❌ Failed to update subtask');
@@ -997,6 +1067,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     setNewSubtaskTitle('');
                                     setShowSubtaskInput(false);
                                     await refetch();
+                                    await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('Error create subtask:', err);
                                   }
@@ -1059,22 +1130,27 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
               {/* Tab Content */}
               {activeTab === 'HISTORY' && (
-                <div className="history-list">
+                <div className='history-list'>
                   {isActivityLogsLoading ? (
                     <div>Loading...</div>
                   ) : activityLogs.length === 0 ? (
                     <div>No history available.</div>
                   ) : (
                     activityLogs.map((log) => (
-                      <div key={log.id} className="history-item">
-                        <strong>{log.createdByName}</strong> — <em>{new Date(log.createdAt).toLocaleString()}</em>
-                        <div>{log.message}</div>
+                      <div key={log.id} className='history-item'>
+                        <div className='history-header'>
+                          <span className='history-user'>{log.createdByName}</span>
+                          <span className='history-time'>
+                            {new Date(log.createdAt).toLocaleTimeString()}{' '}
+                            {new Date(log.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className='history-message'>{log.message}</div>
                       </div>
                     ))
                   )}
                 </div>
               )}
-
 
               {activeTab === 'COMMENTS' ? (
                 <>
@@ -1088,9 +1164,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         .slice()
                         .reverse()
                         .map((comment: any) => (
-                          <div key={comment.id} className="simple-comment">
-                            <div className="avatar-circle">
-                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                          <div key={comment.id} className='simple-comment'>
+                            <div className='avatar-circle'>
+                              <img src={comment.accountPicture || accountIcon} alt='avatar' />
                             </div>
                             <div className='comment-content'>
                               <div className='comment-header'>
@@ -1118,9 +1194,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             taskId,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert('✅ Comment updated');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
                                           alert('❌ Update failed');
@@ -1139,9 +1217,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         )
                                       ) {
                                         try {
-                                          await deleteTaskComment(comment.id).unwrap();
+                                          await deleteTaskComment({
+                                            id: comment.id,
+                                            createdBy: accountId,
+                                          }).unwrap();
                                           alert('🗑️ Deleted successfully');
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to delete comment', err);
                                           alert('❌ Delete failed');
@@ -1178,10 +1260,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             taskId,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
@@ -1216,14 +1300,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <div className='detail-item'>
                 <label>Assignee</label>
                 {canEdit ? (
-                  <div className="multi-select-dropdown">
+                  <div className='multi-select-dropdown'>
                     {/* Hiển thị danh sách đã chọn */}
-                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div
+                      className='selected-list'
+                      style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                    >
                       {(taskAssignmentMap[taskId] ?? []).map((assignment) => (
-                        <span className="selected-tag" key={assignment.accountId}>
+                        <span className='selected-tag' key={assignment.accountId}>
                           {assignment.accountFullname ?? 'Unknown'}
                           <button
-                            className="remove-tag"
+                            className='remove-tag'
                             onClick={async () => {
                               try {
                                 await deleteTaskAssignment({
@@ -1233,7 +1320,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                                 setTaskAssignmentMap((prev) => ({
                                   ...prev,
-                                  [taskId]: prev[taskId].filter((a) => a.accountId !== assignment.accountId),
+                                  [taskId]: prev[taskId].filter(
+                                    (a) => a.accountId !== assignment.accountId
+                                  ),
                                 }));
                               } catch (err) {
                                 console.error('❌ Failed to delete assignee:', err);
@@ -1247,7 +1336,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     </div>
 
                     {/* Dropdown chọn thêm */}
-                    <div className="dropdown-select-wrapper">
+                    <div className='dropdown-select-wrapper'>
                       <select
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
@@ -1258,14 +1347,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             const data = await getTaskAssignments(taskId).unwrap();
                             setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
                           } catch (err) {
-                            console.error("Error assigning task", err);
+                            console.error('Error assigning task', err);
                           }
                         }}
-                        defaultValue=""
+                        defaultValue=''
                       >
-                        <option value="" disabled>+ Add assignee</option>
+                        <option value='' disabled>
+                          + Add assignee
+                        </option>
 
-                        {/* Chỉ hiện những người chưa được gán vào task */}
                         {projectMembers
                           ?.filter(
                             (m) =>
@@ -1279,35 +1369,31 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             </option>
                           ))}
                       </select>
-
                     </div>
                   </div>
                 ) : (
                   <span>
-                    {isAssigneeLoading ? (
-                      'Loading...'
-                    ) : assignees.length === 0 ? (
-                      'None'
-                    ) : (
-                      assignees.map((assignee) => (
-                        <span key={assignee.id} style={{ display: 'block' }}>
-                          {assignee.accountFullname}
-                        </span>
-                      ))
-                    )}
+                    {isAssigneeLoading
+                      ? 'Loading...'
+                      : assignees.length === 0
+                      ? 'None'
+                      : assignees.map((assignee) => (
+                          <span key={assignee.id} style={{ display: 'block' }}>
+                            {assignee.accountFullname}
+                          </span>
+                        ))}
                   </span>
-
                 )}
               </div>
 
-              <div className="detail-item">
+              <div className='detail-item'>
                 <label>Labels</label>
                 <span>
                   {isLabelLoading
                     ? 'Loading...'
                     : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                    ? 'None'
+                    : workItemLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
               <div className='detail-item'>
@@ -1316,41 +1402,120 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </div>
               <div className='detail-item'>
                 <label>Sprint</label>
-                <span>{taskData?.sprintId ?? 'None'}</span>
+                <span>{taskData?.sprintName ?? 'None'}</span>
               </div>
+
+              <div className='detail-item'>
+                <label>Priority</label>
+                {canEdit ? (
+                  <select
+                    value={taskData?.priority}
+                    onChange={async (e) => {
+                      const newPriority = e.target.value;
+                      try {
+                        await updateTaskPriority({
+                          id: taskId,
+                          priority: newPriority,
+                          createdBy: accountId,
+                        }).unwrap();
+                        await refetch();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        console.error('❌ Error updating priority:', err);
+                      }
+                    }}
+                    style={{
+                      borderRadius: '4px',
+                      backgroundColor: 'white',
+                      width: '150px',
+                    }}
+                  >
+                    <option value='HIGHEST'>Highest</option>
+                    <option value='HIGH'>High</option>
+                    <option value='MEDIUM'>Medium</option>
+                    <option value='LOW'>Low</option>
+                    <option value='LOWEST'>Lowest</option>
+                  </select>
+                ) : (
+                  <span>{taskData?.priority ?? 'NONE'}</span>
+                )}
+              </div>
+
               <div className='detail-item'>
                 <label>Start date</label>
-                <input
-                  type='date'
-                  value={plannedStartDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedStartDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedStartDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedStartDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedStartDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Due date</label>
-                <input
-                  type='date'
-                  value={plannedEndDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value;
-                    const fullDate = `${selectedDate}T00:00:00.000Z`;
-                    setPlannedEndDate(fullDate);
-                  }}
-                  onBlur={() => handlePlannedEndDateTaskChange()}
-                  style={{ width: '150px' }}
-                />
+                {canEdit ? (
+                  <input
+                    type='date'
+                    value={plannedEndDate?.slice(0, 10) ?? ''}
+                    onChange={(e) => {
+                      const selectedDate = e.target.value;
+                      const fullDate = `${selectedDate}T00:00:00.000Z`;
+                      setPlannedEndDate(fullDate);
+                    }}
+                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Reporter</label>
-                <span>{taskData?.reporterName ?? 'None'}</span>
+                {canEdit ? (
+                  <select
+                    value={selectedReporter ?? 0}
+                    onChange={async (e) => {
+                      const newReporter = parseInt(e.target.value);
+                      setSelectedReporter(newReporter);
+
+                      try {
+                        await updateTaskReporter({
+                          id: taskId,
+                          reporterId: newReporter,
+                          createdBy: accountId,
+                        }).unwrap();
+                        alert('✅ Cập nhật Reporter thành công');
+                        await refetchTask();
+                        await refetchActivityLogs();
+                      } catch (err) {
+                        alert('❌ Cập nhật Reporter thất bại');
+                        console.error(err);
+                      }
+                    }}
+                    style={{ width: '150px' }}
+                  >
+                    <option value={0}>Unassigned</option>
+                    {projectMembers?.map((member) => (
+                      <option key={member.accountId} value={member.accountId}>
+                        {member.accountName}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span>{taskData?.reporterName ?? 'None'}</span>
+                )}
               </div>
+
               <div className='detail-item'>
                 <label>Time Tracking</label>
                 <span
@@ -1363,6 +1528,22 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}
+                workItemId={taskId}
+                type='task'
+              />
+
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
                 workItemId={taskId}
                 type='task'
               />

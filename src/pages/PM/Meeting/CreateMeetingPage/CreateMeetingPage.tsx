@@ -41,7 +41,9 @@ const CreateMeetingPage: React.FC = () => {
   });
 
   const [createMeeting, { isLoading: isCreating }] = useCreateMeetingMutation();
-  const [createInternalMeeting] = useCreateInternalMeetingMutation();
+  const [createInternalMeeting, { isLoading: isCreatingInternal }] = useCreateInternalMeetingMutation();
+
+  // const [createInternalMeeting] = useCreateInternalMeetingMutation();
 
   const handleParticipantToggle = (accountId: number) => {
     setParticipantIds((prev) =>
@@ -63,6 +65,20 @@ const CreateMeetingPage: React.FC = () => {
     { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
     { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
   ];
+
+
+const handleSelectAll = () => {
+  const members = projectDetails?.data?.projectMembers ?? [];
+  
+  if (participantIds.length === members.length) {
+    // Nếu tất cả đã được chọn, bỏ chọn tất cả
+    setParticipantIds([]);
+  } else {
+    // Nếu chưa tất cả được chọn, chọn tất cả
+    setParticipantIds(members.map(member => member.accountId));
+  }
+};
+
 
   const handleCreateMeeting = async () => {
     // console.log("🔍 Bắt đầu handleCreateMeeting");
@@ -143,7 +159,7 @@ const CreateMeetingPage: React.FC = () => {
         apiError?.innerDetails ??
         apiError?.details ??
         apiError?.message ??
-        'Đã xảy ra lỗi không xác định.';
+        'An unknown error occurred.';
 
       const conflictMatch = message.match(/Participant (\d+) has a conflicting meeting/);
       if (conflictMatch) {
@@ -207,7 +223,7 @@ const CreateMeetingPage: React.FC = () => {
 
         {selectedProjectId && projectDetails && (
           <>
-            <div>
+            {/* <div>
               <label className='block mb-2 font-medium text-gray-700'>Select participants</label>
               <div className='grid grid-cols-2 md:grid-cols-3 gap-2'>
                 {projectDetails.data.projectMembers
@@ -227,7 +243,47 @@ const CreateMeetingPage: React.FC = () => {
                     );
                   })}
               </div>
+            </div> */}
+
+<div>
+
+  <label className="block mb-3 text-lg font-semibold text-gray-800">Select participants</label>
+    <div className="flex justify-end mb-4">
+    <button
+      onClick={() => handleSelectAll()}
+      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300"
+    >
+      Select All
+    </button>
+  </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    {projectDetails.data.projectMembers
+      .filter((member) => member.accountId !== user?.id)
+      .map((member) => {
+        const isSelected = participantIds.includes(member.accountId);
+        return (
+          <label
+            key={member.id}
+            className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-300 ease-in-out 
+              ${isSelected ? 'bg-blue-100 border-2 border-blue-500 shadow-lg' : 'bg-white border-2 border-gray-300 hover:border-blue-300 hover:shadow-md'}`}
+            onClick={() => handleParticipantToggle(member.accountId)} // Chọn khi click vào label
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              readOnly
+              className="mr-3 h-5 w-5 text-blue-600"
+            />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-gray-800">{member.fullName}</span>
+              <span className="text-xs text-gray-500">{member.username}</span>
             </div>
+          </label>
+        );
+      })}
+  </div>
+</div>
+
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
@@ -314,7 +370,7 @@ const CreateMeetingPage: React.FC = () => {
               </div>
             )}
 
-            <button
+            {/* <button
               onClick={handleCreateMeeting}
               disabled={isCreating}
               className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
@@ -325,7 +381,19 @@ const CreateMeetingPage: React.FC = () => {
               }`}
             >
               {isCreating ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
-            </button>
+            </button> */}
+            <button
+  onClick={handleCreateMeeting}
+  disabled={isCreating || isCreatingInternal}
+  className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
+  ${isCreating || isCreatingInternal
+    ? 'bg-blue-400 cursor-not-allowed opacity-50'
+    : 'bg-blue-600 hover:bg-blue-700 text-white'
+  }`}
+>
+  {(isCreating || isCreatingInternal) ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
+</button>
+
           </>
         )}
       </div>

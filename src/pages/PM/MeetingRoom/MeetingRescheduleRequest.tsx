@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useCreateRescheduleRequestMutation } from '../../../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
 import type { FC } from 'react';
@@ -63,7 +64,7 @@ const handleSubmit = async () => {
 
   const requestData = {
     meetingId: parseInt(meeting.id),
-    requesterId: user.id, // Không còn báo lỗi nữa
+    requesterId: user.id,
     requestedDate: new Date().toISOString(),
     reason,
     status: 'PENDING',
@@ -73,12 +74,25 @@ const handleSubmit = async () => {
   };
 
   try {
-    await createRescheduleRequest(requestData);
+    const response = await createRescheduleRequest(requestData);
+
+    // Kiểm tra lỗi trong trường hợp response chứa error
+    if (response.error) {
+      if ('status' in response.error && response.error.status === 409) {
+        toast.error('A pending reschedule request already exists for this meeting and requester.');
+        setIsSubmitting(false); // Đảm bảo trạng thái đang gửi không bị thay đổi nếu có lỗi
+        return;
+      } else {
+        toast.error('Error submitting reschedule request');
+      }
+    }
+
+    // Nếu không có lỗi, thực hiện các hành động tiếp theo
     alert('Reschedule request submitted successfully');
     navigate('/meeting');
   } catch (error) {
     console.error(error);
-    alert('Error submitting reschedule request');
+    toast.error('Error submitting reschedule request');
   } finally {
     setIsSubmitting(false);
   }

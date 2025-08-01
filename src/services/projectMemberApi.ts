@@ -113,7 +113,7 @@ export const projectMemberApi = createApi({
       query: (projectId) => `project/${projectId}/projectmember`,
       transformResponse: (response: any) => {
         if (response?.isSuccess && Array.isArray(response.data)) {
-          return response;
+          return response.data.filter((member: any) => member.status === 'ACTIVE');
         }
         return [];
       },

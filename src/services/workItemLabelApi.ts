@@ -47,11 +47,19 @@ export const workItemLabelApi = createApi({
             query: (epicId) => `workitemlabel/by-epic/${epicId}`,
             transformResponse: (response: any): WorkItemLabel[] => response.data ?? [],
         }),
+
+        deleteWorkItemLabel: builder.mutation<void, number>({
+            query: (id) => ({
+                url: `workitemlabel/${id}`,
+                method: 'DELETE',
+            }),
+        }),
     }),
 });
 
 export const {
     useGetWorkItemLabelsByTaskQuery,
     useGetWorkItemLabelsBySubtaskQuery,
-    useGetWorkItemLabelsByEpicQuery
+    useGetWorkItemLabelsByEpicQuery,
+    useDeleteWorkItemLabelMutation
 } = workItemLabelApi;

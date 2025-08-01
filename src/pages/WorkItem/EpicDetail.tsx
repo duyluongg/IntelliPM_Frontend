@@ -1,9 +1,10 @@
 import React from 'react';
+import { useState, useRef } from 'react';
 import './EpicDetail.css';
 import { useParams } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
-import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
+import { useGetWorkItemLabelsByEpicQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
@@ -20,6 +21,7 @@ import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -79,11 +81,15 @@ const EpicDetail: React.FC = () => {
   const [updateEpicComment] = useUpdateEpicCommentMutation();
   const [deleteEpicComment] = useDeleteEpicCommentMutation();
   const [createEpicComment] = useCreateEpicCommentMutation();
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
   });
-
-  
 
   React.useEffect(() => {
     if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
@@ -219,6 +225,84 @@ const EpicDetail: React.FC = () => {
       setStatus(newStatus);
     } catch (err) {
       console.error('❌ Error updating epic status:', err);
+    }
+  };
+
+  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsByEpicQuery(
+    epicIdFromUrl!, { skip: !epicIdFromUrl, }
+  );
+
+  const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(epic?.projectId!, {
+      skip: !epic?.projectId,
+    });
+
+  const filteredLabels = projectLabels.filter((label) => {
+    const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
+
+    if (newLabelName.trim() === '') {
+      return notAlreadyAdded;
+    }
+
+    return (
+      label.name.toLowerCase().includes(newLabelName.toLowerCase()) &&
+      notAlreadyAdded
+    );
+  });
+
+  const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
+
+  const handleCreateLabelAndAssign = async (labelName?: string) => {
+    const nameToAssign = labelName?.trim() || newLabelName.trim();
+
+    if (!epic?.projectId || !epicIdFromUrl || !nameToAssign) {
+      alert('Missing projectId, taskId or label name!');
+      return;
+    }
+
+    try {
+      await createLabelAndAssign({
+        projectId: epic.projectId,
+        name: nameToAssign,
+        taskId: null,
+        epicId: epicIdFromUrl,
+        subtaskId: null,
+      }).unwrap();
+
+      alert('✅ Label assigned successfully!');
+      setNewLabelName('');
+      setIsEditingLabel(false);
+      await Promise.all([
+        refetchWorkItemLabels?.(),
+        refetchProjectLabels?.(),
+      ]);
+    } catch (error) {
+      console.error('❌ Failed to create and assign label:', error);
+      alert('❌ Failed to assign label');
+    }
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (labelRef.current && !labelRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+        setIsEditingLabel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleDeleteWorkItemLabel = async (id: number) => {
+    try {
+      await deleteWorkItemLabel(id).unwrap();
+      console.log('Delete successfully');
+      await refetchWorkItemLabels();
+    } catch (error) {
+      console.error(':', error);
     }
   };
 
@@ -1001,16 +1085,75 @@ const EpicDetail: React.FC = () => {
                 )}
               </div>
 
+              {isEditingLabel ? (
+                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
+                  <div className="flex flex-col gap-2 w-full relative">
+                    <label className="font-semibold">Labels</label>
 
+                    {/* Tag list + input */}
+                    <div
+                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                      onClick={() => setDropdownOpen(true)}
+                    >
+                      {workItemLabels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                        >
+                          {label.labelName}
+                          <button
+                            onClick={() => handleDeleteWorkItemLabel(label.id)}
+                            className="text-red-500 hover:text-red-700 font-bold text-sm"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
 
-              <div className="detail-item">
-                <label>Labels</label>
-                <span>
-                  {epicLabels.length === 0
-                    ? 'None'
-                    : epicLabels.map((label) => label.labelName).join(', ')}
-                </span>
-              </div>
+                      <input
+                        value={newLabelName}
+                        onChange={(e) => {
+                          setNewLabelName(e.target.value);
+                          setDropdownOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateLabelAndAssign();
+                        }}
+                        placeholder="Type to search or add"
+                        className="flex-1 min-w-[100px] border-none outline-none py-1"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Dropdown suggestion */}
+                    {dropdownOpen && filteredLabels.length > 0 && (
+                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
+                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                        {filteredLabels.map((label) => (
+                          <li
+                            key={label.id}
+                            onClick={() => handleCreateLabelAndAssign(label.name)}
+                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                          >
+                            {label.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
+                  <label className="font-semibold">Labels</label>
+                  <span>
+                    {isLabelLoading
+                      ? 'Loading...'
+                      : workItemLabels.length === 0
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                  </span>
+                </div>
+              )}
 
               <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
               <div className="detail-item">

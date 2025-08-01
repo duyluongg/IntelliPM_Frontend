@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import {
   useUpdateTaskTitleMutation,
@@ -65,6 +65,25 @@ const staticStatusOptions = [
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
+// Move mapApiStatusToUI to top level
+const mapApiStatusToUI = (
+  apiStatus: string | null | undefined,
+  categories: DynamicCategory[]
+): string => {
+  if (!apiStatus) return 'TO DO';
+  const normalizedApiStatus = apiStatus
+    .trim()
+    .toUpperCase()
+    .replace(/[-_\s]/g, '');
+  const category = categories.find(
+    (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  const staticOption = staticStatusOptions.find(
+    (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
+  );
+  return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
+};
+
 const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return 'Invalid Date';
   const date = new Date(dateStr);
@@ -97,24 +116,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   useEffect(() => {
     drag(ref);
   }, [drag]);
-
-  const mapApiStatusToUI = (
-    apiStatus: string | null | undefined,
-    categories: DynamicCategory[]
-  ): string => {
-    if (!apiStatus) return 'TO DO';
-    const normalizedApiStatus = apiStatus
-      .trim()
-      .toUpperCase()
-      .replace(/[-_\s]/g, '');
-    const category = categories.find(
-      (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-    );
-    const staticOption = staticStatusOptions.find(
-      (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-    );
-    return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
-  };
 
   const [status, setStatus] = useState<string>('');
 
@@ -187,7 +188,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
       await updateTaskTitle({ id: task.id, title, createdBy: accountId }).unwrap();
       setEditingTitle(false);
     } catch (err: any) {
-      alert(`Failed to update title: ${err?.data?.message || 'Failed to update title'}`);
+      alert(`Unable to update title: ${err?.data?.message || 'Unknown error'}`);
       setTitle(task.title || '');
       setEditingTitle(false);
     }
@@ -206,7 +207,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
       setStatus(newStatusLabel);
       setOpenDropdown(false);
     } catch (err: any) {
-      alert(`Failed to update status: ${err?.data?.message || 'Failed to update status'}`);
+      alert(`Unable to update status: ${err?.data?.message || 'Unknown error'}`);
     }
   };
 
@@ -242,11 +243,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     );
   };
 
-  if (isStatusLoading) return <div className='text-xs text-gray-500'>LOADING STATUS...</div>;
+  if (isStatusLoading) return <div className='text-xs text-gray-500'>Loading status...</div>;
   if (categoryError)
     return (
       <div className='text-xs text-red-500'>
-        ERROR LOADING STATUS: {(categoryError as any)?.data?.message || 'UNKNOWN ERROR'}
+        Error loading status: {(categoryError as any)?.data?.message || 'Unknown error'}
       </div>
     );
 
@@ -287,7 +288,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           className={`inline-flex text-xs font-bold rounded px-2 py-0.5 items-center gap-0.5 ${currentStyle.bg} ${currentStyle.text} hover:brightness-95`}
           disabled={false}
         >
-          <span>{status || 'LOADING...'}</span>
+          <span>{status || 'Loading...'}</span>
           <ChevronDown className='w-3 h-3 text-gray-500' />
         </button>
         {openDropdown && (
@@ -425,7 +426,7 @@ const Section: React.FC<SectionProps> = ({
       setNewTaskTitle('');
       onTaskUpdated();
     } catch (err: any) {
-      alert(`Failed to create task: ${err?.data?.message || 'Failed to create task'}`);
+      alert(`Unable to create task: ${err?.data?.message || 'Unknown error'}`);
     }
   };
 
@@ -434,7 +435,7 @@ const Section: React.FC<SectionProps> = ({
       await createSprint({ projectKey }).unwrap();
       onTaskUpdated();
     } catch (err: any) {
-      alert(`Failed to create sprint: ${err?.data?.message || 'Failed to create sprint'}`);
+      alert(`Unable to create sprint: ${err?.data?.message || 'Unknown error'}`);
     }
   };
 
@@ -455,9 +456,9 @@ const Section: React.FC<SectionProps> = ({
 
   const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (sprintId) {
+    if (sprintId && statusCategories?.data) {
       const completed = tasks.filter((task) =>
-        ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase())
+        ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories.data).toUpperCase())
       ).length;
       const open = tasks.length - completed;
       setIsCompletePopupOpen(true);
@@ -475,7 +476,7 @@ const Section: React.FC<SectionProps> = ({
         onTaskUpdated();
         setIsMoreMenuOpen(false);
       } catch (err: any) {
-        alert(`Failed to delete sprint: ${err?.data?.message || 'Failed to delete sprint'}`);
+        alert(`Unable to delete sprint: ${err?.data?.message || 'Unknown error'}`);
       }
     }
   };
@@ -489,24 +490,6 @@ const Section: React.FC<SectionProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const mapApiStatusToUI = (
-    apiStatus: string | null | undefined,
-    categories: DynamicCategory[]
-  ): string => {
-    if (!apiStatus) return 'TO DO';
-    const normalizedApiStatus = apiStatus
-      .trim()
-      .toUpperCase()
-      .replace(/[-_\s]/g, '');
-    const category = categories.find(
-      (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-    );
-    const staticOption = staticStatusOptions.find(
-      (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-    );
-    return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
-  };
 
   return (
     <div
@@ -562,7 +545,7 @@ const Section: React.FC<SectionProps> = ({
                           d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
                         />
                       </svg>
-                      Add dates
+                      Add Dates
                     </button>
                   ) : (
                     `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
@@ -585,7 +568,9 @@ const Section: React.FC<SectionProps> = ({
                           : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
-                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                        hasActiveSprint
+                          ? 'Cannot start sprint while another sprint is active'
+                          : ''
                       }
                     >
                       Start Sprint
@@ -600,7 +585,9 @@ const Section: React.FC<SectionProps> = ({
                           : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
                       }`}
                       title={
-                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
+                        hasActiveSprint
+                          ? 'Cannot start sprint while another sprint is active'
+                          : ''
                       }
                     >
                       Start Sprint
@@ -627,7 +614,9 @@ const Section: React.FC<SectionProps> = ({
               {sprint.status !== 'FUTURE' &&
                 sprint.status !== 'ACTIVE' &&
                 sprint.status !== 'COMPLETED' && (
-                  <span className='text-sm text-red-500'>Unknown Status: {sprint.status}</span>
+                  <span className='text-sm text-red-500'>
+                    Unknown status: {sprint.status}
+                  </span>
                 )}
               <div className='relative' ref={moreMenuRef}>
                 <button
@@ -637,7 +626,7 @@ const Section: React.FC<SectionProps> = ({
                       : 'border-transparent'
                   }`}
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                  aria-label='More sprint options'
+                  aria-label='Sprint options'
                 >
                   <MoreHorizontal size={16} />
                 </button>
@@ -647,13 +636,13 @@ const Section: React.FC<SectionProps> = ({
                       className='block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
                       onClick={handleEditSprint}
                     >
-                      Edit sprint
+                      Edit Sprint
                     </button>
                     <button
                       className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
                       onClick={handleDeleteSprint}
                     >
-                      Delete sprint
+                      Delete Sprint
                     </button>
                   </div>
                 )}
@@ -664,8 +653,26 @@ const Section: React.FC<SectionProps> = ({
       )}
       <div className='divide-y divide-gray-200'>
         {tasks.length === 0 ? (
-          <div className='px-4 py-3 text-center text-gray-500 border border-dashed rounded-md'>
-            No tasks available. Add a task to get started!
+          <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-4 space-y-4 border border-dashed rounded-md'>
+          
+            <div>
+              <p className='text-sm font-semibold text-gray-800'>
+                {sprintId === null ? 'Your backlog is empty' : 'Your sprint is empty'}
+              </p>
+              <p className='text-sm text-gray-500'>
+                {sprintId === null
+                  ? 'Add a task to your backlog to get started.'
+                  : 'Add a task to this sprint to get started.'}
+              </p>
+            </div>
+            {sprintId === null && (
+              <button
+                onClick={() => setNewTaskTitle('New Task')} // Trigger input focus
+                className='px-3 py-1.5 text-sm border rounded hover:bg-gray-100 transition text-gray-700 border-gray-300'
+              >
+                Create Task
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -741,16 +748,16 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
   const moveTask = async (taskId: string, toSprintId: number | null, toStatus: string | null) => {
     try {
       await updateTaskSprint({ id: taskId, sprintId: toSprintId }).unwrap();
-      if (toStatus) {
+      if (toStatus && statusCategories?.data) {
         const apiStatus =
-          statusCategories?.data?.find((c) => c.label.toUpperCase() === toStatus)?.name ||
+          statusCategories.data.find((c) => c.label.toUpperCase() === toStatus)?.name ||
           staticStatusOptions.find((opt) => opt.label === toStatus)?.name ||
           'TO_DO';
         await updateTaskStatus({ id: taskId, status: apiStatus, createdBy: accountId }).unwrap();
       }
       onTaskUpdated();
     } catch (err: any) {
-      alert(`Failed to move task: ${err?.data?.message || 'Failed to move task'}`);
+      alert(`Unable to move task: ${err?.data?.message || 'Unknown error'}`);
     }
   };
 
@@ -758,9 +765,9 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
     <div className='space-y-4 w-full'>
       {sprints.map((sprint) => {
         const completed = sprint.tasks.filter((task) =>
-          ['DONE'].includes(
-            mapApiStatusToUI(task.status, statusCategories?.data || []).toUpperCase()
-          )
+          statusCategories?.data
+            ? ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories.data).toUpperCase())
+            : false
         ).length;
         const open = sprint.tasks.length - completed;
         return (
@@ -779,40 +786,20 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
           />
         );
       })}
-      {backlogTasks.length > 0 && (
-        <Section
-          title='Backlog'
-          tasks={backlogTasks}
-          sprintId={null}
-          sprints={sprints}
-          projectId={projectId}
-          projectKey={projectKey}
-          workItemCompleted={0}
-          workItemOpen={backlogTasks.length}
-          onTaskUpdated={onTaskUpdated}
-          moveTask={moveTask}
-        />
-      )}
+      <Section
+        title='Backlog'
+        tasks={backlogTasks}
+        sprintId={null}
+        sprints={sprints}
+        projectId={projectId}
+        projectKey={projectKey}
+        workItemCompleted={0}
+        workItemOpen={backlogTasks.length}
+        onTaskUpdated={onTaskUpdated}
+        moveTask={moveTask}
+      />
     </div>
   );
 };
 
 export default SprintColumn;
-
-const mapApiStatusToUI = (
-  apiStatus: string | null | undefined,
-  categories: DynamicCategory[]
-): string => {
-  if (!apiStatus) return 'TO DO';
-  const normalizedApiStatus = apiStatus
-    .trim()
-    .toUpperCase()
-    .replace(/[-_\s]/g, '');
-  const category = categories.find(
-    (c) => c.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-  );
-  const staticOption = staticStatusOptions.find(
-    (opt) => opt.name.toUpperCase().replace(/[-_\s]/g, '') === normalizedApiStatus
-  );
-  return (staticOption?.label || category?.label || 'TO DO').toUpperCase();
-};

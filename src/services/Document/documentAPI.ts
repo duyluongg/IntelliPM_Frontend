@@ -7,6 +7,12 @@ interface ShareDocumentViaEmailRequest {
   customMessage: string;
   file: File;
 }
+interface ShareDocumentByEmailRequest {
+  documentId: number;
+  emails: string[];
+  message: string;
+  projectKey: string;
+}
 
 export const documentApi = createApi({
   reducerPath: 'documentApi',
@@ -146,6 +152,20 @@ export const documentApi = createApi({
         };
       },
     }),
+
+    shareDocumentToEmails: builder.mutation<any, ShareDocumentByEmailRequest>({
+      query: ({ documentId, emails, message }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body: {
+          emails,
+          message,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
   }),
 });
 
@@ -164,4 +184,5 @@ export const {
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
   useShareDocumentViaEmailMutation,
+  useShareDocumentToEmailsMutation,
 } = documentApi;

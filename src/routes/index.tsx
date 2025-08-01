@@ -49,39 +49,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <Homepage />,
       },
-      // {
-      //   path: '/projects/form',
-      //   element: <Homepage />,
-      // },
-      // { path: 'projects/form', element: <Form /> },
 
-      // { path: 'projects/form/:formId', element: <Form /> },
-      // { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
-
-      // {
-      //   path: 'gantt-chart',
-      //   element: <Gantt />,
-      // },
-      // {
-      //   path: 'project-dashboard',
-      //   element: <ProjectDashboard />,
-      // },
-      // {
-      //   path: 'projects',
-      //   element: <ProjectDetail />,
-      // },
-      // {
-      //   path: 'create-project/project-introduction',
-      //   element: <ProjectIntroduction />,
-      // },
-      // {
-      //   path: 'create-project/project-details-form',
-      //   element: <ProjectDetailsForm />,
-      // },
-      // {
-      //   path: 'create-project/invitees-form',
-      //   element: <InviteesForm />,
-      // },
       {
         path: 'meeting',
         element: <MeetingCore />,

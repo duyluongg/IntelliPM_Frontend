@@ -7,6 +7,7 @@ import RichTextEditor from '../../../components/PM/RichTextEditor/Editor';
 import { useAuth } from '../../../services/AuthContext';
 import StartWithAI from '../../../components/PM/AI/StartWithAI';
 import { DocumentContext } from '../../../components/context/DocumentContext';
+import { HiOutlineChartBar, HiOutlineTable, HiOutlineTemplate } from 'react-icons/hi';
 
 type Props = {
   docId: number;
@@ -24,6 +25,7 @@ export default function Doc({ docId }: Props) {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false); // ✅ tên nhất quán
 
   const isUpdatingRef = useRef(false);
+  const visibility = docData?.visibility || 'MAIN';
 
   useEffect(() => {
     if (docData) {
@@ -31,7 +33,6 @@ export default function Doc({ docId }: Props) {
       if (typeof docData.content === 'string') setContent(docData.content);
     }
   }, [docData]);
-
 
   useEffect(() => {
     if (docId) {
@@ -54,7 +55,7 @@ export default function Doc({ docId }: Props) {
       isUpdatingRef.current = true;
       await updateDocument({
         id: docId,
-        data: { content: newContent, updatedBy: user?.id },
+        data: { title, content: newContent, updatedBy: user?.id, visibility },
       }).unwrap();
       console.log('[PUT] success', newContent);
     } catch (err) {
@@ -66,7 +67,6 @@ export default function Doc({ docId }: Props) {
   const isEmptyContent = (html: string) => {
     return html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
   };
-
 
   const handleTitleChange = async (newTitle: string) => {
     if (!docId || isUpdatingRef.current || newTitle === title) return;
@@ -86,25 +86,34 @@ export default function Doc({ docId }: Props) {
     }
   };
 
-
   return (
-    <div className='p-5'>
+    <div className='relative px-6 py-5 mx-auto max-w-4xl'>
       <DocumentContext.Provider value={{ documentId: docId }}>
-
         <RichTextEditor
           value={content}
           onChange={handleContentChange}
           title={title}
           onTitleChange={handleTitleChange}
-
           showTemplatePicker={showTemplatePicker}
           setShowTemplatePicker={setShowTemplatePicker}
-
         />
       </DocumentContext.Provider>
 
       {isEmptyContent(content) && !showTemplatePicker && (
-        <div className='fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full '>
+        <div className='space-y-2 text-sm mt-2'>
+          {/* Các OptionItem nằm đây */}
+          <OptionItem
+            icon={<HiOutlineTemplate className='w-4 h-4' />}
+            text='Templates'
+            onClick={() => setShowTemplatePicker(true)}
+          />
+          <OptionItem icon={<HiOutlineTable className='w-4 h-4' />} text='Table' />
+          <OptionItem icon={<HiOutlineChartBar className='w-4 h-4' />} text='Chart' />
+          <OptionItem icon={<HiOutlineChartBar className='w-4 h-4' />} text='Board values' />
+          <OptionItem icon={<HiOutlineChartBar className='w-4 h-4' />} text='Board' />
+
+          {/* StartWithAI nằm ngay dưới OptionItem */}
+
           <StartWithAI
             docId={docId}
             onGenerated={() => {
@@ -116,3 +125,21 @@ export default function Doc({ docId }: Props) {
     </div>
   );
 }
+interface OptionItemProps {
+  icon: React.ReactNode;
+  text: string;
+
+  onClick?: () => void;
+}
+
+const OptionItem: React.FC<OptionItemProps> = ({ icon, text, onClick }) => {
+  return (
+    <div
+      className='flex items-center p-1 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'
+      onClick={onClick}
+    >
+      <div className='text-purple-500 mr-3'>{icon}</div>
+      <span className='text-gray-700 font-medium'>{text}</span>
+    </div>
+  );
+};

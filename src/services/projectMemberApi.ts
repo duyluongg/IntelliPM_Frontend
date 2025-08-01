@@ -109,11 +109,11 @@ export const projectMemberApi = createApi({
       },
       invalidatesTags: ['ProjectMember'],
     }),
-    getProjectMembers: builder.query<ProjectMemberWithPositionsResponse[], number>({
+    getProjectMembers: builder.query<ProjectMemberResponse[], number>({
       query: (projectId) => `project/${projectId}/projectmember`,
       transformResponse: (response: any) => {
         if (response?.isSuccess && Array.isArray(response.data)) {
-          return response.data.filter((member: any) => member.status === 'IN_PROGRESS');
+          return response.data.filter((member: any) => member.status === 'ACTIVE');
         }
         return [];
       },

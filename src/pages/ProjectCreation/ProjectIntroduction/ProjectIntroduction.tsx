@@ -15,18 +15,17 @@ import typeSubTask from '../../../assets/icon/type_subtask.svg';
 
 // Interface để định nghĩa prop (nếu cần)
 interface ProjectIntroductionProps {
-  onNext?: () => void; // Đặt làm optional để linh hoạt
+  onNext?: () => void; 
 }
 
 const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => {
   const navigate = useNavigate();
 
-  // Hàm xử lý khi nhấp vào "Use template", sử dụng onNext nếu có, nếu không dùng navigate
   const handleNext = () => {
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform'); // Route mặc định, thay đổi nếu cần
+      navigate('/project/createform'); 
     }
   };
 

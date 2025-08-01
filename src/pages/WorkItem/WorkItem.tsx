@@ -53,6 +53,8 @@ import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -119,8 +121,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
-
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
 
   console.log('ProjectKey: ', projectKey);
 
@@ -248,6 +251,45 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !taskData?.projectId,
   });
 
+  const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
+
+  const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
+
+  const handleCreateLabelAndAssign = async () => {
+    if (!taskData?.projectId || !taskId || !newLabelName.trim()) {
+      alert('Missing projectId, taskId or label name!');
+      return;
+    }
+
+    try {
+      await createLabelAndAssign({
+        projectId: taskData.projectId,
+        name: newLabelName.trim(),
+        taskId,
+        epicId: null,
+        subtaskId: null,
+      }).unwrap();
+
+      alert('✅ Label assigned successfully!');
+      setNewLabelName('');
+      setIsEditingLabel(false);
+      await refetchWorkItemLabels();
+    } catch (error) {
+      console.error('❌ Failed to create and assign label:', error);
+      alert('❌ Failed to assign label');
+    }
+  };
+
+  // Optional: Nhấn Enter để submit
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleCreateLabelAndAssign();
+    }
+  };
+
   React.useEffect(() => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
@@ -262,7 +304,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !taskId,
   });
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(
+  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsByTaskQuery(
     taskId,
     {
       skip: !taskId,
@@ -1388,8 +1430,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1398,24 +1440,35 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 )}
               </div>
 
-              <div className='detail-item'>
-                <label>Labels</label>
-                <span>
-                  {isLabelLoading
-                    ? 'Loading...'
-                    : workItemLabels.length === 0
-                    ? 'None'
-                    : workItemLabels.map((label) => label.labelName).join(', ')}
-                </span>
-              </div>
-              <div className='detail-item'>
-                <label>Parent</label>
-                <span>{taskData?.epicId ?? 'None'}</span>
-              </div>
-              <div className='detail-item'>
-                <label>Sprint</label>
-                <span>{taskData?.sprintName ?? 'None'}</span>
-              </div>
+              {isEditingLabel ? (
+                <input
+                  list="label-suggestions"
+                  value={newLabelName}
+                  onChange={(e) => setNewLabelName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Select or type label name"
+                  className="border px-2 py-1 rounded w-full"
+                  autoFocus
+                />
+              ) : (
+                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
+                  <label>Labels</label>
+                  <span>
+                    {isLabelLoading
+                      ? 'Loading...'
+                      : workItemLabels.length === 0
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                  </span>
+                </div>
+              )}
+
+              <datalist id="label-suggestions">
+                {projectLabels.map((label: any) => (
+                  <option key={label.id} value={label.name} />
+                ))}
+              </datalist>
+
 
               <div className='detail-item'>
                 <label>Priority</label>

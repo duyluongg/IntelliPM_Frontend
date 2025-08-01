@@ -64,37 +64,92 @@ const ProjectCreation: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="relative flex justify-between items-center mb-10">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <style>
+        {`
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.3); opacity: 0.1; }
+            100% { transform: scale(1); opacity: 0.3; }
+          }
+          @keyframes checkmark {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .pulse-effect::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(28, 115, 253, 0.3), transparent);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            z-index: -1;
+          }
+          .tooltip {
+            animation: fadeIn 0.3s ease-in-out;
+          }
+          .checkmark {
+            animation: checkmark 0.4s ease-out;
+          }
+          .progress-bar {
+            border-radius: 9999px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .glow {
+            box-shadow: 0 0 8px rgba(28, 115, 253, 0.6), 0 0 16px rgba(28, 115, 253, 0.3);
+          }
+        `}
+      </style>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-12 pb-8">
+        <div className="relative flex justify-between items-center mb-16">
           {steps.map((label, index) => (
-            <div key={index} className="flex-1 flex flex-col items-center relative">
+            <div key={index} className="flex-1 flex flex-col items-center relative group">
               {index < steps.length - 1 && (
-                <div className="absolute top-4 left-1/2 w-full h-0.5 bg-gray-300 z-0">
+                <div className="absolute top-5 left-1/2 w-full h-2 bg-gray-200 z-0 progress-bar">
                   <div
-                    className={`h-0.5 ${index < step ? 'bg-blue-600' : 'bg-gray-300'}`}
-                    style={{ width: '100%' }}
+                    className="h-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] transition-all duration-800 ease-in-out progress-bar"
+                    style={{
+                      width: index < step ? '100%' : '0%',
+                    }}
                   ></div>
                 </div>
               )}
               <div
-                className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold
-                ${index <= step ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-700'}`}
+                className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center text-base font-bold transition-all duration-500 ease-in-out border
+                  ${index < step ? 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white border-blue-600' : 
+                    index === step ? 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white border-blue-600 scale-125 glow pulse-effect' : 
+                    'bg-gray-200 text-gray-700 border-gray-300'}`}
               >
-                {index + 1}
+                {index < step ? (
+                  <svg className="w-6 h-6 checkmark" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  index + 1
+                )}
               </div>
               <p
-                className={`text-sm mt-2 text-center w-24 ${
-                  index === step ? 'text-blue-600 font-medium' : 'text-gray-500'
-                }`}
+                className={`text-sm mt-4 text-center w-28 transition-colors duration-300 font-medium
+                  ${index === step ? 'text-blue-600' : 'text-gray-500'}`}
               >
                 {label}
               </p>
+              {/* Tooltip */}
+              <div className="absolute top-16 hidden group-hover:block bg-gray-900 text-white text-sm rounded-lg py-2 px-4 shadow-xl z-20 tooltip">
+                {label}
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="bg-white">{renderStep()}</div>
+        <div className="bg-white rounded-2xl shadow-xl p-8">{renderStep()}</div>
       </div>
     </div>
   );

@@ -490,4 +490,5 @@ export const {
   useSendEmailRejectToLeaderMutation,
   useRejectProjectMutation,
   useGetProjectItemsByKeyQuery,
+  useLazyCheckProjectKeyQuery
 } = projectApi;

@@ -73,4 +73,4 @@ export const accountApi = createApi({
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery } = accountApi;
+export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery } = accountApi;

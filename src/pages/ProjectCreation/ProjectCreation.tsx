@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectProjectId, setProjectId } from '../../components/slices/Project/projectCreationSlice';
 import ProjectDetailsForm from './ProjectDetailsForm/ProjectDetailsForm';
 import RequirementsForm from './RequirementsForm/RequirementsForm';
 import InviteesForm from './InviteesForm/InviteesForm';
@@ -16,17 +18,58 @@ interface ProjectFormData {
 const steps = ['Project Details', 'Requirements', 'Invite Members', 'Project Overview'];
 
 const ProjectCreation: React.FC = () => {
-  const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<ProjectFormData>({
-    name: '',
-    projectKey: '',
-    description: '',
-    requirements: [''],
-    invitees: [''],
+  const dispatch = useDispatch();
+  const projectId = useSelector(selectProjectId);
+  const [step, setStep] = useState<number>(() => {
+    const savedStep = localStorage.getItem('projectCreationStep');
+    return savedStep ? parseInt(savedStep, 10) : 0;
+  });
+  const [formData, setFormData] = useState<ProjectFormData>(() => {
+    const savedData = localStorage.getItem('projectFormData');
+    try {
+      return savedData
+        ? JSON.parse(savedData)
+        : {
+            name: '',
+            projectKey: '',
+            description: '',
+            requirements: [''],
+            invitees: [''],
+          };
+    } catch (e) {
+      console.error('Error parsing projectFormData from localStorage:', e);
+      return {
+        name: '',
+        projectKey: '',
+        description: '',
+        requirements: [''],
+        invitees: [''],
+      };
+    }
   });
   const navigate = useNavigate();
 
-  const handleNext = async () => {
+  // Restore projectId from localStorage on mount
+  useEffect(() => {
+    const savedProjectId = localStorage.getItem('projectCreationId');
+    if (savedProjectId && !projectId) {
+      dispatch(setProjectId(parseInt(savedProjectId, 10)));
+    }
+  }, [dispatch, projectId]);
+
+  // Save formData, step, and projectId to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('projectFormData', JSON.stringify(formData));
+    localStorage.setItem('projectCreationStep', step.toString());
+    if (projectId) {
+      localStorage.setItem('projectCreationId', projectId.toString());
+    }
+  }, [formData, step, projectId]);
+
+  const handleNext = (data?: Partial<ProjectFormData>) => {
+    if (data) {
+      setFormData((prev) => ({ ...prev, ...data }));
+    }
     if (step < steps.length - 1) {
       setStep((prev) => prev + 1);
     }
@@ -39,7 +82,11 @@ const ProjectCreation: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    navigate(`/project/${formData.projectKey}/dashboard`);
+    localStorage.removeItem('projectFormData');
+    localStorage.removeItem('projectCreationStep');
+    localStorage.removeItem('projectCreationId');
+    dispatch(setProjectId(0)); 
+    navigate(`/project/list`);
   };
 
   const renderStep = () => {
@@ -53,10 +100,26 @@ const ProjectCreation: React.FC = () => {
           description: '',
           priority: '',
         }));
-        return <RequirementsForm initialData={{ requirements: initialRequirements }} onNext={handleNext} onBack={handleBack} />;
+        return (
+          <RequirementsForm
+            initialData={{ requirements: initialRequirements }}
+            onNext={(requirements) =>
+              handleNext({
+                requirements: requirements.map((req) => req.title),
+              })
+            }
+            onBack={handleBack}
+          />
+        );
       case 2:
-        return <InviteesForm initialData={formData} onNext={handleNext} onBack={handleBack} />;
-      case 3:
+        return (
+          <InviteesForm
+            initialData={formData}
+            onNext={async () => handleNext()}
+            onBack={handleBack}
+          />
+        );
+       case 3:
         return <ProjectOverview />;
       default:
         return null;
@@ -140,7 +203,6 @@ const ProjectCreation: React.FC = () => {
               >
                 {label}
               </p>
-              {/* Tooltip */}
               <div className="absolute top-16 hidden group-hover:block bg-gray-900 text-white text-sm rounded-lg py-2 px-4 shadow-xl z-20 tooltip">
                 {label}
                 <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
@@ -149,7 +211,7 @@ const ProjectCreation: React.FC = () => {
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">{renderStep()}</div>
+        <div>{renderStep()}</div>
       </div>
     </div>
   );

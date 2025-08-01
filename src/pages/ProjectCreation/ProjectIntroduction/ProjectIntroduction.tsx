@@ -13,19 +13,23 @@ import typeBug from '../../../assets/icon/type_bug.svg';
 import typeTask from '../../../assets/icon/type_task.svg';
 import typeSubTask from '../../../assets/icon/type_subtask.svg';
 
-// Interface để định nghĩa prop (nếu cần)
 interface ProjectIntroductionProps {
-  onNext?: () => void; 
+  onNext?: () => void;
 }
 
 const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => {
   const navigate = useNavigate();
 
   const handleNext = () => {
+    // Clear localStorage items
+    localStorage.removeItem('projectFormData');
+    localStorage.removeItem('projectCreationStep');
+    localStorage.removeItem('projectCreationId'); // Clear projectCreationId if used
+
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform'); 
+      navigate('/project/createform');
     }
   };
 

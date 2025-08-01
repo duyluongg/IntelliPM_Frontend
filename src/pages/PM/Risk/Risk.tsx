@@ -1,5 +1,4 @@
 import { useSearchParams } from 'react-router-dom';
-import Select from 'react-select';
 import {
   useGetRisksByProjectKeyQuery,
   useCreateRiskMutation,
@@ -13,7 +12,6 @@ import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useCreateRiskSolutionMutation } from '../../../services/riskSolutionApi';
 import './Risk.css';
-import { Check } from 'lucide-react';
 import { useState } from 'react';
 import RiskDetail from './RiskDetail';
 import ManualRiskModal from './ManualRiskModal';
@@ -114,36 +112,6 @@ const Risk = () => {
     );
   };
 
-  // type Assignee = {
-  //   fullName: string;
-  //   userName: string;
-  //   picture?: string;
-  //   avatarColor: string;
-  //   initials: string;
-  // };
-
-  // const Avatar = ({ person }: { person: Assignee }) =>
-  //   person.fullName && person.fullName !== 'Unknown' ? (
-  //     <div className='reporter'>
-  //       {person.picture ? (
-  //         <img
-  //           src={person.picture}
-  //           alt={`${person.fullName}'s avatar`}
-  //           className='avatar'
-  //           style={{ backgroundColor: person.avatarColor }}
-  //         />
-  //       ) : (
-  //         <button
-  //           className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full text-xs'
-  //           title={person.fullName}
-  //         >
-  //           {person.userName.slice(0, 2).toUpperCase()}
-  //         </button>
-  //       )}
-  //       <span className='reporter-name'>{person.fullName}</span>
-  //     </div>
-  //   ) : null;
-
   type Assignee = {
     id: number;
     fullName: string | null;
@@ -169,16 +137,9 @@ const Risk = () => {
     };
 
     return (
-      // <select
-      //   className='responsible-dropdown'
-      //   value={selectedId ?? ''}
-      //   onChange={(e) => onChange(Number(e.target.value))}
-      //   style={{ padding: '8px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
-      // >
       <select
         className='responsible-dropdown'
         value={selectedId?.toString() ?? ''}
-        // onChange={(e) => onChange(Number(e.target.value))}
         onChange={(e) => {
           const selectedValue = e.target.value;
           onChange(selectedValue === '' ? null : Number(selectedValue));
@@ -239,19 +200,6 @@ const Risk = () => {
       </select>
     );
   };
-
-  // const RiskStatusToggle = () => {
-  //   const [clicked, setClicked] = useState(false);
-
-  //   return (
-  //     <button
-  //       className={`risk-status-toggle ${clicked ? 'clicked' : ''}`}
-  //       onClick={() => setClicked(!clicked)}
-  //     >
-  //       <Check size={16} strokeWidth={3} />
-  //     </button>
-  //   );
-  // };
 
   const openCreateRiskModal = () => {
     console.log('Open create risk modal');
@@ -414,45 +362,6 @@ const Risk = () => {
                     <Severity status={risk.severityLevel} />
                   </span>
                 </td>
-                {/* <td style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-                  {risk.responsiblePicture ? (
-                    <img
-                      src={risk.responsiblePicture}
-                      alt='avatar'
-                      className='avatar'
-                      style={{ width: 24, height: 24, borderRadius: '50%' }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        backgroundColor: '#4C9AFF',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 10,
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      {getInitials(risk.responsibleFullName || risk.responsibleUserName)}
-                    </div>
-                  )}
-                  <ResponsibleDropdown
-                    assignees={assignees}
-                    selectedId={risk.responsibleId}
-                    onChange={async (newId) => {
-                      try {
-                        await updateResponsible({ id: risk.id, responsibleId: newId }).unwrap();
-                        refetch();
-                      } catch (error) {
-                        console.error('Failed to update responsible:', error);
-                      }
-                    }}
-                  />
-                </td> */}
 
                 <td style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   {risk.responsibleId ? (

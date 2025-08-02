@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './RiskDetail.css';
 import {
   MessageSquare,
@@ -40,8 +41,9 @@ import {
 } from '../../../services/riskCommentApi';
 import deleteIcon from '../../../assets/delete.png';
 import accountIcon from '../../../assets/account.png';
+import { useParams } from 'react-router-dom';
 
-interface Risk {
+export interface Risk {
   id: number;
   riskKey: string;
   title: string;
@@ -67,6 +69,7 @@ interface Risk {
 interface RiskDetailProps {
   risk: Risk;
   onClose: () => void;
+  isPage?: boolean;
 }
 
 type Assignee = {
@@ -91,12 +94,17 @@ function calculateSeverityColor(risk: any): string {
   return level.toLowerCase();
 }
 
-const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
+const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
+  const navigate = useNavigate();
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
   const [editableRisk, setEditableRisk] = useState<Risk>({ ...risk });
+  // const [searchParams] = useSearchParams();
+  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
 
@@ -360,9 +368,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
       <select
         className='responsible-dropdown'
         ref={dropdownRef}
-        // value={selectedId ?? ''}
         value={selectedId?.toString() ?? ''}
-        // onChange={(e) => onChange(Number(e.target.value))}
         onChange={(e) => {
           const selectedValue = e.target.value;
           onChange(selectedValue === '' ? null : Number(selectedValue));
@@ -417,15 +423,32 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
   };
 
   return (
-    <div className='risk-detail-container'>
+    <div className={isPage ? 'risk-page-container' : 'risk-detail-container'}>
       <div className='risk-detail-panel'>
+        {/* <div className={isPage ? 'risk-detail-page' : 'risk-detail-panel'}> */}
         <div className='detail-header'>
           <div className='detail-title-section'>
             <div className='risk-path'>
-              <div>
+              {/* <div>
                 {projectKey} /{' '}
                 <span className='risk-code'>{editableRisk.riskKey || `R-${editableRisk.id}`}</span>
+              </div> */}
+              <div>
+                {projectKey} /{' '}
+                <span
+                  className='risk-code cursor-pointer text-blue-500 hover:underline'
+                  onClick={() =>
+                    navigate(
+                      `/project/${projectKey}/risk/${
+                        editableRisk.riskKey || `R-${editableRisk.id}`
+                      }`
+                    )
+                  }
+                >
+                  {editableRisk.riskKey || `R-${editableRisk.id}`}
+                </span>
               </div>
+
               <div className='reporter-meta-block'>
                 <div className='reporter-icons'>
                   <div className='icon-with-count'>

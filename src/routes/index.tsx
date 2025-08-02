@@ -36,6 +36,8 @@ import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
 import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
 import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
+import Risk from '../pages/PM/Risk/Risk';
+import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -131,6 +133,18 @@ export const router = createBrowserRouter([
       {
         path: `/project?:projectKey/backlog`,
         element: <ProjectTaskList />,
+      },
+      {
+        path: `/project?:projectKey`,
+        element: <ProjectTaskList />,
+      },
+      {
+        path: '/project/:projectKey/risk',
+        element: <Risk />,
+      },
+      {
+        path: '/project/:projectKey/risk/:riskKey',
+        element: <RiskDetailPage />, 
       },
       {
         path: `introduction`,

@@ -17,8 +17,12 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
   const [searchParams] = useSearchParams();
   const { projectKey: paramProjectKey } = useParams();
+  const { riskKey: paramRiskKey } = useParams();
   const queryProjectKey = searchParams.get('projectKey');
   const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
+  const queryRiskKey = searchParams.get('riskKey');
+  const riskKey = paramRiskKey || queryRiskKey || 'NotFound';
+
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -34,10 +38,22 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
 
   const handleNotificationClick = async (recipientId: number, message: string) => {
     await handleMarkAsRead(recipientId);
+    console.log('Notification message:', message);
 
     const taskMatch = message.match(/task (\w+-\d+)/i);
     const subtaskMatch = message.match(/subtask (\w+-\d+)/i);
     const epicMatch = message.match(/epic (\w+-\d+)/i);
+    const riskMatch = message.match(/risk\s+([A-Z0-9]+-[A-Z0-9]+)/i);
+
+    console.log('✅ projectKey:', projectKey);
+    console.log('Parsed matches:');
+    console.log('Task:', taskMatch?.[1]);
+    console.log('Subtask:', subtaskMatch?.[1]);
+    console.log('Epic:', epicMatch?.[1]);
+    console.log('Risk:', riskMatch?.[1]);
+
+    console.log('Final navigation link:', `/project/${projectKey}/risk/${riskMatch?.[1]}`);
+console.log('Params:', { projectKey, riskKey: riskMatch?.[1] });
 
     if (subtaskMatch?.[1]) {
       navigate(`/project/${projectKey}/child-work/${subtaskMatch[1]}`);
@@ -45,6 +61,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
       navigate(`/project/epic/${epicMatch[1]}`);
     } else if (taskMatch?.[1]) {
       navigate(`/project/${projectKey}/work-item-detail?taskId=${taskMatch[1]}`);
+    } else if (riskMatch?.[1]) {
+      navigate(`/project/${projectKey}/risk/${riskMatch[1]}`);
     }
   };
 

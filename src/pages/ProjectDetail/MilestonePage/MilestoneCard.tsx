@@ -13,6 +13,7 @@ import {
   type MilestoneCommentResponseDTO,
 } from '../../../services/milestoneCommentApi';
 import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
+import UpdateMilestonePopup from './UpdateMilestonePopup';
 
 interface User {
   role: string;
@@ -87,6 +88,7 @@ interface MilestoneCardProps {
 
 const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refetchMilestones }) => {
   const [isCommentOpen, setIsCommentOpen] = useState(false);
+  const [isUpdatePopupOpen, setIsUpdatePopupOpen] = useState(false);
   const [commentContent, setCommentContent] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -184,7 +186,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           <button
             onClick={() => handleStatusChange('IN_PROGRESS')}
             disabled={isStatusUpdating}
-            className="w-full mt-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50"
           >
             {isStatusUpdating ? 'Updating...' : 'Start Milestone'}
           </button>
@@ -194,7 +196,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           <button
             onClick={() => handleStatusChange('AWAITING_REVIEW')}
             disabled={isStatusUpdating}
-            className="w-full mt-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-teal-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-teal-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
           >
             {isStatusUpdating ? 'Updating...' : 'Complete Milestone'}
           </button>
@@ -208,15 +210,27 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
 
   return (
     <div className={`p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 ${getStatusColor(milestone.status, milestone.endDate)}`}>
-      <div className="flex justify-between items-start">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-800">{milestone.name}</h3>
-          <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
+      <div className="flex justify-between items-start min-h-[72px]">
+        <div className="flex-1">
+          <h3 className="text-xl font-semibold text-gray-800 line-clamp-1">{milestone.name}</h3>
+          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{milestone.description}</p>
         </div>
-        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full uppercase">{milestone.key}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full uppercase self-start">
+            {milestone.key}
+          </span>
+          {(user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER') && (
+            <button
+              onClick={() => setIsUpdatePopupOpen(true)}
+              className="text-gray-500 hover:text-blue-600 transition-colors duration-200"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
-      <div className="mt-4 space-y-3">
-        <div className="relative pt-1">
+      <div className="mt-4 space-y-4">
+        <div className="relative min-h-[56px]">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span className="text-ellipsis overflow-hidden">{formatDate(milestone.startDate)}</span>
             <span className="text-ellipsis overflow-hidden">{formatDate(milestone.endDate)}</span>
@@ -229,19 +243,19 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           </div>
           <div className="text-center text-xs text-gray-600 mt-1">{Math.round(progress)}%</div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Status:</span>
+        <div className="flex items-center gap-2 min-h-[32px]">
+          <span className="text-sm font-medium text-gray-600 w-20">Status:</span>
           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusBadge.color}`}>
             {(milestone.status || 'PLANNING').replace('_', ' ')}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Sprint:</span>
+        <div className="flex items-center gap-2 min-h-[32px]">
+          <span className="text-sm font-medium text-gray-600 w-20">Sprint:</span>
           <select
             value={milestone.sprintId || ''}
             onChange={(e) => handleSprintChange(Number(e.target.value))}
             disabled={isSprintUpdating}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 flex-1"
           >
             <option value="">No Sprint</option>
             {sprints.map((sprint) => (
@@ -251,21 +265,21 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
             ))}
           </select>
         </div>
-        {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
-          <>
-            {milestone.status === 'AWAITING_REVIEW' && (
-              <button
-                onClick={handleSendToClient}
-                className="w-full mt-3 bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200"
-              >
-                Send to Client
-              </button>
-            )}
-            {renderStatusButtons()}
-          </>
-        ) : (
-          <div className="h-10"></div>
-        )}
+        <div className="min-h-[40px]">
+          {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
+            <>
+              {milestone.status === 'AWAITING_REVIEW' && (
+                <button
+                  onClick={handleSendToClient}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200"
+                >
+                  Send to Client
+                </button>
+              )}
+              {renderStatusButtons()}
+            </>
+          ) : null}
+        </div>
       </div>
       <div className="mt-6">
         <button
@@ -311,7 +325,9 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
                       <>
                         <div>
                           <p className="text-sm text-gray-700">{comment.content}</p>
-                          <p className="text-xs text-gray-500 mt-1">By {comment.accountName} on {formatDate(comment.createdAt)}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            By {comment.accountName} on {formatDate(comment.createdAt)}
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           <button
@@ -350,6 +366,14 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           </div>
         )}
       </div>
+      {isUpdatePopupOpen && (
+        <UpdateMilestonePopup
+          milestoneId={milestone.id}
+          sprints={sprints}
+          onClose={() => setIsUpdatePopupOpen(false)}
+          refetchMilestones={refetchMilestones}
+        />
+      )}
     </div>
   );
 };

@@ -10,6 +10,7 @@ import Risk from '../../PM/Risk/Risk';
 // import Doc from '../../PM/YourProject/Doc';
 import Backlog from '../BacklogPage/BacklogPage';
 import KanbanBoardPage from '../KanbanBoardPage/KanbanBoardPage';
+import MilestonePage from '../MilestonePage/MilestonePage';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -30,14 +31,17 @@ const ProjectDetailPage = () => {
     <div>
       <ProjectDetailHeader />
       <div className='p-4'>
-        {activeTab === 'forms' && <Form />}
         {activeTab === 'list' && <ProjectTaskList />}
+        {activeTab === 'backlog' && <Backlog />}
+        {activeTab === 'board' && <KanbanBoardPage />}
+        {activeTab === 'timeline' && <MilestonePage />}
+        {activeTab === 'forms' && <Form />}
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
         {/* {activeTab === 'tests' && <Doc/>} */}
-        {activeTab === 'backlog' && <Backlog />}
-        {activeTab === 'board' && <KanbanBoardPage />}
+
+        {/* Add more tabs as needed */}
       </div>
     </div>
   );

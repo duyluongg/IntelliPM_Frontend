@@ -1,356 +1,357 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { type ProjectDetails, useGetProjectByIdQuery } from '../../../services/projectApi';
-import { type Project, useGetProjectsByAccountQuery } from '../../../services/accountApi';
+import React, { useState } from 'react';
+import { ChevronDown, ChevronUp, Trash2, Edit } from 'lucide-react';
 import {
-  useGetProjectMemberByAccountQuery,
-  useUpdateProjectMemberStatusMutation,
-} from '../../../services/projectMemberApi';
-import { type User } from '../../../services/AuthContext';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+  useUpdateMilestoneSprintMutation,
+  useUpdateMilestoneStatusMutation,
+  type MilestoneResponseDTO,
+} from '../../../services/milestoneApi';
+import {
+  useGetMilestoneCommentsByMilestoneIdQuery,
+  useCreateMilestoneCommentMutation,
+  useUpdateMilestoneCommentMutation,
+  useDeleteMilestoneCommentMutation,
+  type MilestoneCommentResponseDTO,
+} from '../../../services/milestoneCommentApi';
+import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'N/A';
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
+interface User {
+  role: string;
+}
+
+const formatDate = (isoDate: string | null | undefined): string => {
+  if (!isoDate) return 'N/A';
+  return new Date(isoDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 };
 
-const getStatusBadge = (status: string) => {
-  const baseClasses = 'px-3 py-1 rounded-full text-xs font-semibold shadow-sm';
-  switch (status) {
-    case 'ACTIVE':
-      return `${baseClasses} bg-green-100 text-green-800`;
-    case 'INVITED':
-      return `${baseClasses} bg-yellow-100 text-yellow-800`;
-    case 'INACTIVE':
-      return `${baseClasses} bg-red-100 text-red-800`;
-    case 'IN_PROGRESS':
-      return `${baseClasses} bg-blue-100 text-blue-800`;
-    case 'COMPLETED':
-      return `${baseClasses} bg-green-100 text-green-800`;
-    case 'CANCELLED':
-      return `${baseClasses} bg-red-100 text-red-800`;
-    default:
-      return `${baseClasses} bg-gray-100 text-gray-800`;
-  }
+const getStatusColor = (status: string | null, endDate: string): string => {
+  const now = new Date();
+  const end = new Date(endDate);
+  const daysUntilDue = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+  if (status === 'DONE') return 'bg-green-50 border-green-200';
+  if (daysUntilDue < 0) return 'bg-red-50 border-red-200';
+  if (daysUntilDue <= 3) return 'bg-yellow-50 border-yellow-200';
+  if (status === 'IN_PROGRESS') return 'bg-blue-50 border-blue-200';
+  return 'bg-gray-50 border-gray-200';
 };
 
-const calculateProgress = (startDate: string, endDate: string) => {
+const getProgressColor = (status: string | null, endDate: string): string => {
+  const now = new Date();
+  const end = new Date(endDate);
+  const daysUntilDue = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+  if ((status === 'PLANNING' || status === 'IN_PROGRESS') && daysUntilDue <= 3) {
+    return 'bg-gradient-to-r from-red-500 to-red-400';
+  }
+  if (status === 'AWAITING_REVIEW') {
+    return 'bg-gradient-to-r from-green-500 to-green-400';
+  }
+  return 'bg-gradient-to-r from-blue-500 to-blue-400';
+};
+
+const getProgress = (startDate: string | null, endDate: string | null): number => {
+  if (!startDate || !endDate) return 0;
   const now = new Date();
   const start = new Date(startDate);
   const end = new Date(endDate);
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
-  if (now >= end) return 100;
-  if (now <= start) return 0;
-
-  const totalDuration = end.getTime() - start.getTime();
+  const total = end.getTime() - start.getTime();
   const elapsed = now.getTime() - start.getTime();
-  return Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+  if (elapsed < 0) return 0;
+  if (elapsed > total) return 100;
+  return (elapsed / total) * 100;
 };
 
-const truncateDescription = (description: string, maxLength: number = 100) => {
-  if (description.length <= maxLength) return description;
-  return description.substring(0, maxLength) + '...';
+const getStatusBadge = (status: string | null) => {
+  const normalizedStatus = status || 'PLANNING';
+  switch (normalizedStatus) {
+    case 'PLANNING':
+      return { color: 'bg-gray-100 text-gray-800' };
+    case 'IN_PROGRESS':
+      return { color: 'bg-blue-100 text-blue-800' };
+    case 'AWAITING_REVIEW':
+      return { color: 'bg-green-100 text-green-800' };
+    default:
+      return { color: 'bg-gray-100 text-gray-800' };
+  }
 };
 
-const truncateName = (name: string, maxLength: number = 30) => {
-  if (name.length <= maxLength) return name;
-  return name.substring(0, maxLength) + '...';
-};
-
-interface ProjectCardProps {
-  project: Project;
-  onClick: (projectKey: string) => void;
-  accountId: number;
+interface MilestoneCardProps {
+  milestone: MilestoneResponseDTO;
+  sprints: SprintWithTaskListResponseDTO[];
+  refetchMilestones: () => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, accountId }) => {
-  const {
-    data: projectDetails,
-    isLoading: isDetailsLoading,
-    isError: isDetailsError,
-  } = useGetProjectByIdQuery(project.projectId);
-  const {
-    data: memberData,
-    isLoading: isMemberLoading,
-    isError: isMemberError,
-  } = useGetProjectMemberByAccountQuery({
-    projectId: project.projectId,
-    accountId,
+const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refetchMilestones }) => {
+  const [isCommentOpen, setIsCommentOpen] = useState(false);
+  const [commentContent, setCommentContent] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [updateMilestoneSprint, { isLoading: isSprintUpdating }] = useUpdateMilestoneSprintMutation();
+  const [updateMilestoneStatus, { isLoading: isStatusUpdating }] = useUpdateMilestoneStatusMutation();
+  const [createMilestoneComment] = useCreateMilestoneCommentMutation();
+  const [updateMilestoneComment] = useUpdateMilestoneCommentMutation();
+  const [deleteMilestoneComment] = useDeleteMilestoneCommentMutation();
+  const { data: comments = [], isLoading: isCommentLoading } = useGetMilestoneCommentsByMilestoneIdQuery(milestone.id, {
+    skip: !milestone.id,
   });
-  const [updateProjectMemberStatus, { isLoading: isUpdating, isError: isUpdateError }] =
-    useUpdateProjectMemberStatusMutation();
 
-  const progress = projectDetails?.isSuccess
-    ? calculateProgress(projectDetails.data.startDate, projectDetails.data.endDate)
-    : 0;
-
-  // Accessing projectDetails variables
-  const projectName = projectDetails?.isSuccess ? projectDetails.data.name : project.projectName;
-  const startDate = projectDetails?.isSuccess ? formatDate(projectDetails.data.startDate) : 'N/A';
-  const endDate = projectDetails?.isSuccess ? formatDate(projectDetails.data.endDate) : 'N/A';
-  const description = projectDetails?.isSuccess
-    ? truncateDescription(projectDetails.data.description)
-    : 'No description';
-  const budget = projectDetails?.isSuccess ? projectDetails.data.budget.toLocaleString() : 'N/A';
-  const memberStatus = memberData?.isSuccess ? memberData.data?.status : project.status;
   const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
 
-  const handleAcceptInvite = async () => {
-    if (!memberData?.data?.id) {
-      console.error('No member ID available');
-      return;
-    }
+  const handleSprintChange = async (sprintId: number) => {
     try {
-      await updateProjectMemberStatus({
-        projectId: project.projectId,
-        memberId: memberData.data.id,
-        status: 'ACTIVE',
-      }).unwrap();
+      await updateMilestoneSprint({ key: milestone.key!, sprintId }).unwrap();
+      refetchMilestones();
     } catch (error) {
-      console.error('Failed to accept invite:', error);
+      console.error('Failed to update sprint:', error);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      await updateMilestoneStatus({ id: milestone.id, status: newStatus }).unwrap();
+      refetchMilestones();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!commentContent.trim()) return;
+    try {
+      await createMilestoneComment({
+        milestoneId: milestone.id,
+        accountId: parseInt(localStorage.getItem('accountId') || '0'),
+        content: commentContent,
+      }).unwrap();
+      setCommentContent('');
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+    }
+  };
+
+  const handleEditComment = (comment: MilestoneCommentResponseDTO) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+  };
+
+  const handleUpdateComment = async (commentId: number) => {
+    if (!editContent.trim()) return;
+    try {
+      await updateMilestoneComment({
+        id: commentId,
+        payload: {
+          milestoneId: milestone.id,
+          accountId: parseInt(localStorage.getItem('accountId') || '0'),
+          content: editContent,
+        },
+      }).unwrap();
+      setEditingCommentId(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('Failed to update comment:', error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      await deleteMilestoneComment(commentId).unwrap();
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+    }
+  };
+
+  const handleSendToClient = async () => {
+    try {
+      console.log('Send to client:', milestone.id);
+      refetchMilestones();
+    } catch (error) {
+      console.error('Failed to send to client:', error);
+    }
+  };
+
+  const progress = getProgress(milestone.startDate, milestone.endDate);
+  const statusBadge = getStatusBadge(milestone.status);
+
+  const renderStatusButtons = () => {
+    const currentStatus = milestone.status || 'PLANNING';
+    switch (currentStatus) {
+      case 'PLANNING':
+        return (
+          <button
+            onClick={() => handleStatusChange('IN_PROGRESS')}
+            disabled={isStatusUpdating}
+            className="w-full mt-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50"
+          >
+            {isStatusUpdating ? 'Updating...' : 'Start Milestone'}
+          </button>
+        );
+      case 'IN_PROGRESS':
+        return (
+          <button
+            onClick={() => handleStatusChange('AWAITING_REVIEW')}
+            disabled={isStatusUpdating}
+            className="w-full mt-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-teal-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
+          >
+            {isStatusUpdating ? 'Updating...' : 'Complete Milestone'}
+          </button>
+        );
+      case 'AWAITING_REVIEW':
+        return null;
+      default:
+        return null;
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className='bg-white p-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-gray-200 flex flex-col min-h-[400px]'
-    >
-      <div className='flex-1 space-y-2'>
-        <div className='flex items-center gap-4'>
-          {project.iconUrl && (
-            <img
-              src={project.iconUrl}
-              alt={project.projectName}
-              className='w-10 h-10 rounded-full object-cover border-2 border-gray-200'
-            />
-          )}
-          <div>
-            <h2 className='text-lg font-semibold text-gray-800'>{truncateName(projectName)}</h2>
-            <p className='text-gray-500 text-xs'>Key: {project.projectKey}</p>
-          </div>
+    <div className={`p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 ${getStatusColor(milestone.status, milestone.endDate)}`}>
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-800">{milestone.name}</h3>
+          <p className="text-sm text-gray-600 mt-1">{milestone.description}</p>
         </div>
-        <p className='text-sm text-gray-600'>
-          <span className='font-medium'>Project Status:</span>{' '}
-          <span className={getStatusBadge(project.projectStatus)}>
-            {project.projectStatus.replace('_', ' ')}
+        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full uppercase">{milestone.key}</span>
+      </div>
+      <div className="mt-4 space-y-3">
+        <div className="relative pt-1">
+          <div className="flex justify-between text-sm text-gray-500 mb-1">
+            <span className="text-ellipsis overflow-hidden">{formatDate(milestone.startDate)}</span>
+            <span className="text-ellipsis overflow-hidden">{formatDate(milestone.endDate)}</span>
+          </div>
+          <div className="relative h-6 text-xs flex rounded-md bg-gray-200">
+            <div
+              style={{ width: `${progress}%` }}
+              className={`shadow-none flex flex-col whitespace-nowrap text-white justify-center ${getProgressColor(milestone.status, milestone.endDate)} rounded-md`}
+            ></div>
+          </div>
+          <div className="text-center text-xs text-gray-600 mt-1">{Math.round(progress)}%</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600">Status:</span>
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusBadge.color}`}>
+            {(milestone.status || 'PLANNING').replace('_', ' ')}
           </span>
-        </p>
-        <p className='text-sm text-gray-600'>
-          <span className='font-medium'>Member Status:</span>{' '}
-          {isMemberLoading ? (
-            <span className='text-gray-500'>Loading...</span>
-          ) : isMemberError ? (
-            <span className='text-red-500'>Error</span>
-          ) : (
-            <span className={getStatusBadge(memberStatus || 'UNKNOWN')}>
-              {(memberStatus || 'UNKNOWN').replace('_', ' ')}
-            </span>
-          )}
-        </p>
-        <p className='text-sm text-gray-600'>
-          {isMemberLoading ? (
-            <span className='text-gray-500'>Loading...</span>
-          ) : isMemberError ? (
-            <span className='text-red-500'>Error</span>
-          ) : memberStatus === 'INVITED' ? (
-            <>
-              <span className='font-medium'>Invited:</span> {formatDate(project.invitedAt)}
-            </>
-          ) : (
-            <>
-              <span className='font-medium'>Joined:</span> {formatDate(project.joinedAt)}
-            </>
-          )}
-        </p>
-
-        <p className='text-sm text-gray-600'>
-          <span className='font-medium'>Description:</span> {description}
-        </p>
-        <div className='mt-4'>
-          {isDetailsLoading ? (
-            <div className='text-sm text-gray-500'>Loading timeline...</div>
-          ) : isDetailsError ? (
-            <div className='text-sm text-red-500'>Error loading timeline</div>
-          ) : (
-            <div className='space-y-1'>
-              <div className='flex justify-between text-xs text-gray-500 mb-1'>
-                <span>{startDate}</span>
-                <span>{endDate}</span>
-              </div>
-              <div className='w-full bg-gray-200 rounded-full h-2.5'>
-                <motion.div
-                  className='bg-blue-600 h-2.5 rounded-full'
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ duration: 0.5 }}
-                />
-              </div>
-              <p className='text-xs text-gray-500 text-center'>{Math.round(progress)}%</p>
-            </div>
-          )}
         </div>
-      </div>
-      <div className='mt-4 flex items-center justify-between'>
-        {/* Left: Accept Invite nếu có */}
-        <div className='flex gap-2'>
-          {memberStatus === 'INVITED' && (
-            <button
-              onClick={handleAcceptInvite}
-              disabled={isUpdating || !memberData?.data?.id}
-              className={`px-4 py-2 rounded-xl text-sm transition-all duration-300 ${
-                isUpdating || !memberData?.data?.id
-                  ? 'bg-gray-400 text-white cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-              }`}
-            >
-              {isUpdating ? (
-                <span className='flex items-center gap-2'>
-                  <Loader2 className='animate-spin w-4 h-4' /> Accepting...
-                </span>
-              ) : (
-                'Accept Invite'
-              )}
-            </button>
-          )}
-          {isUpdateError && <p className='text-sm text-red-500 mt-2'>Failed to accept invite</p>}
-        </div>
-
-        {/* Right: Detail button */}
-        <button
-          onClick={() => onClick(project.projectKey)}
-          className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm transition-all duration-300'
-        >
-          Detail
-        </button>
-      </div>
-    </motion.div>
-  );
-};
-
-const ProjectList: React.FC = () => {
-  const navigate = useNavigate();
-  const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
-  const accessToken = user?.accessToken || '';
-  const accountId = user?.id || 0;
-  const formatName = (username: string) => {
-    return username
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/[_\-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/^./, (str) => str.toUpperCase());
-  };
-
-  const {
-    data: projectsResponse,
-    isLoading,
-    isError,
-    error,
-  } = useGetProjectsByAccountQuery(accessToken, {
-    skip: !accessToken,
-  });
-
-  const projects: Project[] = projectsResponse?.data || [];
-
-  const handleProjectClick = (projectKey: string) => {
-    navigate(`/project/${projectKey}/summary`);
-  };
-
-  if (isLoading) {
-    return (
-      <div className='flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-100 to-purple-100'>
-        <div className='flex items-center gap-2 text-gray-600'>
-          <Loader2 className='animate-spin w-6 h-6' /> Loading projects...
-        </div>
-      </div>
-    );
-  }
-
-  if (isError || !projectsResponse?.isSuccess) {
-    return (
-      <div className='flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-blue-100 to-purple-100'>
-        <div className='bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center'>
-          <div className='flex items-center justify-center gap-2 text-red-600 font-semibold mb-4'>
-            <AlertCircle className='w-6 h-6' /> Failed to load projects.
-          </div>
-          <p className='text-gray-600 text-sm'>
-            {error
-              ? (error as any)?.data?.message || 'An error occurred'
-              : 'Please try again later.'}
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className='mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl transition-all duration-300 text-sm'
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-600">Sprint:</span>
+          <select
+            value={milestone.sprintId || ''}
+            onChange={(e) => handleSprintChange(Number(e.target.value))}
+            disabled={isSprintUpdating}
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50"
           >
-            Retry
-          </button>
+            <option value="">No Sprint</option>
+            {sprints.map((sprint) => (
+              <option key={sprint.id} value={sprint.id}>
+                {sprint.name}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className='flex flex-col items-center min-h-screen bg-gradient-to-r from-blue-100 to-purple-100 p-4'>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className='max-w-4xl w-full'
-      >
-        <div className='flex justify-between items-center mb-6 relative mt-6'>
-          <div className='w-[140px]'></div>
-
-          <h1
-            className='absolute left-1/2 -translate-x-1/2 text-3xl font-extrabold text-transparent bg-clip-text 
-             bg-gradient-to-r from-blue-500 to-purple-500 drop-shadow-sm'
-          >
-            {user?.username ? `${user.username}'s Projects` : 'Your Projects'}
-          </h1>
-
-          {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
-            <button
-              onClick={() => navigate('/project/introduction')}
-              className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm transition-all duration-300 w-[140px] text-right'
-            >
-              + Create Project
-            </button>
-          ) : (
-            <div className='w-[140px]'></div>
-          )}
-        </div>
-
-        <div className='m-12'></div>
-        {projects.length === 0 ? (
-          <div className='bg-white p-8 rounded-2xl shadow-xl text-center'>
-            <p className='text-gray-600 text-sm'>No projects found for this account.</p>
-          </div>
+        {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
+          <>
+            {milestone.status === 'AWAITING_REVIEW' && (
+              <button
+                onClick={handleSendToClient}
+                className="w-full mt-3 bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200"
+              >
+                Send to Client
+              </button>
+            )}
+            {renderStatusButtons()}
+          </>
         ) : (
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
-            <AnimatePresence>
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.projectId}
-                  project={project}
-                  onClick={handleProjectClick}
-                  accountId={accountId}
-                />
-              ))}
-            </AnimatePresence>
+          <div className="h-10"></div>
+        )}
+      </div>
+      <div className="mt-6">
+        <button
+          onClick={() => setIsCommentOpen(!isCommentOpen)}
+          className="flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors duration-200"
+        >
+          {isCommentOpen ? <ChevronUp className="w-5 h-5 mr-1" /> : <ChevronDown className="w-5 h-5 mr-1" />}
+          Comments ({comments.length})
+        </button>
+        {isCommentOpen && (
+          <div className="mt-4 space-y-4">
+            {isCommentLoading ? (
+              <div className="text-sm text-gray-500 animate-pulse">Loading comments...</div>
+            ) : comments.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">No comments yet</div>
+            ) : (
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="p-4 bg-gray-50 rounded-lg shadow-sm flex justify-between items-start">
+                    {editingCommentId === comment.id ? (
+                      <div className="w-full">
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={() => handleUpdateComment(comment.id)}
+                            className="text-sm text-white bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingCommentId(null)}
+                            className="text-sm text-gray-700 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition-all duration-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-700">{comment.content}</p>
+                          <p className="text-xs text-gray-500 mt-1">By {comment.accountName} on {formatDate(comment.createdAt)}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditComment(comment)}
+                            className="text-gray-500 hover:text-blue-600 transition-colors duration-200"
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="text-gray-500 hover:text-red-600 transition-colors duration-200"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4">
+              <textarea
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                placeholder="Add a comment..."
+                className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              />
+              <button
+                onClick={handleAddComment}
+                className="mt-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:from-blue-700 hover:to-blue-600 transition-all duration-200"
+              >
+                Submit Comment
+              </button>
+            </div>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 };
 
-export default ProjectList;
+export default MilestoneCard;

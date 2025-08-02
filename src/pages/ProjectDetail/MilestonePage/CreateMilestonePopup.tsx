@@ -5,17 +5,18 @@ import { useCreateMilestoneQuickMutation } from '../../../services/milestoneApi'
 interface CreateMilestonePopupProps {
   isOpen: boolean;
   onClose: () => void;
+  onMilestoneCreated: () => void;
   projectId: number;
 }
 
-const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onClose, projectId }) => {
+const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onClose, onMilestoneCreated, projectId }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     startDate: '',
     endDate: '',
   });
-  const [createMilestoneQuick] = useCreateMilestoneQuickMutation();
+  const [createMilestoneQuick, { isLoading }] = useCreateMilestoneQuickMutation();
 
   const handleSubmit = async () => {
     try {
@@ -26,7 +27,7 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
         startDate: new Date(formData.startDate).toISOString(),
         endDate: new Date(formData.endDate).toISOString(),
       }).unwrap();
-      onClose();
+      onMilestoneCreated();
     } catch (error) {
       console.error('Failed to create milestone:', error);
     }
@@ -50,8 +51,9 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full p-2 border rounded text-sm"
+              className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
               placeholder="Milestone name"
+              required
             />
           </div>
           <div>
@@ -59,7 +61,7 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full p-2 border rounded text-sm"
+              className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
               placeholder="Description"
             />
           </div>
@@ -69,7 +71,8 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
               type="datetime-local"
               value={formData.startDate}
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-              className="w-full p-2 border rounded text-sm"
+              className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
           <div>
@@ -78,7 +81,8 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
               type="datetime-local"
               value={formData.endDate}
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-              className="w-full p-2 border rounded text-sm"
+              className="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-blue-500"
+              required
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -90,9 +94,10 @@ const CreateMilestonePopup: React.FC<CreateMilestonePopupProps> = ({ isOpen, onC
             </button>
             <button
               onClick={handleSubmit}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
+              disabled={isLoading}
+              className="px-4 py-2 text-sm text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
             >
-              Create
+              {isLoading ? 'Creating...' : 'Create'}
             </button>
           </div>
         </div>

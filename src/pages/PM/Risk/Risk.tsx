@@ -16,10 +16,15 @@ import { useState } from 'react';
 import RiskDetail from './RiskDetail';
 import ManualRiskModal from './ManualRiskModal';
 import SuggestedRisksModal from './SuggestedRisksModal';
+import { useParams } from 'react-router-dom';
 
 const Risk = () => {
+  // const [searchParams] = useSearchParams();
+  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
 
@@ -255,7 +260,7 @@ const Risk = () => {
         responsibleId: null,
         createdBy: accountId,
         taskId: null,
-        riskScope: "PROJECT",
+        riskScope: 'PROJECT',
         title: risk.title,
         description: risk.description,
         status: 'OPEN',
@@ -267,7 +272,7 @@ const Risk = () => {
         dueDate: isoDate,
       };
 
-      console.log("Creating risk with request:", request);
+      console.log('Creating risk with request:', request);
       const res = await createRisk(request).unwrap();
       if (risk.mitigationPlan || risk.contingencyPlan) {
         await createRiskSolution({

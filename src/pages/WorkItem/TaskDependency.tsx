@@ -6,7 +6,9 @@ import { useGetProjectItemsByKeyQuery } from '../../services/projectApi';
 import {
   useGetTaskDependenciesByLinkedFromQuery,
   useCreateTaskDependenciesMutation,
+  useDeleteTaskDependencyByIdMutation,
 } from '../../services/taskDependencyApi';
+import { Trash2 } from 'lucide-react';
 
 interface Dependency {
   key: number;
@@ -41,6 +43,7 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
 
   const [createTaskDependencies] = useCreateTaskDependenciesMutation();
+  const [deleteTaskDependency] = useDeleteTaskDependencyByIdMutation();
 
   useEffect(() => {
     if (open && taskDepsData) {
@@ -77,7 +80,6 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
     }
 
     try {
-      // const response = await createTaskDependencies(payload).unwrap();
       const response = await createTaskDependencies({ dependencies: payload }).unwrap();
       console.log('✅ Created/Updated:', response);
       await refetch();
@@ -114,9 +116,31 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
             </button>
 
             <button
-              className='delete-btn'
-              onClick={() => {
+              className='icon-btn'
+              onClick={async () => {
                 if (selectedIndex !== null) {
+                  const selectedDep = dependencies[selectedIndex];
+
+                  const confirmed = window.confirm(
+                    `Are you sure you want to delete this dependency? "${
+                      selectedDep.name || selectedDep.id
+                    }" không?`
+                  );
+
+                  if (!confirmed) return;
+
+                  if (!isNaN(Number(selectedDep.key)) && Number(selectedDep.key) > 0) {
+                    try {
+                      await deleteTaskDependency(Number(selectedDep.key)).unwrap();
+                      console.log('🗑️ Deleted dependency with id:', selectedDep.key);
+                      await refetch();
+                    } catch (error) {
+                      console.error('❌ Lỗi xoá dependency:', error);
+                      alert('Lỗi khi xoá task dependency');
+                    }
+                  }
+
+                  // Cập nhật UI sau khi xoá
                   const updated = [...dependencies];
                   updated.splice(selectedIndex, 1);
                   setDependencies(updated);
@@ -124,8 +148,9 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
                 }
               }}
               disabled={selectedIndex === null}
+              title='Delete selected'
             >
-              DELETE
+              <Trash2 size={18} />
             </button>
           </div>
 
@@ -166,11 +191,18 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
                       }}
                     >
                       <option value=''>-- Select Item --</option>
-                      {projectItems?.data.map((item) => (
+                      {/* {projectItems?.data.map((item) => (
                         <option key={item.id} value={item.id}>
                           [{item.type}] {item.id} - {item.name}
                         </option>
-                      ))}
+                      ))} */}
+                      {projectItems?.data
+                        .filter((item) => item.id !== workItemId)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            [{item.type}] {item.id} - {item.name}
+                          </option>
+                        ))}
                     </select>
                   </td>
                   <td>

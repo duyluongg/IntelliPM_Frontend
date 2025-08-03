@@ -1,18 +1,27 @@
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { GanttChart } from 'smart-webcomponents-react/ganttchart';
 import 'smart-webcomponents-react/source/styles/smart.default.css';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useGetFullProjectDetailsByKeyQuery } from '../../../services/projectApi';
-import TaskPopupEditor from './TaskPopupEditor';
-import './Gantt.css';
 import { createRoot } from 'react-dom/client';
-import { useUpdateTaskMutation } from '../../../services/taskApi';
 import WorkItem from './WorkItem';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
 import { AuthProvider } from '../../../services/AuthContext';
 import { Provider } from 'react-redux';
 import { store } from '../../../app/store';
 import { BrowserRouter } from 'react-router-dom';
+import DeleteConnectionPopup from './DeleteConnectionPopup';
+import { useDeleteTaskDependencyMutation } from '../../../services/taskDependencyApi';
+import UpdateMilestonePopup from './UpdateMileStonePopup';
+import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
+import './Gantt.css';
+
+interface UpdateMilestonePopupProps {
+  milestoneId: number;
+  sprints: SprintWithTaskListResponseDTO[];
+  onClose: () => void;
+  refetchMilestones: () => void;
+}
 
 const Gantt = () => {
   const ganttRef = useRef<any>(null);
@@ -23,13 +32,23 @@ const Gantt = () => {
   const projectKey = paramKey || searchKey || 'NotFound';
   const customWindowRef = useRef<HTMLDivElement>(document.createElement('div'));
   const selectedTaskRef = useRef<any>(null);
+  const [selectedConnection, setSelectedConnection] = useState<any>(null);
+  const [showConnectionPopup, setShowConnectionPopup] = useState(false);
+
+  const [deleteTaskDependency] = useDeleteTaskDependencyMutation();
 
   const popupWindowCustomizationFunction = (target: any, type: any, taskObj: any) => {
-    if (['task', 'project', 'milestone'].includes(type)) {
+    console.log('[popupWindowCustomizationFunction]', { type, taskObj });
+    const typeFromRaw = taskObj?.type?.toLowerCase?.();
+    console.log(typeFromRaw);
+
+    if (type === 'connection') {
+      return false;
+    }
+
+    if (['task', 'project'].includes(typeFromRaw)) {
       selectedTaskRef.current = taskObj;
-
       const isSubtask = taskObj.class === 'task-sub';
-
       const container = document.createElement('div');
       container.id = 'react-task-editor';
       container.style.minHeight = '600px';
@@ -85,6 +104,65 @@ const Gantt = () => {
           );
         }
       }, 0);
+    } 
+
+    if (typeFromRaw === 'milestone') {
+      console.log("Data milestone", taskObj?.rawData);
+      const milestoneId = taskObj?.rawData.id;
+      if (!milestoneId) return;
+
+      console.log('🟢 Milestone popup triggered. ID:', milestoneId);
+
+      // const container = document.createElement('div');
+      // container.id = 'react-task-editor';
+      // container.style.minHeight = '600px';
+      // container.style.background = 'none';
+      // container.style.padding = '1rem';
+      // container.style.width = '1000px';
+
+      // target.style.width = '1000px';
+      // target.content.style.overflow = 'visible';
+      // target.classList.add('no-smart-style');
+
+      // target.content.innerHTML = '';
+      // target.content.appendChild(container);
+
+      const container = document.createElement('div');
+      container.id = 'react-milestone-editor';
+      container.style.minHeight = '600px';
+      container.style.background = 'none';
+      container.style.padding = '1rem';
+      container.style.width = '1000px';
+
+      target.style.width = '1000px';
+      target.content.style.overflow = 'visible';
+      target.classList.add('no-smart-style');
+
+      target.content.innerHTML = '';
+      target.content.appendChild(container);
+
+      setTimeout(() => {
+        const mountPoint = document.getElementById('react-milestone-editor');
+        console.log('mountPoint found:', !!mountPoint);
+        if (mountPoint) {
+          const root = createRoot(mountPoint);
+          root.render(
+            <BrowserRouter>
+              <Provider store={store}>
+                <AuthProvider>
+                  <UpdateMilestonePopup
+                    milestoneId={Number(milestoneId)} 
+                    onClose={() => {
+                      ganttRef.current?.closeWindow();
+                      refetch();
+                    }}
+                  />
+                </AuthProvider>
+              </Provider>
+            </BrowserRouter>
+          );
+        }
+      }, 0);
     }
   };
 
@@ -126,7 +204,7 @@ const Gantt = () => {
   const snapToNearest = true;
 
   const taskColumns = [
-    { label: 'Tasks', value: 'label', size: '30%' },
+    { label: 'Task Name', value: 'label', size: '30%' },
     {
       label: 'Planned Start',
       value: 'dateStart',
@@ -207,7 +285,6 @@ const Gantt = () => {
           const end = normalizeDateToLocalISO(t.plannedEndDate);
 
           const connections = (dependencyMap[t.id] || []).map((dep: any) => {
-            // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
             const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
             const targetType = isMilestone ? 'milestone' : 'task';
             return {
@@ -223,7 +300,6 @@ const Gantt = () => {
               const subEnd = normalizeDateToLocalISO(sub.endDate);
 
               const subConnections = (dependencyMap[sub.id] || []).map((dep: any) => {
-                // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
                 const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
                 const targetType = isMilestone ? 'milestone' : 'task';
                 console.log('LinkedTo: ', dep.linkedTo);
@@ -270,13 +346,7 @@ const Gantt = () => {
         .map((m) => {
           const deps = dependencyMap[m.key] || [];
 
-          // const connections = deps.map((dep: any) => ({
-          //   target: `milestone-${dep.linkedTo}`,
-          //   type: mapTypeToNumber(dep.type),
-          // }));
-
           const connections = deps.map((dep: any) => {
-            // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
             const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
             const targetType = isMilestone ? 'milestone' : 'task';
             return {
@@ -291,6 +361,8 @@ const Gantt = () => {
             type: 'milestone',
             id: `milestone-${m.key}`,
             connections,
+            rawData: m,
+            milestone: true,
           };
         });
 
@@ -319,7 +391,6 @@ const Gantt = () => {
         const end = normalizeDateToLocalISO(t.plannedEndDate);
 
         const connections = (dependencyMap[t.id] || []).map((dep: any) => {
-          // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
           const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
           const targetType = isMilestone ? 'milestone' : 'task';
           return {
@@ -336,7 +407,6 @@ const Gantt = () => {
             const subEnd = normalizeDateToLocalISO(sub.endDate);
 
             const subConnections = (dependencyMap[sub.id] || []).map((dep: any) => {
-              // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
               const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
               const targetType = isMilestone ? 'milestone' : 'task';
               return {
@@ -382,7 +452,6 @@ const Gantt = () => {
         const deps = dependencyMap[m.key] || [];
 
         const connections = deps.map((dep: any) => {
-          // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
           const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
           const targetType = isMilestone ? 'milestone' : 'task';
           return {
@@ -397,10 +466,11 @@ const Gantt = () => {
           type: 'milestone',
           id: `milestone-${m.key}`,
           connections,
+          rawData: m,
+          milestone: true,
         };
       });
 
-    // return [...sprintGroups, ...standaloneMilestones];
     return [...sprintGroups, ...unscheduledTasks, ...standaloneMilestones];
   };
 

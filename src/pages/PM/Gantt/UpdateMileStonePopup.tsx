@@ -5,23 +5,16 @@ import {
   useUpdateMilestoneMutation,
   type MilestoneResponseDTO,
 } from '../../../services/milestoneApi';
-import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 import TaskDependency from '../../WorkItem/TaskDependency';
+import { useGetSprintsByProjectIdDescendingQuery } from '../../../services/sprintApi';
 
 interface UpdateMilestonePopupProps {
   milestoneId: number;
-  sprints: SprintWithTaskListResponseDTO[];
   onClose: () => void;
-  refetchMilestones: () => void;
 }
 
-const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({
-  milestoneId,
-  sprints,
-  onClose,
-  refetchMilestones,
-}) => {
-  const { data: milestone, isLoading: isFetching } = useGetMilestoneByIdQuery(milestoneId);
+const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({ milestoneId, onClose }) => {
+  const { data: milestone, isLoading: isFetching, refetch } = useGetMilestoneByIdQuery(milestoneId);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -30,6 +23,11 @@ const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [updateMilestone, { isLoading }] = useUpdateMilestoneMutation();
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+
+  const { data: sprints = [], isLoading: isLoadingSprints } =
+    useGetSprintsByProjectIdDescendingQuery(milestone?.projectId!, {
+      skip: !milestone?.projectId,
+    });
 
   useEffect(() => {
     if (milestone) {
@@ -64,7 +62,7 @@ const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({
           endDate: new Date(endDate).toISOString(),
         },
       }).unwrap();
-      refetchMilestones();
+      refetch();
       onClose();
     } catch (err: any) {
       setError(err.data?.message || 'Failed to update milestone');

@@ -49,7 +49,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
         <button className='p-1 rounded hover:bg-gray-200'>
           <AppWindow className='w-5 h-5 text-gray-700' />
         </button>
-        <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
+        <Link to='/admin' className='flex items-center gap-0 hover:opacity-80'>
           <img src={logo} className='h-10 w-auto scale-[1.2]' style={{ marginRight: '-80px' }} />
           <img src={textLogo} className='h-9 w-auto scale-[0.36]' />
         </Link>

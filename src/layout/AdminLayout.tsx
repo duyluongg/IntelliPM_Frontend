@@ -24,7 +24,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           >
             <AdminSidebar isCollapsed={isSidebarCollapsed} />
           </motion.div>
-          <main className="flex-1 mt-16 p-6 bg-gray-100 overflow-auto">
+          <main className="flex-1 mt-16 overflow-auto">
             {children || <Outlet />}
           </main>
         </div>

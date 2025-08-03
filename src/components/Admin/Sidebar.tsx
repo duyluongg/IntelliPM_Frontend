@@ -18,11 +18,11 @@ interface SidebarProps {
 
 const menuItems = [
   { icon: <Home className="w-5 h-5" />, label: 'Dashboard', path: '/admin' },
-  { icon: <Users className="w-5 h-5" />, label: 'Members', path: '/members' },
-  { icon: <AlertTriangle className="w-5 h-5" />, label: 'Risks', path: '/risks' },
-  { icon: <BarChart2 className="w-5 h-5" />, label: 'Reports', path: '/reports' },
-  { icon: <PieChart className="w-5 h-5" />, label: 'Analytics', path: '/analytics' },
-  { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/settings' },
+  { icon: <Users className="w-5 h-5" />, label: 'Members', path: '/admin/members' },
+  { icon: <AlertTriangle className="w-5 h-5" />, label: 'Risks', path: '/admin/risks' },
+  { icon: <BarChart2 className="w-5 h-5" />, label: 'Reports', path: '/admin/reports' },
+  { icon: <PieChart className="w-5 h-5" />, label: 'Analytics', path: '/admin/analytics' },
+  { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/admin/settings' },
   {
     icon: <Rocket className="w-5 h-5" />,
     label: 'Projects',

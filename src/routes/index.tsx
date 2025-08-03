@@ -42,6 +42,7 @@ import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
 import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
+import MembersPage from '../pages/Admin/MembersPage/MembersPage';
 
 export const router = createBrowserRouter([
   {
@@ -228,6 +229,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <AdminHomePage />,
+      },
+      {
+        path: 'members',
+        element: <MembersPage />,
       },
     ],
   },

@@ -114,6 +114,7 @@
 //   Bold,
 //   Italic,
 // ];
+
 import './tiptapExtension.css';
 import StarterKit from '@tiptap/starter-kit';
 import Table from '@tiptap/extension-table';

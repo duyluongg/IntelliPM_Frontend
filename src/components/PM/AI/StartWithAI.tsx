@@ -35,7 +35,7 @@ const StartWithAI: React.FC<Props> = ({ docId, onGenerated }) => {
 
   return (
     <div
-      className={`mx-auto px-4 py-4 max-w-md transition-all duration-500 ${
+      className={`mx-auto px-2 py-2 max-w-md transition-all duration-500 ${
         isDone ? 'opacity-0 translate-y-12 pointer-events-none' : 'opacity-100'
       }`}
     >

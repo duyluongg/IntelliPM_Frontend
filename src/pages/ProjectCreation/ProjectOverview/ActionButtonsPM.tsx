@@ -51,7 +51,7 @@ const ActionButtonsPM: React.FC<ActionButtonsProps> = ({ projectKey, projectId, 
       await sendEmailRejectToLeader({ projectId, reason }).unwrap();
       setSuccessMessage('Team Leader notified of rejection successfully.');
       setIsRejectConfirmOpen(false);
-      setTimeout(() => navigate('/dashboard'), 1000);
+      setTimeout(() => navigate('/project/list'), 1000);
     } catch (error: any) {
       console.error('Error notifying Team Leader:', error);
       setErrorMessage(error.data?.message || 'Failed to notify Team Leader. Please try again.');
@@ -74,7 +74,7 @@ const ActionButtonsPM: React.FC<ActionButtonsProps> = ({ projectKey, projectId, 
       await sendInvitations(projectId).unwrap();
       setSuccessMessage('Project accepted and team members notified successfully.');
       setIsAcceptConfirmOpen(false);
-      setTimeout(() => navigate('/dashboard'), 1000);
+      setTimeout(() => navigate('/project/list'), 1000);
     } catch (error: any) {
       console.error('Error accepting project or sending invitations:', error);
       setErrorMessage(error.data?.message || 'Failed to accept project or notify team members. Please try again.');

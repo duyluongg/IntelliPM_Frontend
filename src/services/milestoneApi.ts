@@ -3,8 +3,9 @@ import { API_BASE_URL } from '../constants/api';
 
 export interface MilestoneResponseDTO {
   id: number;
+  key?: string;
   projectId: number;
-  sprintId: number;
+  sprintId: number | null;
   name: string;
   description: string;
   startDate: string;
@@ -19,6 +20,23 @@ interface ApiResponse<T> {
   code: number;
   message: string;
   data: T;
+}
+
+interface CreateMilestoneQuick {
+  projectId: number;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface UpdateMilestoneRequestDTO {
+  projectId: number;
+  sprintId: number | null;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
 }
 
 export const milestoneApi = createApi({
@@ -42,7 +60,77 @@ export const milestoneApi = createApi({
       }),
       transformResponse: (response: ApiResponse<MilestoneResponseDTO[]>) => response.data,
     }),
+
+    getMilestoneById: builder.query<MilestoneResponseDTO, number>({
+      query: (id) => ({
+        url: `milestone/${id}`,
+        method: 'GET',
+        headers: {
+          Accept: '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<MilestoneResponseDTO>) => response.data,
+    }),
+
+    createMilestoneQuick: builder.mutation<MilestoneResponseDTO, CreateMilestoneQuick>({
+      query: (payload) => ({
+        url: 'milestone/quick',
+        method: 'POST',
+        body: { ...payload, status: 'PLANNING' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<MilestoneResponseDTO>) => response.data,
+    }),
+
+    updateMilestone: builder.mutation<MilestoneResponseDTO, { id: number; payload: UpdateMilestoneRequestDTO }>({
+      query: ({ id, payload }) => ({
+        url: `milestone/${id}`,
+        method: 'PUT',
+        body: payload,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<MilestoneResponseDTO>) => response.data,
+    }),
+
+    updateMilestoneSprint: builder.mutation<
+      MilestoneResponseDTO,
+      { key: string; sprintId: number | null }
+    >({
+      query: ({ key, sprintId }) => ({
+        url: `milestone/${key}/sprint`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: sprintId,
+      }),
+      transformResponse: (response: ApiResponse<MilestoneResponseDTO>) => response.data,
+    }),
+
+    updateMilestoneStatus: builder.mutation<void, { id: number; status: string }>({
+      query: ({ id, status }) => ({
+        url: `milestone/${id}/status`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(status),
+      }),
+    }),
   }),
 });
 
-export const { useGetMilestonesByProjectIdQuery } = milestoneApi;
+export const {
+  useGetMilestonesByProjectIdQuery,
+  useGetMilestoneByIdQuery,
+  useCreateMilestoneQuickMutation,
+  useUpdateMilestoneMutation,
+  useUpdateMilestoneSprintMutation,
+  useUpdateMilestoneStatusMutation,
+} = milestoneApi;

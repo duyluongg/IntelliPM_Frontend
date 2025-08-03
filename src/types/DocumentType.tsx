@@ -10,6 +10,7 @@ export type DocumentType = {
   content: string;
   template: string;
   status: string;
+  visibility: string; // 'MAIN' | 'ARCHIVE' | 'TRASH'
 
   createdBy: number;
   updatedBy: number;

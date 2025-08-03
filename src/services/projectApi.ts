@@ -363,6 +363,13 @@ export const projectApi = createApi({
   }),
   tagTypes: ['Project', 'WorkItem', 'ProjectDetails'],
   endpoints: (builder) => ({
+    getProjectById: builder.query<GetProjectDetailsResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
+    }),
     getWorkItemsByProjectId: builder.query<GetWorkItemsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/workitems`,
@@ -469,6 +476,7 @@ export const projectApi = createApi({
 });
 
 export const {
+  useGetProjectByIdQuery,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,
@@ -482,4 +490,5 @@ export const {
   useSendEmailRejectToLeaderMutation,
   useRejectProjectMutation,
   useGetProjectItemsByKeyQuery,
+  useLazyCheckProjectKeyQuery
 } = projectApi;

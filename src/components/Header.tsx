@@ -5,11 +5,16 @@ import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
 
 import { Link } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
+import { useGetAccountByEmailQuery } from '../services/accountApi';
 import NotificationBell from '../components/NotificationBell';
 
 export default function Header() {
   const { user } = useAuth();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const { data: accountResponse, isLoading } = useGetAccountByEmailQuery(user?.email ?? '', {
+    skip: !user?.email,
+  });
+
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
@@ -73,9 +78,17 @@ export default function Header() {
         </button>
 
         {user ? (
-          <button className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
-            {user.username.slice(0, 2).toUpperCase()}
-          </button>
+          accountResponse?.data?.picture ? (
+            <img
+              src={accountResponse.data.picture}
+              alt='avatar'
+              className='w-9 h-9 rounded-full object-cover border'
+            />
+          ) : (
+            <div className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
+              {user.username.slice(0, 2).toUpperCase()}
+            </div>
+          )
         ) : (
           <Link to='/login'>
             <button className='px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700'>

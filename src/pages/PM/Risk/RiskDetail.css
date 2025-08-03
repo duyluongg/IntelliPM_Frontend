@@ -12,6 +12,13 @@
   z-index: 1000;
 }
 
+.risk-page-container {
+  width: 100%;
+  padding: 24px;
+  background-color: #f9fafb;
+  display: flex;
+}
+
 .risk-detail-panel {
   /* position: fixed;
   top: 0;
@@ -40,6 +47,14 @@
     transform: translateX(0%);
   }
 }
+
+/* .risk-detail-page {
+  position: relative;
+  width: 100%;
+  height: auto;
+  background-color: #ffffff;
+  padding: 24px;
+} */
 
 .detail-header {
   display: flex;

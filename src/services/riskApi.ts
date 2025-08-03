@@ -224,6 +224,10 @@ export const riskApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getRiskByKey: builder.query<CreateRiskResponse, string>({
+      query: (riskKey) => `/risk/by-risk-key?key=${riskKey}`,
+    }),
   }),
 });
 
@@ -240,4 +244,5 @@ export const {
   useUpdateRiskProbabilityMutation,
   useGetAiSuggestedRisksQuery,
   useLazyGetAiSuggestedRisksQuery,
+  useGetRiskByKeyQuery,
 } = riskApi;

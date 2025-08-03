@@ -34,8 +34,12 @@ import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleR
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
 import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
+import LayoutSwitch from '../layout/LayoutSwitch';
+// import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
 import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
-
+import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
+import Risk from '../pages/PM/Risk/Risk';
+import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -51,39 +55,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <Homepage />,
       },
-      // {
-      //   path: '/projects/form',
-      //   element: <Homepage />,
-      // },
-      // { path: 'projects/form', element: <Form /> },
 
-      // { path: 'projects/form/:formId', element: <Form /> },
-      // { path: 'projects/form/:formId/:id', element: <FeatureRequestFormWrapper /> },
-
-      // {
-      //   path: 'gantt-chart',
-      //   element: <Gantt />,
-      // },
-      // {
-      //   path: 'project-dashboard',
-      //   element: <ProjectDashboard />,
-      // },
-      // {
-      //   path: 'projects',
-      //   element: <ProjectDetail />,
-      // },
-      // {
-      //   path: 'create-project/project-introduction',
-      //   element: <ProjectIntroduction />,
-      // },
-      // {
-      //   path: 'create-project/project-details-form',
-      //   element: <ProjectDetailsForm />,
-      // },
-      // {
-      //   path: 'create-project/invitees-form',
-      //   element: <InviteesForm />,
-      // },
       {
         path: 'meeting',
         element: <MeetingCore />,
@@ -110,11 +82,26 @@ export const router = createBrowserRouter([
     ],
   },
 
+  {
+    path: '/project/projects/form/:type/:id',
+    element: (
+      <ProtectedRoute allowedRoles={['CLIENT', 'PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
+        <LayoutSwitch />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <DocWrapper />,
+      },
+    ],
+  },
+
   //  PM, Team Leader, Team Member đều có thể truy cập vào
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -133,12 +120,28 @@ export const router = createBrowserRouter([
         element: <ProjectTaskList />,
       },
       {
+        path: `/project?:projectKey`,
+        element: <ProjectTaskList />,
+      },
+      {
+        path: '/project/:projectKey/risk',
+        element: <Risk />,
+      },
+      {
+        path: '/project/:projectKey/risk/:riskKey',
+        element: <RiskDetailPage />, 
+      },
+      {
         path: `introduction`,
         element: <ProjectIntroduction />,
       },
       {
         path: `createform`,
         element: <ProjectCreation />,
+      },
+      {
+        path: `list`,
+        element: <ProjectList />,
       },
 
       {
@@ -172,11 +175,11 @@ export const router = createBrowserRouter([
         element: <ProjectIntroduction />,
       },
       {
-        path: 'work-item-detail',
+        path: ':projectKey/work-item-detail',
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key',
+        path: ':projectKey/child-work/:key',
         element: <ChildWorkItem />,
       },
       {
@@ -196,10 +199,10 @@ export const router = createBrowserRouter([
         element: <Form />,
       },
 
-      {
-        path: 'projects/form/:type/:id',
-        element: <DocWrapper />,
-      },
+      // {
+      //   path: 'projects/form/:type/:id',
+      //   element: <DocWrapper />,
+      // },
       {
         path: 'projects/form/recent_form',
         element: <RecentForm />,

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import './TaskDependency.css';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectItemsByKeyQuery } from '../../services/projectApi';
@@ -23,8 +24,12 @@ interface TaskDependencyProps {
 }
 
 const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItemId, type }) => {
+  // const [searchParams] = useSearchParams();
+  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
 
   const { data: projectItems } = useGetProjectItemsByKeyQuery(projectKey);
   const { data: taskDepsData, refetch } = useGetTaskDependenciesByLinkedFromQuery(workItemId, {

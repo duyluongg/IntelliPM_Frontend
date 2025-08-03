@@ -7,7 +7,7 @@ import {
   useGetSubtaskByIdQuery,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
-import { useGetWorkItemLabelsBySubtaskQuery } from '../../services/workItemLabelApi';
+import { useGetWorkItemLabelsBySubtaskQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import {
   useDeleteSubtaskFileMutation,
   useGetSubtaskFilesBySubtaskIdQuery,
@@ -25,6 +25,7 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 
 interface SubtaskDetail {
   id: string;
@@ -79,6 +80,11 @@ const ChildWorkItem: React.FC = () => {
   const [selectedReporter, setSelectedReporter] = useState<number | undefined>(
     subtaskDetail?.reporterId
   );
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
   const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
     skip: !subtaskDetail?.taskId,
   });
@@ -131,6 +137,84 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.id!,
   });
 
+  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsBySubtaskQuery(
+    subtaskDetail?.id!, { skip: !subtaskDetail?.id!, }
+  );
+
+  const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(projectId!, {
+      skip: !projectId,
+    });
+
+  const filteredLabels = projectLabels.filter((label) => {
+    const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
+
+    if (newLabelName.trim() === '') {
+      return notAlreadyAdded;
+    }
+
+    return (
+      label.name.toLowerCase().includes(newLabelName.toLowerCase()) &&
+      notAlreadyAdded
+    );
+  });
+
+  const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
+
+  const handleCreateLabelAndAssign = async (labelName?: string) => {
+    const nameToAssign = labelName?.trim() || newLabelName.trim();
+
+    if (!projectId || !subtaskDetail?.id || !nameToAssign) {
+      alert('Missing projectId, taskId or label name!');
+      return;
+    }
+
+    try {
+      await createLabelAndAssign({
+        projectId,
+        name: nameToAssign,
+        taskId: null,
+        epicId: null,
+        subtaskId: subtaskDetail?.id,
+      }).unwrap();
+
+      alert('✅ Label assigned successfully!');
+      setNewLabelName('');
+      setIsEditingLabel(false);
+      await Promise.all([
+        refetchWorkItemLabels?.(),
+        refetchProjectLabels?.(),
+      ]);
+    } catch (error) {
+      console.error('❌ Failed to create and assign label:', error);
+      alert('❌ Failed to assign label');
+    }
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (labelRef.current && !labelRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+        setIsEditingLabel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleDeleteWorkItemLabel = async (id: number) => {
+    try {
+      await deleteWorkItemLabel(id).unwrap();
+      console.log('Delete successfully');
+      await refetchWorkItemLabels();
+    } catch (error) {
+      console.error(':', error);
+    }
+  };
+
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
     return date.toISOString(); // "2025-07-21T00:00:00.000Z"
@@ -148,7 +232,7 @@ const ChildWorkItem: React.FC = () => {
       newReporterId === undefined &&
       newAssignedBy === undefined
     ) {
-      return; // Không có gì thay đổi
+      return;
     }
 
     try {
@@ -161,7 +245,7 @@ const ChildWorkItem: React.FC = () => {
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
         reporterId: newReporterId ?? subtaskDetail.reporterId,
         assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
-        createdBy: accountId, // giữ nguyên
+        createdBy: accountId, 
       }).unwrap();
 
       alert('✅ Subtask updated');
@@ -209,16 +293,6 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
-  const formatDate = (isoString: string | undefined) => {
-    if (!isoString) return 'None';
-    const date = new Date(isoString);
-    return date.toLocaleDateString('vi-VN');
-  };
-
-  const { data: subtaskLabels = [] } = useGetWorkItemLabelsBySubtaskQuery(subtaskId ?? '', {
-    skip: !subtaskId,
-  });
-
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     if (!subtaskDetail) return;
@@ -232,6 +306,7 @@ const ChildWorkItem: React.FC = () => {
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      await refetchSubtask();
     } catch (err) {
       console.error('❌ Failed to update subtask status', err);
     }
@@ -548,6 +623,15 @@ const ChildWorkItem: React.FC = () => {
                 <option value='IN_PROGRESS'>In Progress</option>
                 <option value='DONE'>Done</option>
               </select>
+              {fetchedSubtask?.warnings && fetchedSubtask.warnings.length > 0 && (
+                <div className='warning-box'>
+                  {fetchedSubtask.warnings.map((warning, idx) => (
+                    <div key={idx} className='warning-text'>
+                      ⚠️ {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className='details-content'>
@@ -593,14 +677,75 @@ const ChildWorkItem: React.FC = () => {
                 </div>
               </div>
 
-              <div className='detail-item'>
-                <label>Labels</label>
-                <span>
-                  {subtaskLabels.length === 0
-                    ? 'None'
-                    : subtaskLabels.map((label) => label.labelName).join(', ')}
-                </span>
-              </div>
+              {isEditingLabel ? (
+                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
+                  <div className="flex flex-col gap-2 w-full relative">
+                    <label className="font-semibold">Labels</label>
+
+                    {/* Tag list + input */}
+                    <div
+                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                      onClick={() => setDropdownOpen(true)}
+                    >
+                      {workItemLabels.map((label) => (
+                        <span
+                          key={label.id}
+                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                        >
+                          {label.labelName}
+                          <button
+                            onClick={() => handleDeleteWorkItemLabel(label.id)}
+                            className="text-red-500 hover:text-red-700 font-bold text-sm"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+
+                      <input
+                        value={newLabelName}
+                        onChange={(e) => {
+                          setNewLabelName(e.target.value);
+                          setDropdownOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateLabelAndAssign();
+                        }}
+                        placeholder="Type to search or add"
+                        className="flex-1 min-w-[100px] border-none outline-none py-1"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Dropdown suggestion */}
+                    {dropdownOpen && filteredLabels.length > 0 && (
+                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
+                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                        {filteredLabels.map((label) => (
+                          <li
+                            key={label.id}
+                            onClick={() => handleCreateLabelAndAssign(label.name)}
+                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                          >
+                            {label.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
+                  <label className="font-semibold">Labels</label>
+                  <span>
+                    {isLabelLoading
+                      ? 'Loading...'
+                      : workItemLabels.length === 0
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                  </span>
+                </div>
+              )}
 
               <div className='detail-item'>
                 <label>Parent</label>

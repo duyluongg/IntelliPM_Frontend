@@ -3,7 +3,6 @@ import { FileText, Lock, MoreHorizontal, CheckSquare } from 'lucide-react';
 import { useGetMyDocumentsQuery } from '../../../services/Document/documentAPI';
 import { useEffect } from 'react';
 
-
 export default function RecentForm() {
   const navigate = useNavigate();
   const { data: documents = [], isLoading, isError, refetch } = useGetMyDocumentsQuery();
@@ -33,16 +32,8 @@ export default function RecentForm() {
             key={doc.id}
             className='w-full border rounded-lg shadow-sm bg-white p-3 cursor-pointer hover:shadow-md transition'
             onClick={() => {
-              console.log(
-                'NAVIGATE TO:',
-                `/project/projects/form/${doc.type.toLowerCase()}/${
-                  doc.id
-                }?projectKey=${projectKey}`
-              );
               navigate(
-                `/project/projects/form/${doc.type.toLowerCase()}/${
-                  doc.id
-                }?projectKey=${projectKey}`
+                `/project/projects/form/${doc.visibility}/${doc.id}?projectKey=${projectKey}`
               );
             }}
           >

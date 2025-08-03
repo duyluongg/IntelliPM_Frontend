@@ -166,6 +166,27 @@ export const documentApi = createApi({
         },
       }),
     }),
+
+    shareDocumentByEmails: builder.mutation<
+      { success: boolean; failedEmails: string[] },
+      {
+        documentId: number;
+        permissionType: 'VIEW' | 'EDIT';
+        emails: string[];
+        message?: string;
+        projectKey?: string;
+      }
+    >({
+      query: ({ documentId, ...body }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    getMyPermission: builder.query<{ permission: string }, number>({
+      query: (documentId) => `documents/${documentId}/permission/current-user`,
+    }),
   }),
 });
 
@@ -185,4 +206,6 @@ export const {
   useGenerateFromTasksMutation,
   useShareDocumentViaEmailMutation,
   useShareDocumentToEmailsMutation,
+  useShareDocumentByEmailsMutation,
+  useGetMyPermissionQuery,
 } = documentApi;

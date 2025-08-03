@@ -672,10 +672,10 @@ type Props = {
   onChange: (value: string) => void;
   title: string;
   onTitleChange: (title: string) => void;
-
   showTemplatePicker: boolean;
   setShowTemplatePicker: React.Dispatch<React.SetStateAction<boolean>>;
   projectId?: number;
+  permission?: string;
 };
 
 export default function RichTextEditor({
@@ -685,45 +685,21 @@ export default function RichTextEditor({
   onTitleChange,
   showTemplatePicker,
   setShowTemplatePicker,
+  projectId,
+  permission = 'edit',
 }: Props) {
-  const cleanedValue = stripMarkdownCodeBlock(value);
   const { user } = useAuth();
-  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
-  console.log('Project ID:', projectId);
+  const currentProjectId = useSelector((state: RootState) => state.project.currentProjectId);
+  const actualProjectId = projectId || currentProjectId;
+
   const [editor, setEditor] = useState<Editor | null>(null);
   const [showGanttModal, setShowGanttModal] = useState(false);
   const onGanttCallbackRef = useRef(() => setShowGanttModal(true));
-
-  // 👇 BƯỚC 2: Luôn cập nhật ref với hàm mới nhất mỗi khi component render lại
   onGanttCallbackRef.current = () => setShowGanttModal(true);
 
-  //   const handleGanttInsert = (projectId) => {
-  //     const cleanKey = projectKey.trim();
-  //     const iframeHTML = `
-  //   <div class="my-4">
-  //     <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-  //   </div>
-  //   <p><br></p>
-  // `;
-  //     editor?.commands.insertContent(iframeHTML);
-
-  //     setShowGanttModal(false);
-  //   };
-  const handleGanttInsert = (projectId: number) => {
-    const iframeHTML = `
-    <div class="my-4">
-      <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-    </div>
-    <p><br></p>
-  `;
-    editor?.commands.insertContent(iframeHTML);
-    setShowGanttModal(false);
-  };
-
-  const { data: members = [] } = useGetProjectMembersNoStatusQuery(projectId!, {
-    skip: !projectId,
+  const { data: members = [] } = useGetProjectMembersNoStatusQuery(actualProjectId!, {
+    skip: !actualProjectId,
   });
-  console.log(members, 'Members data from query');
 
   const mentionItems = useMemo(
     () =>
@@ -733,9 +709,20 @@ export default function RichTextEditor({
       })),
     [members]
   );
+  const mentionItemsRef = useRef(mentionItems);
+
+  // ✅ BƯỚC 2: Sử dụng useEffect để cập nhật ref mỗi khi mentionItems thay đổi
+  useEffect(() => {
+    mentionItemsRef.current = mentionItems;
+  }, [mentionItems]);
+
+  const mentionExtension = useMemo(() => {
+    // Truyền vào cả ref, chứ không phải giá trị
+    return createMentionExtension(mentionItemsRef);
+  }, []);
 
   useEffect(() => {
-    if (mentionItems.length === 0 || editor) return;
+    if (editor) return;
 
     const instance = new Editor({
       extensions: [
@@ -748,59 +735,58 @@ export default function RichTextEditor({
         TableCell,
         TaskList,
         TaskItem.configure({ nested: true }),
-        createMentionExtension(mentionItems),
-
+        mentionExtension,
+        // createMentionExtension(mentionItems),
         SlashCommandExtension.configure({
           onGanttCommand: () => onGanttCallbackRef.current(),
         }),
-
-        // SlashCommandExtension,
-
         IframeExtension,
       ],
-      content: value,
+      editable: permission !== 'view',
       onUpdate: ({ editor }) => {
         const html = editor.getHTML();
-        if (html !== value) onChange(html);
+        if (html !== value && permission !== 'view') onChange(html);
       },
     });
 
+    instance.commands.setContent(value || '<p></p>', false);
     setEditor(instance);
-  }, [mentionItems, editor]);
+    return () => {
+      instance.destroy();
+    };
+  }, [permission]);
 
   useEffect(() => {
-    if (editor && cleanedValue && editor.getHTML() !== cleanedValue) {
-      editor.commands.setContent(cleanedValue, false);
+    if (editor && editor.getHTML() !== value) {
+      editor.commands.setContent(value || '<p></p>', false);
     }
   }, [value, editor]);
 
   const applyTemplate = (templateKey: keyof typeof templates) => {
-    if (editor) {
-      const templateContent = templates[templateKey];
-      const currentEditorContent = editor.getHTML();
-      const newContentAfterTemplate = currentEditorContent + templateContent;
-      editor.commands.setContent(editor.getHTML() + templateContent);
-      setShowTemplatePicker(false);
-
-      onChange(newContentAfterTemplate);
-    }
+    if (!editor) return;
+    const templateContent = templates[templateKey];
+    const newContent = editor.getHTML() + templateContent;
+    editor.commands.setContent(newContent);
+    onChange(newContent);
+    setShowTemplatePicker(false);
   };
-  const isEmptyContent = (html: string) =>
-    !html || html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
 
   return (
     <div>
       <div className='sticky top-0 z-10 bg-white'>
-        {editor && <MenuBar editor={editor} onChange={onChange} value={value} />}
+        {editor && permission !== 'view' && (
+          <MenuBar editor={editor} onChange={onChange} value={value} />
+        )}
       </div>
 
       <div className='prose max-w-none'>
         <div className='flex items-center mb-6'>
           <TextareaAutosize
-            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none focus:ring-0 focus:border-none border-none shadow-none'
+            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none'
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder='Untitled document'
+            readOnly={permission === 'view'}
           />
         </div>
 
@@ -816,13 +802,13 @@ export default function RichTextEditor({
           <div className='flex items-center mr-4'>
             <LucideSun className='mr-1' />
             <span>
-              Created <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+              Created <span className='font-semibold text-gray-700'>N/A</span>
             </span>
           </div>
           <div className='flex items-center'>
             <LucideLock className='mr-1' />
             <span>
-              Last updated <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+              Last updated <span className='font-semibold text-gray-700'>N/A</span>
             </span>
           </div>
         </div>
@@ -830,75 +816,49 @@ export default function RichTextEditor({
         <div id='pdf-content' className='mx-auto'>
           <EditorContent editor={editor} />
         </div>
+      </div>
 
-        {showTemplatePicker && (
-          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-            <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl'>
-              <h2 className='text-2xl font-bold mb-6 text-center'>Document Template</h2>
-
-              <div className='flex gap-4 justify-center flex-wrap'>
+      {showTemplatePicker && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl'>
+            <h2 className='text-2xl font-bold mb-6 text-center'>Document Template</h2>
+            <div className='flex gap-4 justify-center flex-wrap'>
+              {Object.entries(templates).map(([key, content]) => (
                 <button
-                  onClick={() => applyTemplate('project-plan')}
+                  key={key}
+                  onClick={() => applyTemplate(key as keyof typeof templates)}
                   className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
                 >
-                  <span className='text-2xl mb-2'>🚧</span>
-                  <span className='font-medium text-sm leading-tight'>
-                    Project
-                    <br />
-                    Plan
-                  </span>
+                  <span className='text-2xl mb-2'>📄</span>
+                  <span className='font-medium text-sm leading-tight'>{key}</span>
                 </button>
-
-                <button
-                  onClick={() => applyTemplate('to-do-list')}
-                  className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
-                >
-                  <span className='text-2xl mb-2'>✅</span>
-                  <span className='font-medium text-sm leading-tight'>
-                    To-Do
-                    <br />
-                    List
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => applyTemplate('feature-specs')}
-                  className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
-                >
-                  <span className='text-2xl mb-2'>🧩</span>
-                  <span className='font-medium text-sm leading-tight'>
-                    Feature
-                    <br />
-                    Specs
-                  </span>
-                </button>
-              </div>
-
-              <div className='text-center mt-6'>
-                <button
-                  className='px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm'
-                  onClick={() => setShowTemplatePicker(false)}
-                >
-                  Close
-                </button>
-              </div>
+              ))}
+            </div>
+            <div className='text-center mt-6'>
+              <button
+                className='px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm'
+                onClick={() => setShowTemplatePicker(false)}
+              >
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
       {showGanttModal && (
-        <>
-          <ModalEditor
-            onClose={() => setShowGanttModal(false)}
-            onSelectProject={handleGanttInsert}
-          />
-        </>
+        <ModalEditor onClose={() => setShowGanttModal(false)} onSelectProject={handleGanttInsert} />
       )}
     </div>
   );
-}
 
-function stripMarkdownCodeBlock(input: string): string {
-  if (typeof input !== 'string') return '';
-  return input.replace(/^```html\s*([\s\S]*?)\s*```$/i, '$1').trim();
+  function handleGanttInsert(projectId: number) {
+    const iframeHTML = `
+      <div class="my-4">
+        <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+      </div>
+      <p><br></p>`;
+    editor?.commands.insertContent(iframeHTML);
+    setShowGanttModal(false);
+  }
 }

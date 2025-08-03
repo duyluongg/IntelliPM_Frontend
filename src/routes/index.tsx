@@ -33,6 +33,7 @@ import MeetingRescheduleRequest from '../pages/PM/MeetingRoom/MeetingRescheduleR
 import MeetingRescheduleRequestSend from '../pages/PM/Meeting/MeetingRescheduleRequestSend/MeetingRescheduleRequestSend';
 import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
+import LayoutSwitch from '../layout/LayoutSwitch';
 // import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
 
 export const router = createBrowserRouter([
@@ -76,11 +77,26 @@ export const router = createBrowserRouter([
     ],
   },
 
+  {
+    path: '/project/projects/form/:type/:id',
+    element: (
+      <ProtectedRoute allowedRoles={['CLIENT', 'PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
+        <LayoutSwitch />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <DocWrapper />,
+      },
+    ],
+  },
+
   //  PM, Team Leader, Team Member đều có thể truy cập vào
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -153,10 +169,10 @@ export const router = createBrowserRouter([
         element: <Form />,
       },
 
-      {
-        path: 'projects/form/:type/:id',
-        element: <DocWrapper />,
-      },
+      // {
+      //   path: 'projects/form/:type/:id',
+      //   element: <DocWrapper />,
+      // },
       {
         path: 'projects/form/recent_form',
         element: <RecentForm />,

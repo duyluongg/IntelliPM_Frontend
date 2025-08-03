@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   useGetDocumentByIdQuery,
+  useGetMyPermissionQuery,
   useUpdateDocumentMutation,
 } from '../../../services/Document/documentAPI';
 import RichTextEditor from '../../../components/PM/RichTextEditor/Editor';
@@ -8,14 +9,16 @@ import { useAuth } from '../../../services/AuthContext';
 import StartWithAI from '../../../components/PM/AI/StartWithAI';
 import { DocumentContext } from '../../../components/context/DocumentContext';
 import { HiOutlineChartBar, HiOutlineTable, HiOutlineTemplate } from 'react-icons/hi';
+import { useSearchParams } from 'react-router-dom';
 
 type Props = {
   docId: number;
   updatedBy: number;
   onClose?: () => void;
+  mode?: string; // thêm prop mới
 };
 
-export default function Doc({ docId }: Props) {
+export default function Doc({ docId, mode }: Props) {
   const { user } = useAuth();
 
   const [content, setContent] = useState('');
@@ -26,11 +29,26 @@ export default function Doc({ docId }: Props) {
 
   const isUpdatingRef = useRef(false);
   const visibility = docData?.visibility || 'MAIN';
+  // const [searchParams] = useSearchParams();
+  // const mode = searchParams.get('mode'); // lấy từ ?mode=view
+
+  const { data: permissionData } = useGetMyPermissionQuery(docId, {
+    skip: mode === 'view', // bỏ qua nếu đang ở view mode công khai
+  });
+  // const permission = mode === 'view' ? 'view' : permissionData?.permission || 'none';
+  const permission = mode === 'view' ? 'view' : permissionData?.permission || 'none';
+
+  // useEffect(() => {
+  //   if (docData) {
+  //     if (typeof docData.title === 'string') setTitle(docData.title);
+  //     if (typeof docData.content === 'string') setContent(docData.content);
+  //   }
+  // }, [docData]);
 
   useEffect(() => {
     if (docData) {
-      if (typeof docData.title === 'string') setTitle(docData.title);
-      if (typeof docData.content === 'string') setContent(docData.content);
+      setTitle(docData.title || '');
+      setContent(docData.content || '');
     }
   }, [docData]);
 
@@ -40,16 +58,16 @@ export default function Doc({ docId }: Props) {
     }
   }, [docId]);
 
-  useEffect(() => {
-    if (docData && typeof docData.content === 'string' && docData.content !== content) {
-      setContent(docData.content);
-      console.log('[GET] docData:', docData);
-    }
-  }, [docData]);
+  // useEffect(() => {
+  //   if (docData && typeof docData.content === 'string' && docData.content !== content) {
+  //     setContent(docData.content);
+  //     console.log('[GET] docData:', docData);
+  //   }
+  // }, [docData]);
 
   const handleContentChange = async (newContent: string) => {
     if (!docId || isUpdatingRef.current || newContent === content) return;
-
+    if (mode === 'view') return;
     setContent(newContent);
     try {
       isUpdatingRef.current = true;
@@ -70,7 +88,7 @@ export default function Doc({ docId }: Props) {
 
   const handleTitleChange = async (newTitle: string) => {
     if (!docId || isUpdatingRef.current || newTitle === title) return;
-
+    if (mode === 'view') return;
     setTitle(newTitle);
     try {
       isUpdatingRef.current = true;
@@ -96,6 +114,7 @@ export default function Doc({ docId }: Props) {
           onTitleChange={handleTitleChange}
           showTemplatePicker={showTemplatePicker}
           setShowTemplatePicker={setShowTemplatePicker}
+          permission={permission}
         />
       </DocumentContext.Provider>
 

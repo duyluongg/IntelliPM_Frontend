@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Doc from './Doc';
 import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
@@ -18,6 +18,7 @@ export default function DocWrapper() {
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
 
   const [docId, setDocId] = useState<number | undefined>(undefined);
+  const mode = searchParams.get('mode') || type || 'edit';
 
   useEffect(() => {
     const createNewDocument = async () => {
@@ -56,5 +57,5 @@ export default function DocWrapper() {
     return <p className='p-4 text-red-500'>Invalid document ID.</p>;
   }
 
-  return <Doc docId={docId} updatedBy={user?.id ?? 0} />;
+  return <Doc docId={docId} updatedBy={user?.id ?? 0} mode={mode} />;
 }

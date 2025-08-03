@@ -1,3 +1,4 @@
+// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\services\projectApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -141,14 +142,6 @@ interface TaskItem {
   subtasks: SubtaskItem[];
 }
 
-// interface TaskDependency {
-//   id: number;
-//   taskId: string;
-//   linkedFrom: string;
-//   linkedTo: string;
-//   type: string;
-// }
-
 interface TaskDependency {
   id: number;
   FromType: string;
@@ -250,6 +243,14 @@ export interface GetWorkItemsResponse {
   isSuccess: boolean;
   code: number;
   data: WorkItemList[];
+  message: string;
+  error?: string;
+}
+
+export interface GetAllProjectsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails[];
   message: string;
   error?: string;
 }
@@ -363,6 +364,13 @@ export const projectApi = createApi({
   }),
   tagTypes: ['Project', 'WorkItem', 'ProjectDetails'],
   endpoints: (builder) => ({
+    getAllProjects: builder.query<GetAllProjectsResponse, void>({
+      query: () => ({
+        url: 'project',
+        method: 'GET',
+      }),
+      providesTags: ['Project'],
+    }),
     getProjectById: builder.query<GetProjectDetailsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}`,
@@ -464,7 +472,6 @@ export const projectApi = createApi({
       }),
       invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
     }),
-
     getProjectItemsByKey: builder.query<GetProjectItemsResponse, string>({
       query: (projectKey) => ({
         url: `project/items?projectKey=${projectKey}`,
@@ -476,6 +483,7 @@ export const projectApi = createApi({
 });
 
 export const {
+  useGetAllProjectsQuery,
   useGetProjectByIdQuery,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
@@ -490,5 +498,5 @@ export const {
   useSendEmailRejectToLeaderMutation,
   useRejectProjectMutation,
   useGetProjectItemsByKeyQuery,
-  useLazyCheckProjectKeyQuery
+  useLazyCheckProjectKeyQuery,
 } = projectApi;

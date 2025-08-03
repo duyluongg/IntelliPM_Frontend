@@ -139,11 +139,17 @@ export const meetingApi = createApi({
       }),
     }),
 
-  checkMeetingConflict: builder.query<any, { date: string; startTime: string; endTime: string }>({
-  query: ({ date, startTime, endTime }) => ({
-    url: `meetings/check-conflict?date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
-    method: 'GET',
-  }),
+checkMeetingConflict: builder.query<
+  { message: string; conflictingAccountIds: number[] },
+  { date: string; startTime: string; endTime: string; participantIds: number[] }
+>({
+  query: ({ date, startTime, endTime, participantIds }) => {
+    const participantParams = participantIds.map(id => `participantIds=${id}`).join('&');
+    return {
+      url: `meetings/check-conflict?${participantParams}&date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+      method: 'GET',
+    };
+  },
 }),
 
     

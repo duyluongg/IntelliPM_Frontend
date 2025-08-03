@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -28,6 +28,64 @@ const CreateMeetingPage: React.FC = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [customMessage, setCustomMessage] = useState('');
   const [shareDocumentViaEmail] = useShareDocumentViaEmailMutation();
+  
+
+  const [conflictMessage, setConflictMessage] = useState<string | null>(null);
+
+useEffect(() => {
+  const shouldCheck =
+    meetingDate && startTime && endTime && participantIds.length > 0;
+
+  if (!shouldCheck) {
+    setConflictMessage(null);
+    return;
+  }
+
+  const checkConflicts = async () => {
+    try {
+      const start = new Date(`${meetingDate}T${startTime}`).toISOString();
+      const end = new Date(`${meetingDate}T${endTime}`).toISOString();
+      const dateIso = new Date(meetingDate).toISOString();
+
+      const queryParams = new URLSearchParams();
+      participantIds.concat(user!.id).forEach((id) => {
+        queryParams.append('participantIds', id.toString());
+      });
+      queryParams.append('date', dateIso);
+      queryParams.append('startTime', start);
+      queryParams.append('endTime', end);
+
+      const response = await fetch(
+        `https://localhost:7128/api/meetings/check-conflict?${queryParams.toString()}`
+      );
+
+      if (!response.ok) throw new Error('Failed to check conflicts');
+
+      const data = await response.json();
+
+      if (data.conflictingAccountIds?.length > 0) {
+        const conflictedNames = data.conflictingAccountIds.map((id: number) => {
+          if (id === user?.id) return 'You';
+          const member = projectDetails?.data.projectMembers.find(
+            (m) => m.accountId === id
+          );
+          return member?.fullName || `User ${id}`;
+        });
+
+        setConflictMessage(
+          `⚠️ These members are busy during this time: ${conflictedNames.join(', ')}`
+        );
+      } else {
+        setConflictMessage(null);
+      }
+    } catch (error) {
+      console.error('Error checking conflict:', error);
+      setConflictMessage('❌ Unable to check conflict at this time.');
+    }
+  };
+
+  checkConflicts();
+}, [participantIds, meetingDate, startTime, endTime]);
 
   const { data: projectsData, isLoading: loadingProjects } = useGetProjectsByAccountIdQuery(
     accountId!,
@@ -382,6 +440,32 @@ const handleSelectAll = () => {
             >
               {isCreating ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
             </button> */}
+
+{conflictMessage && (
+  <div className="mt-6 flex items-start p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md">
+    <div className="flex-shrink-0">
+      <svg
+        className="h-6 w-6 text-red-500 mt-1"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+        />
+      </svg>
+    </div>
+    <div className="ml-3">
+      <div className="mt-1 text-sm text-red-700">{conflictMessage}</div>
+    </div>
+  </div>
+)}
+
+
             <button
   onClick={handleCreateMeeting}
   disabled={isCreating || isCreatingInternal}

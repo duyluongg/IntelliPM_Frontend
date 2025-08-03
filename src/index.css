@@ -8,3 +8,7 @@ div[contenteditable="true"]:focus {
   border-color: transparent !important;
 }
 
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}

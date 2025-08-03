@@ -1,6 +1,7 @@
 // D:\GitHub\IntelliPM\IntelliPM_Frontend\src\components\Admin\MemberList.tsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Mail } from 'lucide-react'; // Thêm icon email từ lucide-react
 
 interface MemberListProps {
   members: any[];
@@ -12,6 +13,29 @@ const MemberList: React.FC<MemberListProps> = ({ members, isLoading, error }) =>
   if (isLoading) return <div className="text-center text-gray-500">Loading members...</div>;
   if (error) return <div className="text-center text-red-500">Failed to load members.</div>;
   if (!members.length) return <div className="text-center text-gray-500">No members found.</div>;
+
+  // Hàm mở email với debug
+  const handleEmailClick = (email: string) => {
+    console.log('Attempting to open email:', email); // Debug log
+    if (isValidEmail(email)) {
+      try {
+        window.open(`mailto:${email}`, '_blank');
+        console.log('Email link opened successfully');
+      } catch (err) {
+        console.error('Failed to open email:', err);
+        alert('Could not open email client. Please copy the email and send manually.');
+      }
+    } else {
+      console.log('Invalid email format:', email);
+      alert('Invalid email address');
+    }
+  };
+
+  // Kiểm tra định dạng email
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   return (
     <motion.div
@@ -54,7 +78,15 @@ const MemberList: React.FC<MemberListProps> = ({ members, isLoading, error }) =>
                 <td className="py-3 px-4 text-sm text-gray-600">{member.username}</td>
                 <td className="py-3 px-4 text-sm text-gray-700">{member.role}</td>
                 <td className="py-3 px-4 text-sm text-gray-700">{member.position}</td>
-                <td className="py-3 px-4 text-sm text-gray-700">{member.email}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">
+                  <button
+                    onClick={() => handleEmailClick(member.email)}
+                    className="flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>{member.email}</span>
+                  </button>
+                </td>
                 <td className="py-3 px-4 text-sm text-gray-700">{member.status}</td>
               </motion.tr>
             ))}

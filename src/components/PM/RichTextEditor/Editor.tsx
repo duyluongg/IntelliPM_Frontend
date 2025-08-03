@@ -32,6 +32,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { useExportDocumentMutation } from '../../../services/Document/documentExportApi';
+import ShareModal from './ShareModal';
 
 type MenuBarProps = {
   editor: ReturnType<typeof useEditor>;
@@ -46,6 +47,10 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
   const [generateFromTasks, { isLoading: isGenerating }] = useGenerateFromTasksMutation();
   const documentId = useDocumentId();
   const [exportDocument] = useExportDocumentMutation();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
   if (!editor) return null;
 
@@ -63,6 +68,7 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
       console.error('Lỗi khi gọi API generate-from-tasks:', err);
     }
   };
+
   const exportToPDFAndUpload = async (
     elementId: string,
     documentId: number,
@@ -266,7 +272,7 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
               <path d='M6 11h8v2H6v-2zm2-4h4v2H8V7zm-2 8h8v2H6v-2z' />
             </svg>
           </button>
-          <button
+          {/* <button
             onClick={() => editor.chain().focus().toggleCode().run()}
             disabled={!editor.can().chain().focus().toggleCode().run()}
             className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -279,7 +285,7 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
             <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
               <path d='M13.962 8.795l1.414 1.414L12.548 13l2.828 2.828-1.414 1.414L10.134 13l3.828-3.828zm-7.924 0L2.21 12.621l3.828 3.828 1.414-1.414L4.624 13l2.828-2.828-1.414-1.414z' />
             </svg>
-          </button>
+          </button> */}
         </div>
 
         <div className='flex border border-gray-200 rounded-md overflow-hidden'>
@@ -296,106 +302,6 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
             title='Clear nodes'
           >
             Reset
-          </button>
-        </div>
-
-        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
-          <button
-            onClick={() => editor.chain().focus().setParagraph().run()}
-            className={`px-3 py-2 text-sm font-medium border-r border-gray-200 transition-colors hover:bg-gray-50 ${
-              editor.isActive('paragraph')
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Paragraph'
-          >
-            P
-          </button>
-          {headingLevels.map((level) => (
-            <button
-              key={level}
-              onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-              className={`px-3 py-2 text-sm font-medium border-r border-gray-200 last:border-r-0 transition-colors hover:bg-gray-50 ${
-                editor.isActive('heading', { level })
-                  ? 'bg-blue-50 text-blue-600 border-blue-200'
-                  : 'text-gray-700 hover:text-gray-900'
-              }`}
-              title={`Heading ${level}`}
-            >
-              H{level}
-            </button>
-          ))}
-        </div>
-
-        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
-          <button
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`px-3 py-2 text-sm font-medium border-r border-gray-200 transition-colors hover:bg-gray-50 ${
-              editor.isActive('bulletList')
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Bullet list'
-          >
-            <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M4 6a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4zm0 6a2 2 0 100-4 2 2 0 000 4zm6-10h6a1 1 0 010 2h-6a1 1 0 010-2zm0 6h6a1 1 0 010 2h-6a1 1 0 010-2zm0 6h6a1 1 0 010 2h-6a1 1 0 010-2z' />
-            </svg>
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
-              editor.isActive('orderedList')
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Ordered list'
-          >
-            <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z' />
-            </svg>
-          </button>
-        </div>
-
-        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
-          <button
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            className={`px-3 py-2 text-sm font-medium border-r border-gray-200 transition-colors hover:bg-gray-50 ${
-              editor.isActive('codeBlock')
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Code block'
-          >
-            <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z' />
-            </svg>
-          </button>
-          <button
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className={`px-3 py-2 text-sm font-medium border-r border-gray-200 transition-colors hover:bg-gray-50 ${
-              editor.isActive('blockquote')
-                ? 'bg-blue-50 text-blue-600 border-blue-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Blockquote'
-          >
-            <svg className='w-4 h-4' fill='currentColor' viewBox='0 0 20 20'>
-              <path d='M6 10a2 2 0 11-4 0 2 2 0 014 0zM18 10a2 2 0 11-4 0 2 2 0 014 0z' />
-            </svg>
-          </button>
-          <button
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-            className='px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 border-r border-gray-200 transition-colors'
-            title='Horizontal rule'
-          >
-            HR
-          </button>
-          <button
-            onClick={() => editor.chain().focus().setHardBreak().run()}
-            className='px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors'
-            title='Hard break'
-          >
-            BR
           </button>
         </div>
 
@@ -421,48 +327,6 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
             </svg>
           </button>
         </div>
-
-        <div className='flex border border-gray-200 rounded-md overflow-hidden'>
-          <button
-            onClick={() => editor.chain().focus().setColor('#958DF1').run()}
-            className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
-              editor.isActive('textStyle', { color: '#958DF1' })
-                ? 'bg-purple-50 text-purple-600 border-purple-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='Purple color'
-          >
-            <div className='flex items-center gap-2'>
-              <div className='w-4 h-4 rounded-full bg-purple-400'></div>
-              <span>A</span>
-            </div>
-          </button>
-        </div>
-
-        {/* <div className='relative'>
-          <button
-            onClick={() => setShowAIOptions((prev) => !prev)}
-            className={`px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-50 ${
-              editor.isActive('textStyle', { color: '#958DF1' })
-                ? 'bg-purple-50 text-purple-600 border-purple-200'
-                : 'text-gray-700 hover:text-gray-900'
-            }`}
-            title='AI Assistant'
-          >
-            <div className='flex items-center gap-2'>
-              <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-400 to-purple-400 rounded-lg'>
-                <Sparkles className='w-5 h-5 text-white' />
-              </div>
-              <span>AI Assistant</span>
-            </div>
-          </button>
-
-          {showAIOptions && (
-            <div className='absolute top-full mt-2 right-0 z-50'>
-              <WriteWithAIModal editor={editor} onClose={() => setShowAIOptions(false)} />
-            </div>
-          )}
-        </div> */}
 
         <div className='relative'>
           {/* Nút chính */}
@@ -556,12 +420,13 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
             </div>
           )}
         </div>
-        <div>
+
+        <div className='flex  rounded-md overflow-hidden gap-3'>
           <button
             onClick={() => exportToPDFAndUpload('pdf-content', documentId, exportDocument)}
             className='px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors'
           >
-            Export & Upload PDF
+            Export PDF
           </button>
 
           <button
@@ -571,20 +436,22 @@ const MenuBar = ({ editor, onChange }: MenuBarProps) => {
           >
             Export Excel
           </button>
+
+          <div className='flex  rounded-md overflow-hidden gap-3'>
+            <button
+              onClick={openModal}
+              className='px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors'
+            >
+              Share
+            </button>
+
+            <ShareModal isOpen={isModalOpen} onClose={closeModal} />
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
-// const extensions = [
-//   Color.configure({ types: [TextStyle.name, ListItem.name] }),
-//   TextStyle.configure({ types: [ListItem.name] }),
-//   StarterKit.configure({
-//     bulletList: { keepMarks: true, keepAttributes: false },
-//     orderedList: { keepMarks: true, keepAttributes: false },
-//   }),
-// ];
 
 const templates = {
   'to-do-list': `
@@ -727,6 +594,77 @@ const templates = {
       <li>[Tên / Chức vụ]: [Vai trò]</li>
     </ul>
   `,
+  'feature-specs': `
+  <h1>📄 Feature Specification: [Tên Tính Năng]</h1>
+  <p><strong>Project:</strong> [Tên Dự Án]</p>
+  <p><strong>Owner:</strong> [Tên người phụ trách]</p>
+  <p><strong>Date:</strong> [Ngày]</p>
+
+  <h2>1. 📝 Mô tả tổng quan</h2>
+  <p>Mô tả ngắn gọn về tính năng, bối cảnh sử dụng, và lý do xây dựng.</p>
+
+  <h2>2. 🎯 Mục tiêu</h2>
+  <ul>
+    <li>Giải quyết vấn đề gì?</li>
+    <li>Giá trị mang lại cho người dùng?</li>
+    <li>Chỉ số thành công (KPIs)</li>
+  </ul>
+
+  <h2>3. 🧩 Phạm vi tính năng</h2>
+  <ul>
+    <li>Chức năng chính</li>
+    <li>Chức năng phụ</li>
+    <li>Không bao gồm gì</li>
+  </ul>
+
+  <h2>4. 👤 Đối tượng sử dụng</h2>
+  <p>Ai là người sẽ dùng tính năng này (vai trò, nhóm người dùng...)?</p>
+
+  <h2>5. 🔄 Luồng người dùng (User Flow)</h2>
+  <ol>
+    <li>Bước 1: [Mô tả]</li>
+    <li>Bước 2: [Mô tả]</li>
+    <li>...</li>
+  </ol>
+
+  <h2>6. 🖼️ Wireframe / Mockup</h2>
+  <p>Gắn liên kết tới thiết kế hoặc hình ảnh.</p>
+
+  <h2>7. 🧪 Test Cases</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>STT</th>
+        <th>Tình huống kiểm thử</th>
+        <th>Input</th>
+        <th>Kết quả mong đợi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Người dùng nhấn nút "Lưu"</td>
+        <td>Form hợp lệ</td>
+        <td>Hiển thị thông báo thành công</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>8. 🚧 Ràng buộc & Lưu ý</h2>
+  <ul>
+    <li>Hiệu suất, độ trễ tối đa?</li>
+    <li>Tương thích với thiết bị nào?</li>
+    <li>Yêu cầu bảo mật / phân quyền?</li>
+  </ul>
+
+  <h2>9. ✅ Checklist hoàn thành</h2>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false"><p>Đã duyệt yêu cầu</p></li>
+    <li data-type="taskItem" data-checked="false"><p>Hoàn thành mockup</p></li>
+    <li data-type="taskItem" data-checked="false"><p>Viết test case</p></li>
+    <li data-type="taskItem" data-checked="false"><p>Triển khai và review</p></li>
+  </ul>
+`,
 };
 
 type Props = {
@@ -734,10 +672,10 @@ type Props = {
   onChange: (value: string) => void;
   title: string;
   onTitleChange: (title: string) => void;
-
   showTemplatePicker: boolean;
   setShowTemplatePicker: React.Dispatch<React.SetStateAction<boolean>>;
   projectId?: number;
+  permission?: string;
 };
 
 export default function RichTextEditor({
@@ -747,45 +685,21 @@ export default function RichTextEditor({
   onTitleChange,
   showTemplatePicker,
   setShowTemplatePicker,
+  projectId,
+  permission = 'edit',
 }: Props) {
-  const cleanedValue = stripMarkdownCodeBlock(value);
   const { user } = useAuth();
-  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
-  console.log('Project ID:', projectId);
+  const currentProjectId = useSelector((state: RootState) => state.project.currentProjectId);
+  const actualProjectId = projectId || currentProjectId;
+
   const [editor, setEditor] = useState<Editor | null>(null);
   const [showGanttModal, setShowGanttModal] = useState(false);
   const onGanttCallbackRef = useRef(() => setShowGanttModal(true));
-
-  // 👇 BƯỚC 2: Luôn cập nhật ref với hàm mới nhất mỗi khi component render lại
   onGanttCallbackRef.current = () => setShowGanttModal(true);
 
-  //   const handleGanttInsert = (projectId) => {
-  //     const cleanKey = projectKey.trim();
-  //     const iframeHTML = `
-  //   <div class="my-4">
-  //     <iframe src="/gantt-view/${cleanKey}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-  //   </div>
-  //   <p><br></p>
-  // `;
-  //     editor?.commands.insertContent(iframeHTML);
-
-  //     setShowGanttModal(false);
-  //   };
-  const handleGanttInsert = (projectId: number) => {
-    const iframeHTML = `
-    <div class="my-4">
-      <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
-    </div>
-    <p><br></p>
-  `;
-    editor?.commands.insertContent(iframeHTML);
-    setShowGanttModal(false);
-  };
-
-  const { data: members = [] } = useGetProjectMembersNoStatusQuery(projectId!, {
-    skip: !projectId,
+  const { data: members = [] } = useGetProjectMembersNoStatusQuery(actualProjectId!, {
+    skip: !actualProjectId,
   });
-  console.log(members, 'Members data from query');
 
   const mentionItems = useMemo(
     () =>
@@ -795,9 +709,20 @@ export default function RichTextEditor({
       })),
     [members]
   );
+  const mentionItemsRef = useRef(mentionItems);
+
+  // ✅ BƯỚC 2: Sử dụng useEffect để cập nhật ref mỗi khi mentionItems thay đổi
+  useEffect(() => {
+    mentionItemsRef.current = mentionItems;
+  }, [mentionItems]);
+
+  const mentionExtension = useMemo(() => {
+    // Truyền vào cả ref, chứ không phải giá trị
+    return createMentionExtension(mentionItemsRef);
+  }, []);
 
   useEffect(() => {
-    if (mentionItems.length === 0 || editor) return;
+    if (editor) return;
 
     const instance = new Editor({
       extensions: [
@@ -810,63 +735,62 @@ export default function RichTextEditor({
         TableCell,
         TaskList,
         TaskItem.configure({ nested: true }),
-        createMentionExtension(mentionItems),
-
+        mentionExtension,
+        // createMentionExtension(mentionItems),
         SlashCommandExtension.configure({
           onGanttCommand: () => onGanttCallbackRef.current(),
         }),
-
-        // SlashCommandExtension,
-
         IframeExtension,
       ],
-      content: value,
+      editable: permission !== 'view',
       onUpdate: ({ editor }) => {
         const html = editor.getHTML();
-        if (html !== value) onChange(html);
+        if (html !== value && permission !== 'view') onChange(html);
       },
     });
 
+    instance.commands.setContent(value || '<p></p>', false);
     setEditor(instance);
-  }, [mentionItems, editor]);
+    return () => {
+      instance.destroy();
+    };
+  }, [permission]);
 
   useEffect(() => {
-    if (editor && cleanedValue && editor.getHTML() !== cleanedValue) {
-      editor.commands.setContent(cleanedValue, false);
+    if (editor && editor.getHTML() !== value) {
+      editor.commands.setContent(value || '<p></p>', false);
     }
   }, [value, editor]);
 
   const applyTemplate = (templateKey: keyof typeof templates) => {
-    if (editor) {
-      const templateContent = templates[templateKey];
-      const currentEditorContent = editor.getHTML();
-      const newContentAfterTemplate = currentEditorContent + templateContent;
-      editor.commands.setContent(editor.getHTML() + templateContent);
-      setShowTemplatePicker(false);
-
-      onChange(newContentAfterTemplate);
-    }
+    if (!editor) return;
+    const templateContent = templates[templateKey];
+    const newContent = editor.getHTML() + templateContent;
+    editor.commands.setContent(newContent);
+    onChange(newContent);
+    setShowTemplatePicker(false);
   };
-  const isEmptyContent = (html: string) =>
-    !html || html.trim() === '' || html.trim() === '<p></p>' || html.trim() === '<p><br></p>';
 
   return (
     <div>
       <div className='sticky top-0 z-10 bg-white'>
-        {editor && <MenuBar editor={editor} onChange={onChange} value={value} />}
+        {editor && permission !== 'view' && (
+          <MenuBar editor={editor} onChange={onChange} value={value} />
+        )}
       </div>
 
       <div className='prose max-w-none'>
         <div className='flex items-center mb-6'>
           <TextareaAutosize
-            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none focus:ring-0 focus:border-none border-none shadow-none'
+            className='text-3xl font-bold text-gray-800 w-full bg-transparent focus:outline-none'
             value={title}
             onChange={(e) => onTitleChange(e.target.value)}
             placeholder='Untitled document'
+            readOnly={permission === 'view'}
           />
         </div>
 
-        <div className='flex items-center text-sm text-gray-500 mb-6'>
+        <div className='flex items-center text-sm text-gray-500 mb-2'>
           <div className='flex items-center mr-4'>
             <div className='w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold mr-2'>
               DL
@@ -878,111 +802,63 @@ export default function RichTextEditor({
           <div className='flex items-center mr-4'>
             <LucideSun className='mr-1' />
             <span>
-              Created <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+              Created <span className='font-semibold text-gray-700'>N/A</span>
             </span>
           </div>
           <div className='flex items-center'>
             <LucideLock className='mr-1' />
             <span>
-              Last updated <span className='font-semibold text-gray-700'>Jul 21, 2025, 12:41</span>
+              Last updated <span className='font-semibold text-gray-700'>N/A</span>
             </span>
           </div>
         </div>
 
-        <div id='pdf-content' className='p-8 bg-white'>
+        <div id='pdf-content' className='mx-auto'>
           <EditorContent editor={editor} />
         </div>
+      </div>
 
-        {isEmptyContent(value) && (
-          <div className='space-y-4'>
-            <OptionItem
-              icon={<HiOutlineTemplate className='w-5 h-5' />}
-              text='Templates'
-              onClick={() => setShowTemplatePicker(true)}
-            />
-            <OptionItem icon={<HiOutlineTable className='w-5 h-5' />} text='Table' />
-            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Chart' />
-            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board values' />
-            <OptionItem icon={<HiOutlineChartBar className='w-5 h-5' />} text='Board' />
-          </div>
-        )}
-
-        {showTemplatePicker && (
-          <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-            <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl'>
-              <h2 className='text-2xl font-bold mb-6 text-center'>Document Template</h2>
-
-              <div className='flex gap-4 justify-center flex-wrap'>
+      {showTemplatePicker && (
+        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
+          <div className='bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl'>
+            <h2 className='text-2xl font-bold mb-6 text-center'>Document Template</h2>
+            <div className='flex gap-4 justify-center flex-wrap'>
+              {Object.entries(templates).map(([key, content]) => (
                 <button
-                  onClick={() => applyTemplate('project-plan')}
+                  key={key}
+                  onClick={() => applyTemplate(key as keyof typeof templates)}
                   className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
                 >
-                  <span className='text-2xl mb-2'>🚧</span>
-                  <span className='font-medium text-sm leading-tight'>
-                    Project
-                    <br />
-                    Plan
-                  </span>
+                  <span className='text-2xl mb-2'>📄</span>
+                  <span className='font-medium text-sm leading-tight'>{key}</span>
                 </button>
-
-                <button
-                  onClick={() => applyTemplate('to-do-list')}
-                  className='w-36 h-28 p-4 border rounded-lg hover:bg-gray-50 flex flex-col items-center text-center'
-                >
-                  <span className='text-2xl mb-2'>✅</span>
-                  <span className='font-medium text-sm leading-tight'>
-                    To-Do
-                    <br />
-                    List
-                  </span>
-                </button>
-              </div>
-
-              <div className='text-center mt-6'>
-                <button
-                  className='px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm'
-                  onClick={() => setShowTemplatePicker(false)}
-                >
-                  Close
-                </button>
-              </div>
+              ))}
+            </div>
+            <div className='text-center mt-6'>
+              <button
+                className='px-6 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm'
+                onClick={() => setShowTemplatePicker(false)}
+              >
+                Close
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
       {showGanttModal && (
-        <>
-          {console.log('ModalEditor rendered 🟩')}
-          <ModalEditor
-            onClose={() => setShowGanttModal(false)}
-            onSelectProject={handleGanttInsert}
-          />
-        </>
+        <ModalEditor onClose={() => setShowGanttModal(false)} onSelectProject={handleGanttInsert} />
       )}
     </div>
   );
+
+  function handleGanttInsert(projectId: number) {
+    const iframeHTML = `
+      <div class="my-4">
+        <iframe src="/gantt-view/${projectId}" width="100%" height="400" class="border border-gray-300 rounded-lg"></iframe>
+      </div>
+      <p><br></p>`;
+    editor?.commands.insertContent(iframeHTML);
+    setShowGanttModal(false);
+  }
 }
-
-function stripMarkdownCodeBlock(input: string): string {
-  if (typeof input !== 'string') return '';
-  return input.replace(/^```html\s*([\s\S]*?)\s*```$/i, '$1').trim();
-}
-
-interface OptionItemProps {
-  icon: React.ReactNode;
-  text: string;
-
-  onClick?: () => void;
-}
-
-const OptionItem: React.FC<OptionItemProps> = ({ icon, text, onClick }) => {
-  return (
-    <div
-      className='flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors duration-200'
-      onClick={onClick}
-    >
-      <div className='text-purple-500 mr-3'>{icon}</div>
-      <span className='text-gray-700 font-medium'>{text}</span>
-    </div>
-  );
-};

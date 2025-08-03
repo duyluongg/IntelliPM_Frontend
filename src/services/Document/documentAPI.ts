@@ -7,6 +7,12 @@ interface ShareDocumentViaEmailRequest {
   customMessage: string;
   file: File;
 }
+interface ShareDocumentByEmailRequest {
+  documentId: number;
+  emails: string[];
+  message: string;
+  projectKey: string;
+}
 
 export const documentApi = createApi({
   reducerPath: 'documentApi',
@@ -146,6 +152,41 @@ export const documentApi = createApi({
         };
       },
     }),
+
+    shareDocumentToEmails: builder.mutation<any, ShareDocumentByEmailRequest>({
+      query: ({ documentId, emails, message }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body: {
+          emails,
+          message,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+
+    shareDocumentByEmails: builder.mutation<
+      { success: boolean; failedEmails: string[] },
+      {
+        documentId: number;
+        permissionType: 'VIEW' | 'EDIT';
+        emails: string[];
+        message?: string;
+        projectKey?: string;
+      }
+    >({
+      query: ({ documentId, ...body }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    getMyPermission: builder.query<{ permission: string }, number>({
+      query: (documentId) => `documents/${documentId}/permission/current-user`,
+    }),
   }),
 });
 
@@ -164,4 +205,7 @@ export const {
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
   useShareDocumentViaEmailMutation,
+  useShareDocumentToEmailsMutation,
+  useShareDocumentByEmailsMutation,
+  useGetMyPermissionQuery,
 } = documentApi;

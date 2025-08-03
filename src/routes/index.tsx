@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import RootLayout from '../layout/RootLayout';
 import PMLayout from '../layout/PMLayout';
+import AdminLayout from '../layout/AdminLayout';
 import Homepage from '../pages/Homepage';
 import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
@@ -40,6 +41,7 @@ import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
 import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
 import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
+import AdminHomePage from '../pages/Admin/AdminHomePage';
 
 export const router = createBrowserRouter([
   {
@@ -213,6 +215,21 @@ export const router = createBrowserRouter([
   {
     path: '/gantt-view/:projectKey',
     element: <Gantt />,
+  },
+
+{
+    path: '/admin',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <AdminHomePage />,
+      },
+    ],
   },
 
   {

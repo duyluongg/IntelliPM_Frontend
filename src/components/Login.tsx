@@ -58,7 +58,7 @@ const Login: React.FC = () => {
     if (isAccessRole && hasData && firstProject) {
       navigate(`/project?projectKey=${firstProject.projectKey}#list`);
     } else if (user?.role === 'ADMIN') {
-      navigate('/admin/dashboard');
+      navigate('/admin');
     } else if (user?.role === 'CLIENT') {
       navigate('/meeting');
     }

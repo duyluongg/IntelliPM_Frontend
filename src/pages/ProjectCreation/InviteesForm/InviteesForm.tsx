@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGetAccountByEmailQuery } from '../../../services/accountApi';
+import { useLazyGetAccountByEmailQuery } from '../../../services/accountApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useCreateBulkProjectMembersWithPositionsMutation } from '../../../services/projectMemberApi';
 import { useDispatch, useSelector } from 'react-redux';
@@ -42,48 +42,86 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [newPosition, setNewPosition] = useState('');
   const [viewDetailsMember, setViewDetailsMember] = useState<string | null>(null);
+  const [emailErrors, setEmailErrors] = useState<string[]>([]);
+  const [infoMessages, setInfoMessages] = useState<string[]>([]);
   const [isInvalidEmail, setIsInvalidEmail] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const emailCurrent = localStorage.getItem('email') || '';
 
   const { data: positionData, isLoading: isPositionLoading } = useGetCategoriesByGroupQuery('account_position');
   const projectId = useSelector(selectProjectId);
   const dispatch = useDispatch();
-  const [createBulkProjectMembers, { isLoading: isBulkCreating, error: bulkError }] = useCreateBulkProjectMembersWithPositionsMutation();
+  const [createBulkProjectMembers, { isLoading: isBulkCreating }] = useCreateBulkProjectMembersWithPositionsMutation();
+  const [checkAccountByEmail] = useLazyGetAccountByEmailQuery();
 
-  const { data: accountData, isLoading, isError } = useGetAccountByEmailQuery(inputValue.trim(), {
-    skip: !inputValue.trim() || invitees.some((inv) => inv.email === inputValue.trim()),
-  });
+  const handleAddInvitee = async () => {
+    if (!inputValue.trim()) return;
 
-  const handleAddInvitee = () => {
-    if (inputValue.trim() && !invitees.some((inv) => inv.email === inputValue.trim())) {
-      if (!isError && accountData?.data) {
-        const newRole = accountData.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : accountData.data.role === 'CLIENT' ? 'Client' : 'Team Member';
-        const initialPosition = accountData.data.position || 'Developer';
+    // Split input by commas and trim each email
+    const emails = inputValue.split(',').map(email => email.trim()).filter(email => email);
+    const uniqueEmails = emails.filter(email => !invitees.some(inv => inv.email === email));
+
+    if (uniqueEmails.length === 0) {
+      setIsInvalidEmail(true);
+      setEmailErrors(['All emails are either empty or already added.']);
+      setInputValue('');
+      return;
+    }
+
+    const newInvitees: Invitee[] = [];
+    const errors: string[] = [];
+    const infos: string[] = [];
+
+    // Validate each email
+    for (const email of uniqueEmails) {
+      if (email === emailCurrent) {
+        infos.push(`Your email '${email}' is automatically included.`);
+        continue;
+      }
+
+      try {
+        const response = await checkAccountByEmail(email).unwrap();
+        if (!response?.isSuccess || !response?.data) {
+          errors.push(`Email '${email}' does not exist.`);
+          continue;
+        }
+
+        const newRole = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' :
+                        response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+        const initialPosition = response.data.position || 'Developer';
         const newInvitee: Invitee = {
-          email: inputValue.trim(),
+          email,
           role: newRole,
           positions: [initialPosition],
           details: {
-            yearsExperience: accountData.data.id === 5 ? 5 : 3,
-            role: accountData.data.position || 'Junior Developer',
-            completedProjects: accountData.data.id === 5 ? 8 : 2,
+            yearsExperience: response.data.id === 5 ? 5 : 3,
+            role: response.data.position || 'Junior Developer',
+            completedProjects: response.data.id === 5 ? 8 : 2,
             ongoingProjects: 0,
             pastPositions: ['Developer'],
-            accountId: accountData.data.id,
+            accountId: response.data.id,
           },
-          avatar: accountData.data?.picture || `https://i.pravatar.cc/40?img=${invitees.length + 1}`,
+          avatar: response.data?.picture || `https://i.pravatar.cc/40?img=${invitees.length + newInvitees.length + 1}`,
         };
-        setInvitees([...invitees, newInvitee]);
-        setInputValue('');
-        setIsInvalidEmail(false);
-      } else {
-        setIsInvalidEmail(true);
+        newInvitees.push(newInvitee);
+      } catch (err) {
+        errors.push(`Email '${email}' does not exist or could not be validated.`);
       }
     }
+
+    if (newInvitees.length > 0) {
+      setInvitees([...invitees, ...newInvitees]);
+    }
+
+    setInputValue('');
+    setIsInvalidEmail(errors.length > 0);
+    setEmailErrors(errors);
+    setInfoMessages(infos);
   };
 
   const handleRemoveInvitee = (email: string) => {
     setInvitees(invitees.filter((inv) => inv.email !== email));
+    setEmailErrors(emailErrors.filter(err => !err.includes(`'${email}'`)));
+    setInfoMessages(infoMessages.filter(msg => !msg.includes(`'${email}'`)));
   };
 
   const handleAddPosition = (email: string, position: string) => {
@@ -109,7 +147,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
   const handleContinue = async () => {
     if (!projectId) {
       console.error('Project ID is not available');
-      setErrorMessage('Project ID is not available. Please create the project first.');
+      setEmailErrors(['Project ID is not available. Please create the project first.']);
       return;
     }
 
@@ -132,11 +170,12 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
         console.log('Bulk create success:', response);
         if (response.isSuccess) {
           dispatch(setFormData({ invitees: uniqueInvitees.map((inv) => inv.email) }));
-          setErrorMessage(null);
+          setEmailErrors([]);
+          setInfoMessages([]);
           await onNext();
           break;
         } else {
-          setErrorMessage(response.message || 'Failed to invite members.');
+          setEmailErrors([response.message || 'Failed to invite members.']);
           break;
         }
       } catch (err: any) {
@@ -151,22 +190,22 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
               positions: invitee.positions,
             }));
             setInvitees(uniqueInvitees);
-            setErrorMessage(`Removed duplicate Account ID ${duplicateAccountId}. Retrying...`);
+            setEmailErrors([`Removed duplicate Account ID ${duplicateAccountId}. Retrying...`]);
           } else {
-            setErrorMessage('Failed to parse duplicate account error.');
+            setEmailErrors(['Failed to parse duplicate account error.']);
             break;
           }
         } else if ('status' in err && err.status === 401) {
-          setErrorMessage('Authentication failed. Please log in again or check your token.');
+          setEmailErrors(['Authentication failed. Please log in again or check your token.']);
           break;
         } else if (err instanceof Error && err.message.includes('Unexpected end of JSON input')) {
-          setErrorMessage('Server returned an invalid response. Please check your authentication or contact support.');
+          setEmailErrors(['Server returned an invalid response. Please check your authentication or contact support.']);
           break;
         } else if ('status' in err && err.status === 403) {
-          setErrorMessage('You do not have permission to perform this action.');
+          setEmailErrors(['You do not have permission to perform this action.']);
           break;
         } else {
-          setErrorMessage('Failed to invite members. Please try again.');
+          setEmailErrors(['Failed to invite members. Please try again.']);
           break;
         }
         attempt++;
@@ -174,7 +213,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
     }
 
     if (attempt === maxAttempts) {
-      setErrorMessage('Maximum retry attempts reached. Please check your invitees.');
+      setEmailErrors(['Maximum retry attempts reached. Please check your invitees.']);
     }
   };
 
@@ -188,7 +227,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
         Bring the Team with You
       </h1>
       <p className='text-gray-600 mb-8 text-base leading-relaxed'>
-        Invite your teammates to collaborate on this project and achieve greatness together.
+        Invite your teammates to collaborate on this project and achieve greatness together. Enter one email or a comma-separated list (e.g., email1@example.com, email2@example.com). Your email is automatically included.
       </p>
 
       <div className='space-y-6'>
@@ -196,10 +235,12 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
           <input
             type='text'
             value={inputValue}
-            placeholder='Enter name or email'
+            placeholder='Enter name, email, or comma-separated emails'
             onChange={(e) => {
               setInputValue(e.target.value);
               setIsInvalidEmail(false);
+              setEmailErrors([]);
+              setInfoMessages([]);
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleAddInvitee()}
             className={`flex-1 px-5 py-3 border-2 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 transition-all placeholder-gray-400 ${
@@ -209,14 +250,23 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
           <button
             onClick={handleAddInvitee}
             className='w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl'
-            disabled={isLoading}
+            disabled={false}
           >
-            {isLoading ? 'Loading...' : 'Add Invitee'}
+            Add Invitee
           </button>
         </div>
-        {isInvalidEmail && (
+        {emailErrors.length > 0 && (
           <div className='text-red-500 text-sm mt-2'>
-            Email '{inputValue.trim()}' does not exist or is already added.
+            {emailErrors.map((error, index) => (
+              <p key={index}>{error}</p>
+            ))}
+          </div>
+        )}
+        {infoMessages.length > 0 && (
+          <div className='text-[#1c73fd] text-sm mt-2'>
+            {infoMessages.map((message, index) => (
+              <p key={index}>{message}</p>
+            ))}
           </div>
         )}
 
@@ -269,11 +319,37 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
         )}
       </div>
 
-      {errorMessage && (
-        <div className='text-red-500 text-sm mt-4'>{errorMessage}</div>
+      {(emailErrors.length > 0 || infoMessages.length > 0) && (
+        <div className='mt-4 space-y-2'>
+          {emailErrors.length > 0 && (
+            <div className='text-red-500 text-sm'>
+              {emailErrors.map((error, index) => (
+                <p key={index}>{error}</p>
+              ))}
+            </div>
+          )}
+          {infoMessages.length > 0 && (
+            <div className='text-[#1c73fd] text-sm'>
+              {infoMessages.map((message, index) => (
+                <p key={index}>{message}</p>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className='mt-10 flex justify-end text-xs'>
+        <button
+          onClick={() => {
+            localStorage.removeItem('projectFormData');
+            localStorage.removeItem('projectCreationStep');
+            localStorage.removeItem('projectCreationId');
+            onBack();
+          }}
+          className='mr-4 px-6 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl'
+        >
+          Back
+        </button>
         <button
           onClick={handleContinue}
           className='px-6 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl'

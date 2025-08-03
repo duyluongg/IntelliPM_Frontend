@@ -26,6 +26,7 @@ import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
 import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
+import ProjectSummary from '../pages/ProjectDetail/ProjectSummary/ProjectSummary';
 // import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
 import AllRequestForm from '../pages/TeamLeader/AllRequestForm';
@@ -35,6 +36,10 @@ import Gantt from '../pages/PM/Gantt/Gantt';
 import RecentForm from '../pages/PM/YourProject/RecentForm';
 import LayoutSwitch from '../layout/LayoutSwitch';
 // import BacklogPage from '../pages/ProjectDetail/BacklogPage/BacklogPage';
+import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
+import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
+import Risk from '../pages/PM/Risk/Risk';
+import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 
 export const router = createBrowserRouter([
   {
@@ -115,12 +120,28 @@ export const router = createBrowserRouter([
         element: <ProjectTaskList />,
       },
       {
+        path: `/project?:projectKey`,
+        element: <ProjectTaskList />,
+      },
+      {
+        path: '/project/:projectKey/risk',
+        element: <Risk />,
+      },
+      {
+        path: '/project/:projectKey/risk/:riskKey',
+        element: <RiskDetailPage />, 
+      },
+      {
         path: `introduction`,
         element: <ProjectIntroduction />,
       },
       {
         path: `createform`,
         element: <ProjectCreation />,
+      },
+      {
+        path: `list`,
+        element: <ProjectList />,
       },
 
       {
@@ -131,6 +152,15 @@ export const router = createBrowserRouter([
         path: `:projectKey/overviewpm`,
         element: <ProjectOverviewPM />,
       },
+      {
+        path: 'invitation',
+        element: <InviteAccept />,
+      },
+      {
+        path: `:projectKey/summary`,
+        element: <ProjectSummary />,
+      },
+
       {
         path: 'create-meeting-room',
         element: <CreateMeetingPage />,
@@ -145,11 +175,11 @@ export const router = createBrowserRouter([
         element: <ProjectIntroduction />,
       },
       {
-        path: 'work-item-detail',
+        path: ':projectKey/work-item-detail',
         element: <WorkItemDetail />,
       },
       {
-        path: 'child-work/:key',
+        path: ':projectKey/child-work/:key',
         element: <ChildWorkItem />,
       },
       {

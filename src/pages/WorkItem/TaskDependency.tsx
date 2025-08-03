@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import './TaskDependency.css';
 import { useSearchParams } from 'react-router-dom';
 import { useGetProjectItemsByKeyQuery } from '../../services/projectApi';
@@ -23,8 +24,12 @@ interface TaskDependencyProps {
 }
 
 const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItemId, type }) => {
+  // const [searchParams] = useSearchParams();
+  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
 
   const { data: projectItems } = useGetProjectItemsByKeyQuery(projectKey);
   const { data: taskDepsData, refetch } = useGetTaskDependenciesByLinkedFromQuery(workItemId, {
@@ -55,7 +60,6 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
 
   const handleSubmit = async () => {
     const payload = dependencies
-      // .filter((dep) => typeof dep.id === 'string') // chỉ giữ lại các id là string
       .filter((dep) => isNaN(Number(dep.id)))
       .map((dep) => ({
         id: dep.key, // Nếu = 0 hoặc không có nghĩa là tạo mới
@@ -65,7 +69,12 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
         linkedTo: dep.id,
         type: dep.type,
       }));
-      console.log('📤 Payload gửi về API:', payload);
+    console.log('📤 Payload gửi về API:', payload);
+
+    if (payload.length === 0) {
+      onClose();
+      return;
+    }
 
     try {
       // const response = await createTaskDependencies(payload).unwrap();

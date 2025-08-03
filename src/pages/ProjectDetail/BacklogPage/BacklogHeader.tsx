@@ -45,7 +45,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
 
   const members: Member[] =
     membersData?.data
-      ?.filter((member) => member.status.toUpperCase() === 'IN_PROGRESS')
+      ?.filter((member) => member.status.toUpperCase() === 'ACTIVE')
       ?.map((member) => ({
         id: member.id,
         name: member.fullName || member.accountName || 'Unknown',

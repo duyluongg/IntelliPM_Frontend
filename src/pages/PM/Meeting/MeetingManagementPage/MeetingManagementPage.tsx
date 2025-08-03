@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState,useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Dialog, DialogTrigger, DialogContent } from '@radix-ui/react-dialog';
 import { useAuth } from '../../../../services/AuthContext';
@@ -26,12 +26,14 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
+  const toastIds = useRef<{ [key: string]: boolean }>({});
   
 
 
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
     useGetMeetingsManagedByQuery(accountId!, { skip: !accountId });
+    
 
   const [deleteMeeting] = useDeleteMeetingMutation();
   const [updateMeeting] = useUpdateMeetingMutation();
@@ -99,72 +101,125 @@ useEffect(() => {
   });
 }, [meetings]);
 
-
-
-
   // … các hàm handle* giữ nguyên …
 
   if (!accountId)
     return (
       <p className="mt-4 text-center font-semibold text-red-600">
-        ⚠️ Bạn chưa đăng nhập.
+        ⚠️ You are not logged in.
       </p>
     );
-  if (isLoading) return <p className="mt-4 text-gray-500">⏳ Đang tải dữ liệu…</p>;
+  if (isLoading) return <p className="mt-4 text-gray-500">⏳ Loading</p>;
   if (isError) return <p className="mt-4 text-red-500">❌ {JSON.stringify(error)}</p>;
 
 // Điểm danh và cập nhật trạng thái cuộc họp
-const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
-  // Lấy thông tin cuộc họp hiện tại
-  const participant = participants.find((p) => Number(p.id) === participantId);
-  if (!participant) return;
+// const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
+//   // Lấy thông tin cuộc họp hiện tại
+//   const participant = participants.find((p) => Number(p.id) === participantId);
+//   if (!participant) return;
 
-  // Kiểm tra thời gian hiện tại và ngày giờ cuộc họp
-  const currentTime = new Date();
-  const meetingTime = new Date(selectedMeeting?.meetingDate);  // Sử dụng selectedMeeting để lấy ngày và giờ cuộc họp
+//   // Kiểm tra thời gian hiện tại và ngày giờ cuộc họp
+//   const currentTime = new Date();
+//   const meetingTime = new Date(selectedMeeting?.meetingDate);  // Sử dụng selectedMeeting để lấy ngày và giờ cuộc họp
 
-  // Cập nhật giờ bắt đầu của cuộc họp (startTime)
-  const meetingStartTime = new Date(meetingTime);
-  meetingStartTime.setHours(new Date(selectedMeeting?.startTime).getHours(), new Date(selectedMeeting?.startTime).getMinutes(), 0, 0);
+//   // Cập nhật giờ bắt đầu của cuộc họp (startTime)
+//   const meetingStartTime = new Date(meetingTime);
+//   meetingStartTime.setHours(new Date(selectedMeeting?.startTime).getHours(), new Date(selectedMeeting?.startTime).getMinutes(), 0, 0);
 
-  // Kiểm tra nếu thời gian hiện tại đã qua thời gian bắt đầu cuộc họp
-  if (currentTime < meetingStartTime) {
-    // Nếu chưa đến giờ cuộc họp, không cho phép thay đổi điểm danh
-    toast.error('❌ Không thể thay đổi điểm danh vì chưa đến giờ cuộc họp!');
-    return;
-  }
+//   // Kiểm tra nếu thời gian hiện tại đã qua thời gian bắt đầu cuộc họp
+//   if (currentTime < meetingStartTime) {
+//     // Nếu chưa đến giờ cuộc họp, không cho phép thay đổi điểm danh
+//     toast.error('Cannot change attendance because meeting time is not yet!');
+//     return;
+//   }
 
-  // Kiểm tra nếu ngày hiện tại đã qua ngày diễn ra cuộc họp
-  const meetingDayEnd = new Date(meetingTime);
-  meetingDayEnd.setHours(23, 59, 59, 999); // Đặt giờ cuối cùng của ngày cuộc họp
+//   // Kiểm tra nếu ngày hiện tại đã qua ngày diễn ra cuộc họp
+//   const meetingDayEnd = new Date(meetingTime);
+//   meetingDayEnd.setHours(23, 59, 59, 999); // Đặt giờ cuối cùng của ngày cuộc họp
 
-  if (currentTime > meetingDayEnd) {
-    // Nếu đã qua ngày cuộc họp, không cho phép thay đổi điểm danh
-    toast.error('❌ Không thể thay đổi điểm danh vì đã qua ngày cuộc họp!');
-    return;
-  }
+//   if (currentTime > meetingDayEnd) {
+//     // Nếu đã qua ngày cuộc họp, không cho phép thay đổi điểm danh
+//     toast.error('Cannot change attendance because meeting date has passed!');
+//     return;
+//   }
 
-  // Thực hiện điểm danh
-  await updateParticipantStatus({
-    participantId,
-    data: {
-      meetingId: participant.meetingId,
-      accountId: participant.accountId,
-      role: participant.role,
-      status: newStatus,
-    },
-  });
+//   // Thực hiện điểm danh
+//   await updateParticipantStatus({
+//     participantId,
+//     data: {
+//       meetingId: participant.meetingId,
+//       accountId: participant.accountId,
+//       role: participant.role,
+//       status: newStatus,
+//     },
+//   });
 
-  await refetchParticipants();
-  toast.success('✅ Điểm danh thành công!');
+//   await refetchParticipants();
+//   toast.success('Check Attendance success');
 
-  // Chỉ hoàn tất cuộc họp khi tất cả người tham gia đã điểm danh (hoặc theo logic khác của bạn)
+//   // Chỉ hoàn tất cuộc họp khi tất cả người tham gia đã điểm danh (hoặc theo logic khác của bạn)
   
-    await completeMeeting(selectedMeeting.id);  // 👈 Gọi API mới ở đây để hoàn thành cuộc họp
+//     await completeMeeting(selectedMeeting.id);  // 👈 Gọi API mới ở đây để hoàn thành cuộc họp
   
 
-  await refetch();
-};
+//   await refetch();
+// };
+
+  const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
+    const participant = participants.find((p) => Number(p.id) === participantId);
+    if (!participant) return;
+
+    const currentTime = new Date();
+    const meetingTime = new Date(selectedMeeting?.meetingDate);
+
+    const meetingStartTime = new Date(meetingTime);
+    meetingStartTime.setHours(new Date(selectedMeeting?.startTime).getHours(), new Date(selectedMeeting?.startTime).getMinutes(), 0, 0);
+
+    // Kiểm tra nếu thời gian hiện tại chưa đến thời gian cuộc họp
+    if (currentTime < meetingStartTime) {
+      if (!toastIds.current['attendance-time-not-reached']) {
+        toast.error('Cannot change attendance because meeting time is not yet!');
+        toastIds.current['attendance-time-not-reached'] = true; // Đánh dấu đã hiển thị thông báo này
+      }
+      return;
+    }
+
+    const meetingDayEnd = new Date(meetingTime);
+    meetingDayEnd.setHours(23, 59, 59, 999);
+
+    // Kiểm tra nếu thời gian hiện tại đã qua ngày diễn ra cuộc họp
+    if (currentTime > meetingDayEnd) {
+      if (!toastIds.current['attendance-date-passed']) {
+        toast.error('Cannot change attendance because meeting date has passed!');
+        toastIds.current['attendance-date-passed'] = true; // Đánh dấu đã hiển thị thông báo này
+      }
+      return;
+    }
+
+    // Tiến hành cập nhật điểm danh
+    await updateParticipantStatus({
+      participantId,
+      data: {
+        meetingId: participant.meetingId,
+        accountId: participant.accountId,
+        role: participant.role,
+        status: newStatus,
+      },
+    });
+
+    await refetchParticipants();
+    
+    // Hiển thị thông báo thành công chỉ một lần
+    if (!toastIds.current['attendance-success']) {
+      toast.success('Check Attendance success');
+      toastIds.current['attendance-success'] = true; // Đánh dấu đã hiển thị thông báo này
+    }
+
+    // Chỉ hoàn tất cuộc họp khi tất cả người tham gia đã điểm danh
+    await completeMeeting(selectedMeeting.id);
+
+    await refetch();
+  };
 
 
 
@@ -223,6 +278,8 @@ const handleAttendance = async (participantId: number, newStatus: 'Present' | 'A
       {/* --- Danh sách cuộc họp --- */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {meetings 
+        .slice() 
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
          .filter((m) => m.status === currentTab)
          .filter((m) =>
     m.meetingTopic.toLowerCase().includes(searchKeyword.toLowerCase())

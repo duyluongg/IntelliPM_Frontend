@@ -21,6 +21,7 @@ export interface SubtaskResponseDTO {
   reporterId: number;
   reporterName: string;
   createdBy: number;
+  warnings?: string[];
 }
 
 export interface SubtaskFullResponseDTO {

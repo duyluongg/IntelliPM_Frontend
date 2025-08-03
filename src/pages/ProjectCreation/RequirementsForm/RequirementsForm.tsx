@@ -41,6 +41,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           uiId: crypto.randomUUID(),
           expanded: true,
           titleError: '',
+          priority: req.priority || 'MEDIUM', // Set default to MEDIUM if priority is undefined
         }))
       );
     } else {
@@ -50,7 +51,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           title: '',
           type: 'FUNCTIONAL',
           description: '',
-          priority: '',
+          priority: 'MEDIUM', // Default to MEDIUM
           expanded: true,
           titleError: '',
         },
@@ -59,7 +60,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           title: '',
           type: 'NON_FUNCTIONAL',
           description: '',
-          priority: '',
+          priority: 'MEDIUM', // Default to MEDIUM
           expanded: true,
           titleError: '',
         },
@@ -89,7 +90,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
         title: '',
         type,
         description: '',
-        priority: '',
+        priority: 'MEDIUM', // Default to MEDIUM
         expanded: true,
         titleError: '',
       },

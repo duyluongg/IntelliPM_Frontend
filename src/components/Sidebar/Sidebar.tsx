@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 import { useAuth } from '../../services/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import projectIcon from '../../assets/projectManagement.png';
 
 interface RecentProject {
@@ -43,7 +44,9 @@ const menuItems = [
 
 export default function Sidebar() {
   const [showProjects, setShowProjects] = useState(false);
+  const [showManageProjects, setShowManageProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [showProjectDetail, setShowProjectDetail] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const selectedProjectKey = searchParams.get('projectKey');
 
@@ -61,7 +64,6 @@ export default function Sidebar() {
       }))
     : [];
 
-  // Tự động mở dropdown nếu có projectKey trên URL
   useEffect(() => {
     if (selectedProjectKey && recentProjects.some((p) => p.key === selectedProjectKey)) {
       setShowProjects(true);
@@ -71,6 +73,22 @@ export default function Sidebar() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleViewAllProjects = () => {
+    setShowManageProjects(false);
+    navigate('/project/list');
+  };
+
+  const shortenProjectName = (name: string, maxLength: number = 18) => {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength - 3) + '...';
+  };
+
+  const handleProjectDetailClick = (projectKey: string) => {
+    setShowProjectDetail(null);
+    setShowProjects(false);
+    navigate(`/project/${projectKey}/summary`);
   };
 
   return (
@@ -83,12 +101,19 @@ export default function Sidebar() {
                 key={index}
                 className='relative group'
                 onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
+                onMouseLeave={() => {
+                  setHovered(false);
+                  setShowManageProjects(false);
+                  setShowProjectDetail(null);
+                }}
               >
-                {/* Mục Projects */}
                 <div
                   className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
-                  onClick={() => setShowProjects((prev) => !prev)}
+                  onClick={() => {
+                    setShowProjects((prev) => !prev);
+                    setShowManageProjects(false);
+                    setShowProjectDetail(null);
+                  }}
                 >
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-2'>
@@ -104,7 +129,7 @@ export default function Sidebar() {
                       <span>{item.label}</span>
                     </div>
                     {(hovered || showProjects) && (
-                      <div className='flex items-center space-x-2'>
+                      <div className='flex items-center space-x-2 relative'>
                         {isRole && (
                           <Plus
                             className='w-4 h-4 hover:text-blue-500 cursor-pointer'
@@ -114,13 +139,38 @@ export default function Sidebar() {
                             }}
                           />
                         )}
-                        <MoreHorizontal className='w-4 h-4 hover:text-blue-500' />
+                        <MoreHorizontal
+                          className='w-4 h-4 hover:text-blue-500 cursor-pointer'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowManageProjects((prev) => !prev);
+                            setShowProjectDetail(null);
+                          }}
+                        />
+                        <AnimatePresence>
+                          {showManageProjects && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              transition={{ duration: 0.2 }}
+                              className='absolute top-0 left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                            >
+                              <div
+                                onClick={handleViewAllProjects}
+                                className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                              >
+                                <Rocket className='w-5 h-5 text-gray-500' />
+                                <span>Manage Projects</span>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Dropdown project list */}
                 {showProjects && (
                   <div className='mt-1 pl-10 pr-4'>
                     <div className='text-gray-500 text-xs mb-1'>Recent</div>
@@ -134,19 +184,67 @@ export default function Sidebar() {
                       recentProjects.map((proj, i) => {
                         const isSelected = proj.key === selectedProjectKey;
                         return (
-                          <Link
-                            key={i}
-                            to={`/project?projectKey=${proj.key}`}
-                            onClick={() => setShowProjects(false)}
-                            className={`flex items-center space-x-2 py-1 px-2 rounded text-sm no-underline ${
-                              isSelected
-                                ? 'bg-blue-100 text-blue-700 font-medium'
-                                : 'text-gray-800 hover:bg-gray-100'
-                            }`}
-                          >
-                            <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
-                            <span className='truncate'>{proj.name}</span>
-                          </Link>
+                          <div key={i} className='relative'>
+                            <div
+                              className={`group grid grid-cols-[1fr,auto] gap-x-2 items-center py-1 px-2 rounded ${
+                                isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+                              }`}
+                            >
+                              <div className='flex items-center space-x-2'>
+                                <Link
+                                  to={`/project?projectKey=${proj.key}`}
+                                  onClick={() => setShowProjects(false)}
+                                  className={`flex items-center space-x-2 text-sm no-underline ${
+                                    isSelected
+                                      ? 'text-blue-700 font-medium'
+                                      : 'text-gray-800 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
+                                  <span className='truncate relative group/name max-w-[100px]'>
+                                    {shortenProjectName(proj.name)}
+                                    <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
+                                      {proj.name}
+                                    </span>
+                                  </span>
+                                </Link>
+                              </div>
+
+                              {/* Nút ... có relative để dropdown canh đúng */}
+                              <div className='relative'>
+                                <div
+                                  className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowProjectDetail(proj.key);
+                                  }}
+                                >
+                                  <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
+                                </div>
+
+                                {/* Dropdown Detail ngay dưới ... */}
+                                <AnimatePresence>
+                                  {showProjectDetail === proj.key && (
+                                    <motion.div
+                                      initial={{ opacity: 0, scale: 0.95 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.95 }}
+                                      transition={{ duration: 0.2 }}
+                                      className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                                    >
+                                      <div
+                                        onClick={() => handleProjectDetailClick(proj.key)}
+                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                      >
+                                        <Rocket className='w-5 h-5 text-gray-500' />
+                                        <span>Project Detail</span>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                          </div>
                         );
                       })
                     )}
@@ -156,7 +254,6 @@ export default function Sidebar() {
             );
           }
 
-          // Các mục có path
           if (item.path) {
             return (
               <Link
@@ -173,7 +270,6 @@ export default function Sidebar() {
             );
           }
 
-          // Các mục không có path
           return (
             <div
               key={index}
@@ -189,7 +285,6 @@ export default function Sidebar() {
         })}
       </div>
 
-      {/* Sign out */}
       <div
         onClick={handleLogout}
         className='text-sm text-gray-600 px-4 py-3 border-t border-gray-200 hover:bg-gray-50 cursor-pointer flex items-center space-x-2'

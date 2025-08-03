@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './RiskDetail.css';
 import {
   MessageSquare,
@@ -40,8 +41,9 @@ import {
 } from '../../../services/riskCommentApi';
 import deleteIcon from '../../../assets/delete.png';
 import accountIcon from '../../../assets/account.png';
+import { useParams } from 'react-router-dom';
 
-interface Risk {
+export interface Risk {
   id: number;
   riskKey: string;
   title: string;
@@ -67,6 +69,7 @@ interface Risk {
 interface RiskDetailProps {
   risk: Risk;
   onClose: () => void;
+  isPage?: boolean;
 }
 
 type Assignee = {
@@ -91,12 +94,17 @@ function calculateSeverityColor(risk: any): string {
   return level.toLowerCase();
 }
 
-const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
+const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
+  const navigate = useNavigate();
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
   const [editableRisk, setEditableRisk] = useState<Risk>({ ...risk });
+  // const [searchParams] = useSearchParams();
+  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
 
@@ -360,9 +368,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
       <select
         className='responsible-dropdown'
         ref={dropdownRef}
-        // value={selectedId ?? ''}
         value={selectedId?.toString() ?? ''}
-        // onChange={(e) => onChange(Number(e.target.value))}
         onChange={(e) => {
           const selectedValue = e.target.value;
           onChange(selectedValue === '' ? null : Number(selectedValue));
@@ -417,15 +423,32 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
   };
 
   return (
-    <div className='risk-detail-container'>
+    <div className={isPage ? 'risk-page-container' : 'risk-detail-container'}>
       <div className='risk-detail-panel'>
+        {/* <div className={isPage ? 'risk-detail-page' : 'risk-detail-panel'}> */}
         <div className='detail-header'>
           <div className='detail-title-section'>
             <div className='risk-path'>
-              <div>
+              {/* <div>
                 {projectKey} /{' '}
                 <span className='risk-code'>{editableRisk.riskKey || `R-${editableRisk.id}`}</span>
+              </div> */}
+              <div>
+                {projectKey} /{' '}
+                <span
+                  className='risk-code cursor-pointer text-blue-500 hover:underline'
+                  onClick={() =>
+                    navigate(
+                      `/project/${projectKey}/risk/${
+                        editableRisk.riskKey || `R-${editableRisk.id}`
+                      }`
+                    )
+                  }
+                >
+                  {editableRisk.riskKey || `R-${editableRisk.id}`}
+                </span>
               </div>
+
               <div className='reporter-meta-block'>
                 <div className='reporter-icons'>
                   <div className='icon-with-count'>
@@ -587,33 +610,6 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
                         }
                       }}
                     />
-                    {/* {showResponsibleDropdown && (
-                      <ResponsibleDropdown
-                        assignees={assignees}
-                        selectedId={null}
-                        onChange={async (newId) => {
-                          try {
-                            await updateResponsible({
-                              id: editableRisk.id,
-                              responsibleId: newId,
-                            }).unwrap();
-
-                            const updated = assignees.find((u) => u.id === newId);
-                            setEditableRisk((prev) => ({
-                              ...prev,
-                              responsibleId: newId,
-                              responsibleFullName: updated?.fullName || '',
-                              responsibleUserName: updated?.userName || '',
-                              responsiblePicture: updated?.picture || '',
-                            }));
-
-                            setShowResponsibleDropdown(false);
-                          } catch (err) {
-                            console.error('Update failed', err);
-                          }
-                        }}
-                      />
-                    )} */}
                   </>
                 )}
               </div>
@@ -851,28 +847,6 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
           </div>
         </div>
 
-        {/* <div className='detail-section-no-border'>
-          <div className='section-label'>Attachments</div>
-          <div className='attachment-upload'>
-            <div className='upload-box' onClick={() => fileInputRef.current?.click()}>
-              <div className='plus-icon'>＋</div>
-              <div className='upload-text'>
-                Drag and
-                <br />
-                drop or
-                <br />
-                <span className='upload-browse'>browse</span>
-              </div>
-            </div>
-            <input
-              type='file'
-              ref={fileInputRef}
-              style={{ display: 'none' }}
-              onChange={handleFileUpload}
-            />
-          </div>
-        </div> */}
-
         <div className='detail-section-no-border'>
           <div className='section-label'>Attachments</div>
           {Array.isArray(attachments) && attachments.length > 0 ? (
@@ -972,15 +946,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
           )}
         </div>
       </div>
-      {/* <div className='risk-comments-panel'>
-        <div className='comments-header'>COMMENTS</div>
-        <div className='comments-body'>
-          <p className='no-comments'>No comments</p>
-        </div>
-        <div className='comment-input'>
-          <input type='text' placeholder='Add a comment' />
-        </div>
-      </div> */}
+
       <div className='risk-comments-panel'>
         <div className='comments-header'>COMMENTS</div>
 
@@ -1062,29 +1028,6 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
 
                       {comment.accountId === accountId && (
                         <div className='comment-actions'>
-                          {/* <button
-                            className='edit-btn'
-                            onClick={async () => {
-                              const newContent = prompt('✏ Edit your comment:', comment.comment);
-                              if (newContent && newContent !== comment.comment) {
-                                try {
-                                  await updateRiskComment({
-                                    id: comment.id,
-                                    riskId: risk.id,
-                                    accountId,
-                                    comment: newContent,
-                                  }).unwrap();
-                                  alert('✅ Comment updated');
-                                  await refetchComments();
-                                } catch (err) {
-                                  console.error('❌ Failed to update comment', err);
-                                  alert('❌ Update failed');
-                                }
-                              }
-                            }}
-                          >
-                            ✏ Edit
-                          </button> */}
                           <button
                             className='edit-btn'
                             onClick={() => {
@@ -1131,9 +1074,6 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose }) => {
           />
           {newComment.trim() && (
             <button
-              // className='send-button'
-              // className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-500'
-              // className="absolute right-2 top-0 bottom-0 my-auto h-full flex items-center text-gray-500 hover:text-blue-500"
               className='absolute right-2 top-0 bottom-0 flex items-center justify-center text-gray-500 hover:text-blue-500'
               onClick={async () => {
                 try {

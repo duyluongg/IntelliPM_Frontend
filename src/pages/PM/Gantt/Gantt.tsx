@@ -24,116 +24,6 @@ const Gantt = () => {
   const customWindowRef = useRef<HTMLDivElement>(document.createElement('div'));
   const selectedTaskRef = useRef<any>(null);
 
-  const [updateTask] = useUpdateTaskMutation();
-
-  const handleSave = async (updatedTask: any) => {
-    ganttRef.current?.updateTask(selectedTaskRef.current, updatedTask);
-    ganttRef.current?.closeWindow();
-
-    const rawTask = selectedTaskRef.current?.rawData;
-    if (!rawTask?.id) return;
-
-    const dependencies = updatedTask.connections?.map((conn: any) => {
-      const linkedToId = conn.target.replace('task-', '');
-      return {
-        taskId: rawTask.id,
-        linkedFrom: rawTask.id,
-        linkedTo: linkedToId,
-        type: mapConnectionTypeToString(conn.type),
-      };
-    });
-
-    const taskForUpdate = {
-      id: rawTask.id,
-      body: {
-        reporterId: rawTask.reporterId,
-        projectId: rawTask.projectId,
-        epicId: rawTask.epicId,
-        sprintId: rawTask.sprintId,
-        type: rawTask.type,
-        title: updatedTask.label,
-        description: updatedTask.description,
-        plannedStartDate: updatedTask.dateStart?.toISOString(),
-        plannedEndDate: updatedTask.dateEnd?.toISOString(),
-        status: rawTask.status,
-        dependencies,
-      },
-    };
-
-    try {
-      await updateTask(taskForUpdate).unwrap();
-      console.log('✅ Task updated to DB');
-      await refetch();
-    } catch (error) {
-      console.error('❌ Failed to update task in DB:', error);
-    }
-  };
-
-  const handleCancel = () => {
-    console.log('❌ Cancel button clicked');
-    ganttRef.current?.closeWindow();
-  };
-
-  const handleDelete = () => {
-    ganttRef.current?.removeTask(selectedTaskRef.current);
-    ganttRef.current?.closeWindow();
-  };
-
-  const mapConnectionTypeToString = (type: number): string => {
-    switch (type) {
-      case 0:
-        return 'START_START';
-      case 1:
-        return 'FINISH_START';
-      case 2:
-        return 'FINISH_FINISH';
-      case 3:
-        return 'START_FINISH';
-      default:
-        return 'UNKNOWN';
-    }
-  };
-
-  // const popupWindowCustomizationFunction = (target: any, type: any, taskObj: any) => {
-  //   // if (type === 'task' || type === 'project') {
-  //   if (['task', 'project', 'milestone'].includes(type)) {
-  //     target.headerPosition = 'none';
-  //     target.footerPosition = 'none';
-
-  //     target.content.innerHTML = '';
-  //     target.content.style.padding = '0px';
-  //     target.style.padding = '0px';
-  //     target.style.background = 'transparent';
-  //     target.classList.add('no-smart-style');
-
-  //     selectedTaskRef.current = taskObj;
-
-  //     customWindowRef.current.innerHTML = '';
-  //     const container = document.createElement('div');
-  //     container.id = 'react-task-editor';
-  //     customWindowRef.current.appendChild(container);
-
-  //     target.content.appendChild(customWindowRef.current);
-
-  //     setTimeout(() => {
-  //       const mountPoint = document.getElementById('react-task-editor');
-  //       if (mountPoint) {
-  //         const root = createRoot(mountPoint);
-
-  //         root.render(
-  //           <TaskPopupEditor
-  //             task={taskObj.rawData}
-  //             type={type}
-  //             onSave={handleSave}
-  //             onCancel={handleCancel}
-  //             onDelete={handleDelete}
-  //           />
-  //         );
-  //       }
-  //     }, 0);
-  //   }
-  // };
-
   const popupWindowCustomizationFunction = (target: any, type: any, taskObj: any) => {
     if (['task', 'project', 'milestone'].includes(type)) {
       selectedTaskRef.current = taskObj;
@@ -174,12 +64,18 @@ const Gantt = () => {
                     <ChildWorkItemPopup
                       subtaskId={pureSubtaskId}
                       taskId={pureParentTaskId}
-                      onClose={() => ganttRef.current?.closeWindow()}
+                      onClose={() => {
+                        ganttRef.current?.closeWindow();
+                        refetch();
+                      }}
                     />
                   ) : (
                     <WorkItem
                       isOpen={true}
-                      onClose={() => ganttRef.current?.closeWindow()}
+                      onClose={() => {
+                        ganttRef.current?.closeWindow();
+                        refetch();
+                      }}
                       taskId={pureTaskId}
                     />
                   )}
@@ -304,69 +200,16 @@ const Gantt = () => {
     const sprintGroups = sprints.map((sprint) => {
       const sprintTasks = tasks
         .filter((t) => t.sprintId === sprint.id)
-        // .map((t) => {
-        //   const deps = dependencyMap[t.id] || [];
-        //   const start = normalizeDateToLocalISO(t.plannedStartDate);
-        //   const end = normalizeDateToLocalISO(t.plannedEndDate);
-
-        //   const connections =
-        //     t.dependencies?.map((dep: any) => {
-        //       const targetType = dep.linkedTo.startsWith('m') ? 'milestone' : 'task';
-        //       return {
-        //         target: `task-${dep.linkedTo}`,
-        //         type: mapTypeToNumber(dep.type),
-        //       };
-        //     }) ?? [];
-
-        //   // Convert subtasks
-        //   const subtasks = (t.subtasks || []).map((sub: any) => {
-        //     const subStart = normalizeDateToLocalISO(sub.plannedStartDate);
-        //     const subEnd = normalizeDateToLocalISO(sub.plannedEndDate);
-        //     const subDeps = dependencyMap[sub.id] || [];
-
-        //     const connections = subDeps.map((dep: any) => {
-        //       const targetType = dep.linkedTo.startsWith('m') ? 'milestone' : 'task';
-        //       return {
-        //         target: `${targetType}-${dep.linkedTo}`,
-        //         type: mapTypeToNumber(dep.type),
-        //       };
-        //     });
-
-        //     return {
-        //       label: sub.title,
-        //       dateStart: toLocalDate(sub.plannedStartDate),
-        //       duration: subStart && subEnd ? getDuration(subStart, subEnd) : undefined,
-        //       progress: sub.percentComplete ?? undefined,
-        //       type: 'task',
-        //       id: `task-${sub.id}`,
-        //       connections,
-        //       rawData: sub,
-        //       class: 'task-sub',
-        //     };
-        //   });
-
-        //   return {
-        //     label: t.title,
-        //     dateStart: toLocalDate(t.plannedStartDate),
-        //     duration: start && end ? getDuration(start, end) : undefined,
-        //     progress: t.percentComplete ?? undefined,
-        //     type: 'task',
-        //     id: `task-${t.id}`,
-        //     connections,
-        //     tasks: subtasks.length > 0 ? subtasks : undefined,
-        //     rawData: t,
-        //     class: 'task-parent',
-        //   };
-        // });
-
         .map((t) => {
-          if (!t.id) return null; // tránh null index key lỗi
+          if (!t.id) return null;
 
           const start = normalizeDateToLocalISO(t.plannedStartDate);
           const end = normalizeDateToLocalISO(t.plannedEndDate);
 
           const connections = (dependencyMap[t.id] || []).map((dep: any) => {
-            const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+            // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+            const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+            const targetType = isMilestone ? 'milestone' : 'task';
             return {
               target: `${targetType}-${dep.linkedTo}`,
               type: mapTypeToNumber(dep.type),
@@ -376,11 +219,15 @@ const Gantt = () => {
           const subtasks = (t.subtasks || [])
             .map((sub: any) => {
               if (!sub.id) return null;
-              const subStart = normalizeDateToLocalISO(sub.plannedStartDate);
-              const subEnd = normalizeDateToLocalISO(sub.plannedEndDate);
+              const subStart = normalizeDateToLocalISO(sub.startDate);
+              const subEnd = normalizeDateToLocalISO(sub.endDate);
 
               const subConnections = (dependencyMap[sub.id] || []).map((dep: any) => {
-                const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+                // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+                const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+                const targetType = isMilestone ? 'milestone' : 'task';
+                console.log('LinkedTo: ', dep.linkedTo);
+                console.log('targetType: ', targetType);
                 return {
                   target: `${targetType}-${dep.linkedTo}`,
                   type: mapTypeToNumber(dep.type),
@@ -389,7 +236,7 @@ const Gantt = () => {
 
               return {
                 label: sub.title,
-                dateStart: toLocalDate(sub.plannedStartDate),
+                dateStart: toLocalDate(sub.startDate),
                 duration: subStart && subEnd ? getDuration(subStart, subEnd) : undefined,
                 progress: sub.percentComplete ?? undefined,
                 type: 'task',
@@ -397,9 +244,10 @@ const Gantt = () => {
                 connections: subConnections,
                 rawData: sub,
                 class: 'task-sub',
+                expanded: true,
               };
             })
-            .filter(Boolean); // lọc bỏ null
+            .filter(Boolean);
 
           return {
             label: t.title,
@@ -412,19 +260,30 @@ const Gantt = () => {
             tasks: subtasks.length > 0 ? subtasks : undefined,
             rawData: t,
             class: 'task-parent',
+            expanded: true,
           };
         })
-        .filter(Boolean); // lọc bỏ task null
+        .filter(Boolean);
 
       const sprintMilestones = milestones
         .filter((m) => m.sprintId === sprint.id)
         .map((m) => {
           const deps = dependencyMap[m.key] || [];
 
-          const connections = deps.map((dep: any) => ({
-            target: `milestone-${dep.linkedTo}`,
-            type: mapTypeToNumber(dep.type),
-          }));
+          // const connections = deps.map((dep: any) => ({
+          //   target: `milestone-${dep.linkedTo}`,
+          //   type: mapTypeToNumber(dep.type),
+          // }));
+
+          const connections = deps.map((dep: any) => {
+            // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+            const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+            const targetType = isMilestone ? 'milestone' : 'task';
+            return {
+              target: `${targetType}-${dep.linkedTo}`,
+              type: mapTypeToNumber(dep.type),
+            };
+          });
 
           return {
             label: m.name,
@@ -460,7 +319,9 @@ const Gantt = () => {
         const end = normalizeDateToLocalISO(t.plannedEndDate);
 
         const connections = (dependencyMap[t.id] || []).map((dep: any) => {
-          const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+          // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+          const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+          const targetType = isMilestone ? 'milestone' : 'task';
           return {
             target: `${targetType}-${dep.linkedTo}`,
             type: mapTypeToNumber(dep.type),
@@ -475,7 +336,9 @@ const Gantt = () => {
             const subEnd = normalizeDateToLocalISO(sub.endDate);
 
             const subConnections = (dependencyMap[sub.id] || []).map((dep: any) => {
-              const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+              // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+              const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+              const targetType = isMilestone ? 'milestone' : 'task';
               return {
                 target: `${targetType}-${dep.linkedTo}`,
                 type: mapTypeToNumber(dep.type),
@@ -492,6 +355,7 @@ const Gantt = () => {
               connections: subConnections,
               rawData: sub,
               class: 'task-sub',
+              expanded: true,
             };
           })
           .filter(Boolean);
@@ -507,25 +371,20 @@ const Gantt = () => {
           tasks: subtasks.length > 0 ? subtasks : undefined,
           rawData: t,
           class: 'task-parent',
+          expanded: true,
         };
       })
       .filter(Boolean);
 
-    // const standaloneMilestones = milestones
-    //   .filter((m) => !m.sprintId)
-    //   .map((m) => ({
-    //     label: m.name,
-    //     dateStart: toLocalDate(m.startDate),
-    //     type: 'milestone',
-    //     id: `milestone-${m.key}`,
-    //   }));
     const standaloneMilestones = milestones
       .filter((m) => !m.sprintId)
       .map((m) => {
         const deps = dependencyMap[m.key] || [];
 
         const connections = deps.map((dep: any) => {
-          const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+          // const targetType = dep.linkedTo?.startsWith('m') ? 'milestone' : 'task';
+          const isMilestone = milestones.some((m) => m.key === dep.linkedTo);
+          const targetType = isMilestone ? 'milestone' : 'task';
           return {
             target: `${targetType}-${dep.linkedTo}`,
             type: mapTypeToNumber(dep.type),
@@ -537,7 +396,7 @@ const Gantt = () => {
           dateStart: toLocalDate(m.startDate),
           type: 'milestone',
           id: `milestone-${m.key}`,
-          connections, 
+          connections,
         };
       });
 

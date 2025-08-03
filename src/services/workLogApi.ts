@@ -5,6 +5,7 @@ export interface AccountInfo {
   id: number;
   username: string;
   fullName: string;
+  hours: number;
 }
 
 export interface WorkLogItem {

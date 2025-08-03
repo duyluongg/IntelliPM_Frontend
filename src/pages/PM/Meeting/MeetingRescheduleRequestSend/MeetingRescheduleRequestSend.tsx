@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { useAuth } from '../../../../services/AuthContext';
 import {
   useGetAllRescheduleRequestsQuery,
@@ -45,6 +45,7 @@ const MeetingRescheduleRequestSend = () => {
     skip: !(role === 'CLIENT'),
   });
 
+
   const [deleteMeeting] = useDeleteMeetingMutation();
   const [deleteRescheduleRequest] = useDeleteRescheduleRequestMutation();
   const [updateRescheduleRequest] = useUpdateRescheduleRequestMutation();
@@ -55,13 +56,13 @@ const MeetingRescheduleRequestSend = () => {
 
   const handleDeleteMeeting = async (meetingId: number) => {
     await deleteMeeting(meetingId).unwrap();
-    toast.success('Đã huỷ cuộc họp thành công!');
+    toast.success('Meeting canceled successfully!');
   };
 
   const handleUpdateRequestStatus = async (req: any, status: 'APPROVED' | 'REJECTED') => {
     const note = pmNotes[req.id] || '';
     if (!note.trim()) {
-      toast.error('Vui lòng nhập ghi chú PM trước khi duyệt / từ chối.');
+      toast.error('Please enter PM notes before approving/rejecting.');
       return;
     }
     try {
@@ -81,7 +82,7 @@ const MeetingRescheduleRequestSend = () => {
         pmNote: note,
       }).unwrap();
 
-      toast.success(status === 'APPROVED' ? '✅ Duyệt thành công' : '❌ Đã từ chối');
+      toast.success(status === 'APPROVED' ? '✅ Approved successfully' : '❌ Rejected successfully');
 
       if (role === 'CLIENT') {
         await refetchClient();
@@ -91,18 +92,27 @@ const MeetingRescheduleRequestSend = () => {
 
       setPmNotes((prev) => ({ ...prev, [req.id]: '' }));
     } catch {
-      toast.error('Có lỗi xảy ra khi cập nhật!');
+      toast.error('An error occurred while updating!');
     }
   };
+
+  useEffect(() => {
+  if (role === 'CLIENT') {
+    refetchClient();
+  } else {
+    refetchAll();
+  }
+}, [role, refetchAll, refetchClient]); // Dependency on role, refetchAll, refetchClient
+
 
   const handleDeleteRescheduleRequest = async (rescheduleId: number) => {
     if (!confirm('Xác nhận huỷ yêu cầu dời lịch?')) return;
     try {
       await deleteRescheduleRequest(rescheduleId).unwrap();
-      toast.success('🗑️ Huỷ yêu cầu thành công!');
+      toast.success('🗑️ Request cancelled successfully!');
       await refetchClient();
     } catch {
-      toast.error('❌ Có lỗi khi huỷ yêu cầu!');
+      toast.error('❌ Error canceling request!');
     }
   };
 

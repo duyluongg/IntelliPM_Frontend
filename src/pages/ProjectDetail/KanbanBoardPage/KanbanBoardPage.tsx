@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, Component } from 'react';
-import type { ReactNode } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import KanbanHeader from './KanbanHeader';
@@ -9,53 +8,30 @@ import {
   useGetActiveSprintByProjectKeyQuery,
 } from '../../../services/sprintApi';
 import {
-  useGetTasksBySprintIdAndStatusQuery,
+  useGetTasksBySprintIdQuery,
   useUpdateTaskStatusMutation,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useSearchParams } from 'react-router-dom';
 import { mapApiStatusToUI } from './Utils';
+import { ErrorBoundary } from 'react-error-boundary';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 
-interface ErrorBoundaryProps {
-  children: ReactNode;
-}
+// Error Boundary Fallback Component
+const ErrorFallback = ({ error }: { error: Error }) => (
+  <div className="p-4 text-red-600">
+    <h1>An error occurred</h1>
+    <p>{error.message}</p>
+  </div>
+);
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: string | null;
-}
-
-class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state = { hasError: false, error: null };
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error: error.message };
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 text-red-600">
-          <h1>Something went wrong</h1>
-          <p>{this.state.error}</p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
+// Utility to format error messages
 const getErrorMessage = (error: FetchBaseQueryError | SerializedError | undefined): string => {
   if (!error) return 'Unknown error';
-  if ('message' in error && error.message) {
-    return error.message;
-  }
-  if ('status' in error) {
-    return `Error ${error.status}: ${JSON.stringify(error.data)}`;
-  }
+  if ('message' in error && error.message) return error.message;
+  if ('status' in error) return `Error ${error.status}: ${JSON.stringify(error.data)}`;
   return 'An unexpected error occurred';
 };
 
@@ -63,54 +39,88 @@ const KanbanBoardPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
 
-  const { data: activeSprint, isLoading: isSprintLoading, error: sprintError } = useGetActiveSprintByProjectKeyQuery(projectKey);
-  const { data: categoriesData, isLoading: isCategoriesLoading, error: categoriesError } = useGetCategoriesByGroupQuery('task_status');
+  const {
+    data: activeSprint,
+    isLoading: isSprintLoading,
+    error: sprintError,
+  } = useGetActiveSprintByProjectKeyQuery(projectKey);
+
+  const {
+    data: categoriesData,
+    isLoading: isCategoriesLoading,
+    error: categoriesError,
+    isFetching: isCategoriesFetching,
+  } = useGetCategoriesByGroupQuery('task_status');
+
   const { refetch } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
-  const [tasks, setTasks] = useState<{ [key: string]: TaskBacklogResponseDTO[] }>({});
 
-  const statuses = useMemo(
-    () => categoriesData?.data.map((category) => category.label) || ['To Do', 'In Progress', 'Done'],
-    [categoriesData]
-  );
+  const [tasks, setTasks] = useState<Record<string, TaskBacklogResponseDTO[]>>({});
+  const defaultStatuses = ['To Do', 'In Progress', 'Done'];
+
+  const statuses = useMemo(() => {
+    if (isCategoriesLoading || isCategoriesFetching || !categoriesData?.data) {
+      return defaultStatuses;
+    }
+    const validStatuses = categoriesData.data
+      .filter((category) => typeof category?.label === 'string' && category.label.trim())
+      .map((category) => category.label);
+    return validStatuses.length > 0 ? validStatuses : defaultStatuses;
+  }, [
+    isCategoriesLoading,
+    isCategoriesFetching,
+    JSON.stringify(categoriesData?.data?.map((cat) => cat.label) ?? []),
+  ]);
 
   const sprintId = activeSprint?.id ?? 0;
-  const isNoActiveSprint = !activeSprint;
 
-  const taskQueriesArray = statuses.map((status) =>
-    useGetTasksBySprintIdAndStatusQuery(
-      { sprintId, taskStatus: status.replace(' ', '_').toUpperCase() },
-      { skip: sprintId === 0 }
-    )
-  );
+  // Fetch all tasks for the sprint
+  const { data: allTasks = [], isLoading: isTasksLoading, isError: isTasksError } =
+    useGetTasksBySprintIdQuery(sprintId, {
+      skip: sprintId === 0 || isCategoriesLoading || isCategoriesFetching,
+    });
 
-  const taskQueries = useMemo(() => {
-    return statuses.reduce((acc, status, index) => {
-      acc[status] = taskQueriesArray[index];
-      return acc;
-    }, {} as Record<string, ReturnType<typeof useGetTasksBySprintIdAndStatusQuery>>);
-  }, [statuses, taskQueriesArray]);
+  // Group tasks by status
+  const taskQueriesRecord = useMemo(() => {
+    const queries: Record<
+      string,
+      { data: TaskBacklogResponseDTO[]; isLoading: boolean; isError: boolean }
+    > = {};
+    statuses.forEach((status) => {
+      const statusKey = status.replace(' ', '_').toUpperCase();
+      queries[status] = {
+        data: allTasks.filter((task) => task.status === statusKey),
+        isLoading: isTasksLoading,
+        isError: isTasksError,
+      };
+    });
+    return queries;
+  }, [allTasks, statuses, isTasksLoading, isTasksError]);
 
   useEffect(() => {
     const mappedTasks: Record<string, TaskBacklogResponseDTO[]> = {};
 
     statuses.forEach((status) => {
-      const query = taskQueries[status];
-      if (query?.data && !query.isLoading && !query.isError) {
-        mappedTasks[status] = query.data.map((task: TaskBacklogResponseDTO) => ({
-          ...task,
-          status: mapApiStatusToUI(task.status ?? 'To Do'),
-          sprintId: sprintId,
-          reporterName: task.reporterName ?? null,
-        }));
-      } else {
-        mappedTasks[status] = [];
-      }
+      const query = taskQueriesRecord[status] || { data: [] };
+      mappedTasks[status] = query.data.map((task) => ({
+        ...task,
+        status: mapApiStatusToUI(task.status ?? 'To Do'),
+        sprintId,
+        reporterName: task.reporterName ?? null,
+      }));
     });
 
-    setTasks(mappedTasks);
-  }, [taskQueries, statuses, sprintId]);
+    setTasks((prev) => {
+      const hasChanged = Object.keys(mappedTasks).some(
+        (status) =>
+          !prev[status] ||
+          prev[status].length !== mappedTasks[status].length ||
+          prev[status].some((task, i) => task.id !== mappedTasks[status][i].id)
+      );
+      return hasChanged ? mappedTasks : prev;
+    });
+  }, [taskQueriesRecord, statuses, sprintId]);
 
   const moveTask = async (
     taskId: string,
@@ -127,8 +137,6 @@ const KanbanBoardPage: React.FC = () => {
 
       setTasks((prev) => {
         const fromKey = Object.keys(prev).find((key) => prev[key].some((t) => t.id === taskId));
-        const toKey = toStatus;
-
         if (!fromKey) return prev;
 
         const taskToMove = prev[fromKey].find((t) => t.id === taskId);
@@ -136,7 +144,10 @@ const KanbanBoardPage: React.FC = () => {
 
         const updated = { ...prev };
         updated[fromKey] = updated[fromKey].filter((t) => t.id !== taskId);
-        updated[toKey] = [...(updated[toKey] || []), { ...taskToMove, status: toKey, sprintId: toSprintId }];
+        updated[toStatus] = [
+          ...(updated[toStatus] || []),
+          { ...taskToMove, status: toStatus, sprintId: toSprintId },
+        ];
         return updated;
       });
 
@@ -146,20 +157,26 @@ const KanbanBoardPage: React.FC = () => {
     }
   };
 
-  if (isSprintLoading || isCategoriesLoading) return <div>Loading...</div>;
-  if (categoriesError) return <div>Error loading statuses: {getErrorMessage(categoriesError)}</div>;
-  if (sprintError && sprintId !== 0) return <div>Error: {getErrorMessage(sprintError)}</div>;
+  if (isSprintLoading || isCategoriesLoading) {
+    return <div className="p-4 text-center text-gray-500">Loading...</div>;
+  }
+
+  if (categoriesError) {
+    return <div className="p-4 text-red-600">Error loading statuses: {getErrorMessage(categoriesError)}</div>;
+  }
+  if (sprintError && sprintId !== 0) {
+    return <div className="p-4 text-red-600">Error: {getErrorMessage(sprintError)}</div>;
+  }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
       <div className="min-h-screen p-2">
         <KanbanHeader
           projectKey={projectKey}
-          sprintName={activeSprint?.name || 'No Active Sprint'}
+          sprintName={activeSprint?.name || 'No active sprint'}
           projectId={activeSprint?.projectId || 0}
-          onSearch={(query) => console.log('Search query:', query)}
+          onSearch={(query) => console.log('Search:', query)}
         />
-
         <DndProvider backend={HTML5Backend}>
           <div className="flex space-x-4 overflow-x-auto">
             {statuses.map((status) => (

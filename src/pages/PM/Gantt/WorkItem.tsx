@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import './../../WorkItem/WorkItem.css'
+import './../../WorkItem/WorkItem.css';
 import { useAuth, type Role } from '../../../services/AuthContext';
 import tickIcon from '../../../assets/icon/type_task.svg';
 import subtaskIcon from '../../../assets/icon/type_subtask.svg';
@@ -42,11 +42,16 @@ import { useGetProjectMembersQuery } from '../../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../../services/subtaskAiApi';
-import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../../services/taskAssignmentApi';
+import {
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  useCreateTaskAssignmentQuickMutation,
+  useDeleteTaskAssignmentMutation,
+} from '../../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../../services/taskAssignmentApi';
 // import type { useState } from 'react';
 import { WorkLogModal } from '../../WorkItem/WorkLogModal';
+import TaskDependency from '../../WorkItem/TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../../services/activityLogApi';
 
 interface WorkItemProps {
@@ -56,8 +61,8 @@ interface WorkItemProps {
 }
 
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
-//   const [searchParams] = useSearchParams();
-//   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
+  //   const [searchParams] = useSearchParams();
+  //   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
   const taskId = propTaskId ?? '';
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -102,12 +107,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
+    Record<string, TaskAssignmentDTO[]>
+  >({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
+  const { data: assignees = [], isLoading: isAssigneeLoading } =
+    useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
 
@@ -243,13 +252,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByTaskIdQuery(taskId, {
+  const {
+    data: activityLogs = [],
+    isLoading: isActivityLogsLoading,
+    refetch: refetchActivityLogs,
+  } = useGetActivityLogsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(taskId, {
-    skip: !taskId,
-  });
+  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(
+    taskId,
+    {
+      skip: !taskId,
+    }
+  );
 
   const {
     data: comments = [],
@@ -389,7 +405,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       key={type}
                       className={`dropdown-item ${workType === type ? 'selected' : ''}`}
                       onClick={() => handleWorkTypeChange(type)}
-
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -423,12 +438,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               style={{ width: '500px' }}
               disabled={!canEdit}
             />
-            <div className="modal-cont">
-              <button className="close-btn" onClick={onClose}>✖</button>
+            <div className='modal-cont'>
+              <button className='close-btn' onClick={onClose}>
+                ✖
+              </button>
             </div>
           </div>
         </div>
-
 
         {/* Modal Content */}
         <div className='modal-content'>
@@ -742,7 +758,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           onClick={async () => {
                             for (const title of selectedSuggestions) {
                               try {
-                                await createSubtask({ taskId, title, createdBy: accountId }).unwrap();
+                                await createSubtask({
+                                  taskId,
+                                  title,
+                                  createdBy: accountId,
+                                }).unwrap();
                               } catch (err) {
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
@@ -845,14 +865,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       <tbody>
                         {childWorkItems.map((item, index) => (
                           <tr key={index}>
-                            <td><img src={subtaskIcon} alt="Subtask" /></td>
-                            <td><a onClick={() => setSelectedChild(item)} style={{ cursor: 'pointer' }}>{item.key}</a></td>
-                            <td onClick={() => setEditingSummaryId(item.key)} style={{
-                              cursor: 'pointer',
-                              whiteSpace: 'normal',
-                              wordBreak: 'break-word',
-                              maxWidth: '300px',
-                            }}>
+                            <td>
+                              <img src={subtaskIcon} alt='Subtask' />
+                            </td>
+                            <td>
+                              <a
+                                onClick={() => setSelectedChild(item)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                {item.key}
+                              </a>
+                            </td>
+                            <td
+                              onClick={() => setEditingSummaryId(item.key)}
+                              style={{
+                                cursor: 'pointer',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                maxWidth: '300px',
+                              }}
+                            >
                               {editingSummaryId === item.key ? (
                                 <input
                                   type='text'
@@ -1099,21 +1131,22 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
               {/* Tab Content */}
               {activeTab === 'HISTORY' && (
-                <div className="history-list">
+                <div className='history-list'>
                   {isActivityLogsLoading ? (
                     <div>Loading...</div>
                   ) : activityLogs.length === 0 ? (
                     <div>No history available.</div>
                   ) : (
                     activityLogs.map((log) => (
-                      <div key={log.id} className="history-item">
-                        <div className="history-header">
-                          <span className="history-user">{log.createdByName}</span>
-                          <span className="history-time">
-                            {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                      <div key={log.id} className='history-item'>
+                        <div className='history-header'>
+                          <span className='history-user'>{log.createdByName}</span>
+                          <span className='history-time'>
+                            {new Date(log.createdAt).toLocaleTimeString()}{' '}
+                            {new Date(log.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <div className="history-message">{log.message}</div>
+                        <div className='history-message'>{log.message}</div>
                       </div>
                     ))
                   )}
@@ -1132,9 +1165,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         .slice()
                         .reverse()
                         .map((comment: any) => (
-                          <div key={comment.id} className="simple-comment">
-                            <div className="avatar-circle">
-                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                          <div key={comment.id} className='simple-comment'>
+                            <div className='avatar-circle'>
+                              <img src={comment.accountPicture || accountIcon} alt='avatar' />
                             </div>
                             <div className='comment-content'>
                               <div className='comment-header'>
@@ -1185,7 +1218,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         )
                                       ) {
                                         try {
-                                          await deleteTaskComment({ id: comment.id, createdBy: accountId }).unwrap();
+                                          await deleteTaskComment({
+                                            id: comment.id,
+                                            createdBy: accountId,
+                                          }).unwrap();
                                           alert('🗑️ Deleted successfully');
                                           await refetchComments();
                                           await refetchActivityLogs();
@@ -1254,7 +1290,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 value={status}
                 onChange={(e) => handleTaskStatusChange(e.target.value)}
                 className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
-
               >
                 <option value='TO_DO'>To Do</option>
                 <option value='IN_PROGRESS'>In Progress</option>
@@ -1266,14 +1301,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <div className='detail-item'>
                 <label>Assignee</label>
                 {canEdit ? (
-                  <div className="multi-select-dropdown">
+                  <div className='multi-select-dropdown'>
                     {/* Hiển thị danh sách đã chọn */}
-                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div
+                      className='selected-list'
+                      style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+                    >
                       {(taskAssignmentMap[taskId] ?? []).map((assignment) => (
-                        <span className="selected-tag" key={assignment.accountId}>
+                        <span className='selected-tag' key={assignment.accountId}>
                           {assignment.accountFullname ?? 'Unknown'}
                           <button
-                            className="remove-tag"
+                            className='remove-tag'
                             onClick={async () => {
                               try {
                                 await deleteTaskAssignment({
@@ -1283,7 +1321,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                                 setTaskAssignmentMap((prev) => ({
                                   ...prev,
-                                  [taskId]: prev[taskId].filter((a) => a.accountId !== assignment.accountId),
+                                  [taskId]: prev[taskId].filter(
+                                    (a) => a.accountId !== assignment.accountId
+                                  ),
                                 }));
                               } catch (err) {
                                 console.error('❌ Failed to delete assignee:', err);
@@ -1297,7 +1337,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     </div>
 
                     {/* Dropdown chọn thêm */}
-                    <div className="dropdown-select-wrapper">
+                    <div className='dropdown-select-wrapper'>
                       <select
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
@@ -1308,12 +1348,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             const data = await getTaskAssignments(taskId).unwrap();
                             setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
                           } catch (err) {
-                            console.error("Error assigning task", err);
+                            console.error('Error assigning task', err);
                           }
                         }}
-                        defaultValue=""
+                        defaultValue=''
                       >
-                        <option value="" disabled>+ Add assignee</option>
+                        <option value='' disabled>
+                          + Add assignee
+                        </option>
 
                         {projectMembers
                           ?.filter(
@@ -1328,35 +1370,31 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             </option>
                           ))}
                       </select>
-
                     </div>
                   </div>
                 ) : (
                   <span>
-                    {isAssigneeLoading ? (
-                      'Loading...'
-                    ) : assignees.length === 0 ? (
-                      'None'
-                    ) : (
-                      assignees.map((assignee) => (
-                        <span key={assignee.id} style={{ display: 'block' }}>
-                          {assignee.accountFullname}
-                        </span>
-                      ))
-                    )}
+                    {isAssigneeLoading
+                      ? 'Loading...'
+                      : assignees.length === 0
+                      ? 'None'
+                      : assignees.map((assignee) => (
+                          <span key={assignee.id} style={{ display: 'block' }}>
+                            {assignee.accountFullname}
+                          </span>
+                        ))}
                   </span>
-
                 )}
               </div>
 
-              <div className="detail-item">
+              <div className='detail-item'>
                 <label>Labels</label>
                 <span>
                   {isLabelLoading
                     ? 'Loading...'
                     : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                    ? 'None'
+                    : workItemLabels.map((label) => label.labelName).join(', ')}
                 </span>
               </div>
               <div className='detail-item'>
@@ -1393,11 +1431,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       width: '150px',
                     }}
                   >
-                    <option value="HIGHEST">Highest</option>
-                    <option value="HIGH">High</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="LOW">Low</option>
-                    <option value="LOWEST">Lowest</option>
+                    <option value='HIGHEST'>Highest</option>
+                    <option value='HIGH'>High</option>
+                    <option value='MEDIUM'>Medium</option>
+                    <option value='LOW'>Low</option>
+                    <option value='LOWEST'>Lowest</option>
                   </select>
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
@@ -1491,6 +1529,21 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               <WorkLogModal
                 open={isWorklogOpen}
                 onClose={() => setIsWorklogOpen(false)}
+                workItemId={taskId}
+                type='task'
+              />
+              <div className='detail-item'>
+                <label>Connections</label>
+                <span
+                  onClick={() => setIsDependencyOpen(true)}
+                  className='text-blue-600 hover:underline cursor-pointer'
+                >
+                  Manage Dependencies
+                </span>
+              </div>
+              <TaskDependency
+                open={isDependencyOpen}
+                onClose={() => setIsDependencyOpen(false)}
                 workItemId={taskId}
                 type='task'
               />

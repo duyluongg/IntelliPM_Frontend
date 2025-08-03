@@ -28,20 +28,12 @@ const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In P
   }
 };
 
-const getErrorMessage = (error: any): string => {
-  if (!error) return 'Unknown error';
-  if (typeof error === 'string') return error;
-  if (error.data?.message) return error.data.message;
-  if (error.status) return `Error ${error.status}: Failed to load data`;
-  return 'Unknown error';
-};
-
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: projectData, isLoading: isProjectLoading, error: projectError } = useGetProjectDetailsByKeyQuery(projectKey);
+  const { data: projectData, isLoading: isProjectLoading } = useGetProjectDetailsByKeyQuery(projectKey);
   const {
     data: epicData = [],
     isLoading: isEpicLoading,
@@ -52,7 +44,6 @@ const BacklogPage: React.FC = () => {
   const {
     data: sprintData = [],
     isLoading: isSprintLoading,
-    error: sprintError,
   } = useGetSprintsByProjectKeyWithTasksQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
@@ -78,20 +69,19 @@ const BacklogPage: React.FC = () => {
   }));
 
   if (isProjectLoading || isEpicLoading || isSprintLoading || isBacklogLoading) {
-    return <div className="p-4 text-center">Loading...</div>;
+    return <div className="p-4 text-center text-gray-500">Loading...</div>;
   }
 
-  if (projectError || epicError || sprintError || backlogError) {
-    const errorMessage = getErrorMessage(projectError || epicError || sprintError || backlogError);
+  if (epicError || backlogError) {
     return (
       <div className="p-4 text-center text-red-500">
-        Error loading data: {errorMessage}
+        Lỗi tải dữ liệu: {epicError ? 'Không tải được epics' : 'Không tải được backlog tasks'}
       </div>
     );
   }
 
   const handleCreateEpic = () => {
-    alert('Create Epic clicked!');
+    alert('Tạo Epic!');
   };
 
   const handleSearch = (query: string) => {

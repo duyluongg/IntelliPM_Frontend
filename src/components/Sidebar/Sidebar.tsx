@@ -45,6 +45,7 @@ const menuItems = [
 export default function Sidebar() {
   const [showProjects, setShowProjects] = useState(false);
   const [showManageProjects, setShowManageProjects] = useState(false);
+  const [showMoreProjects, setShowMoreProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showProjectDetail, setShowProjectDetail] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -54,7 +55,11 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const isRole = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
-  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(user?.accessToken || '');
+  const {
+    data: projectsData,
+    isLoading,
+    error,
+  } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
@@ -67,6 +72,9 @@ export default function Sidebar() {
   useEffect(() => {
     if (selectedProjectKey && recentProjects.some((p) => p.key === selectedProjectKey)) {
       setShowProjects(true);
+      if (recentProjects.findIndex((p) => p.key === selectedProjectKey) >= 5) {
+        setShowMoreProjects(true);
+      }
     }
   }, [selectedProjectKey, recentProjects]);
 
@@ -87,9 +95,10 @@ export default function Sidebar() {
 
   const handleProjectDetailClick = (projectKey: string) => {
     setShowProjectDetail(null);
-    setShowProjects(false);
-    navigate(`/project/${projectKey}/summary`);
+    // Do not collapse the project list here
   };
+
+  const displayedProjects = recentProjects.slice(0, 5);
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
@@ -110,7 +119,7 @@ export default function Sidebar() {
                 <div
                   className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
                   onClick={() => {
-                    setShowProjects((prev) => !prev);
+                    setShowProjects((prev) => !prev); // Toggle projects list to collapse
                     setShowManageProjects(false);
                     setShowProjectDetail(null);
                   }}
@@ -181,72 +190,164 @@ export default function Sidebar() {
                     ) : recentProjects.length === 0 ? (
                       <div className='text-sm text-gray-500 py-1'>No projects found</div>
                     ) : (
-                      recentProjects.map((proj, i) => {
-                        const isSelected = proj.key === selectedProjectKey;
-                        return (
-                          <div key={i} className='relative'>
-                            <div
-                              className={`group grid grid-cols-[1fr,auto] gap-x-2 items-center py-1 px-2 rounded ${
-                                isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
-                              }`}
-                            >
-                              <div className='flex items-center space-x-2'>
-                                <Link
-                                  to={`/project?projectKey=${proj.key}`}
-                                  onClick={() => setShowProjects(false)}
-                                  className={`flex items-center space-x-2 text-sm no-underline ${
-                                    isSelected
-                                      ? 'text-blue-700 font-medium'
-                                      : 'text-gray-800 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
-                                  <span className='truncate relative group/name max-w-[100px]'>
-                                    {shortenProjectName(proj.name)}
-                                    <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
-                                      {proj.name}
+                      <>
+                        {displayedProjects.map((proj, i) => {
+                          const isSelected = proj.key === selectedProjectKey;
+                          return (
+                            <div key={i} className='relative'>
+                              <div
+                                className={`group grid grid-cols-[1fr,auto] gap-x-2 items-center py-1 px-2 rounded ${
+                                  isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+                                }`}
+                              >
+                                <div className='flex items-center space-x-2'>
+                                  <Link
+                                    to={`/project?projectKey=${proj.key}`}
+                                    onClick={() => {
+                                      // Do not collapse the project list on selection
+                                    }}
+                                    className={`flex items-center space-x-2 text-sm no-underline ${
+                                      isSelected
+                                        ? 'text-blue-700 font-medium'
+                                        : 'text-gray-800 hover:bg-gray-100'
+                                    }`}
+                                  >
+                                    <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
+                                    <span className='truncate relative group/name max-w-[100px]'>
+                                      {shortenProjectName(proj.name)}
+                                      <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
+                                        {proj.name}
+                                      </span>
                                     </span>
-                                  </span>
-                                </Link>
-                              </div>
-
-                              {/* Nút ... có relative để dropdown canh đúng */}
-                              <div className='relative'>
-                                <div
-                                  className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowProjectDetail(proj.key);
-                                  }}
-                                >
-                                  <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
+                                  </Link>
                                 </div>
 
-                                {/* Dropdown Detail ngay dưới ... */}
-                                <AnimatePresence>
-                                  {showProjectDetail === proj.key && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.95 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.95 }}
-                                      transition={{ duration: 0.2 }}
-                                      className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
-                                    >
-                                      <div
-                                        onClick={() => handleProjectDetailClick(proj.key)}
-                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                <div className='relative'>
+                                  <div
+                                    className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowProjectDetail(proj.key);
+                                    }}
+                                  >
+                                    <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
+                                  </div>
+
+                                  <AnimatePresence>
+                                    {showProjectDetail === proj.key && (
+                                      <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
                                       >
-                                        <Rocket className='w-5 h-5 text-gray-500' />
-                                        <span>Project Detail</span>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
+                                        <div
+                                          onClick={() => handleProjectDetailClick(proj.key)}
+                                          className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                        >
+                                          <Rocket className='w-5 h-5 text-gray-500' />
+                                          <span>Project Detail</span>
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
                               </div>
                             </div>
+                          );
+                        })}
+
+                        {recentProjects.length > 5 && (
+                          <div
+                            className='flex items-center space-x-2 py-1 px-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer relative'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMoreProjects((prev) => !prev); // Toggle hiển thị danh sách More Projects
+                            }}
+                          >
+                            <span>
+                              More Projects <ChevronRight className='w-4 h-4 text-gray-500 inline' />
+                            </span>
+                            <AnimatePresence>
+                              {showMoreProjects && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  transition={{ duration: 0.2 }}
+                                  className='absolute top-[-2rem] left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-30 max-h-64 overflow-y-auto'
+                                >
+                                  {recentProjects.slice(5).map((proj, i) => {
+                                    const isSelected = proj.key === selectedProjectKey;
+                                    return (
+                                      <div key={i + 5} className='relative'>
+                                        <div
+                                          className={`group grid grid-cols-[1fr,auto] gap-x-2 items-center py-1 px-2 rounded ${
+                                            isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+                                          }`}
+                                        >
+                                          <div className='flex items-center space-x-2'>
+                                            <Link
+                                              to={`/project?projectKey=${proj.key}`}
+                                              onClick={() => {
+                                                // Giữ danh sách project mở
+                                              }}
+                                              className={`flex items-center space-x-2 text-sm no-underline ${
+                                                isSelected
+                                                  ? 'text-blue-700 font-medium'
+                                                  : 'text-gray-800 hover:bg-gray-100'
+                                              }`}
+                                            >
+                                              <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
+                                              <span className='truncate relative group/name max-w-[100px]'>
+                                                {shortenProjectName(proj.name)}
+                                                <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
+                                                  {proj.name}
+                                                </span>
+                                              </span>
+                                            </Link>
+                                          </div>
+                                          <div className='relative'>
+                                            <div
+                                              className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowProjectDetail(proj.key);
+                                              }}
+                                            >
+                                              <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
+                                            </div>
+                                            <AnimatePresence>
+                                              {showProjectDetail === proj.key && (
+                                                <motion.div
+                                                  initial={{ opacity: 0, scale: 0.95 }}
+                                                  animate={{ opacity: 1, scale: 1 }}
+                                                  exit={{ opacity: 0, scale: 0.95 }}
+                                                  transition={{ duration: 0.2 }}
+                                                  className='absolute top-0 left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                                                >
+                                                  <div
+                                                    onClick={() => handleProjectDetailClick(proj.key)}
+                                                    className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                                  >
+                                                    <Rocket className='w-5 h-5 text-gray-500' />
+                                                    <span>Project Detail</span>
+                                                  </div>
+                                                </motion.div>
+                                              )}
+                                            </AnimatePresence>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
-                        );
-                      })
+                        )}
+                      </>
                     )}
                   </div>
                 )}

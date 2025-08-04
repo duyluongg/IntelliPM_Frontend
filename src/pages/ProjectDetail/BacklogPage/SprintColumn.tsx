@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, PlusCircle } from 'lucide-react';
 import {
   useUpdateTaskTitleMutation,
   useUpdateTaskStatusMutation,
@@ -11,6 +11,7 @@ import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
   useDeleteSprintMutation,
+  useCreateSprintsWithTasksMutation,
 } from '../../../services/sprintApi';
 import {
   useGetCategoriesByGroupQuery,
@@ -24,6 +25,8 @@ import storyIcon from '../../../assets/icon/type_story.svg';
 import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';
+import PlanTasksPopup from './PlanTasksPopup';
+import { type SprintWithTasksDTO } from '../../../services/sprintApi';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -380,6 +383,7 @@ const Section: React.FC<SectionProps> = ({
   const [isStartPopupOpen, setIsStartPopupOpen] = useState(false);
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
   const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
+  const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -465,11 +469,16 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const handleOpenPlanTasksPopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPlanTasksPopupOpen(true);
+  };
+
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (
       sprintId &&
-      window.confirm('Are you sure you want to delete this sprint and all its tasks?')
+      window.confirm('Are you sure you want to delete>this sprint and all its tasks?')
     ) {
       try {
         await deleteSprint(sprintId.toString()).unwrap();
@@ -503,6 +512,16 @@ const Section: React.FC<SectionProps> = ({
             <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
           </span>
           <div className='flex items-center space-x-2'>
+   <div className="p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]">
+  <button
+    onClick={handleOpenPlanTasksPopup}
+    className="w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-3 py-2 hover:bg-gray-100 flex items-center transition-all duration-300"
+  >
+    <PlusCircle className="w-4 h-4 mr-1 text-indigo-500" />
+    Plan Tasks
+  </button>
+</div>
+
             <button
               onClick={handleCreateSprint}
               className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
@@ -548,9 +567,7 @@ const Section: React.FC<SectionProps> = ({
                       Add Dates
                     </button>
                   ) : (
-                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
-                      tasks.length
-                    } work items)`
+                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${tasks.length} work items)`
                   )}
                 </span>
               </span>
@@ -654,7 +671,6 @@ const Section: React.FC<SectionProps> = ({
       <div className='divide-y divide-gray-200'>
         {tasks.length === 0 ? (
           <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-4 space-y-4 border border-dashed rounded-md'>
-          
             <div>
               <p className='text-sm font-semibold text-gray-800'>
                 {sprintId === null ? 'Your backlog is empty' : 'Your sprint is empty'}
@@ -726,6 +742,13 @@ const Section: React.FC<SectionProps> = ({
         workItem={tasks.length}
         workItemCompleted={workItemCompleted}
         workItemOpen={workItemOpen}
+      />
+      <PlanTasksPopup
+        isOpen={isPlanTasksPopupOpen}
+        onClose={() => setIsPlanTasksPopupOpen(false)}
+        projectId={projectId}
+        projectKey={projectKey}
+        onTaskUpdated={onTaskUpdated}
       />
     </div>
   );

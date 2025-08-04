@@ -15,6 +15,7 @@ export default function Header() {
     skip: !user?.email,
   });
 
+  const isRole = accountResponse?.data?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
@@ -57,10 +58,14 @@ export default function Header() {
             style={{ all: 'unset', width: '100%' }}
           />
         </div>
-        <button className='bg-blue-500 text-white flex items-center px-3 py-1.5 rounded-md text-sm hover:bg-blue-600'>
-          <Plus className='w-4 h-4 mr-1' />
-          <span className='hidden sm:inline'>Create</span>
-        </button>
+        {isRole && (
+          <Link to='/project/introduction'>
+            <button className='bg-blue-500 text-white flex items-center px-3 py-1.5 rounded-md text-sm hover:bg-blue-600'>
+              <Plus className='w-4 h-4 mr-1' />
+              <span className='hidden sm:inline'>Project</span>
+            </button>
+          </Link>
+        )}
       </div>
 
       <div className='flex items-center space-x-2'>

@@ -45,6 +45,7 @@ import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
+import GuestIntroPage from '../pages/Guest/IntroPage';
 
 export const router = createBrowserRouter([
   {
@@ -92,6 +93,10 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
+      },
+      {
+         path: 'intro',
+        element: <GuestIntroPage />,
       },
     ],
   },

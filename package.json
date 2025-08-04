@@ -57,7 +57,7 @@
     "html-to-docx": "^1.8.0",
     "html-to-pdfmake": "^2.5.28",
     "html2canvas": "^1.4.1",
-    "html2pdf.js": "^0.10.3",
+    "html2pdf.js": "^0.9.0",
     "jspdf": "^3.0.1",
     "lexical": "^0.32.1",
     "lodash.debounce": "^4.0.8",

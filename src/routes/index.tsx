@@ -47,17 +47,19 @@ import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
 import GuestIntroPage from '../pages/Guest/IntroPage';
 import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
+import Report from '../pages/Admin/ReportPage/Report';
+import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
   },
-   {
-        path: '/Guest',
-        element: <CustomerHome />,
-      },
-    {
+  {
+    path: '/Guest',
+    element: <CustomerHome />,
+  },
+  {
     path: '/feature',
     element: <FeatureGuidePage />,
   },
@@ -89,14 +91,13 @@ export const router = createBrowserRouter([
         path: 'meeting-room',
         element: <MeetingRoom />,
       },
-  
 
       {
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
       {
-         path: 'intro',
+        path: 'intro',
         element: <GuestIntroPage />,
       },
     ],
@@ -149,7 +150,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/project/:projectKey/risk/:riskKey',
-        element: <RiskDetailPage />, 
+        element: <RiskDetailPage />,
       },
       {
         path: `introduction`,
@@ -239,7 +240,7 @@ export const router = createBrowserRouter([
     element: <Gantt />,
   },
 
-{
+  {
     path: '/admin',
     element: (
       <ProtectedRoute allowedRoles={['ADMIN']}>
@@ -254,6 +255,14 @@ export const router = createBrowserRouter([
       {
         path: 'members',
         element: <MembersPage />,
+      },
+      {
+        path: 'reports',
+        element: <Report />,
+      },
+      {
+        path: 'analytics',
+        element: <Analytics />,
       },
     ],
   },

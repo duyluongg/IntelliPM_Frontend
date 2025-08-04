@@ -43,12 +43,22 @@ import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
+import CustomerHome from '../pages/Guest/CustomerHome';
+import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
 import GuestIntroPage from '../pages/Guest/IntroPage';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+   {
+        path: '/Guest',
+        element: <CustomerHome />,
+      },
+    {
+    path: '/feature',
+    element: <FeatureGuidePage />,
   },
 
   {
@@ -78,6 +88,7 @@ export const router = createBrowserRouter([
         path: 'meeting-room',
         element: <MeetingRoom />,
       },
+  
 
       {
         path: 'meeting-feedback',

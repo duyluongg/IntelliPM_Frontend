@@ -11,13 +11,35 @@ import {
 import { useGetCostDashboardQuery } from '../../../services/projectMetricApi';
 import { useSearchParams } from 'react-router-dom';
 
-const CostBarChart = () => {
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
+// const CostBarChart = () => {
+//   const [searchParams] = useSearchParams();
+//   const projectKey = searchParams.get('projectKey') || 'NotFound';
+//   const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
 
+interface CostDashboardData {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    actualCost: number;
+    actualTaskCost: number;
+    actualResourceCost: number;
+    plannedCost: number;
+    plannedTaskCost: number;
+    plannedResourceCost: number;
+    budget: number;
+  };
+}
+
+const CostBarChart = ({
+  data,
+  isLoading,
+}: {
+  data: CostDashboardData | undefined;
+  isLoading: boolean;
+}) => {
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
-  if (isError || !data?.data) return <div>Failed to load cost data</div>;
+  if (!data?.data) return <div>Failed to load cost data</div>;
 
   const { actualCost, plannedCost, budget } = data.data;
 

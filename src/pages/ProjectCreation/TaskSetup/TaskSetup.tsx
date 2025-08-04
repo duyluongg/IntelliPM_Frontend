@@ -23,6 +23,21 @@ const TaskSetup: React.FC = () => {
   const { data: projectData, isLoading: isProjectLoading, error: projectError } = useGetProjectDetailsByKeyQuery(projectKey || '', {
     skip: !projectKey,
   });
+
+  const validateEpics = (epics: EpicState[]): string | null => {
+    for (const epic of epics) {
+      if (new Date(epic.endDate) < new Date(epic.startDate)) {
+        return `Epic ${epic.title} (${epic.epicId}) has invalid dates: End Date must be on or after Start Date.`;
+      }
+      for (const task of epic.tasks) {
+        if (new Date(task.endDate) < new Date(task.startDate)) {
+          return `Task ${task.title} (${task.taskId}) in epic ${epic.epicId} has invalid dates: End Date must be on or after Start Date.`;
+        }
+      }
+    }
+    return null;
+  };
+
   const projectId = projectData?.data?.id;
   const { data: membersData, isLoading: isMembersLoading, error: membersError } = useGetProjectMembersWithPositionsQuery(projectId || 0, {
     skip: !projectId,
@@ -235,24 +250,18 @@ const TaskSetup: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const error = validateEpics(epics);
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+
     if (sendEmail) {
       setIsNotifyPMConfirmOpen(true);
     } else {
       try {
-        for (const epic of epics) {
-          if (new Date(epic.endDate) < new Date(epic.startDate)) {
-            setErrorMessage(`Epic ${epic.title} (${epic.epicId}) has invalid dates: End Date must be on or after Start Date.`);
-            return;
-          }
-          for (const task of epic.tasks) {
-            if (new Date(task.endDate) < new Date(task.startDate)) {
-              setErrorMessage(`Task ${task.title} (${task.taskId}) in epic ${epic.epicId} has invalid dates: End Date must be on or after Start Date.`);
-              return;
-            }
-          }
-
+        const createEpicPromises = epics.map((epic) => {
           const requestPayload: EpicWithTaskRequestDTO = {
-            epicId: epic.epicId,
             title: epic.title,
             description: epic.description,
             startDate: new Date(epic.startDate).toISOString(),
@@ -269,11 +278,16 @@ const TaskSetup: React.FC = () => {
             })),
           };
 
-          const response = await createEpic({ projectId, data: requestPayload }).unwrap();
-          console.log(`Epic ${epic.epicId} created:`, response);
-        }
+          return createEpic({ projectId, data: requestPayload }).unwrap()
+            .then(response => {
+              console.log(`Epic ${epic.epicId} created:`, response);
+              return response;
+            });
+        });
+
+        await Promise.all(createEpicPromises);
         setSuccessMessage('Epics and tasks saved successfully!');
-        setTimeout(() => navigate(''), 1000);
+        setTimeout(() => navigate('/project/list'), 1000);
       } catch (error: any) {
         console.error('Error saving epics:', error);
         setErrorMessage(error.data?.message || 'Failed to save epics and tasks. Please try again.');
@@ -289,20 +303,14 @@ const TaskSetup: React.FC = () => {
     }
 
     try {
-      for (const epic of epics) {
-        if (new Date(epic.endDate) < new Date(epic.startDate)) {
-          setErrorMessage(`Epic ${epic.title} (${epic.epicId}) has invalid dates: End Date must be on or after Start Date.`);
-          setIsNotifyPMConfirmOpen(false);
-          return;
-        }
-        for (const task of epic.tasks) {
-          if (new Date(task.endDate) < new Date(task.startDate)) {
-            setErrorMessage(`Task ${task.title} (${task.taskId}) in epic ${epic.epicId} has invalid dates: End Date must be on or after Start Date.`);
-            setIsNotifyPMConfirmOpen(false);
-            return;
-          }
-        }
+      const error = validateEpics(epics);
+      if (error) {
+        setErrorMessage(error);
+        setIsNotifyPMConfirmOpen(false);
+        return;
+      }
 
+      const createEpicPromises = epics.map((epic) => {
         const requestPayload: EpicWithTaskRequestDTO = {
           epicId: epic.epicId,
           title: epic.title,
@@ -321,9 +329,14 @@ const TaskSetup: React.FC = () => {
           })),
         };
 
-        const response = await createEpic({ projectId, data: requestPayload }).unwrap();
-        console.log(`Epic ${epic.epicId} created:`, response);
-      }
+        return createEpic({ projectId, data: requestPayload }).unwrap()
+          .then(response => {
+            console.log(`Epic ${epic.epicId} created:`, response);
+            return response;
+          });
+      });
+
+      await Promise.all(createEpicPromises);
 
       const emailResponse = await sendEmailToPM(projectId).unwrap();
       if (emailResponse.isSuccess) {

@@ -43,6 +43,7 @@ import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
+import GuestIntroPage from '../pages/Guest/IntroPage';
 
 export const router = createBrowserRouter([
   {
@@ -81,6 +82,10 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
+      },
+      {
+         path: 'intro',
+        element: <GuestIntroPage />,
       },
     ],
   },

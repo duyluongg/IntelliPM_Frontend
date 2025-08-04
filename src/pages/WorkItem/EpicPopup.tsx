@@ -155,6 +155,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         }
     };
 
+    const canEditStatus = (assigneeIds: number[] | number | null) => {
+        const currentUserId = accountId.toString();
+        const isAssignee = Array.isArray(assigneeIds)
+            ? assigneeIds.map(id => id.toString()).includes(currentUserId)
+            : assigneeIds?.toString() === currentUserId;
+        return isAssignee || canEdit;
+    };
+
     React.useEffect(() => {
         if (epic && epic.assignedBy !== undefined) {
             setEpicId(epic.id);
@@ -710,27 +718,35 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         </td>
 
                                                         <td>
-                                                            <select
-                                                                className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
-                                                                value={task.status}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        await updateTaskStatus({
-                                                                            id: task.id,
-                                                                            status: e.target.value,
-                                                                            createdBy: accountId,
-                                                                        }).unwrap();
-                                                                        await refetch();
-                                                                        await refetchActivityLogs();
-                                                                    } catch (err) {
-                                                                        console.error('❌ Error updating status:', err);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <option value="TO_DO">To Do</option>
-                                                                <option value="IN_PROGRESS">In Progress</option>
-                                                                <option value="DONE">Done</option>
-                                                            </select>
+                                                            {canEditStatus((taskAssignmentMap[task.id] ?? []).map(a => a.accountId)) ? (
+                                                                <select
+                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                                                    value={task.status}
+                                                                    onChange={async (e) => {
+                                                                        try {
+                                                                            await updateTaskStatus({
+                                                                                id: task.id,
+                                                                                status: e.target.value,
+                                                                                createdBy: accountId,
+                                                                            }).unwrap();
+                                                                            await refetch();
+                                                                            await refetchActivityLogs();
+                                                                        } catch (err) {
+                                                                            console.error('❌ Error updating status:', err);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <option value="TO_DO">To Do</option>
+                                                                    <option value="IN_PROGRESS">In Progress</option>
+                                                                    <option value="DONE">Done</option>
+                                                                </select>
+                                                            ) : (
+                                                                <span
+                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                                                >
+                                                                    {task.status.replace('_', ' ')}
+                                                                </span>
+                                                            )}
                                                         </td>
 
                                                     </tr>
@@ -1046,16 +1062,23 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     {/* Right - Sidebar */}
                     <div className="details-panel">
                         <div className="panel-header">
-                            <select
-                                value={status}
-                                onChange={(e) => handleStatusChange(e.target.value)}
-                                className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
-                                disabled={!canEdit}
-                            >
-                                <option value="TO_DO">To Do</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="DONE">Done</option>
-                            </select>
+                            {canEditStatus(epic.assignedBy) ? (
+                                <select
+                                    value={status}
+                                    onChange={(e) => handleStatusChange(e.target.value)}
+                                    className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                                >
+                                    <option value="TO_DO">To Do</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="DONE">Done</option>
+                                </select>
+                            ) : (
+                                <span
+                                    className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                                >
+                                    {status.replace('_', ' ')}
+                                </span>
+                            )}
                         </div>
 
 

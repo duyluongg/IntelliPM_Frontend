@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
+import { useAuth, type Role } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
@@ -103,6 +104,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '');
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
+  const { user } = useAuth();
+  const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -128,6 +131,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
     skip: !subtaskDetail?.id,
   });
+
+  const isUserAssignee = (subtaskAssigneeId?: number) => {
+    const currentUserId = accountId.toString();
+    return subtaskAssigneeId?.toString() === currentUserId;
+  };
 
   const {
     data: activityLogs = [],
@@ -638,17 +646,27 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
           <div className='details-panel'>
             <div className='panel-header'>
-              <select
-                value={subtaskDetail.status}
-                className={`status-dropdown-select status-${subtaskDetail.status
-                  .toLowerCase()
-                  .replace('_', '-')}`}
-                onChange={handleStatusChange}
-              >
-                <option value='TO_DO'>To Do</option>
-                <option value='IN_PROGRESS'>In Progress</option>
-                <option value='DONE'>Done</option>
-              </select>
+              {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                <select
+                  value={subtaskDetail.status}
+                  className={`status-dropdown-select status-${subtaskDetail.status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                  onChange={handleStatusChange}
+                >
+                  <option value='TO_DO'>To Do</option>
+                  <option value='IN_PROGRESS'>In Progress</option>
+                  <option value='DONE'>Done</option>
+                </select>
+              ) : (
+                <span
+                  className={`status-dropdown-select status-${subtaskDetail.status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                >
+                  {subtaskDetail.status.replace('_', ' ')}
+                </span>
+              )}
               {fetchedSubtask?.warnings && fetchedSubtask.warnings.length > 0 && (
                 <div className='warning-box'>
                   {fetchedSubtask.warnings.map((warning, idx) => (

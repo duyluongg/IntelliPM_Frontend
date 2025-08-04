@@ -4,11 +4,12 @@ import { API_BASE_URL } from '../constants/api';
 export interface AIRecommendationDTO {
   recommendation: string;
   details: string;
-  type: string; 
+  type: string;
   affectedTasks: string[];
   suggestedTask: string | null;
   expectedImpact: string;
-  suggestedChanges: Record<string, any>;
+  // suggestedChanges: Record<string, any>;
+  suggestedChanges: string;
 }
 
 interface AIRecommendationsResponse {
@@ -29,6 +30,39 @@ interface BaseResponse {
   isSuccess: boolean;
   code: number;
   message: string;
+}
+
+export interface AIForecast {
+  schedulePerformanceIndex: number;
+  costPerformanceIndex: number;
+  estimateAtCompletion: number;
+  estimateToComplete: number;
+  varianceAtCompletion: number;
+  estimatedDurationAtCompletion: number;
+}
+
+export interface AIForecastResponse {
+  isSuccess: boolean;
+  code: number;
+  data: AIForecast;
+  message: string;
+}
+
+interface RecommendationsResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: RecommendationDTO[];
+}
+
+export interface RecommendationDTO {
+  id: number;
+  projectId: number;
+  taskId: string | null;
+  taskTitle: string;
+  type: string;
+  recommendation: string;
+  createdAt: string;
 }
 
 export const projectRecommendationApi = createApi({
@@ -59,6 +93,27 @@ export const projectRecommendationApi = createApi({
         body,
       }),
     }),
+
+    getAIForecastByProjectKey: builder.query<AIForecastResponse, string>({
+      query: (projectKey) => ({
+        url: `projectrecommendation/ai-forecast?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+
+    getRecommendationsByProjectKey: builder.query<RecommendationsResponse, string>({
+      query: (projectKey) => ({
+        url: `projectrecommendation/by-project-key?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+
+    deleteRecommendationById: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `projectrecommendation/${id}`,
+        method: 'DELETE',
+      }),
+    }),
   }),
 });
 
@@ -66,4 +121,8 @@ export const {
   useGetAIRecommendationsByProjectKeyQuery,
   useLazyGetAIRecommendationsByProjectKeyQuery,
   useCreateProjectRecommendationMutation,
+  useGetAIForecastByProjectKeyQuery,
+  useLazyGetAIForecastByProjectKeyQuery,
+  useGetRecommendationsByProjectKeyQuery,
+  useDeleteRecommendationByIdMutation,
 } = projectRecommendationApi;

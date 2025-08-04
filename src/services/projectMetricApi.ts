@@ -204,6 +204,13 @@ export const projectMetricApi = createApi({
         method: 'POST',
       }),
     }),
+
+    getProjectMetricAIByProjectKey: builder.query<ProjectMetricResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/ai-forecast?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -217,4 +224,5 @@ export const {
   useGetWorkloadDashboardQuery,
   useGetProjectMetricByProjectKeyQuery,
   useCalculateMetricsBySystemMutation,
+  useGetProjectMetricAIByProjectKeyQuery,
 } = projectMetricApi;

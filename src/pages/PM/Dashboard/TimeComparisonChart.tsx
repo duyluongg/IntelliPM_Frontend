@@ -11,13 +11,31 @@ import {
 } from 'recharts';
 import { useSearchParams } from 'react-router-dom';
 
-const TimeComparisonChart = () => {
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { data, isLoading, error } = useGetTimeDashboardQuery(projectKey);
+// const TimeComparisonChart = () => {
+//   const [searchParams] = useSearchParams();
+//   const projectKey = searchParams.get('projectKey') || 'NotFound';
+//   const { data, isLoading, error } = useGetTimeDashboardQuery(projectKey);
 
+interface TimeDashboardData {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    plannedCompletion: number;
+    actualCompletion: number;
+    status: string;
+  };
+}
+
+const TimeComparisonChart = ({
+  data,
+  isLoading,
+}: {
+  data: TimeDashboardData | undefined;
+  isLoading: boolean;
+}) => {
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
-  if (error || !data?.data) return <div>Error loading time dashboard</div>;
+  if (!data?.data) return <div>Error loading time dashboard</div>;
 
   const { plannedCompletion, actualCompletion, status } = data.data;
 

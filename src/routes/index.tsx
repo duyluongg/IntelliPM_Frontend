@@ -46,6 +46,7 @@ import MembersPage from '../pages/Admin/MembersPage/MembersPage';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
 import GuestIntroPage from '../pages/Guest/IntroPage';
+import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
 
 export const router = createBrowserRouter([
   {
@@ -178,6 +179,10 @@ export const router = createBrowserRouter([
       {
         path: `:projectKey/summary`,
         element: <ProjectSummary />,
+      },
+      {
+        path: `:projectKey/team-members`,
+        element: <ProjectMember />,
       },
 
       {

@@ -132,6 +132,10 @@ interface HeaderBarProps {
   projectId: number;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
+  selectedStatus: string;
+  setSelectedStatus: Dispatch<SetStateAction<string>>;
+  selectedType: string;
+  setSelectedType: Dispatch<SetStateAction<string>>;
 }
 
 // Status Component
@@ -315,8 +319,9 @@ const Avatar = ({
 };
 
 // HeaderBar Component
-const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearchQuery }) => {
+const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearchQuery, selectedStatus, setSelectedStatus, selectedType, setSelectedType, }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const {
     data: membersData,
     isLoading,
@@ -351,6 +356,25 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
 
   const toggleMembers = () => {
     setIsMembersExpanded(!isMembersExpanded);
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setSelectedStatus('');
+    setSelectedType('');
+  };
+
+  const typeOptions = [
+    { value: '', label: 'All Types' },
+    { value: 'epic', label: 'EPIC', icon: epicIcon },
+    { value: 'task', label: 'TASK', icon: taskIcon },
+    { value: 'bug', label: 'BUG', icon: bugIcon },
+    { value: 'subtask', label: 'SUBTASK', icon: subtaskIcon },
+    { value: 'story', label: 'STORY', icon: storyIcon },
+  ];
+
+  const toggleTypeDropdown = () => {
+    setIsTypeDropdownOpen(!isTypeDropdownOpen);
   };
 
   if (isLoading) {
@@ -435,6 +459,66 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
             1
           </span>
         </button>
+
+        <select
+          value={selectedStatus}
+          onChange={(e) => setSelectedStatus(e.target.value)}
+          className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40"
+        >
+          <option value="">All Statuses</option>
+          <option value="to_do">TO DO</option>
+          <option value="in_progress">IN PROGRESS</option>
+          <option value="done">DONE</option>
+        </select>
+
+        <div className="relative">
+          <button
+            onClick={toggleTypeDropdown}
+            className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40 flex items-center justify-between"
+          >
+            {typeOptions.find(option => option.value === selectedType)?.label || 'All Types'}
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          {isTypeDropdownOpen && (
+            <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-300 rounded-md shadow-lg">
+              {typeOptions.map((option) => (
+                <div
+                  key={option.value}
+                  onClick={() => {
+                    setSelectedType(option.value);
+                    setIsTypeDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 cursor-pointer"
+                >
+                  {option.icon && (
+                    <img src={option.icon} alt={option.label} className="w-5 h-5 rounded p-0.5" />
+                  )}
+                  <span>{option.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={clearFilters}
+          className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
+        >
+          Clear Filters
+        </button>
+
       </div>
       <div className='flex items-center gap-1.5'>
         <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
@@ -457,6 +541,8 @@ const ProjectTaskList: React.FC = () => {
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<string>('');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -531,7 +617,7 @@ const ProjectTaskList: React.FC = () => {
   // Lấy accountId từ localStorage
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
-  
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -914,61 +1000,61 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
-          const uniqueAssignees = Array.from(
-            new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
-          );
+        const uniqueAssignees = Array.from(
+          new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
+        );
 
-          const assignments: TaskAssignee[] = uniqueAssignees
-            .filter(
-              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
-            )
-            .map((assignee: ApiAssignee) => ({
-              id: assignee.accountId,
-              fullName: assignee.fullname || 'Unknown',
-              initials:
-                assignee.fullname
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .substring(0, 2) || '',
-              avatarColor: '#f3eded',
-              picture: assignee.picture || undefined,
-            }));
+        const assignments: TaskAssignee[] = uniqueAssignees
+          .filter(
+            (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+          )
+          .map((assignee: ApiAssignee) => ({
+            id: assignee.accountId,
+            fullName: assignee.fullname || 'Unknown',
+            initials:
+              assignee.fullname
+                ?.split(' ')
+                .map((n: string) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: assignee.picture || undefined,
+          }));
 
-          return {
-            id: item.key || '',
-            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-            key: item.key || '',
-            taskId: item.taskId || null,
-            summary: item.summary || '',
+        return {
+          id: item.key || '',
+          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+          key: item.key || '',
+          taskId: item.taskId || null,
+          summary: item.summary || '',
 
-            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-            comments: item.commentCount || 0,
-            sprint: item.sprintId || null,
-            sprintName: item.sprintName || null,
-            assignees: assignments,
-            dueDate: item.dueDate || null,
-            labels: item.labels || [],
-            created: item.createdAt || '',
-            updated: item.updatedAt || '',
-            reporter: {
-              id: item.reporterId || null,
-              fullName: item.reporterFullname || 'Unknown',
-              initials:
-                item.reporterFullname
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .substring(0, 2) || '',
-              avatarColor: '#f3eded',
-              picture: item.reporterPicture || undefined,
-            },
-            reporterId: item.reporterId || null,
-            projectId: item.projectId || projectId,
-            epicId: item.taskId || null,
-            description: '',
-          };
-        });
+          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+          comments: item.commentCount || 0,
+          sprint: item.sprintId || null,
+          sprintName: item.sprintName || null,
+          assignees: assignments,
+          dueDate: item.dueDate || null,
+          labels: item.labels || [],
+          created: item.createdAt || '',
+          updated: item.updatedAt || '',
+          reporter: {
+            id: item.reporterId || null,
+            fullName: item.reporterFullname || 'Unknown',
+            initials:
+              item.reporterFullname
+                ?.split(' ')
+                .map((n: string) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: item.reporterPicture || undefined,
+          },
+          reporterId: item.reporterId || null,
+          projectId: item.projectId || projectId,
+          epicId: item.taskId || null,
+          description: '',
+        };
+      });
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -999,9 +1085,14 @@ const ProjectTaskList: React.FC = () => {
   }
 
 
-  const filteredTasks: TaskItem[] = tasks.filter((task) =>
-    task.summary.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTasks: TaskItem[] = tasks.filter((task) => {
+    const matchesSearch = task.summary.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus =
+      !selectedStatus || task.status.toLowerCase() === selectedStatus.toLowerCase();
+    const matchesType =
+      !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
+      return matchesSearch && matchesStatus && matchesType;
+  });
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
@@ -1009,14 +1100,18 @@ const ProjectTaskList: React.FC = () => {
         projectId={projectId || 0}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        selectedStatus={selectedStatus}
+        setSelectedStatus={setSelectedStatus}
+        selectedType={selectedType}
+        setSelectedType={setSelectedType}
       />
       {(isUpdatingTask ||
         isUpdatingEpic ||
         isUpdatingSubtask ||
         isCreatingAssignment ||
         isDeletingAssignment) && (
-        <div className='text-center py-4 text-blue-500'>Processing...</div>
-      )}
+          <div className='text-center py-4 text-blue-500'>Processing...</div>
+        )}
       <div className='overflow-x-auto bg-white w-full block'>
         <table
           className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
@@ -1315,7 +1410,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                    showMemberDropdown?.field === 'assignees' ? (
+                      showMemberDropdown?.field === 'assignees' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1328,11 +1423,10 @@ const ProjectTaskList: React.FC = () => {
                             return (
                               <div
                                 key={member.accountId}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                  isDisabled
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                }`}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                  }`}
                                 onClick={() =>
                                   !isDisabled && handleMemberSelect(task, 'assignees', member)
                                 }
@@ -1380,11 +1474,11 @@ const ProjectTaskList: React.FC = () => {
                               onDelete={
                                 assignee.id != null && assignee.id !== 0
                                   ? () =>
-                                      handleDeleteAssignment(
-                                        task.key,
-                                        assignee.id as number,
-                                        task.type
-                                      )
+                                    handleDeleteAssignment(
+                                      task.key,
+                                      assignee.id as number,
+                                      task.type
+                                    )
                                   : undefined
                               }
                             />
@@ -1424,13 +1518,13 @@ const ProjectTaskList: React.FC = () => {
                   >
                     {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                       ? task.labels.map((label, index) => (
-                          <span
-                            key={index}
-                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
-                          >
-                            {label}
-                          </span>
-                        ))
+                        <span
+                          key={index}
+                          className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                        >
+                          {label}
+                        </span>
+                      ))
                       : ''}
                   </td>
                   <td
@@ -1458,7 +1552,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                    showMemberDropdown?.field === 'reporter' ? (
+                      showMemberDropdown?.field === 'reporter' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1468,11 +1562,10 @@ const ProjectTaskList: React.FC = () => {
                           return (
                             <div
                               key={member.accountId}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                isDisabled
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                              }`}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
+                                ? 'opacity-50 cursor-not-allowed'
+                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                }`}
                               onClick={() =>
                                 !isDisabled && handleMemberSelect(task, 'reporter', member)
                               }

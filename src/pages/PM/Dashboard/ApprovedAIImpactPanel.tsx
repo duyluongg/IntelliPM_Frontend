@@ -93,29 +93,29 @@ const ImpactChart = ({ forecast, metricData }: ImpactChartProps) => {
       <h3 className='text-base font-semibold mb-2'>Performance Metrics</h3>
       <div className='grid grid-cols-2 gap-4'>
         <div className='bg-gray-100 rounded-lg p-4'>
-          <h4 className='text-sm font-medium text-gray-700 mb-1'>Before AI</h4>
+          <h4 className='text-sm font-medium text-gray-700 mb-1'>Before</h4>
           <ul className='text-sm text-gray-600 space-y-1'>
-            <li>⏱ SPI: {metricData?.data.schedulePerformanceIndex?.toFixed(2) ?? '--'}</li>
-            <li>💰 CPI: {metricData?.data.costPerformanceIndex?.toFixed(2) ?? '--'}</li>
-            <li>📊 EAC: {metricData?.data.estimateAtCompletion?.toLocaleString() ?? '--'}</li>
-            <li>🛠 ETC: {metricData?.data.estimateToComplete?.toLocaleString() ?? '--'}</li>
-            <li>📉 VAC: {metricData?.data.varianceAtCompletion?.toLocaleString() ?? '--'}</li>
+            <li>⏱ SPI: {metricData?.data?.schedulePerformanceIndex?.toFixed(2) ?? '--'}</li>
+            <li>💰 CPI: {metricData?.data?.costPerformanceIndex?.toFixed(2) ?? '--'}</li>
+            <li>📊 EAC: {metricData?.data?.estimateAtCompletion?.toLocaleString() ?? '--'}</li>
+            <li>🛠 ETC: {metricData?.data?.estimateToComplete?.toLocaleString() ?? '--'}</li>
+            <li>📉 VAC: {metricData?.data?.varianceAtCompletion?.toLocaleString() ?? '--'}</li>
             <li>
-              ⏳ Duration: {metricData?.data.estimateDurationAtCompletion?.toLocaleString() ?? '--'}{' '}
+              ⏳ Duration: {metricData?.data?.estimateDurationAtCompletion?.toLocaleString() ?? '--'}{' '}
               months
             </li>
           </ul>
         </div>
         <div className='bg-green-50 rounded-lg p-4'>
-          <h4 className='text-sm font-medium text-green-700 mb-1'>After AI</h4>
+          <h4 className='text-sm font-medium text-green-700 mb-1'>After</h4>
           <ul className='text-sm text-green-800 space-y-1'>
-            <li>⏱ SPI: {forecast?.data.schedulePerformanceIndex?.toFixed(2) ?? '--'}</li>
-            <li>💰 CPI: {forecast?.data.costPerformanceIndex?.toFixed(2) ?? '--'}</li>
-            <li>📊 EAC: {forecast?.data.estimateAtCompletion?.toLocaleString() ?? '--'}</li>
-            <li>🛠 ETC: {forecast?.data.estimateToComplete?.toLocaleString() ?? '--'}</li>
-            <li>📉 VAC: {forecast?.data.varianceAtCompletion?.toLocaleString() ?? '--'}</li>
+            <li>⏱ SPI: {forecast?.data?.schedulePerformanceIndex?.toFixed(2) ?? '--'}</li>
+            <li>💰 CPI: {forecast?.data?.costPerformanceIndex?.toFixed(2) ?? '--'}</li>
+            <li>📊 EAC: {forecast?.data?.estimateAtCompletion?.toLocaleString() ?? '--'}</li>
+            <li>🛠 ETC: {forecast?.data?.estimateToComplete?.toLocaleString() ?? '--'}</li>
+            <li>📉 VAC: {forecast?.data?.varianceAtCompletion?.toLocaleString() ?? '--'}</li>
             <li>
-              ⏳ Duration: {forecast?.data.estimateDurationAtCompletion?.toLocaleString() ?? '--'}{' '}
+              ⏳ Duration: {forecast?.data?.estimateDurationAtCompletion?.toLocaleString() ?? '--'}{' '}
               months
             </li>
           </ul>
@@ -139,17 +139,11 @@ const ApprovedAIImpactPanel = ({
   const [deleteRecommendation] = useDeleteRecommendationByIdMutation();
   const [impactKey, setImpactKey] = useState(0);
 
-  // useEffect(() => {
-  //   if (tab === 'summary' && refetchAIData) {
-  //     refetchAIData();
-  //   }
-  // }, [tab, refetchAIData]);
-
   const handleDelete = async (id: number) => {
     try {
       await deleteRecommendation(id).unwrap();
-      refetchApprovedRecs?.();
-      triggerForecast?.(projectKey);
+      // refetchApprovedRecs?.();
+      // triggerForecast?.(projectKey);
       refetchAIData?.();
       setImpactKey((prev) => prev + 1);
     } catch (err) {
@@ -181,7 +175,7 @@ const ApprovedAIImpactPanel = ({
       {tab === 'summary' && (
         <div className='bg-white shadow rounded-lg p-4'>
           <h2 className='text-lg font-semibold mb-2'>
-            📈 Project Performance (Before vs After AI)
+            📈 Project Performance (Before vs After)
           </h2>
           <ImpactChart forecast={forecast} metricData={metricData} key={impactKey} />
         </div>

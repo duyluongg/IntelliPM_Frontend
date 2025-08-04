@@ -33,11 +33,6 @@
   background: #f4f5f7;
 }
 
-.issue-header {
-  display: flex;
-  align-items: center;
-}
-
 .issue-type {
   position: relative;
   display: flex;
@@ -79,8 +74,6 @@
   padding: 5px;
   font-size: 14px;
 }
-
-
 
 .main-section {
   flex: 2;
@@ -344,8 +337,7 @@ input {
 .issue-header {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 👈 Giúp nút close đẩy về phải */
-  gap: 10px;
+  gap: 0px;
 }
 
 .modal-cont {

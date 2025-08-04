@@ -117,10 +117,23 @@ const ProjectDashboard = () => {
       createdAt: rec.createdAt,
     })) ?? [];
 
+  const handleAfterDeleteRecommendation = async () => {
+    try {
+      await refetchRec();
+
+      const result = await triggerForecast(projectKey).unwrap();
+      console.log('✅ Forecast done:', result);
+
+      refetchAIData();
+    } catch (error) {
+      console.error('❌ Error in handleAfterDeleteRecommendation:', error);
+    }
+  };
+
   const [approvedIds, setApprovedIds] = useState<number[]>([]);
 
-  const spi = metricData?.data?.schedulePerformanceIndex || 1;
-  const cpi = metricData?.data?.costPerformanceIndex || 1;
+  const spi = metricData?.data?.schedulePerformanceIndex ?? 0;
+  const cpi = metricData?.data?.costPerformanceIndex ?? 0;
 
   const ForecastCard = ({
     eac,
@@ -329,7 +342,16 @@ const ProjectDashboard = () => {
       <div className='col-span-full grid grid-cols-3 gap-4'>
         <div className='col-span-1'>
           <DashboardCard title='Impact of AI Recommendations'>
-            <ImpactChart />
+            {(recRes?.data?.length ?? 0) > 0 && metricData && metricAIData ? (
+              <ImpactChart
+                spiBefore={metricData.data?.schedulePerformanceIndex ?? 0}
+                spiAfter={metricAIData.data?.schedulePerformanceIndex ?? 0}
+                cpiBefore={metricData.data?.costPerformanceIndex ?? 0}
+                cpiAfter={metricAIData.data?.costPerformanceIndex ?? 0}
+              />
+            ) : (
+              <p className='text-sm text-gray-500 italic'>No AI recommendations applied yet.</p>
+            )}
           </DashboardCard>
         </div>
 
@@ -341,7 +363,7 @@ const ProjectDashboard = () => {
             metricData={metricData}
             refetchApprovedRecs={refetchRec}
             triggerForecast={triggerForecast}
-            refetchAIData={refetchAIData}
+            refetchAIData={handleAfterDeleteRecommendation}
           />
         </div>
       </div>

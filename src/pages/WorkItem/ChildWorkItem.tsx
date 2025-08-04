@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './ChildWorkItem.css';
+import { useAuth, type Role } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
@@ -73,6 +74,8 @@ const ChildWorkItem: React.FC = () => {
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+  const { user } = useAuth();
+  const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
@@ -116,6 +119,11 @@ const ChildWorkItem: React.FC = () => {
   } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
     skip: !subtaskDetail?.id,
   });
+
+  const isUserAssignee = (subtaskAssigneeId?: number) => {
+    const currentUserId = accountId.toString();
+    return subtaskAssigneeId?.toString() === currentUserId;
+  };
 
   const {
     data: fetchedSubtask,
@@ -245,7 +253,7 @@ const ChildWorkItem: React.FC = () => {
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
         reporterId: newReporterId ?? subtaskDetail.reporterId,
         assignedBy: newAssignedBy ?? subtaskDetail.assignedBy,
-        createdBy: accountId, 
+        createdBy: accountId,
       }).unwrap();
 
       alert('✅ Subtask updated');
@@ -612,17 +620,27 @@ const ChildWorkItem: React.FC = () => {
 
           <div className='details-panel'>
             <div className='panel-header'>
-              <select
-                value={subtaskDetail.status}
-                className={`status-dropdown-select status-${subtaskDetail.status
-                  .toLowerCase()
-                  .replace('_', '-')}`}
-                onChange={handleStatusChange}
-              >
-                <option value='TO_DO'>To Do</option>
-                <option value='IN_PROGRESS'>In Progress</option>
-                <option value='DONE'>Done</option>
-              </select>
+              {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                <select
+                  value={subtaskDetail.status}
+                  className={`status-dropdown-select status-${subtaskDetail.status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                  onChange={handleStatusChange}
+                >
+                  <option value='TO_DO'>To Do</option>
+                  <option value='IN_PROGRESS'>In Progress</option>
+                  <option value='DONE'>Done</option>
+                </select>
+              ) : (
+                <span
+                  className={`status-dropdown-select status-${subtaskDetail.status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                >
+                  {subtaskDetail.status.replace('_', ' ')}
+                </span>
+              )}
               {fetchedSubtask?.warnings && fetchedSubtask.warnings.length > 0 && (
                 <div className='warning-box'>
                   {fetchedSubtask.warnings.map((warning, idx) => (

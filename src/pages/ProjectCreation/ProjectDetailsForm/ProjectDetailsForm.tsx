@@ -79,7 +79,9 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
   // Generate projectKey from projectName
   const generateProjectKey = (name: string): string => {
     if (!name.trim()) return '';
-    const words = name.trim().split(/\s+/);
+    // Loại bỏ ký tự đặc biệt, chỉ giữ chữ cái và số
+    const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, '');
+    const words = cleanName.trim().split(/\s+/);
     let key = words
       .map((word) => word.charAt(0).toUpperCase())
       .join('')
@@ -89,13 +91,12 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
 
   // Handle projectKey suggestion and uniqueness
   useEffect(() => {
-    if (!form.name || touched.projectKey) return; // Skip if projectKey was manually edited or name is empty
+    if (!form.name || touched.projectKey) return;
 
     const checkAndGenerateUniqueKey = async () => {
-      // Since form.name is checked above, we can safely cast it to string
       let generatedKey = generateProjectKey(form.name as string);
       let attempts = 0;
-      const maxAttempts = 8; // Prevent infinite loops, allows up to 10 chars
+      const maxAttempts = 8;
 
       while (generatedKey && attempts < maxAttempts) {
         if (projectKeyRegex.test(generatedKey)) {
@@ -112,7 +113,6 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             console.error('Error checking project key:', err);
           }
         }
-        // If key exists or is invalid, append the last letter
         const lastChar = generatedKey.slice(-1);
         generatedKey = generatedKey + lastChar;
         if (generatedKey.length > 10) {
@@ -121,7 +121,6 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
         }
         attempts++;
       }
-      // If no unique key found, reset to empty and let user input manually
       if (attempts >= maxAttempts || !projectKeyRegex.test(generatedKey)) {
         setForm((prev) => ({ ...prev, projectKey: '' }));
         setDebouncedProjectKey('');
@@ -235,7 +234,11 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           ? parseFloat(value) || 0
           : value,
     }));
-    setTouched((prev) => ({ ...prev, [name]: true }));
+    setTouched((prev) => ({
+      ...prev,
+      [name]: true,
+      ...(name === 'name' && { projectKey: false }), // Reset touched.projectKey khi tên thay đổi
+    }));
     if (name === 'projectKey') {
       setIsKeyFormatValid(null);
       setIsKeyUnique(null);

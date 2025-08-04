@@ -79,7 +79,7 @@ console.log("User Role: ", user?.role);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/Guest');
   };
 
   // 👇 Chỉ cho CLIENT thấy các mục này

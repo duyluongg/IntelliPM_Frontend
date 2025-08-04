@@ -262,6 +262,7 @@ const TaskSetup: React.FC = () => {
       try {
         const createEpicPromises = epics.map((epic) => {
           const requestPayload: EpicWithTaskRequestDTO = {
+
             title: epic.title,
             description: epic.description,
             startDate: new Date(epic.startDate).toISOString(),

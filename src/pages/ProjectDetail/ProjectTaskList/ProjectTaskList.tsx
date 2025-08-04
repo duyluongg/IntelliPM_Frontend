@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   useGetProjectDetailsByKeyQuery,
@@ -125,6 +126,12 @@ interface TaskItem {
   projectId?: number;
   epicId?: string | null;
   description: string;
+}
+
+interface HeaderBarProps {
+  projectId: number;
+  searchQuery: string;
+  setSearchQuery: Dispatch<SetStateAction<string>>;
 }
 
 // Status Component
@@ -308,7 +315,7 @@ const Avatar = ({
 };
 
 // HeaderBar Component
-const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
+const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearchQuery }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const {
     data: membersData,
@@ -368,6 +375,8 @@ const HeaderBar: React.FC<{ projectId: number }> = ({ projectId }) => {
             placeholder='Search list'
             className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
             style={{ all: 'unset', width: '100%' }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
@@ -447,6 +456,7 @@ const ProjectTaskList: React.FC = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
+  const [searchQuery, setSearchQuery] = useState<string>('');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -521,6 +531,7 @@ const ProjectTaskList: React.FC = () => {
   // Lấy accountId từ localStorage
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -987,9 +998,18 @@ const ProjectTaskList: React.FC = () => {
     return <div className='text-center py-10 text-red-500'>Error loading or updating data.</div>;
   }
 
+
+  const filteredTasks: TaskItem[] = tasks.filter((task) =>
+    task.summary.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
-      <HeaderBar projectId={projectId || 0} />
+      <HeaderBar
+        projectId={projectId || 0}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
       {(isUpdatingTask ||
         isUpdatingEpic ||
         isUpdatingSubtask ||
@@ -1137,67 +1157,78 @@ const ProjectTaskList: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {tasks.map((task) => (
-              <tr key={task.id} className='hover:bg-gray-100'>
-                <td
-                  style={{ width: `${columnWidths.type}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.type === 'task' && (
-                    <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
-                  )}
-                  {task.type === 'subtask' && (
-                    <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
-                  )}
-                  {task.type === 'bug' && (
-                    <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
-                  )}
-                  {task.type === 'epic' && (
-                    <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
-                  )}
-                  {task.type === 'story' && (
-                    <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.key}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
-                    <div className='flex flex-col items-start w-full'>
-                      <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
-                      <div className='flex items-center gap-1'>
-                        <svg
-                          role='presentation'
-                          width='16'
-                          height='16'
-                          viewBox='0 0 16 16'
-                          fill='none'
-                          className='w-3.5 h-3.5'
-                        >
-                          <circle
-                            cx='5.33333'
-                            cy='5.33333'
-                            r='1.33333'
-                            stroke='#42526E'
-                            strokeWidth='1.33333'
+            {filteredTasks.length > 0 ? (
+              filteredTasks.map((task) => (
+                <tr key={task.id} className='hover:bg-gray-100'>
+                  <td
+                    style={{ width: `${columnWidths.type}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.type === 'task' && (
+                      <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
+                    )}
+                    {task.type === 'subtask' && (
+                      <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
+                    )}
+                    {task.type === 'bug' && (
+                      <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
+                    )}
+                    {task.type === 'epic' && (
+                      <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
+                    )}
+                    {task.type === 'story' && (
+                      <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.key}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
+                      <div className='flex flex-col items-start w-full'>
+                        <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
+                        <div className='flex items-center gap-1'>
+                          <svg
+                            role='presentation'
+                            width='16'
+                            height='16'
+                            viewBox='0 0 16 16'
                             fill='none'
-                          />
-                          <circle
-                            cx='10.6667'
-                            cy='10.6666'
-                            r='1.33333'
-                            stroke='#42526E'
-                            strokeWidth='1.33333'
-                            fill='none'
-                          />
-                          <path
-                            d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
-                            stroke='#42526E'
-                            strokeWidth='1.33333'
-                            fill='none'
-                          />
-                        </svg>
+                            className='w-3.5 h-3.5'
+                          >
+                            <circle
+                              cx='5.33333'
+                              cy='5.33333'
+                              r='1.33333'
+                              stroke='#42526E'
+                              strokeWidth='1.33333'
+                              fill='none'
+                            />
+                            <circle
+                              cx='10.6667'
+                              cy='10.6666'
+                              r='1.33333'
+                              stroke='#42526E'
+                              strokeWidth='1.33333'
+                              fill='none'
+                            />
+                            <path
+                              d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
+                              stroke='#42526E'
+                              strokeWidth='1.33333'
+                              fill='none'
+                            />
+                          </svg>
+                          <span
+                            className='text-xs text-black cursor-pointer hover:underline'
+                            onClick={() => handleOpenPopup(task.key, task.type)}
+                          >
+                            {task.key}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className='flex flex-col items-start w-full'>
                         <span
                           className='text-xs text-black cursor-pointer hover:underline'
                           onClick={() => handleOpenPopup(task.key, task.type)}
@@ -1205,105 +1236,235 @@ const ProjectTaskList: React.FC = () => {
                           {task.key}
                         </span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className='flex flex-col items-start w-full'>
-                      <span
-                        className='text-xs text-black cursor-pointer hover:underline'
-                        onClick={() => handleOpenPopup(task.key, task.type)}
-                      >
-                        {task.key}
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.summary}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
+                      <input
+                        type='text'
+                        value={editValue}
+                        onChange={handleInputChange}
+                        onBlur={() => handleInputBlur(task)}
+                        autoFocus
+                        className='w-full p-1 border border-gray-300 rounded'
+                      />
+                    ) : (
+                      <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
+                        {task.summary}
                       </span>
-                    </div>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.summary}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
-                    <input
-                      type='text'
-                      value={editValue}
-                      onChange={handleInputChange}
-                      onBlur={() => handleInputBlur(task)}
-                      autoFocus
-                      className='w-full p-1 border border-gray-300 rounded'
-                    />
-                  ) : (
-                    <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
-                      {task.summary}
-                    </span>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.status}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  <Status status={task.status} />
-                </td>
-                <td
-                  style={{ width: `${columnWidths.comments}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.comments > 0 ? (
-                    <div className='flex items-center gap-1 text-xs text-gray-700'>
-                      <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
-                        <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
-                        />
-                      </svg>
-                      <span>{task.comments} comment</span>
-                    </div>
-                  ) : (
-                    <div className='flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5'>
-                      <svg
-                        fill='none'
-                        viewBox='0 0 16 16'
-                        role='presentation'
-                        className='w-4 h-4 min-w-[16px] min-h-[16px]'
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.status}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    <Status status={task.status} />
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.comments}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.comments > 0 ? (
+                      <div className='flex items-center gap-1 text-xs text-gray-700'>
+                        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
+                          <path
+                            fill='currentColor'
+                            fillRule='evenodd'
+                            d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                            clipRule='evenodd'
+                          />
+                        </svg>
+                        <span>{task.comments} comment</span>
+                      </div>
+                    ) : (
+                      <div className='flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5'>
+                        <svg
+                          fill='none'
+                          viewBox='0 0 16 16'
+                          role='presentation'
+                          className='w-4 h-4 min-w-[16px] min-h-[16px]'
+                        >
+                          <path
+                            fill='currentColor'
+                            fillRule='evenodd'
+                            d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                            clipRule='evenodd'
+                          />
+                        </svg>
+                        <span>Add comment</span>
+                      </div>
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.sprint}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.sprint && task.sprint !== 0 ? (
+                      <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
+                        {task.sprintName}
+                      </span>
+                    ) : (
+                      ''
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.assignee}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                  >
+                    {showMemberDropdown?.id === task.id &&
+                    showMemberDropdown?.field === 'assignees' ? (
+                      <div
+                        ref={dropdownRef}
+                        className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                       >
-                        <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                          clipRule='evenodd'
-                        />
-                      </svg>
-                      <span>Add comment</span>
-                    </div>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.sprint}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.sprint && task.sprint !== 0 ? (
-                    <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
-                      {task.sprintName}
-                    </span>
-                  ) : (
-                    ''
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.assignee}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
-                >
-                  {showMemberDropdown?.id === task.id &&
-                  showMemberDropdown?.field === 'assignees' ? (
-                    <div
-                      ref={dropdownRef}
-                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
-                    >
-                      {projectMembers.length ? (
-                        projectMembers.map((member: ProjectMember) => {
-                          const isDisabled =
-                            task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
-                            task.reporter.id === member.accountId;
+                        {projectMembers.length ? (
+                          projectMembers.map((member: ProjectMember) => {
+                            const isDisabled =
+                              task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
+                              task.reporter.id === member.accountId;
+                            return (
+                              <div
+                                key={member.accountId}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                  isDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                }`}
+                                onClick={() =>
+                                  !isDisabled && handleMemberSelect(task, 'assignees', member)
+                                }
+                              >
+                                <div className='relative'>
+                                  {member.picture ? (
+                                    <img
+                                      src={member.picture}
+                                      alt={`${member.fullName}'s avatar`}
+                                      className='w-8 h-8 rounded-full object-cover border border-gray-200'
+                                    />
+                                  ) : (
+                                    <div
+                                      className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
+                                      style={{ backgroundColor: '#6b7280' }}
+                                    >
+                                      {member.fullName
+                                        .split(' ')
+                                        .map((n: string) => n[0])
+                                        .join('')
+                                        .substring(0, 2)}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className='text-gray-900 font-medium truncate'>
+                                  {member.fullName}
+                                </span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <span className='text-gray-500 text-xs'>No members available</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
+                        className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
+                      >
+                        {task.assignees.length ? (
+                          task.assignees.map((assignee: TaskAssignee, index: number) => (
+                            <Avatar
+                              key={assignee.id ?? index}
+                              person={assignee}
+                              onDelete={
+                                assignee.id != null && assignee.id !== 0
+                                  ? () =>
+                                      handleDeleteAssignment(
+                                        task.key,
+                                        assignee.id as number,
+                                        task.type
+                                      )
+                                  : undefined
+                              }
+                            />
+                          ))
+                        ) : (
+                          <span className='text-gray-500 text-xs'>No assignees</span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.dueDate}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
+                      <input
+                        type='date'
+                        value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
+                        onChange={handleInputChange}
+                        onBlur={() => handleInputBlur(task)}
+                        autoFocus
+                        className='w-full p-1 border border-gray-300 rounded'
+                      />
+                    ) : (
+                      <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
+                        {task.dueDate && task.dueDate !== 'Unknown' ? (
+                          <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
+                        ) : (
+                          ''
+                        )}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.labels}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
+                      ? task.labels.map((label, index) => (
+                          <span
+                            key={index}
+                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                          >
+                            {label}
+                          </span>
+                        ))
+                      : ''}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.created}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.created !== 'Unknown' ? (
+                      <DateWithIcon date={task.created} status={task.status} />
+                    ) : (
+                      ''
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.updated}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.updated !== 'Unknown' ? (
+                      <DateWithIcon date={task.updated} status={task.status} />
+                    ) : (
+                      ''
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.reporter}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                  >
+                    {showMemberDropdown?.id === task.id &&
+                    showMemberDropdown?.field === 'reporter' ? (
+                      <div
+                        ref={dropdownRef}
+                        className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                      >
+                        {projectMembers.map((member: ProjectMember) => {
+                          const isDisabled = task.reporter.id === member.accountId;
                           return (
                             <div
                               key={member.accountId}
@@ -1313,7 +1474,7 @@ const ProjectTaskList: React.FC = () => {
                                   : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                               }`}
                               onClick={() =>
-                                !isDisabled && handleMemberSelect(task, 'assignees', member)
+                                !isDisabled && handleMemberSelect(task, 'reporter', member)
                               }
                             >
                               <div className='relative'>
@@ -1341,179 +1502,46 @@ const ProjectTaskList: React.FC = () => {
                               </span>
                             </div>
                           );
-                        })
-                      ) : (
-                        <span className='text-gray-500 text-xs'>No members available</span>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
-                      className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
-                    >
-                      {task.assignees.length ? (
-                        task.assignees.map((assignee: TaskAssignee, index: number) => (
-                          <Avatar
-                            key={assignee.id ?? index}
-                            person={assignee}
-                            onDelete={
-                              assignee.id != null && assignee.id !== 0
-                                ? () =>
-                                    handleDeleteAssignment(
-                                      task.key,
-                                      assignee.id as number,
-                                      task.type
-                                    )
-                                : undefined
-                            }
-                          />
-                        ))
-                      ) : (
-                        <span className='text-gray-500 text-xs'>No assignees</span>
-                      )}
-                    </div>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.dueDate}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
-                    <input
-                      type='date'
-                      value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
-                      onChange={handleInputChange}
-                      onBlur={() => handleInputBlur(task)}
-                      autoFocus
-                      className='w-full p-1 border border-gray-300 rounded'
-                    />
-                  ) : (
-                    <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
-                      {task.dueDate && task.dueDate !== 'Unknown' ? (
-                        <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
-                      ) : (
-                        ''
-                      )}
-                    </span>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.labels}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
-                    ? task.labels.map((label, index) => (
-                        <span
-                          key={index}
-                          className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
-                        >
-                          {label}
-                        </span>
-                      ))
-                    : ''}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.created}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.created !== 'Unknown' ? (
-                    <DateWithIcon date={task.created} status={task.status} />
-                  ) : (
-                    ''
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.updated}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                >
-                  {task.updated !== 'Unknown' ? (
-                    <DateWithIcon date={task.updated} status={task.status} />
-                  ) : (
-                    ''
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.reporter}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
-                >
-                  {showMemberDropdown?.id === task.id &&
-                  showMemberDropdown?.field === 'reporter' ? (
-                    <div
-                      ref={dropdownRef}
-                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
-                    >
-                      {projectMembers.map((member: ProjectMember) => {
-                        const isDisabled = task.reporter.id === member.accountId;
-                        return (
-                          <div
-                            key={member.accountId}
-                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                              isDisabled
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                            }`}
-                            onClick={() =>
-                              !isDisabled && handleMemberSelect(task, 'reporter', member)
-                            }
-                          >
-                            <div className='relative'>
-                              {member.picture ? (
-                                <img
-                                  src={member.picture}
-                                  alt={`${member.fullName}'s avatar`}
-                                  className='w-8 h-8 rounded-full object-cover border border-gray-200'
-                                />
-                              ) : (
-                                <div
-                                  className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
-                                  style={{ backgroundColor: '#6b7280' }}
-                                >
-                                  {member.fullName
-                                    .split(' ')
-                                    .map((n: string) => n[0])
-                                    .join('')
-                                    .substring(0, 2)}
-                                </div>
-                              )}
-                            </div>
-                            <span className='text-gray-900 font-medium truncate'>
-                              {member.fullName}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
-                      className='hover:bg-gray-200 cursor-pointer p-1 rounded'
-                    >
-                      <Avatar person={task.reporter} />
-                    </div>
-                  )}
-                </td>
-                <td
-                  style={{ width: `${columnWidths.document}px` }}
-                  className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden '
-                >
-                  {createdDocIds[task.key] ? (
-                    <button
-                      className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
-                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
-                    >
-                      <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
-                    </button>
-                  ) : (
-                    <button
-                      className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
-                      onClick={() => handleAddOrViewDocument(task.key, task.type)}
-                    >
-                      <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
-                    </button>
-                  )}
+                        })}
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
+                        className='hover:bg-gray-200 cursor-pointer p-1 rounded'
+                      >
+                        <Avatar person={task.reporter} />
+                      </div>
+                    )}
+                  </td>
+                  <td
+                    style={{ width: `${columnWidths.document}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {createdDocIds[task.key] ? (
+                      <button
+                        className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
+                        onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                      >
+                        <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
+                      </button>
+                    ) : (
+                      <button
+                        className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
+                        onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                      >
+                        <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={13} className='text-center py-4 text-gray-500'>
+                  No tasks match your search.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

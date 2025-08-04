@@ -73,6 +73,7 @@
 }
 
 .issue-summary {
+  width: 500px;
   flex: 1;
   border: 1px solid #dfe1e6;
   border-radius: 3px;

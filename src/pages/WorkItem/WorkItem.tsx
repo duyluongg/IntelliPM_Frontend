@@ -285,7 +285,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
 
     if (newLabelName.trim() === '') {
-      return notAlreadyAdded; 
+      return notAlreadyAdded;
     }
 
     return (
@@ -417,10 +417,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
-  const formatDate = (isoString: string | undefined) => {
-    if (!isoString) return 'None';
-    const date = new Date(isoString);
-    return date.toLocaleDateString('vi-VN');
+  const isUserAssignee = (taskId: string, subtaskAssigneeId?: number) => {
+    const currentUserId = accountId.toString();
+
+    // For task: Check if the user is in the task's assignees list
+    if (!subtaskAssigneeId) {
+      const taskAssignees = taskAssignmentMap[taskId] || [];
+      return taskAssignees.some((assignee) => assignee.accountId.toString() === currentUserId);
+    }
+
+    // For subtask: Check if the user matches the subtask's assignee
+    return subtaskAssigneeId.toString() === currentUserId;
   };
 
   const handleWorkTypeChange = async (type: string) => {
@@ -522,9 +529,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               disabled={!canEdit}
             />
             <div className='modal-cont'>
-              <button className='close-btn' onClick={onClose}>
-                ✖
-              </button>
+              <button className="close-btn" onClick={onClose}>✖</button>
             </div>
           </div>
         </div>
@@ -1101,17 +1106,21 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             </td>
 
                             <td>
-                              <select
-                                value={item.status}
-                                onChange={(e) => handleStatusChange(item.key, e.target.value)}
-                                className={`custom-status-select status-${item.status
-                                  .toLowerCase()
-                                  .replace('_', '-')}`}
-                              >
-                                <option value='TO_DO'>To Do</option>
-                                <option value='IN_PROGRESS'>In Progress</option>
-                                <option value='DONE'>Done</option>
-                              </select>
+                              {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => handleStatusChange(item.key, e.target.value)}
+                                  className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                                >
+                                  <option value='TO_DO'>To Do</option>
+                                  <option value='IN_PROGRESS'>In Progress</option>
+                                  <option value='DONE'>Done</option>
+                                </select>
+                              ) : (
+                                <span className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}>
+                                  {item.status.replace('_', ' ')}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1369,15 +1378,21 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
           {/* Details Panel */}
           <div className='details-panel'>
             <div className='panel-header'>
-              <select
-                value={status}
-                onChange={(e) => handleTaskStatusChange(e.target.value)}
-                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
-              >
-                <option value='TO_DO'>To Do</option>
-                <option value='IN_PROGRESS'>In Progress</option>
-                <option value='DONE'>Done</option>
-              </select>
+              {isUserAssignee(taskId) || canEdit ? (
+                <select
+                  value={status}
+                  onChange={(e) => handleTaskStatusChange(e.target.value)}
+                  className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                >
+                  <option value='TO_DO'>To Do</option>
+                  <option value='IN_PROGRESS'>In Progress</option>
+                  <option value='DONE'>Done</option>
+                </select>
+              ) : (
+                <span className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}>
+                  {status.replace('_', ' ')}
+                </span>
+              )}
               {taskData?.warnings && taskData.warnings.length > 0 && (
                 <div className='warning-box'>
                   {taskData.warnings.map((warning, idx) => (

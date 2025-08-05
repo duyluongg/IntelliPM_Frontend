@@ -89,6 +89,12 @@ export default function Sidebar() {
 
   const handleProjectDetailClick = (projectKey: string) => {
     setShowProjectDetail(null);
+    navigate(`/project/${projectKey}/summary`);
+  };
+
+  const handleTeamMemberClick = (projectKey: string) => {
+    setShowProjectDetail(null);
+    navigate(`/project/${projectKey}/team-members`);
   };
 
   return (
@@ -238,6 +244,14 @@ export default function Sidebar() {
                                       >
                                         <Rocket className='w-5 h-5 text-gray-500' />
                                         <span>Project Detail</span>
+                                      </div>
+
+                                      <div
+                                        onClick={() => handleTeamMemberClick(proj.key)} 
+                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                      >
+                                        <Users className='w-5 h-5 text-gray-500' />
+                                        <span>Project Member</span>
                                       </div>
                                     </motion.div>
                                   )}

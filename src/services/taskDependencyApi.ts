@@ -55,8 +55,26 @@ export const taskDependencyApi = createApi({
       }),
       transformResponse: (response: ApiResponse<TaskDependencyResponseDTO[]>) => response.data,
     }),
+
+    deleteTaskDependency: builder.mutation<void, { linkedFrom: string; linkedTo: string }>({
+      query: ({ linkedFrom, linkedTo }) => ({
+        url: `taskdependency/delete?linkedFrom=${linkedFrom}&linkedTo=${linkedTo}`,
+        method: 'DELETE',
+      }),
+    }),
+
+    deleteTaskDependencyById: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `taskdependency/${id}`,
+        method: 'DELETE',
+      }),
+    }),
   }),
 });
 
-export const { useGetTaskDependenciesByLinkedFromQuery, useCreateTaskDependenciesMutation } =
-  taskDependencyApi;
+export const {
+  useGetTaskDependenciesByLinkedFromQuery,
+  useCreateTaskDependenciesMutation,
+  useDeleteTaskDependencyMutation,
+  useDeleteTaskDependencyByIdMutation,
+} = taskDependencyApi;

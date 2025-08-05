@@ -54,7 +54,11 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
   const isRole = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
-  const { data: projectsData, isLoading, error } = useGetProjectsByAccountQuery(user?.accessToken || '');
+  const {
+    data: projectsData,
+    isLoading,
+    error,
+  } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
   const recentProjects: RecentProject[] = projectsData?.isSuccess
     ? projectsData.data.map((proj) => ({
@@ -65,14 +69,12 @@ export default function Sidebar() {
     : [];
 
   useEffect(() => {
-    if (selectedProjectKey && recentProjects.some((p) => p.key === selectedProjectKey)) {
-      setShowProjects(true);
-    }
+    // Không tự động mở dropdown khi chọn project, chỉ dựa vào hành động người dùng
   }, [selectedProjectKey, recentProjects]);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/Guest');
   };
 
   const handleViewAllProjects = () => {
@@ -87,8 +89,12 @@ export default function Sidebar() {
 
   const handleProjectDetailClick = (projectKey: string) => {
     setShowProjectDetail(null);
-    setShowProjects(false);
     navigate(`/project/${projectKey}/summary`);
+  };
+
+  const handleTeamMemberClick = (projectKey: string) => {
+    setShowProjectDetail(null);
+    navigate(`/project/${projectKey}/team-members`);
   };
 
   return (
@@ -110,14 +116,14 @@ export default function Sidebar() {
                 <div
                   className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
                   onClick={() => {
-                    setShowProjects((prev) => !prev);
+                    setShowProjects((prev) => !prev); // Toggle dropdown mở/đóng
                     setShowManageProjects(false);
                     setShowProjectDetail(null);
                   }}
                 >
                   <div className='flex items-center justify-between'>
                     <div className='flex items-center space-x-2'>
-                      {hovered ? (
+                      {hovered || showProjects ? (
                         <ChevronRight
                           className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${
                             showProjects ? 'rotate-90' : ''
@@ -172,7 +178,7 @@ export default function Sidebar() {
                 </div>
 
                 {showProjects && (
-                  <div className='mt-1 pl-10 pr-4'>
+                  <div className='mt-1 pl-10 pr-4 max-h-64 overflow-y-auto'>
                     <div className='text-gray-500 text-xs mb-1'>Recent</div>
                     {isLoading ? (
                       <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
@@ -193,7 +199,9 @@ export default function Sidebar() {
                               <div className='flex items-center space-x-2'>
                                 <Link
                                   to={`/project?projectKey=${proj.key}`}
-                                  onClick={() => setShowProjects(false)}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Ngăn không đóng dropdown khi chọn project
+                                  }}
                                   className={`flex items-center space-x-2 text-sm no-underline ${
                                     isSelected
                                       ? 'text-blue-700 font-medium'
@@ -210,7 +218,6 @@ export default function Sidebar() {
                                 </Link>
                               </div>
 
-                              {/* Nút ... có relative để dropdown canh đúng */}
                               <div className='relative'>
                                 <div
                                   className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
@@ -222,7 +229,6 @@ export default function Sidebar() {
                                   <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
                                 </div>
 
-                                {/* Dropdown Detail ngay dưới ... */}
                                 <AnimatePresence>
                                   {showProjectDetail === proj.key && (
                                     <motion.div
@@ -238,6 +244,14 @@ export default function Sidebar() {
                                       >
                                         <Rocket className='w-5 h-5 text-gray-500' />
                                         <span>Project Detail</span>
+                                      </div>
+
+                                      <div
+                                        onClick={() => handleTeamMemberClick(proj.key)} 
+                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                      >
+                                        <Users className='w-5 h-5 text-gray-500' />
+                                        <span>Project Member</span>
                                       </div>
                                     </motion.div>
                                   )}

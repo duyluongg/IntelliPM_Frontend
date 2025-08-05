@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import {
   useCalculateMetricsBySystemMutation,
   useGetProjectMetricByProjectKeyQuery,
+  useGetHealthDashboardQuery,
+  useGetProgressDashboardQuery,
+  useGetTaskStatusDashboardQuery,
+  useGetTimeDashboardQuery,
+  useGetCostDashboardQuery,
+  useGetWorkloadDashboardQuery,
+  useGetProjectMetricAIByProjectKeyQuery,
 } from '../../../services/projectMetricApi';
 import HealthOverview from './HealthOverview';
 import ProgressPerSprint from './ProgressPerSprint';
@@ -11,27 +18,122 @@ import TimeComparisonChart from './TimeComparisonChart';
 import CostBarChart from './CostBarChart';
 import WorkloadChart from './WorkloadChart';
 import { useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import {
   useLazyGetAIRecommendationsByProjectKeyQuery,
   useCreateProjectRecommendationMutation,
+  useGetRecommendationsByProjectKeyQuery,
+  useGetAIForecastByProjectKeyQuery,
+  useLazyGetAIForecastByProjectKeyQuery,
 } from '../../../services/projectRecommendationApi';
+import ApprovedAIImpactPanel from './ApprovedAIImpactPanel';
+import ImpactChart from './ImpactChart';
 import './ProjectDashboard.css';
 
 const ProjectDashboard = () => {
   const [calculate] = useCalculateMetricsBySystemMutation();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const { data: metricData, refetch } = useGetProjectMetricByProjectKeyQuery(projectKey);
+  const {
+    data: healthData,
+    isLoading: isHealthLoading,
+    refetch: refetchHealth,
+  } = useGetHealthDashboardQuery(projectKey);
+  const {
+    data: progressData,
+    isLoading: isProgressLoading,
+    refetch: refetchProgress,
+  } = useGetProgressDashboardQuery(projectKey);
+  const {
+    data: taskStatusData,
+    isLoading: isTaskStatusLoading,
+    refetch: refetchTaskStatus,
+  } = useGetTaskStatusDashboardQuery(projectKey);
+  const {
+    data: timeData,
+    isLoading: isTimeLoading,
+    refetch: refetchTime,
+  } = useGetTimeDashboardQuery(projectKey);
+  const {
+    data: costData,
+    isLoading: isCostLoading,
+    refetch: refetchCost,
+  } = useGetCostDashboardQuery(projectKey);
+  const {
+    data: workloadData,
+    isLoading: isWorkloadLoading,
+    refetch: refetchWorkload,
+  } = useGetWorkloadDashboardQuery(projectKey);
+
+  const {
+    data: recRes,
+    isLoading: isRecsLoading,
+    refetch: refetchRec,
+  } = useGetRecommendationsByProjectKeyQuery(projectKey);
+
+  const [triggerForecast, { data: forecastRes, isLoading: isForecastLoading }] =
+    useLazyGetAIForecastByProjectKeyQuery();
+
+  const {
+    data: metricAIData,
+    isLoading: isAIMetricLoading,
+    refetch: refetchAIData,
+  } = useGetProjectMetricAIByProjectKeyQuery(projectKey);
+
+  const location = useLocation();
 
   useEffect(() => {
-    calculate({ projectKey }).catch((err) => {
-      console.error('Error calculating project metrics:', err);
-    });
-  }, [calculate, projectKey]);
+    const doCalculateThenRefetch = async () => {
+      try {
+        await calculate({ projectKey }).unwrap();
+        await refetch();
+      } catch (err) {
+        console.error('❌ Error calculating/refetching metrics:', err);
+      }
+    };
 
-  const { data: metricData } = useGetProjectMetricByProjectKeyQuery(projectKey);
-  const spi = metricData?.data?.schedulePerformanceIndex || 1;
-  const cpi = metricData?.data?.costPerformanceIndex || 1;
+    doCalculateThenRefetch();
+  }, [location.key]);
+
+  useEffect(() => {
+    refetchHealth();
+    refetchProgress();
+    refetchTaskStatus();
+    refetchTime();
+    refetchCost();
+    refetchWorkload();
+  }, [location.key]);
+
+  const approvedRecs =
+    recRes?.data.map((rec) => ({
+      id: rec.id,
+      projectId: rec.projectId,
+      taskId: rec.taskId,
+      taskTitle: rec.taskTitle,
+      type: rec.type,
+      recommendation: rec.recommendation,
+      createdAt: rec.createdAt,
+    })) ?? [];
+
+  const handleAfterDeleteRecommendation = async () => {
+    try {
+      await refetchRec();
+
+      const result = await triggerForecast(projectKey).unwrap();
+      console.log('✅ Forecast done:', result);
+
+      refetchAIData();
+    } catch (error) {
+      console.error('❌ Error in handleAfterDeleteRecommendation:', error);
+    }
+  };
+
+  const [approvedIds, setApprovedIds] = useState<number[]>([]);
+
+  const spi = metricData?.data?.schedulePerformanceIndex ?? 0;
+  const cpi = metricData?.data?.costPerformanceIndex ?? 0;
 
   const ForecastCard = ({
     eac,
@@ -131,7 +233,8 @@ const ProjectDashboard = () => {
     affectedTasks: string[];
     suggestedTask: string | null;
     expectedImpact: string;
-    suggestedChanges: Record<string, any>;
+    // suggestedChanges: Record<string, any>;
+    suggestedChanges: string;
   }
 
   const [triggerGetRecommendations, { data: recData, isLoading: isRecLoading }] =
@@ -144,31 +247,35 @@ const ProjectDashboard = () => {
     rec,
     index,
     projectId,
+    approvedIds,
+    setApprovedIds,
   }: {
     rec: AIRecommendation;
     index: number;
     projectId: number | undefined;
+    approvedIds: number[];
+    setApprovedIds: React.Dispatch<React.SetStateAction<number[]>>;
   }) => {
-    const [approved, setApproved] = useState<boolean | null>(null);
-    const [createRecommendation] = useCreateProjectRecommendationMutation();
+    const [createRecommendation, { isLoading }] = useCreateProjectRecommendationMutation();
+
+    const isApproved = approvedIds.includes(index);
 
     const handleApprove = async () => {
-      if (!projectId) return;
+      if (!projectId || isApproved) return;
       try {
         await createRecommendation({
           projectId,
-          taskId: rec.suggestedTask,
+          taskId: rec.suggestedTask ?? null,
           type: rec.type,
-          recommendation: rec.details,
+          recommendation: rec.suggestedChanges,
         }).unwrap();
-        setApproved(true);
+        setApprovedIds((prev) => [...prev, index]);
+        await refetchRec();
+        await triggerForecast(projectKey);
+        await refetchAIData();
       } catch (err) {
         console.error('Error saving recommendation:', err);
       }
-    };
-
-    const handleReject = () => {
-      setApproved(false);
     };
 
     return (
@@ -181,34 +288,50 @@ const ProjectDashboard = () => {
         <div className='text-xs text-gray-500'>
           <strong>Expected Impact:</strong> {rec.expectedImpact}
         </div>
+
         {rec.suggestedChanges && Object.keys(rec.suggestedChanges).length > 0 && (
           <div className='text-sm text-gray-600 bg-gray-100 p-2 rounded'>
             <strong>Suggested Changes:</strong>
-            <ul className='list-disc list-inside mt-1'>
-              {Object.entries(rec.suggestedChanges).map(([key, value]) => (
-                <li key={key}>
-                  <strong>{key}:</strong> {String(value)}
-                </li>
-              ))}
-            </ul>
+            <div className='text-sm text-gray-700 whitespace-pre-wrap'>{rec.suggestedChanges}</div>
           </div>
         )}
-        <div className='flex gap-2 mt-2'>
+
+        <div className='flex gap-2 mt-2 items-center'>
           <button
             onClick={handleApprove}
-            className='bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm'
+            className='bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed'
+            disabled={isApproved || isLoading}
           >
-            ✅ Approve
+            {isLoading ? (
+              <span className='flex items-center gap-1'>
+                <svg
+                  className='animate-spin h-4 w-4 text-white'
+                  viewBox='0 0 24 24'
+                  fill='none'
+                  xmlns='http://www.w3.org/2000/svg'
+                >
+                  <circle
+                    className='opacity-25'
+                    cx='12'
+                    cy='12'
+                    r='10'
+                    stroke='currentColor'
+                    strokeWidth='4'
+                  ></circle>
+                  <path
+                    className='opacity-75'
+                    fill='currentColor'
+                    d='M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z'
+                  ></path>
+                </svg>
+                Saving...
+              </span>
+            ) : (
+              '✅ Approve'
+            )}
           </button>
-          <button
-            onClick={handleReject}
-            className='bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400 text-sm'
-          >
-            ❌ Reject
-          </button>
-          {approved !== null && (
-            <span className='text-xs text-green-600'>{approved ? 'Approved' : 'Rejected'}</span>
-          )}
+
+          {isApproved && <span className='text-sm text-green-600 font-medium'>✅ Approved</span>}
         </div>
       </div>
     );
@@ -216,7 +339,35 @@ const ProjectDashboard = () => {
 
   return (
     <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4'>
-      {/* <AlertCard spi={spi} cpi={cpi} /> */}
+      <div className='col-span-full grid grid-cols-3 gap-4'>
+        <div className='col-span-1'>
+          <DashboardCard title='Impact of AI Recommendations'>
+            {(recRes?.data?.length ?? 0) > 0 && metricData && metricAIData ? (
+              <ImpactChart
+                spiBefore={metricData.data?.schedulePerformanceIndex ?? 0}
+                spiAfter={metricAIData.data?.schedulePerformanceIndex ?? 0}
+                cpiBefore={metricData.data?.costPerformanceIndex ?? 0}
+                cpiAfter={metricAIData.data?.costPerformanceIndex ?? 0}
+              />
+            ) : (
+              <p className='text-sm text-gray-500 italic'>No AI recommendations applied yet.</p>
+            )}
+          </DashboardCard>
+        </div>
+
+        <div className='col-span-2'>
+          <ApprovedAIImpactPanel
+            approvedRecs={approvedRecs}
+            // forecast={forecastRes?.data}
+            forecast={metricAIData}
+            metricData={metricData}
+            refetchApprovedRecs={refetchRec}
+            triggerForecast={triggerForecast}
+            refetchAIData={handleAfterDeleteRecommendation}
+          />
+        </div>
+      </div>
+
       <AlertCard
         spi={spi}
         cpi={cpi}
@@ -235,27 +386,27 @@ const ProjectDashboard = () => {
       />
 
       <DashboardCard title='Health Overview'>
-        <HealthOverview />
+        <HealthOverview data={healthData} isLoading={isHealthLoading} />
       </DashboardCard>
 
       <DashboardCard title='Task Status'>
-        <TaskStatusChart />
+        <TaskStatusChart data={taskStatusData} isLoading={isTaskStatusLoading} />
       </DashboardCard>
 
       <DashboardCard title='Progress'>
-        <ProgressPerSprint />
+        <ProgressPerSprint data={progressData} isLoading={isProgressLoading} />
       </DashboardCard>
 
       <DashboardCard title='Time Tracking'>
-        <TimeComparisonChart />
+        <TimeComparisonChart data={timeData} isLoading={isTimeLoading} />
       </DashboardCard>
 
       <DashboardCard title='Cost'>
-        <CostBarChart />
+        <CostBarChart data={costData} isLoading={isCostLoading} />
       </DashboardCard>
 
       <DashboardCard title='Workload'>
-        <WorkloadChart />
+        <WorkloadChart data={workloadData} isLoading={isWorkloadLoading} />
       </DashboardCard>
 
       {showRecommendations && (
@@ -272,6 +423,8 @@ const ProjectDashboard = () => {
                   rec={rec}
                   index={idx}
                   projectId={metricData?.data?.projectId}
+                  approvedIds={approvedIds}
+                  setApprovedIds={setApprovedIds}
                 />
               ))
             ) : (

@@ -1,0 +1,17 @@
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-gradient-motion {
+  background: linear-gradient(270deg, #e0f7fa, #f1f8e9, #e3f2fd);
+  background-size: 600% 600%;
+  animation: gradientFlow 12s ease infinite;
+}

@@ -6,6 +6,7 @@ import {
   useApproveMilestoneMutation,
   useGetRejectedFeedbacksQuery,
   useGetMyMeetingsQuery,
+  useDeleteMeetingSummaryMutation,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
 import { API_BASE_URL } from '../../../../constants/api';
 import { useGetMeetingsManagedByQuery } from '../../../../services/ProjectManagement/MeetingServices/MeetingLogServices';
@@ -13,6 +14,20 @@ import { useGetMeetingsManagedByQuery } from '../../../../services/ProjectManage
 const MeetingFeedbackPage: React.FC = () => {
   const { user } = useAuth();
   const accountId = user?.id;
+const [deleteMeetingSummary] = useDeleteMeetingSummaryMutation();
+const handleDeleteSummary = async (meetingTranscriptId: number) => {
+  if (!window.confirm('Bạn có chắc chắn muốn xoá meeting summary này không?')) return;
+
+  try {
+    await deleteMeetingSummary(meetingTranscriptId);
+    alert('Đã xoá meeting summary thành công.');
+    refetch(); // refetch feedbacks
+  } catch (error) {
+    console.error('Delete failed', error);
+    alert('Xoá meeting summary thất bại.');
+  }
+};
+
 
 const { data: managedMeetings = [] } = useGetMeetingsManagedByQuery(accountId!, {
   skip: !accountId, // đảm bảo không gọi khi accountId chưa có
@@ -241,7 +256,7 @@ myMeetings.forEach((meeting) => {
 
                 {feedback.isApproved && (
                   <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-600">
-                    ✅ Đã duyệt
+                    ✅ Approve
                   </span>
                 )}
               </div>
@@ -287,7 +302,7 @@ myMeetings.forEach((meeting) => {
                         : 'bg-blue-500 hover:bg-blue-600'
                     }`}
                   >
-                    {isUploading[feedback.meetingTranscriptId] ? 'Đang tải lên...' : 'Tải lên video/audio'}
+                    {isUploading[feedback.meetingTranscriptId] ? 'Uploading...' : 'Upload video/audio'}
                   </button>
 
                   {/* Hiển thị transcript sau khi tải lên thành công */}
@@ -297,7 +312,29 @@ myMeetings.forEach((meeting) => {
                       <p>{uploadedTranscript[feedback.meetingTranscriptId]}</p>
                     </div>
                   )}
+
+                  
                 </div>
+                
+              )}
+
+              {selectedMeetingId === feedback.meetingTranscriptId &&
+  feedback.summaryText !== 'Wait for update' &&
+   rejectedFeedbacks.length === 0 && 
+  (user?.role === 'PROJECT_MANAGER' ||
+    managedMeetings.some(m => m.id === feedback.meetingTranscriptId)) && (
+
+                <div className="mb-4">
+                  
+    <button
+      onClick={() => handleDeleteSummary(feedback.meetingTranscriptId)}
+      className="mt-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+    >
+      Delete Summary
+    </button>
+                  
+                </div>
+                
               )}
 
               {/* Phần đồng ý và từ chối feedback */}

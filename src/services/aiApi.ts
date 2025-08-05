@@ -87,7 +87,34 @@ export interface EpicResponse {
     tasks: Task[];
   };
 }
+export interface SprintWithTasksDTO {
+  sprintId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  aiGenerated: boolean;
+  tasks: SprintTaskDTO[];
+}
 
+export interface SprintTaskDTO {
+  taskId: string;
+  title: string;
+  priority: string;
+  plannedHours: number;
+}
+
+export interface SprintPlanningRequestDTO {
+  numberOfSprints: number;
+  weeksPerSprint: number;
+}
+
+export interface SprintPlanningResponseDTO {
+  isSuccess: boolean;
+  code: number;
+  data: SprintWithTasksDTO[];
+  message: string;
+}
 export interface AiResponse {
   isSuccess: boolean;
   code: number;
@@ -112,7 +139,21 @@ export const aiApi = createApi({
         body: {},
       }),
     }),
+
+     sprintPlanning: builder.mutation<SprintPlanningResponseDTO, { projectId: number; body: SprintPlanningRequestDTO }>({
+      query: ({ projectId, body }) => ({
+        url: `ai/project/${projectId}/sprint-planning`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: SprintPlanningResponseDTO) => response,
+    }),
+
   }),
 });
 
-export const { useGetTaskPlanningMutation } = aiApi;
+export const { useGetTaskPlanningMutation, useSprintPlanningMutation } = aiApi;

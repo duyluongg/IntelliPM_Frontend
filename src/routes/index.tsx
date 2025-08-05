@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import RootLayout from '../layout/RootLayout';
 import PMLayout from '../layout/PMLayout';
+import AdminLayout from '../layout/AdminLayout';
 import Homepage from '../pages/Homepage';
 import Login from '../components/Login';
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
@@ -42,11 +43,27 @@ import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
 import MeetingRequestRejectPage from '../pages/PM/Meeting/MeetingRequestReject/MeetingRequestRejectPage';
 import CreateDocumentRequestMeeting from '../pages/PM/Meeting/MeetingRequestReject/CreateDocumentRequestMeeting';
+import AdminHomePage from '../pages/Admin/AdminHomePage';
+import MembersPage from '../pages/Admin/MembersPage/MembersPage';
+import CustomerHome from '../pages/Guest/CustomerHome';
+import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
+import GuestIntroPage from '../pages/Guest/IntroPage';
+import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
+import Report from '../pages/Admin/ReportPage/Report';
+import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/Guest',
+    element: <CustomerHome />,
+  },
+  {
+    path: '/feature',
+    element: <FeatureGuidePage />,
   },
 
   {
@@ -81,6 +98,10 @@ export const router = createBrowserRouter([
       {
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
+      },
+      {
+        path: 'intro',
+        element: <GuestIntroPage />,
       },
     ],
   },
@@ -173,6 +194,10 @@ export const router = createBrowserRouter([
         path: `:projectKey/summary`,
         element: <ProjectSummary />,
       },
+      {
+        path: `:projectKey/team-members`,
+        element: <ProjectMember />,
+      },
 
       {
         path: 'create-meeting-room',
@@ -226,6 +251,33 @@ export const router = createBrowserRouter([
   {
     path: '/gantt-view/:projectKey',
     element: <Gantt />,
+  },
+
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute allowedRoles={['ADMIN']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <AdminHomePage />,
+      },
+      {
+        path: 'members',
+        element: <MembersPage />,
+      },
+      {
+        path: 'reports',
+        element: <Report />,
+      },
+      {
+        path: 'analytics',
+        element: <Analytics />,
+      },
+    ],
   },
 
   {

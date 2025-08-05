@@ -117,3 +117,19 @@
 .selected-row {
   background-color: #d3ebff;
 }
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: #ff4d4f;
+  /* display: flex; */
+  align-items: center;
+  justify-content: center;
+}
+
+/* .icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+} */

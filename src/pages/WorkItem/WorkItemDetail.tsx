@@ -417,6 +417,19 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
+  const isUserAssignee = (taskId: string, subtaskAssigneeId?: number) => {
+    const currentUserId = accountId.toString();
+
+    // For task: Check if the user is in the task's assignees list
+    if (!subtaskAssigneeId) {
+      const taskAssignees = taskAssignmentMap[taskId] || [];
+      return taskAssignees.some((assignee) => assignee.accountId.toString() === currentUserId);
+    }
+
+    // For subtask: Check if the user matches the subtask's assignee
+    return subtaskAssigneeId.toString() === currentUserId;
+  };
+
   const getIconSrc = () => {
     switch (workType) {
       case 'BUG':
@@ -1064,19 +1077,21 @@ const WorkItemDetail: React.FC = () => {
                             </td>
 
                             <td>
-                              <select
-                                value={item.status}
-                                onChange={(e) =>
-                                  handleSubtaskStatusChange(item.key, e.target.value)
-                                }
-                                className={`custom-status-select status-${item.status
-                                  .toLowerCase()
-                                  .replace('_', '-')}`}
-                              >
-                                <option value='TO_DO'>To Do</option>
-                                <option value='IN_PROGRESS'>In Progress</option>
-                                <option value='DONE'>Done</option>
-                              </select>
+                              {isUserAssignee(taskId, item.assigneeId) ? (
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => handleSubtaskStatusChange(item.key, e.target.value)}
+                                  className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                                >
+                                  <option value='TO_DO'>To Do</option>
+                                  <option value='IN_PROGRESS'>In Progress</option>
+                                  <option value='DONE'>Done</option>
+                                </select>
+                              ) : (
+                                <span className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}>
+                                  {item.status.replace('_', ' ')}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1334,17 +1349,21 @@ const WorkItemDetail: React.FC = () => {
           <div className='details-panel'>
             <div className='details-content'>
               <div className='panel-header'>
+                {isUserAssignee(taskId) ? (
                 <select
                   value={status}
                   onChange={(e) => handleTaskStatusChange(e.target.value)}
-                  className={`custom-status-select status-${status
-                    .toLowerCase()
-                    .replace('_', '-')}`}
+                  className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
                 >
                   <option value='TO_DO'>To Do</option>
                   <option value='IN_PROGRESS'>In Progress</option>
                   <option value='DONE'>Done</option>
                 </select>
+              ) : (
+                <span className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}>
+                  {status.replace('_', ' ')}
+                </span>
+              )}
                 {taskData?.warnings && taskData.warnings.length > 0 && (
                   <div className='warning-box'>
                     {taskData.warnings.map((warning, idx) => (

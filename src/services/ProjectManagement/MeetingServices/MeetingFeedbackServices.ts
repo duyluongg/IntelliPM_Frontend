@@ -84,6 +84,15 @@ export const meetingFeedbackApi = createApi({
     getRejectedFeedbacks: builder.query<RejectedFeedback[], number>({
       query: (meetingId) => `milestonefeedback/meeting/${meetingId}/rejected-feedbacks`,
     }),
+
+    // ✅ Xoá meeting summary theo ID
+deleteMeetingSummary: builder.mutation<void, number>({
+  query: (id) => ({
+    url: `meeting-summaries/${id}`,
+    method: 'DELETE',
+  }),
+}),
+
   }),
 });
 
@@ -95,4 +104,6 @@ export const {
   useGetRejectedFeedbacksQuery,
   useGetMyMeetingsQuery,
   useLazyGetRejectedFeedbacksQuery,
+ useDeleteMeetingSummaryMutation,
+
 } = meetingFeedbackApi;

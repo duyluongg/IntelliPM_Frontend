@@ -1,8 +1,10 @@
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar/Sidebar';
-
-const PMLayout = () => (
+type PMLayoutProps = {
+  children?: React.ReactNode;
+};
+const PMLayout: React.FC<PMLayoutProps> = ({ children }) => (
   <>
     <Header />
     <div className='flex flex-col h-screen'>
@@ -11,7 +13,7 @@ const PMLayout = () => (
           <Sidebar />
         </div>
         <main className='flex-1 mt-4 sm:mt-6 md:mt-10 lg:mt-12 overflow-auto'>
-          <Outlet />
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

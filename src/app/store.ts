@@ -163,6 +163,8 @@ import { taskDependencyApi } from '../services/taskDependencyApi';
 import { documentExportApi } from '../services/Document/documentExportApi';
 import { labelApi } from '../services/labelApi';
 import { milestoneCommentApi } from '../services/milestoneCommentApi';
+import { documentCommentApi } from '../services/Document/documentCommentAPI';
+import { documentRequestMeetingApi } from '../services/ProjectManagement/MeetingServices/documentRequestMeetingApi';
 
 const persistConfig = {
   key: 'root',
@@ -216,6 +218,9 @@ const rootReducer = combineReducers({
   [documentExportApi.reducerPath]: documentExportApi.reducer,
   [labelApi.reducerPath]: labelApi.reducer,
   [milestoneCommentApi.reducerPath]: milestoneCommentApi.reducer,
+  [documentCommentApi.reducerPath]: documentCommentApi.reducer,
+  [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
+
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -262,7 +267,7 @@ export const store = configureStore({
       projectRecommendationApi.middleware,
       epicFileApi.middleware,
       meetingRescheduleRequestApi.middleware,
-      epicCommentApi.middleware, 
+      epicCommentApi.middleware,
       workLogApi.middleware,
       activityLogApi.middleware,
       riskSolutionApi.middleware,
@@ -275,6 +280,8 @@ export const store = configureStore({
       documentExportApi.middleware,
       labelApi.middleware,
       milestoneCommentApi.middleware,
+      documentCommentApi.middleware,
+      documentRequestMeetingApi.middleware
     ),
 });
 

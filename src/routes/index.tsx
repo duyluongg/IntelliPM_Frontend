@@ -40,6 +40,8 @@ import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
 import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
 import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
+import MeetingRequestRejectPage from '../pages/PM/Meeting/MeetingRequestReject/MeetingRequestRejectPage';
+import CreateDocumentRequestMeeting from '../pages/PM/Meeting/MeetingRequestReject/CreateDocumentRequestMeeting';
 
 export const router = createBrowserRouter([
   {
@@ -60,6 +62,7 @@ export const router = createBrowserRouter([
         path: 'meeting',
         element: <MeetingCore />,
       },
+
       {
         path: 'meeting-reschedule-request-send',
         element: <MeetingRescheduleRequestSend />,
@@ -101,7 +104,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -109,6 +112,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <ProjectDetailPage />,
+      },
+
+      {
+        path: 'meeting-management/view-reject',
+        element: <MeetingRequestRejectPage />,
+      },
+
+         {
+        path: 'meeting-management/send-request',
+        element: <CreateDocumentRequestMeeting />,
       },
 
       {
@@ -129,7 +142,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/project/:projectKey/risk/:riskKey',
-        element: <RiskDetailPage />, 
+        element: <RiskDetailPage />,
       },
       {
         path: `introduction`,

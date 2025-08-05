@@ -477,6 +477,7 @@ export const projectApi = createApi({
 
 export const {
   useGetProjectByIdQuery,
+  useLazyGetProjectByIdQuery  ,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,

@@ -32,13 +32,15 @@ import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 import Doc from '../../PM/YourProject/Doc';
-import {
-  useCreateDocumentMutation,
-  useGetDocumentMappingQuery,
-} from '../../../services/Document/documentAPI';
+import { useCreateDocumentMutation, useGetDocumentMappingQuery, } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
+import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
+
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -136,6 +138,12 @@ interface HeaderBarProps {
   setSelectedStatus: Dispatch<SetStateAction<string>>;
   selectedType: string;
   setSelectedType: Dispatch<SetStateAction<string>>;
+  selectedLabel: string;
+  setSelectedLabel: Dispatch<SetStateAction<string>>;
+  onExportExcel: () => void;
+  onExportPDF: () => void;
+  onCreate: () => void;
+  onViewAsChart: () => void;
 }
 
 // Status Component
@@ -319,9 +327,25 @@ const Avatar = ({
 };
 
 // HeaderBar Component
-const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearchQuery, selectedStatus, setSelectedStatus, selectedType, setSelectedType, }) => {
+const HeaderBar: React.FC<HeaderBarProps> = ({
+  projectId,
+  searchQuery,
+  setSearchQuery,
+  selectedStatus,
+  setSelectedStatus,
+  selectedType,
+  setSelectedType,
+  selectedLabel,
+  setSelectedLabel,
+  onExportExcel,
+  onExportPDF,
+  onCreate,
+  onViewAsChart,
+}) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [isLabelDropdownOpen, setIsLabelDropdownOpen] = useState(false);
+  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
   const {
     data: membersData,
     isLoading,
@@ -329,6 +353,15 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
   } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
+
+  const {
+    data: labelsData,
+    isLoading: isLabelsLoading,
+    error: labelsError,
+  } = useGetLabelsByProjectIdQuery(projectId, {
+    skip: !projectId || projectId === 0,
+  });
+
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
@@ -358,10 +391,23 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
     setIsMembersExpanded(!isMembersExpanded);
   };
 
+  const labels = [
+    { value: '', label: 'All Labels' },
+    ...(labelsData?.map((label) => ({
+      value: label.name,
+      label: label.name,
+    })) || []),
+  ];
+
+  const toggleLabelDropdown = () => {
+    setIsLabelDropdownOpen(!isLabelDropdownOpen);
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedStatus('');
     setSelectedType('');
+    setSelectedLabel('');
   };
 
   const typeOptions = [
@@ -377,14 +423,18 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
     setIsTypeDropdownOpen(!isTypeDropdownOpen);
   };
 
-  if (isLoading) {
-    return <div className='p-4 text-center text-gray-500'>Loading members...</div>;
+  const toggleMenuDropdown = () => {
+    setIsMenuDropdownOpen(!isMenuDropdownOpen);
+  };
+
+  if (isLoading || isLabelsLoading) {
+    return <div className='p-4 text-center text-gray-500'>Loading members or labels...</div>;
   }
 
-  if (error) {
+  if (error || isLabelsLoading) {
     return (
       <div className='p-4 text-center text-red-500'>
-        Error loading members: {(error as any)?.data?.message || 'Unknown error'}
+        Error loading members: {(error || labelsError as any)?.data?.message || 'Unknown error'}
       </div>
     );
   }
@@ -492,7 +542,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
             </svg>
           </button>
           {isTypeDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-300 rounded-md shadow-lg">
+            <div className="absolute z-10 mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg">
               {typeOptions.map((option) => (
                 <div
                   key={option.value}
@@ -512,6 +562,44 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
           )}
         </div>
 
+        <div className='relative'>
+          <button
+            onClick={toggleLabelDropdown}
+            className='border border-gray-300 rounded-md w-35 px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40 flex items-center justify-between'
+          >
+            {labels.find((option) => option.value === selectedLabel)?.label || 'All Labels'}
+            <svg
+              className='w-4 h-4'
+              fill='none'
+              stroke='currentColor'
+              viewBox='0 0 24 24'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='2'
+                d='M19 9l-7 7-7-7'
+              />
+            </svg>
+          </button>
+          {isLabelDropdownOpen && (
+            <div className='absolute z-10 mt-1 w-46 bg-white border border-gray-300 rounded-md shadow-lg'>
+              {labels.map((option) => (
+                <div
+                  key={option.value || 'all-labels'}
+                  onClick={() => {
+                    setSelectedLabel(option.value);
+                    setIsLabelDropdownOpen(false);
+                  }}
+                  className='flex items-center gap-2 px-2 py-1 hover:bg-gray-100 cursor-pointer'
+                >
+                  <span>{option.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <button
           onClick={clearFilters}
           className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
@@ -519,15 +607,56 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ projectId, searchQuery, setSearch
           Clear Filters
         </button>
 
+        <button
+          onClick={onExportExcel}
+          className='bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600'
+        >
+          Export to Excel
+        </button>
+
+        <button
+          onClick={onExportPDF}
+          className='bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600'
+        >
+          Export to PDF
+        </button>
       </div>
+
       <div className='flex items-center gap-1.5'>
         <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
           <MdGroup />
           <span>Group</span>
         </div>
-        <button className='bg-none border-none text-gray-500 text-sm cursor-pointer'>
-          <FaEllipsisV />
-        </button>
+        <div className='relative'>
+          <button
+            onClick={toggleMenuDropdown}
+            className='bg-none border-none text-gray-500 text-sm cursor-pointer'
+          >
+            <FaEllipsisV />
+          </button>
+          {isMenuDropdownOpen && (
+            <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
+              <div
+                onClick={() => {
+                  //onCreateTask();
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+              >
+                Create
+              </div>
+              <div
+                onClick={() => {
+                  onViewAsChart();
+                  setIsMenuDropdownOpen(false);
+                }}
+                className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+              >
+                View as Chart
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -543,6 +672,7 @@ const ProjectTaskList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
+  const [selectedLabel, setSelectedLabel] = useState<string>('');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -581,6 +711,7 @@ const ProjectTaskList: React.FC = () => {
     selectedTaskId &&
     selectedTaskType !== null &&
     ['task', 'bug', 'story'].includes(selectedTaskType);
+  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
 
   const [isDocModalOpen, setIsDocModalOpen] = useState(false);
   const [docTaskId, setDocTaskId] = useState<string | null>(null);
@@ -614,11 +745,9 @@ const ProjectTaskList: React.FC = () => {
     })
   );
 
-  // Lấy accountId từ localStorage
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -657,7 +786,7 @@ const ProjectTaskList: React.FC = () => {
           title: 'Untitled Document',
           template: 'blank',
           content: '',
-          createdBy: accountId, // Sử dụng accountId từ localStorage
+          createdBy: accountId,
         };
 
         const res = await createDocument(payload).unwrap();
@@ -1084,6 +1213,64 @@ const ProjectTaskList: React.FC = () => {
     return <div className='text-center py-10 text-red-500'>Error loading or updating data.</div>;
   }
 
+  const exportToExcel = () => {
+    const data = filteredTasks.map((task) => ({
+      Type: task.type.toUpperCase(),
+      Key: task.key,
+      Summary: task.summary,
+      Status: task.status.replace('_', ' ').toUpperCase(),
+      Comments: task.comments,
+      Sprint: task.sprintName || '',
+      Assignees: task.assignees.map((a) => a.fullName).join(', ') || 'No assignees',
+      'Due Date': task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US') : '',
+      Labels: task.labels?.join(', ') || '',
+      Created: task.created ? new Date(task.created).toLocaleDateString('en-US') : '',
+      Updated: task.updated ? new Date(task.updated).toLocaleDateString('en-US') : '',
+      Reporter: task.reporter.fullName,
+      Document: createdDocIds[task.key] ? 'Yes' : 'No',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+    XLSX.writeFile(workbook, `TaskList_${projectKey}.xlsx`);
+  };
+
+  const exportToPDF = async () => {
+    const table = tableRef.current;
+    if (!table) return;
+
+    const canvas = await html2canvas(table, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const imgWidth = 280;
+    const pageHeight = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    pdf.save(`TaskList_${projectKey}.pdf`);
+  };
 
   const filteredTasks: TaskItem[] = tasks.filter((task) => {
     const matchesSearch = task.summary.toLowerCase().includes(searchQuery.toLowerCase());
@@ -1091,8 +1278,20 @@ const ProjectTaskList: React.FC = () => {
       !selectedStatus || task.status.toLowerCase() === selectedStatus.toLowerCase();
     const matchesType =
       !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
-    return matchesSearch && matchesStatus && matchesType;
+    const matchesLabel =
+      !selectedLabel || task.labels?.includes(selectedLabel);
+    return matchesSearch && matchesStatus && matchesType && matchesLabel;
   });
+
+  const handleCreate = () => {
+    setSelectedTaskType('task');
+    setSelectedTaskId(null);
+    setIsPopupOpen(true);
+  };
+
+  const handleViewAsChart = () => {
+    setViewMode(viewMode === 'table' ? 'chart' : 'table');
+  };
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
@@ -1104,6 +1303,12 @@ const ProjectTaskList: React.FC = () => {
         setSelectedStatus={setSelectedStatus}
         selectedType={selectedType}
         setSelectedType={setSelectedType}
+        selectedLabel={selectedLabel}
+        setSelectedLabel={setSelectedLabel}
+        onExportExcel={exportToExcel}
+        onExportPDF={exportToPDF}
+        onCreate={handleCreate}
+        onViewAsChart={handleViewAsChart}
       />
       {(isUpdatingTask ||
         isUpdatingEpic ||
@@ -1654,7 +1859,7 @@ const ProjectTaskList: React.FC = () => {
               <Doc
                 docId={createdDocIds[docTaskId]}
                 onClose={() => setIsDocModalOpen(false)}
-                updatedBy={accountId} // Sử dụng accountId từ localStorage
+                updatedBy={accountId}
               />
             </div>
           </div>

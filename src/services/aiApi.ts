@@ -21,8 +21,8 @@ export interface Task {
 
 // Định nghĩa kiểu dữ liệu cho task trong state (dùng trong TaskSetup)
 export interface TaskState {
-  id: string; // UUID cho frontend
-  taskId: string; // taskId từ backend
+  id: string; 
+  taskId: string; 
   title: string;
   description: string;
   startDate: string;

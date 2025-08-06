@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import './EpicDetail.css';
 import { useParams } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
-import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
@@ -22,6 +22,7 @@ import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -67,6 +68,7 @@ const EpicDetail: React.FC = () => {
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
   const [updateEpic] = useUpdateEpicMutation();
+  const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [newName, setNewName] = React.useState<string | undefined>();
   const [newDescription, setNewDescription] = React.useState<string | undefined>();
   const [newStartDate, setNewStartDate] = React.useState<string | undefined>();
@@ -86,6 +88,10 @@ const EpicDetail: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+  const { data: taskTypeOptions, isLoading: isTaskTypeLoading, isError: isTaskTypeError } = useGetCategoriesByGroupQuery("task_type");
+  const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
+  const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
+  const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
 
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
@@ -344,13 +350,7 @@ const EpicDetail: React.FC = () => {
               <span className="issue-icon-wrapper">
                 <img src={epicIcon} alt="Epic" />
               </span>
-              <span
-                className="issue-key"
-                style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => navigate(`/project/epic/${epic.id}`)}
-              >
-                {epic.id}
-              </span>
+              <span className="issue-key">{epic.id}</span>
             </span>
             <input
               type="text"
@@ -534,11 +534,16 @@ const EpicDetail: React.FC = () => {
                         ) : (
                           tasks.map((task) => (
                             <tr key={task.id}>
-                              <td><img
-                                src={getTypeIcon(task.type)}
-                                alt={task.type}
-                                title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
-                              />
+                              <td>
+                                <img
+                                  src={getTypeIcon(task.type)}
+                                  alt={task.type}
+                                  title={
+                                    taskTypeOptions?.data?.find(opt => opt.name === task.type)?.label ??
+                                    task.type.charAt(0).toUpperCase() + task.type.slice(1).toLowerCase()
+                                  }
+                                  className='w-5 h-5'
+                                />
                               </td>
 
                               <td>
@@ -602,15 +607,17 @@ const EpicDetail: React.FC = () => {
                                     value={task.priority}
                                     onChange={async (e) => {
                                       const newPriority = e.target.value;
-                                      // try {
-                                      //     await updateTaskStatus({
-                                      //         id: task.id,
-                                      //         priority: newPriority,
-                                      //     }).unwrap();
-                                      //     await refetch(); // refresh task list
-                                      // } catch (err) {
-                                      //     console.error('❌ Error updating priority:', err);
-                                      // }
+                                      try {
+                                        await updateTaskPriority({
+                                          id: task.id,
+                                          priority: newPriority,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        await refetch();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('❌ Error updating priority:', err);
+                                      }
                                     }}
                                     style={{
                                       padding: '4px 8px',
@@ -619,21 +626,23 @@ const EpicDetail: React.FC = () => {
                                       backgroundColor: 'white',
                                     }}
                                   >
-                                    <option value="HIGHEST">Highest</option>
-                                    <option value="HIGH">High</option>
-                                    <option value="MEDIUM">Medium</option>
-                                    <option value="LOW">Low</option>
-                                    <option value="LOWEST">Lowest</option>
+                                    {taskPriorityOptions?.data?.map((opt) => (
+                                      <option key={opt.name} value={opt.name}>
+                                        {opt.label}
+                                      </option>
+                                    ))}
                                   </select>
                                 ) : (
-                                  <span>{task.priority ?? 'NONE'}</span>
+                                  <>
+                                    {taskPriorityOptions?.data?.find((opt) => opt.name === task.priority)?.label || task.priority || 'NONE'}
+                                  </>
                                 )}
                               </td>
 
                               <td>
                                 {canEdit ? (
                                   <div className="multi-select-dropdown">
-                                    {/* Hiển thị danh sách đã chọn */}
+
                                     <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                       {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
                                         <span className="selected-tag" key={assignment.accountId}>
@@ -662,7 +671,6 @@ const EpicDetail: React.FC = () => {
                                       ))}
                                     </div>
 
-                                    {/* Dropdown chọn thêm */}
                                     <div className="dropdown-select-wrapper">
                                       <select
                                         onChange={async (e) => {
@@ -741,15 +749,17 @@ const EpicDetail: React.FC = () => {
                                       }
                                     }}
                                   >
-                                    <option value="TO_DO">To Do</option>
-                                    <option value="IN_PROGRESS">In Progress</option>
-                                    <option value="DONE">Done</option>
+                                    {taskStatusOptions?.data?.map((opt) => (
+                                      <option key={opt.name} value={opt.name}>
+                                        {opt.label}
+                                      </option>
+                                    ))}
                                   </select>
                                 ) : (
                                   <span
-                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')} flex items-center gap-2`}
                                   >
-                                    {task.status.replace('_', ' ')}
+                                    {taskStatusOptions?.data?.find(opt => opt.name === task.status)?.label ?? task.status.replace('_', ' ')}
                                   </span>
                                 )}
                               </td>
@@ -781,17 +791,13 @@ const EpicDetail: React.FC = () => {
                       >
                         <img
                           src={
-                            newTaskType === 'BUG'
-                              ? bugIcon
-                              : newTaskType === 'STORY'
-                                ? storyIcon
-                                : taskIcon
+                            taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.iconLink ?? taskIcon
                           }
                           alt={newTaskType}
                           style={{ width: 16, marginRight: 6 }}
                         />
-                        {newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
-
+                        {taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.label ??
+                          newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
                       </button>
 
                       {showTypeDropdown && (
@@ -806,15 +812,15 @@ const EpicDetail: React.FC = () => {
                             borderRadius: 4,
                             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                             zIndex: 1000,
-                            width: 120,
+                            width: 140,
                           }}
                         >
-                          {taskTypes.map((type) => (
+                          {taskTypeOptions?.data?.map((type) => (
                             <div
-                              key={type.value}
+                              key={type.name}
                               className="dropdown-item"
                               onClick={() => {
-                                setNewTaskType(type.value as 'TASK' | 'BUG' | 'STORY');
+                                setNewTaskType(type.name as 'TASK' | 'BUG' | 'STORY');
                                 setShowTypeDropdown(false);
                               }}
                               style={{
@@ -825,7 +831,7 @@ const EpicDetail: React.FC = () => {
                                 gap: 6,
                               }}
                             >
-                              <img src={type.icon} alt={type.label} style={{ width: 16 }} />
+                              <img src={type.iconLink ?? ''} alt={type.label} style={{ width: 16 }} />
                               {type.label}
                             </div>
                           ))}
@@ -851,8 +857,6 @@ const EpicDetail: React.FC = () => {
                     <button
                       onClick={async () => {
                         try {
-                          const now = new Date().toISOString();
-
                           await createTask({
                             reporterId: accountId,
                             projectId: parseInt(projectId),
@@ -909,7 +913,6 @@ const EpicDetail: React.FC = () => {
             <div className="activity-section">
               <h4 style={{ marginBottom: '8px' }}>Activity</h4>
 
-              {/* Tabs */}
               <div className="activity-tabs">
                 <button
                   className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
@@ -925,7 +928,6 @@ const EpicDetail: React.FC = () => {
                 </button>
               </div>
 
-              {/* Tab Content */}
               {activeTab === 'HISTORY' && (
                 <div className="history-list">
                   {isActivityLogsLoading ? (
@@ -1071,15 +1073,20 @@ const EpicDetail: React.FC = () => {
                   onChange={(e) => handleStatusChange(e.target.value)}
                   className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
                 >
-                  <option value="TO_DO">To Do</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="DONE">Done</option>
+                  {epicStatusOptions?.data?.map((option) => (
+                    <option key={option.name} value={option.name}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               ) : (
                 <span
                   className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
                 >
-                  {status.replace('_', ' ')}
+                  {
+                    epicStatusOptions?.data?.find((item) => item.name === status)?.label ??
+                    status.replace('_', ' ')
+                  }
                 </span>
               )}
             </div>

@@ -1091,7 +1091,7 @@ const ProjectTaskList: React.FC = () => {
       !selectedStatus || task.status.toLowerCase() === selectedStatus.toLowerCase();
     const matchesType =
       !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
-      return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   return (

@@ -27,6 +27,7 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
 interface SubtaskDetail {
   id: string;
@@ -91,7 +92,8 @@ const ChildWorkItem: React.FC = () => {
   const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
     skip: !subtaskDetail?.taskId,
   });
-
+  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
+  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
 
@@ -628,9 +630,17 @@ const ChildWorkItem: React.FC = () => {
                     .replace('_', '-')}`}
                   onChange={handleStatusChange}
                 >
-                  <option value='TO_DO'>To Do</option>
-                  <option value='IN_PROGRESS'>In Progress</option>
-                  <option value='DONE'>Done</option>
+                  {loadSubtaskStatus ? (
+                    <option>Loading...</option>
+                  ) : subtaskStatusError ? (
+                    <option>Error loading status</option>
+                  ) : (
+                    subtaskStatus?.data.map((status) => (
+                      <option key={status.id} value={status.name}>
+                        {status.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               ) : (
                 <span
@@ -778,11 +788,17 @@ const ChildWorkItem: React.FC = () => {
                   onChange={(e) => setNewPriority(e.target.value)}
                   onBlur={handleUpdateSubtask}
                 >
-                  <option value='HIGH'>High</option>
-                  <option value='HIGHEST'>Highest</option>
-                  <option value='MEDIUM'>Medium</option>
-                  <option value='LOW'>Low</option>
-                  <option value='LOWEST'>Lowest</option>
+                  {isPriorityLoading ? (
+                    <option>Loading...</option>
+                  ) : isPriorityError ? (
+                    <option>Error loading priorities</option>
+                  ) : (
+                    priorityOptions?.data.map((priority) => (
+                      <option key={priority.id} value={priority.name}>
+                        {priority.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

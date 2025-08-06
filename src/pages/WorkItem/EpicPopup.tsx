@@ -21,6 +21,7 @@ import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
 import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
 interface EpicPopupProps {
     id: string;
@@ -47,11 +48,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const taskInputRef = React.useRef<HTMLTableRowElement>(null);
     const [newTaskType, setNewTaskType] = React.useState<'TASK' | 'BUG' | 'STORY'>('TASK');
     const [showTypeDropdown, setShowTypeDropdown] = React.useState(false);
-    const taskTypes = [
-        { label: 'Task', value: 'TASK', icon: taskIcon },
-        { label: 'Bug', value: 'BUG', icon: bugIcon },
-        { label: 'Story', value: 'STORY', icon: storyIcon },
-    ];
     const [description, setDescription] = React.useState('');
     const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
     const { data: attachments = [], refetch: refetchAttachments } = useGetEpicFilesByEpicIdQuery(id);
@@ -90,6 +86,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
     const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+    const { data: taskTypeOptions, isLoading: isTaskTypeLoading, isError: isTaskTypeError } = useGetCategoriesByGroupQuery("task_type");
+    const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
+    const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
+    const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
 
     const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(id!, {
         skip: !id,
@@ -306,18 +306,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         }
     };
 
-    const getTypeIcon = (type: string) => {
-        switch (type) {
-            case 'TASK':
-                return taskIcon;
-            case 'BUG':
-                return bugIcon;
-            case 'STORY':
-                return storyIcon;
-            default:
-                return taskIcon;
-        }
+    const getTypeIcon = (taskTypeName: string) => {
+        return taskTypeOptions?.data?.find(opt => opt.name === taskTypeName)?.iconLink || '';
     };
+
 
     if (isLoading || !epic) {
         return (
@@ -531,12 +523,18 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             ) : (
                                                 tasks.map((task) => (
                                                     <tr key={task.id}>
-                                                        <td><img
-                                                            src={getTypeIcon(task.type)}
-                                                            alt={task.type}
-                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
-                                                        />
+                                                        <td>
+                                                            <img
+                                                                src={getTypeIcon(task.type)}
+                                                                alt={task.type}
+                                                                title={
+                                                                    taskTypeOptions?.data?.find(opt => opt.name === task.type)?.label ??
+                                                                    task.type.charAt(0).toUpperCase() + task.type.slice(1).toLowerCase()
+                                                                }
+                                                                className='w-5 h-5'
+                                                            />
                                                         </td>
+
                                                         <td>
                                                             <a onClick={() => setSelectedTaskId(task.id)} style={{ cursor: 'pointer' }}>
                                                                 {task.id}
@@ -588,7 +586,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             ) : task.title}
                                                         </td>
 
-
                                                         <td>
                                                             {canEdit ? (
                                                                 <select
@@ -614,14 +611,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                         backgroundColor: 'white',
                                                                     }}
                                                                 >
-                                                                    <option value="HIGHEST">Highest</option>
-                                                                    <option value="HIGH">High</option>
-                                                                    <option value="MEDIUM">Medium</option>
-                                                                    <option value="LOW">Low</option>
-                                                                    <option value="LOWEST">Lowest</option>
+                                                                    {taskPriorityOptions?.data?.map((opt) => (
+                                                                        <option key={opt.name} value={opt.name}>
+                                                                            {opt.label}
+                                                                        </option>
+                                                                    ))}
                                                                 </select>
                                                             ) : (
-                                                                <span>{task.priority ?? 'NONE'}</span>
+                                                                <>
+                                                                    {taskPriorityOptions?.data?.find((opt) => opt.name === task.priority)?.label || task.priority || 'NONE'}
+                                                                </>
                                                             )}
                                                         </td>
 
@@ -736,25 +735,24 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                         }
                                                                     }}
                                                                 >
-                                                                    <option value="TO_DO">To Do</option>
-                                                                    <option value="IN_PROGRESS">In Progress</option>
-                                                                    <option value="DONE">Done</option>
+                                                                    {taskStatusOptions?.data?.map((opt) => (
+                                                                        <option key={opt.name} value={opt.name}>
+                                                                            {opt.label}
+                                                                        </option>
+                                                                    ))}
                                                                 </select>
                                                             ) : (
                                                                 <span
-                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')} flex items-center gap-2`}
                                                                 >
-                                                                    {task.status.replace('_', ' ')}
+                                                                    {taskStatusOptions?.data?.find(opt => opt.name === task.status)?.label ?? task.status.replace('_', ' ')}
                                                                 </span>
                                                             )}
                                                         </td>
-
                                                     </tr>
                                                 ))
                                             )}
                                         </tbody>
-
-
                                     </table>
                                 </div>
                             </div>
@@ -777,17 +775,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             >
                                                 <img
                                                     src={
-                                                        newTaskType === 'BUG'
-                                                            ? bugIcon
-                                                            : newTaskType === 'STORY'
-                                                                ? storyIcon
-                                                                : taskIcon
+                                                        taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.iconLink ?? taskIcon
                                                     }
                                                     alt={newTaskType}
                                                     style={{ width: 16, marginRight: 6 }}
                                                 />
-                                                {newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
-
+                                                {taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.label ??
+                                                    newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
                                             </button>
 
                                             {showTypeDropdown && (
@@ -802,15 +796,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         borderRadius: 4,
                                                         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                                                         zIndex: 1000,
-                                                        width: 120,
+                                                        width: 140,
                                                     }}
                                                 >
-                                                    {taskTypes.map((type) => (
+                                                    {taskTypeOptions?.data?.map((type) => (
                                                         <div
-                                                            key={type.value}
+                                                            key={type.name}
                                                             className="dropdown-item"
                                                             onClick={() => {
-                                                                setNewTaskType(type.value as 'TASK' | 'BUG' | 'STORY');
+                                                                setNewTaskType(type.name as 'TASK' | 'BUG' | 'STORY');
                                                                 setShowTypeDropdown(false);
                                                             }}
                                                             style={{
@@ -821,7 +815,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                 gap: 6,
                                                             }}
                                                         >
-                                                            <img src={type.icon} alt={type.label} style={{ width: 16 }} />
+                                                            <img src={type.iconLink ?? ''} alt={type.label} style={{ width: 16 }} />
                                                             {type.label}
                                                         </div>
                                                     ))}
@@ -847,8 +841,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    const now = new Date().toISOString();
-
                                                     await createTask({
                                                         reporterId: accountId,
                                                         projectId: parseInt(projectId),
@@ -905,7 +897,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         <div className="activity-section">
                             <h4 style={{ marginBottom: '8px' }}>Activity</h4>
 
-                            {/* Tabs */}
                             <div className="activity-tabs">
                                 <button
                                     className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
@@ -1068,19 +1059,23 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     onChange={(e) => handleStatusChange(e.target.value)}
                                     className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
                                 >
-                                    <option value="TO_DO">To Do</option>
-                                    <option value="IN_PROGRESS">In Progress</option>
-                                    <option value="DONE">Done</option>
+                                    {epicStatusOptions?.data?.map((option) => (
+                                        <option key={option.name} value={option.name}>
+                                            {option.label}
+                                        </option>
+                                    ))}
                                 </select>
                             ) : (
                                 <span
                                     className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
                                 >
-                                    {status.replace('_', ' ')}
+                                    {
+                                        epicStatusOptions?.data?.find((item) => item.name === status)?.label ??
+                                        status.replace('_', ' ')
+                                    }
                                 </span>
                             )}
                         </div>
-
 
                         <div className="details-content">
                             <div className="detail-item">
@@ -1114,7 +1109,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     <div className="flex flex-col gap-2 w-full relative">
                                         <label className="font-semibold">Labels</label>
 
-                                        {/* Tag list + input */}
                                         <div
                                             className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
                                             onClick={() => setDropdownOpen(true)}
@@ -1149,7 +1143,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             />
                                         </div>
 
-                                        {/* Dropdown suggestion */}
                                         {dropdownOpen && filteredLabels.length > 0 && (
                                             <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
                                                 <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>

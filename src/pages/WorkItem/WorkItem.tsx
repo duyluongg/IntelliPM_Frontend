@@ -131,18 +131,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
   const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
   const taskStatusLabel = taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
-  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } =
-    useGetCategoriesByGroupQuery('task_type');
-  const {
-    data: priorityOptions,
-    isLoading: isPriorityLoading,
-    isError: isPriorityError
-  } = useGetCategoriesByGroupQuery('subtask_priority');
-  const {
-  data: priorityTaskOptions, 
-  isLoading: isPriorityTaskLoading, 
-  isError: isPriorityTaskError 
-} = useGetCategoriesByGroupQuery('task_priority');
+  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } = useGetCategoriesByGroupQuery('task_type');
+  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
+  const { data: priorityTaskOptions, isLoading: isPriorityTaskLoading, isError: isPriorityTaskError } = useGetCategoriesByGroupQuery('task_priority');
 
   console.log('ProjectKey: ', projectKey);
 

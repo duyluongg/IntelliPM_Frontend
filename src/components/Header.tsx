@@ -25,6 +25,10 @@ export default function Header() {
   const { data: accountResponse } = useGetAccountByEmailQuery(user?.email ?? '', {
     skip: !user?.email,
   });
+  const handleLogout = () => {
+    logout();
+    navigate('/Guest');
+  };
 
   const isRole = accountResponse?.data?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
@@ -136,7 +140,10 @@ export default function Header() {
                 </ul>
                 <hr className='my-3' />
                 <button
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                    navigate('/Guest');
+                  }}
                   className='w-full flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-2 py-2 rounded-md font-semibold'
                 >
                   <LogOut className='w-4 h-4' /> Log out

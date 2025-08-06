@@ -1,6 +1,9 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Lock, MoreHorizontal, CheckSquare, Trash2 } from 'lucide-react';
-import { useGetDocumentsByProjectIdQuery, useDeleteDocumentMutation } from '../../../services/Document/documentAPI';
+import {
+  useGetDocumentsByProjectIdQuery,
+  useDeleteDocumentMutation,
+} from '../../../services/Document/documentAPI';
 import { useEffect, useState } from 'react';
 import type { RootState } from '../../../app/store';
 import { useSelector } from 'react-redux';
@@ -10,9 +13,17 @@ export default function RecentForm() {
   const navigate = useNavigate();
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
 
-  const { data: documents = [], isLoading, isError, refetch } = useGetDocumentsByProjectIdQuery(projectId);
+  const {
+    data: documents = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useGetDocumentsByProjectIdQuery(projectId!, {
+    skip: projectId == null, // nếu null thì skip gọi API
+  });
+
   console.log(documents, 'RecentForm documents');
-  
+
   const [deleteDocument] = useDeleteDocumentMutation();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey');

@@ -55,6 +55,7 @@ import TaskDependency from './TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -127,6 +128,21 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+  const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
+  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
+  const taskStatusLabel = taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
+  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } =
+    useGetCategoriesByGroupQuery('task_type');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError
+  } = useGetCategoriesByGroupQuery('subtask_priority');
+  const {
+  data: priorityTaskOptions, 
+  isLoading: isPriorityTaskLoading, 
+  isError: isPriorityTaskError 
+} = useGetCategoriesByGroupQuery('task_priority');
 
   console.log('ProjectKey: ', projectKey);
 
@@ -392,7 +408,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     reporterName: item.reporterName,
   }));
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateSubtaskStatus({
         id,
@@ -444,21 +460,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const handleDropdownClick = (e: React.MouseEvent) => e.stopPropagation();
 
-  const getIconSrc = () => {
-    switch (workType) {
-      case 'BUG':
-        return bugIcon;
-      case 'STORY':
-        return flagIcon;
-      default:
-        return tickIcon;
-    }
-  };
-
   const handleIconClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsDropdownOpen(!isDropdownOpen);
   };
+
+  const currentType = taskTypes?.data.find((t) => t.name === workType);
+  const currentIcon = currentType?.iconLink || ''; // fallback nếu thiếu icon
+
 
   const navigate = useNavigate();
 
@@ -482,19 +491,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
           <div className='issue-header'>
             <span className='issue-type'>
               <span className='issue-icon-wrapper' onClick={handleIconClick}>
-                <img src={getIconSrc()} alt={`${workType} Icon`} />
+                <img src={currentIcon} alt={`${workType} Icon`} />
               </span>
               <span className='issue-key' onClick={handleKeyClick}>
                 {taskId}
               </span>
+
               {isDropdownOpen && (
                 <div className='issue-type-dropdown' onClick={handleDropdownClick}>
                   <div className='dropdown-title'>Change Work Type</div>
-                  {['Task', 'Bug', 'Story'].map((type) => (
+                  {taskTypes?.data.map((type) => (
                     <div
-                      key={type}
-                      className={`dropdown-item ${workType === type ? 'selected' : ''}`}
-                      onClick={() => handleWorkTypeChange(type)}
+                      key={type.id}
+                      className={`dropdown-item ${workType === type.name ? 'selected' : ''}`}
+                      onClick={() => handleWorkTypeChange(type.name)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -504,17 +514,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       }}
                     >
                       <img
-                        src={type === 'Task' ? tickIcon : type === 'Bug' ? bugIcon : flagIcon}
-                        alt={type}
+                        src={type.iconLink || ''}
+                        alt={type.label}
                         style={{
                           width: '18px',
-                          filter: type === 'Bug' ? 'hue-rotate(-1deg) saturate(3)' : 'none',
                         }}
                       />
-                      <span style={{ flex: 1 }}>{type}</span>
-                      {workType === type && <span style={{ fontSize: '16px' }}>✔</span>}
+                      <span style={{ flex: 1 }}>{type.label}</span>
+                      {workType === type.name && <span style={{ fontSize: '16px' }}>✔</span>}
                     </div>
                   ))}
+
                 </div>
               )}
             </span>
@@ -1032,9 +1042,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   try {
                                     await updateSubtask({
                                       id: item.key,
-                                      assignedBy: parseInt(
-                                        selectedAssignees[item.key] ?? item.assigneeId
-                                      ),
+                                      assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
                                       priority: newPriority,
@@ -1053,11 +1061,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 }}
                                 style={{ padding: '4px 8px' }}
                               >
-                                <option value='HIGHEST'>Highest</option>
-                                <option value='HIGH'>High</option>
-                                <option value='MEDIUM'>Medium</option>
-                                <option value='LOW'>Low</option>
-                                <option value='LOWEST'>Lowest</option>
+                                {isPriorityLoading ? (
+                                  <option>Loading...</option>
+                                ) : isPriorityError ? (
+                                  <option>Error loading priorities</option>
+                                ) : (
+                                  priorityOptions?.data.map((priority) => (
+                                    <option key={priority.id} value={priority.name}>
+                                      {priority.label}
+                                    </option>
+                                  ))
+                                )}
                               </select>
                             </td>
 
@@ -1109,19 +1123,29 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                               {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
                                 <select
                                   value={item.status}
-                                  onChange={(e) => handleStatusChange(item.key, e.target.value)}
+                                  onChange={(e) => handleSubtaskStatusChange(item.key, e.target.value)}
                                   className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
                                 >
-                                  <option value='TO_DO'>To Do</option>
-                                  <option value='IN_PROGRESS'>In Progress</option>
-                                  <option value='DONE'>Done</option>
+                                  {loadSubtaskStatus ? (
+                                    <option>Loading...</option>
+                                  ) : subtaskStatusError ? (
+                                    <option>Error loading status</option>
+                                  ) : (
+                                    subtaskStatus?.data.map((status) => (
+                                      <option key={status.id} value={status.name}>
+                                        {status.label}
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
                               ) : (
                                 <span className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}>
-                                  {item.status.replace('_', ' ')}
+                                  {subtaskStatus?.data.find((status) => status.name === item.status)?.label ||
+                                    item.status.replace('_', ' ')}
                                 </span>
                               )}
                             </td>
+
                           </tr>
                         ))}
                         {showSubtaskInput && (
@@ -1384,15 +1408,24 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   onChange={(e) => handleTaskStatusChange(e.target.value)}
                   className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
                 >
-                  <option value='TO_DO'>To Do</option>
-                  <option value='IN_PROGRESS'>In Progress</option>
-                  <option value='DONE'>Done</option>
+                  {loadTaskStatus ? (
+                    <option>Loading...</option>
+                  ) : taskStatusError ? (
+                    <option>Error loading status</option>
+                  ) : (
+                    taskStatus?.data.map((option) => (
+                      <option key={option.id} value={option.name}>
+                        {option.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               ) : (
                 <span className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}>
-                  {status.replace('_', ' ')}
+                  {taskStatusLabel}
                 </span>
               )}
+
               {taskData?.warnings && taskData.warnings.length > 0 && (
                 <div className='warning-box'>
                   {taskData.warnings.map((warning, idx) => (
@@ -1403,6 +1436,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 </div>
               )}
             </div>
+
             <div className='details-content'>
               <h4>Details</h4>
               <div className='detail-item'>
@@ -1443,7 +1477,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       ))}
                     </div>
 
-                    {/* Dropdown chọn thêm */}
                     <div className='dropdown-select-wrapper'>
                       <select
                         onChange={async (e) => {
@@ -1589,12 +1622,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       width: '150px',
                     }}
                   >
-                    <option value='HIGHEST'>Highest</option>
-                    <option value='HIGH'>High</option>
-                    <option value='MEDIUM'>Medium</option>
-                    <option value='LOW'>Low</option>
-                    <option value='LOWEST'>Lowest</option>
+                    {priorityTaskOptions?.data?.map((opt) => (
+                      <option key={opt.name} value={opt.name}>
+                        {opt.label}
+                      </option>
+                    ))}
                   </select>
+
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
                 )}

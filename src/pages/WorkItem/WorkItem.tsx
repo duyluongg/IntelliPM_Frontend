@@ -704,7 +704,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                   >
                     <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
-                    Create suggested work items
+                    Create suggested subtasks
                   </div>
                   <button
                     onClick={async () => {

@@ -31,6 +31,7 @@ import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
 import { subtaskAiApi } from '../services/subtaskAiApi';
+import { taskAiApi } from '../services/taskAiApi';
 import { projectPositionApi } from '../services/projectPositionApi';
 import { projectRecommendationApi } from '../services/projectRecommendationApi';
 import { epicFileApi } from '../services/epicFileApi';
@@ -89,6 +90,7 @@ const rootReducer = combineReducers({
   [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
   [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
   [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
+  [taskAiApi.reducerPath]: taskAiApi.reducer,
   [projectPositionApi.reducerPath]: projectPositionApi.reducer,
   [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
   [epicFileApi.reducerPath]: epicFileApi.reducer,
@@ -155,7 +157,7 @@ export const store = configureStore({
       projectRecommendationApi.middleware,
       epicFileApi.middleware,
       meetingRescheduleRequestApi.middleware,
-      epicCommentApi.middleware, 
+      epicCommentApi.middleware,
       workLogApi.middleware,
       activityLogApi.middleware,
       riskSolutionApi.middleware,
@@ -171,6 +173,7 @@ export const store = configureStore({
       adminApi.middleware,
       aiResponseHistoryApi.middleware,
       aiResponseEvaluationApi.middleware,
+      taskAiApi.middleware,
     ),
 });
 

@@ -16,6 +16,7 @@
     "@fullcalendar/react": "^6.1.17",
     "@fullcalendar/timegrid": "^6.1.8",
     "@headlessui/react": "^2.2.7",
+    "@heroicons/react": "^2.2.0",
     "@lexical/markdown": "^0.32.1",
     "@lexical/react": "^0.32.1",
     "@microsoft/signalr": "^8.0.7",

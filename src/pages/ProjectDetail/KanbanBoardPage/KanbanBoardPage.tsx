@@ -43,6 +43,7 @@ const KanbanBoardPage: React.FC = () => {
     data: activeSprint,
     isLoading: isSprintLoading,
     error: sprintError,
+    refetch: refetchSprint,
   } = useGetActiveSprintByProjectKeyQuery(projectKey);
 
   const {
@@ -52,7 +53,7 @@ const KanbanBoardPage: React.FC = () => {
     isFetching: isCategoriesFetching,
   } = useGetCategoriesByGroupQuery('task_status');
 
-  const { refetch } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
+  const { refetch: refetchSprints } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
@@ -75,13 +76,11 @@ const KanbanBoardPage: React.FC = () => {
 
   const sprintId = activeSprint?.id ?? 0;
 
-  // Fetch all tasks for the sprint
-  const { data: allTasks = [], isLoading: isTasksLoading, isError: isTasksError } =
+  const { data: allTasks = [], isLoading: isTasksLoading, isError: isTasksError, refetch: refetchTasks } =
     useGetTasksBySprintIdQuery(sprintId, {
       skip: sprintId === 0 || isCategoriesLoading || isCategoriesFetching,
     });
 
-  // Group tasks by status
   const taskQueriesRecord = useMemo(() => {
     const queries: Record<
       string,
@@ -99,6 +98,7 @@ const KanbanBoardPage: React.FC = () => {
   }, [allTasks, statuses, isTasksLoading, isTasksError]);
 
   useEffect(() => {
+    console.log('KanbanBoardPage state:', { activeSprint, allTasks, sprintId, sprintError });
     const mappedTasks: Record<string, TaskBacklogResponseDTO[]> = {};
 
     statuses.forEach((status) => {
@@ -151,7 +151,8 @@ const KanbanBoardPage: React.FC = () => {
         return updated;
       });
 
-      refetch();
+      refetchTasks();
+      refetchSprints();
     } catch (error) {
       console.error('Failed to update task status:', error);
     }
@@ -164,8 +165,12 @@ const KanbanBoardPage: React.FC = () => {
   if (categoriesError) {
     return <div className="p-4 text-red-600">Error loading statuses: {getErrorMessage(categoriesError)}</div>;
   }
-  if (sprintError && sprintId !== 0) {
-    return <div className="p-4 text-red-600">Error: {getErrorMessage(sprintError)}</div>;
+
+  const isNoActiveSprint = !activeSprint || (sprintError && 'status' in sprintError && sprintError.status === 404);
+
+  // Log the error for debugging
+  if (sprintError) {
+    console.log('Sprint error:', sprintError);
   }
 
   return (
@@ -182,15 +187,26 @@ const KanbanBoardPage: React.FC = () => {
             {statuses.map((status) => (
               <KanbanColumn
                 key={status}
-                sprint={activeSprint || { id: 0, name: 'No Sprint', projectId: 0 }}
-                tasks={tasks[status] || []}
+                sprint={isNoActiveSprint ? { id: 0, name: 'No Sprint', projectId: 0 } : activeSprint!}
+                tasks={isNoActiveSprint ? [] : tasks[status] || []}
                 moveTask={moveTask}
                 status={status}
-                isActive={true}
+                isActive={!isNoActiveSprint}
               />
             ))}
           </div>
         </DndProvider>
+        {isNoActiveSprint && (
+          <div className="p-4 text-center text-gray-500">
+            No active sprint found for project {projectKey}.{' '}
+            <button
+              onClick={refetchSprint}
+              className="text-blue-600 hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        )}
       </div>
     </ErrorBoundary>
   );

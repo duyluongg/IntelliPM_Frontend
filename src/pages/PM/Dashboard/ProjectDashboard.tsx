@@ -1,6 +1,5 @@
-import TaskStatusChart from './TaskStatusChart';
-import DashboardCard from './DashboardCard';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import {
   useCalculateMetricsBySystemMutation,
   useGetProjectMetricByProjectKeyQuery,
@@ -12,77 +11,80 @@ import {
   useGetWorkloadDashboardQuery,
   useGetProjectMetricAIByProjectKeyQuery,
 } from '../../../services/projectMetricApi';
+import {
+  useLazyGetAIRecommendationsByProjectKeyQuery,
+  useCreateProjectRecommendationMutation,
+  useGetRecommendationsByProjectKeyQuery,
+  useLazyGetAIForecastByProjectKeyQuery,
+} from '../../../services/projectRecommendationApi';
+import { useCreateAiResponseHistoryMutation } from '../../../services/aiResponseHistoryApi'; // Import new hook
+import { AlertTriangle, CheckCircle, Edit, Trash2, Save, X } from 'lucide-react';
 import HealthOverview from './HealthOverview';
 import ProgressPerSprint from './ProgressPerSprint';
 import TimeComparisonChart from './TimeComparisonChart';
 import CostBarChart from './CostBarChart';
 import WorkloadChart from './WorkloadChart';
-import { useSearchParams } from 'react-router-dom';
-import { useLocation } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
-import {
-  useLazyGetAIRecommendationsByProjectKeyQuery,
-  useCreateProjectRecommendationMutation,
-  useGetRecommendationsByProjectKeyQuery,
-  useGetAIForecastByProjectKeyQuery,
-  useLazyGetAIForecastByProjectKeyQuery,
-} from '../../../services/projectRecommendationApi';
+import TaskStatusChart from './TaskStatusChart';
 import ApprovedAIImpactPanel from './ApprovedAIImpactPanel';
 import ImpactChart from './ImpactChart';
-import './ProjectDashboard.css';
+import DashboardCard from './DashboardCard';
+import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
 
-const ProjectDashboard = () => {
+interface AIRecommendation {
+  id?: number;
+  recommendation: string;
+  details: string;
+  type: string;
+  affectedTasks: string[];
+  expectedImpact: string;
+  suggestedChanges: string;
+  priority: number;
+}
+
+interface AIForecast {
+  schedulePerformanceIndex: number;
+  costPerformanceIndex: number;
+  estimateAtCompletion: number;
+  estimateToComplete: number;
+  varianceAtCompletion: number;
+  estimatedDurationAtCompletion: number;
+  isImproved: boolean;
+  improvementSummary: string;
+  confidenceScore: number;
+}
+
+interface AIForecastResponse {
+  isSuccess: boolean;
+  code: number;
+  data: AIForecast;
+  message: string;
+}
+
+const ProjectDashboard: React.FC = () => {
   const [calculate] = useCalculateMetricsBySystemMutation();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: metricData, refetch } = useGetProjectMetricByProjectKeyQuery(projectKey);
-  const {
-    data: healthData,
-    isLoading: isHealthLoading,
-    refetch: refetchHealth,
-  } = useGetHealthDashboardQuery(projectKey);
-  const {
-    data: progressData,
-    isLoading: isProgressLoading,
-    refetch: refetchProgress,
-  } = useGetProgressDashboardQuery(projectKey);
-  const {
-    data: taskStatusData,
-    isLoading: isTaskStatusLoading,
-    refetch: refetchTaskStatus,
-  } = useGetTaskStatusDashboardQuery(projectKey);
-  const {
-    data: timeData,
-    isLoading: isTimeLoading,
-    refetch: refetchTime,
-  } = useGetTimeDashboardQuery(projectKey);
-  const {
-    data: costData,
-    isLoading: isCostLoading,
-    refetch: refetchCost,
-  } = useGetCostDashboardQuery(projectKey);
-  const {
-    data: workloadData,
-    isLoading: isWorkloadLoading,
-    refetch: refetchWorkload,
-  } = useGetWorkloadDashboardQuery(projectKey);
-
-  const {
-    data: recRes,
-    isLoading: isRecsLoading,
-    refetch: refetchRec,
-  } = useGetRecommendationsByProjectKeyQuery(projectKey);
-
-  const [triggerForecast, { data: forecastRes, isLoading: isForecastLoading }] =
-    useLazyGetAIForecastByProjectKeyQuery();
-
-  const {
-    data: metricAIData,
-    isLoading: isAIMetricLoading,
-    refetch: refetchAIData,
-  } = useGetProjectMetricAIByProjectKeyQuery(projectKey);
-
+  const { data: healthData, isLoading: isHealthLoading, refetch: refetchHealth } = useGetHealthDashboardQuery(projectKey);
+  const { data: progressData, isLoading: isProgressLoading, refetch: refetchProgress } = useGetProgressDashboardQuery(projectKey);
+  const { data: taskStatusData, isLoading: isTaskStatusLoading, refetch: refetchTaskStatus } = useGetTaskStatusDashboardQuery(projectKey);
+  const { data: timeData, isLoading: isTimeLoading, refetch: refetchTime } = useGetTimeDashboardQuery(projectKey);
+  const { data: costData, isLoading: isCostLoading, refetch: refetchCost } = useGetCostDashboardQuery(projectKey);
+  const { data: workloadData, isLoading: isWorkloadLoading, refetch: refetchWorkload } = useGetWorkloadDashboardQuery(projectKey);
+  const { data: recRes, isLoading: isRecsLoading, refetch: refetchRec } = useGetRecommendationsByProjectKeyQuery(projectKey);
+  const [triggerForecast, { data: forecastRes, isLoading: isForecastLoading }] = useLazyGetAIForecastByProjectKeyQuery();
+  const { data: metricAIData, isLoading: isAIMetricLoading, refetch: refetchAIData } = useGetProjectMetricAIByProjectKeyQuery(projectKey);
   const location = useLocation();
+
+  const [triggerGetRecommendations, { data: recData, isLoading: isRecLoading }] = useLazyGetAIRecommendationsByProjectKeyQuery();
+  const [createRecommendation, { isLoading: isCreateLoading }] = useCreateProjectRecommendationMutation();
+  const [createAiResponseHistory] = useCreateAiResponseHistoryMutation(); // Use new hook
+
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [approvedIds, setApprovedIds] = useState<number[]>([]);
+  const [recommendations, setRecommendations] = useState<AIRecommendation[]>(recData?.data ?? []);
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false); // Popup state
+  const [aiResponseJson, setAiResponseJson] = useState<string>(''); // JSON for popup
 
   useEffect(() => {
     const doCalculateThenRefetch = async () => {
@@ -93,9 +95,8 @@ const ProjectDashboard = () => {
         console.error('❌ Error calculating/refetching metrics:', err);
       }
     };
-
     doCalculateThenRefetch();
-  }, [location.key]);
+  }, [location.key, calculate, refetch]);
 
   useEffect(() => {
     refetchHealth();
@@ -104,244 +105,372 @@ const ProjectDashboard = () => {
     refetchTime();
     refetchCost();
     refetchWorkload();
-  }, [location.key]);
+    refetchRec();
+    if (showRecommendations) {
+      triggerGetRecommendations(projectKey);
+    }
+  }, [location.key, refetchHealth, refetchProgress, refetchTaskStatus, refetchTime, refetchCost, refetchWorkload, refetchRec, projectKey, triggerGetRecommendations, showRecommendations]);
 
-  const approvedRecs =
-    recRes?.data.map((rec) => ({
-      id: rec.id,
-      projectId: rec.projectId,
-      taskId: rec.taskId,
-      taskTitle: rec.taskTitle,
-      type: rec.type,
-      recommendation: rec.recommendation,
-      createdAt: rec.createdAt,
-    })) ?? [];
+  useEffect(() => {
+    setRecommendations(recData?.data ?? []);
+  }, [recData]);
+
+  const approvedRecs = recRes?.data?.map((rec) => ({
+    id: rec.id,
+    projectId: rec.projectId,
+    type: rec.type,
+    recommendation: rec.recommendation,
+    details: rec.details,
+    suggestedChanges: rec.suggestedChanges,
+    createdAt: rec.createdAt,
+  })) ?? [];
 
   const handleAfterDeleteRecommendation = async () => {
     try {
       await refetchRec();
-
-      const result = await triggerForecast(projectKey).unwrap();
-      console.log('✅ Forecast done:', result);
-
-      refetchAIData();
+      await triggerForecast(projectKey).unwrap();
+      await refetchAIData();
     } catch (error) {
       console.error('❌ Error in handleAfterDeleteRecommendation:', error);
     }
   };
 
-  const [approvedIds, setApprovedIds] = useState<number[]>([]);
-
   const spi = metricData?.data?.schedulePerformanceIndex ?? 0;
   const cpi = metricData?.data?.costPerformanceIndex ?? 0;
 
-  const ForecastCard = ({
-    eac,
-    etc,
-    vac,
-    edac,
-  }: {
+  const projectId = metricData?.data?.projectId; 
+
+  const ForecastCard: React.FC<{
     eac: number;
     etc: number;
     vac: number;
     edac: number;
-  }) => {
-    return (
-      <div className='bg-blue-50 border border-blue-300 text-blue-800 px-4 py-3 rounded col-span-full'>
-        <div className='flex flex-col gap-2 text-sm'>
-          <div className='font-semibold text-base mb-1'>📊 Project Forecast</div>
-          <div>
-            <strong>Estimate at Completion (EAC):</strong> {eac.toLocaleString()}
-            <span className='block ml-1 text-xs text-gray-600'>
-              — This is the expected total cost of the project when completed. It considers actual
-              costs so far and remaining estimates.
-            </span>
-          </div>
-          <div>
-            <strong>Estimate to Complete (ETC):</strong> {etc.toLocaleString()}
-            <span className='block ml-1 text-xs text-gray-600'>
-              — The projected cost required to finish the remaining work in the project.
-            </span>
-          </div>
-          <div>
-            <strong>Variance at Completion (VAC):</strong> {vac.toLocaleString()}
-            <span className='block ml-1 text-xs text-gray-600'>
-              — The difference between the original budget and the estimated cost at completion. A
-              negative value means over budget.
-            </span>
-          </div>
-          <div>
-            <strong>Estimated Duration (EDAC):</strong> {edac} months
-            <span className='block ml-1 text-xs text-gray-600'>
-              — The estimated total time to complete the project based on current progress and
-              trends.
-            </span>
-          </div>
+  }> = ({ eac, etc, vac, edac }) => (
+    <DashboardCard title="Project Forecast">
+      <div className="flex flex-col gap-3 text-sm text-gray-700">
+        <div>
+          <strong className="text-blue-700">Estimate at Completion (EAC):</strong> {eac.toLocaleString()}
+          <p className="ml-1 text-xs text-gray-500">Expected total cost of the project based on current data.</p>
+        </div>
+        <div>
+          <strong className="text-blue-700">Estimate to Complete (ETC):</strong> {etc.toLocaleString()}
+          <p className="ml-1 text-xs text-gray-500">Projected cost to finish remaining work.</p>
+        </div>
+        <div>
+          <strong className="text-blue-700">Variance at Completion (VAC):</strong> {vac.toLocaleString()}
+          <p className="ml-1 text-xs text-gray-500">Difference between budget and estimated cost. Negative means over budget.</p>
+        </div>
+        <div>
+          <strong className="text-blue-700">Estimated Duration (EDAC):</strong> {edac} months
+          <p className="ml-1 text-xs text-gray-500">Estimated total time to complete based on progress.</p>
         </div>
       </div>
-    );
-  };
+    </DashboardCard>
+  );
 
-  const AlertCard = ({
-    spi,
-    cpi,
-    onShowAIRecommendations,
-    showRecommendations,
-  }: {
+  const AlertCard: React.FC<{
     spi: number;
     cpi: number;
     onShowAIRecommendations: () => void;
     showRecommendations: boolean;
-  }) => {
+  }> = ({ spi, cpi, onShowAIRecommendations, showRecommendations }) => {
     const isSPIBad = spi < 1;
     const isCPIBad = cpi < 1;
-
     if (!isSPIBad && !isCPIBad) return null;
 
     return (
-      <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded col-span-full'>
-        <div className='flex flex-col gap-2'>
-          <div className='flex items-start gap-2'>
-            <AlertTriangle className='text-red-500' size={20} />
-            <div className='flex flex-col text-sm'>
-              <strong>Warning:</strong>
+      <DashboardCard title="Project Alerts">
+        <div className="flex flex-col gap-3 text-sm text-red-700">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="text-red-500" size={20} />
+            <div className="flex flex-col">
+              <strong className="text-red-700">Warning:</strong>
               {isSPIBad && <span>• Schedule Performance Index (SPI) is below 1.</span>}
               {isCPIBad && <span>• Cost Performance Index (CPI) is below 1.</span>}
-              <span>• Please review suggested actions from AI below.</span>
+              <span>• Review AI-suggested actions below.</span>
             </div>
           </div>
-
           {!showRecommendations && (
             <button
               onClick={onShowAIRecommendations}
               disabled={isRecLoading}
-              className='self-start bg-blue-600 text-white px-4 py-1.5 mt-1 rounded hover:bg-blue-700 text-sm flex items-center gap-2'
+              className="self-start bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              📥 View AI suggestion
-              {isRecLoading && <span className='loader small'></span>}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              View AI Suggestions
+              {isRecLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
             </button>
           )}
         </div>
-      </div>
+      </DashboardCard>
     );
   };
 
-  interface AIRecommendation {
-    recommendation: string;
-    details: string;
-    type: string;
-    affectedTasks: string[];
-    suggestedTask: string | null;
-    expectedImpact: string;
-    // suggestedChanges: Record<string, any>;
-    suggestedChanges: string;
-  }
+  const validTypes = ['Schedule', 'Cost', 'Scope', 'Resource', 'Performance', 'Design', 'Testing'];
 
-  const [triggerGetRecommendations, { data: recData, isLoading: isRecLoading }] =
-    useLazyGetAIRecommendationsByProjectKeyQuery();
-
-  const [showRecommendations, setShowRecommendations] = useState(false);
-  const recommendations: AIRecommendation[] = recData?.data ?? [];
-
-  const RecommendationCard = ({
-    rec,
-    index,
-    projectId,
-    approvedIds,
-    setApprovedIds,
-  }: {
+  const RecommendationCard: React.FC<{
     rec: AIRecommendation;
     index: number;
     projectId: number | undefined;
     approvedIds: number[];
     setApprovedIds: React.Dispatch<React.SetStateAction<number[]>>;
-  }) => {
-    const [createRecommendation, { isLoading }] = useCreateProjectRecommendationMutation();
-
+  }> = ({ rec, index, projectId, approvedIds, setApprovedIds }) => {
     const isApproved = approvedIds.includes(index);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedRec, setEditedRec] = useState<AIRecommendation>({ ...rec });
+    const [errors, setErrors] = useState<{ recommendation?: string; type?: string; api?: string }>({});
+
+    const validateFields = () => {
+      const newErrors: { recommendation?: string; type?: string } = {};
+      if (!editedRec.recommendation.trim()) {
+        newErrors.recommendation = 'Recommendation is required';
+      }
+      if (!editedRec.type || !validTypes.includes(editedRec.type)) {
+        newErrors.type = 'Valid type is required';
+      }
+      setErrors(newErrors);
+      return Object.keys(newErrors).length === 0;
+    };
 
     const handleApprove = async () => {
       if (!projectId || isApproved) return;
+      if (!validateFields()) return;
       try {
-        await createRecommendation({
+        const payload = {
           projectId,
-          taskId: rec.suggestedTask ?? null,
-          type: rec.type,
-          recommendation: rec.suggestedChanges,
-        }).unwrap();
+          type: editedRec.type,
+          recommendation: editedRec.recommendation,
+          suggestedChanges: editedRec.suggestedChanges || '',
+          details: editedRec.details || '',
+        };
+        console.log('Sending payload:', payload);
+        await createRecommendation(payload).unwrap();
         setApprovedIds((prev) => [...prev, index]);
+        setRecommendations((prev) =>
+          prev.map((r, i) => (i === index ? { ...editedRec, id: rec.id } : r))
+        );
         await refetchRec();
         await triggerForecast(projectKey);
         await refetchAIData();
-      } catch (err) {
+        setErrors({});
+      } catch (err: any) {
         console.error('Error saving recommendation:', err);
+        console.log('API Error Details:', JSON.stringify(err.data, null, 2));
       }
     };
 
+    const handleEdit = () => {
+      setIsEditing(true);
+      setEditedRec({ ...rec });
+      setErrors({});
+    };
+
+    const handleSaveEdit = () => {
+      if (!validateFields()) return;
+      setRecommendations((prev) =>
+        prev.map((r, i) => (i === index ? { ...editedRec, id: rec.id } : r))
+      );
+      setIsEditing(false);
+      setErrors({});
+    };
+
+    const handleDelete = () => {
+      if (!window.confirm('Are you sure you want to delete this recommendation?')) return;
+      setRecommendations((prev) => prev.filter((_, i) => i !== index));
+      setApprovedIds((prev) => prev.filter((id) => id !== index));
+    };
+
     return (
-      <div className='border rounded-lg p-4 shadow bg-white flex flex-col gap-2'>
-        <div className='text-sm text-gray-600 font-semibold'>
-          Recommendation #{index + 1} - {rec.type}
-        </div>
-        <div className='font-medium text-black'>{rec.recommendation}</div>
-        <div className='text-sm text-gray-700 whitespace-pre-wrap'>{rec.details}</div>
-        <div className='text-xs text-gray-500'>
-          <strong>Expected Impact:</strong> {rec.expectedImpact}
-        </div>
-
-        {rec.suggestedChanges && Object.keys(rec.suggestedChanges).length > 0 && (
-          <div className='text-sm text-gray-600 bg-gray-100 p-2 rounded'>
-            <strong>Suggested Changes:</strong>
-            <div className='text-sm text-gray-700 whitespace-pre-wrap'>{rec.suggestedChanges}</div>
+      <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
+        {isEditing ? (
+          <div className="flex flex-col gap-3">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Recommendation</label>
+              <input
+                type="text"
+                value={editedRec.recommendation}
+                onChange={(e) => setEditedRec({ ...editedRec, recommendation: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter recommendation"
+              />
+              {errors.recommendation && <p className="text-xs text-red-500">{errors.recommendation}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Type</label>
+              <select
+                value={editedRec.type}
+                onChange={(e) => setEditedRec({ ...editedRec, type: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select type</option>
+                {validTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+              {errors.type && <p className="text-xs text-red-500">{errors.type}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Details</label>
+              <textarea
+                value={editedRec.details}
+                onChange={(e) => setEditedRec({ ...editedRec, details: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter details"
+                rows={4}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Suggested Changes</label>
+              <input
+                type="text"
+                value={editedRec.suggestedChanges}
+                onChange={(e) => setEditedRec({ ...editedRec, suggestedChanges: e.target.value })}
+                className="w-full border rounded-lg p-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter suggested changes"
+              />
+            </div>
+            {errors.api && <p className="text-xs text-red-500">{errors.api}</p>}
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveEdit}
+                className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                disabled={isCreateLoading}
+              >
+                <Save size={16} /> Save
+              </button>
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setErrors({});
+                }}
+                className="bg-gray-300 text-gray-800 px-3 py-1 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        )}
-
-        <div className='flex gap-2 mt-2 items-center'>
-          <button
-            onClick={handleApprove}
-            className='bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed'
-            disabled={isApproved || isLoading}
-          >
-            {isLoading ? (
-              <span className='flex items-center gap-1'>
-                <svg
-                  className='animate-spin h-4 w-4 text-white'
-                  viewBox='0 0 24 24'
-                  fill='none'
-                  xmlns='http://www.w3.org/2000/svg'
-                >
-                  <circle
-                    className='opacity-25'
-                    cx='12'
-                    cy='12'
-                    r='10'
-                    stroke='currentColor'
-                    strokeWidth='4'
-                  ></circle>
-                  <path
-                    className='opacity-75'
-                    fill='currentColor'
-                    d='M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 100 16v-4l-3 3 3 3v-4a8 8 0 01-8-8z'
-                  ></path>
-                </svg>
-                Saving...
-              </span>
-            ) : (
-              '✅ Approve'
+        ) : (
+          <>
+            <div className="text-sm text-gray-600 font-semibold">
+              Recommendation #{index + 1} - {rec.type} (Priority: {rec.priority})
+            </div>
+            <div className="font-medium text-gray-900">{rec.recommendation}</div>
+            <div className="text-sm text-gray-600 whitespace-pre-wrap">{rec.details}</div>
+            <div className="text-xs text-gray-500">
+              <strong>Expected Impact:</strong> {rec.expectedImpact}
+            </div>
+            {rec.suggestedChanges && (
+              <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded mt-2">
+                <strong>Suggested Changes:</strong>
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">{rec.suggestedChanges}</div>
+              </div>
             )}
-          </button>
-
-          {isApproved && <span className='text-sm text-green-600 font-medium'>✅ Approved</span>}
-        </div>
+            {errors.api && <p className="text-xs text-red-500 mt-2">{errors.api}</p>}
+            <div className="flex gap-2 mt-3 items-center">
+              <button
+                onClick={handleApprove}
+                className="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isApproved || isCreateLoading}
+              >
+                <CheckCircle size={16} />
+                {isCreateLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  'Approve'
+                )}
+              </button>
+              <button
+                onClick={handleEdit}
+                className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isApproved}
+              >
+                <Edit size={16} /> Edit
+              </button>
+              <button
+                onClick={handleDelete}
+                className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isApproved}
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+              {isApproved && <span className="text-sm text-green-600 font-medium flex items-center gap-1"><CheckCircle size={16} /> Approved</span>}
+            </div>
+          </>
+        )}
       </div>
     );
   };
 
+  const handleSaveAll = async () => {
+    try {
+      if (!recData?.data || recData.data.length === 0) {
+        console.warn('No original AI recommendations to save.');
+        setShowRecommendations(false);
+        return;
+      }
+
+      const responseJson = JSON.stringify(recData.data); 
+      setAiResponseJson(responseJson);
+      setIsEvaluationPopupOpen(true);
+
+      await refetchRec();
+      await refetchAIData();
+      setShowRecommendations(false);
+    } catch (err: any) {
+      console.error('Error saving all recommendations:', err);
+      console.log('API Error Details:', JSON.stringify(err.data, null, 2));
+    }
+  };
+
+  const handleExit = async () => {
+    try {
+      if (!recData?.data || recData.data.length === 0) {
+        console.warn('No original AI recommendations to save.');
+        setShowRecommendations(false);
+        return;
+      }
+      const responseJson = JSON.stringify(recData.data); 
+      // const aiResponsePayload = {
+      //   aiFeature: 'RECOMMENDATION_SUGGESTION',
+      //   projectId: projectId,
+      //   responseJson,
+      //   status: 'ACTIVE',
+      // };
+
+      // // Save to AiResponseHistory
+      // await createAiResponseHistory(aiResponsePayload).unwrap();
+
+      // Update state for popup
+      setAiResponseJson(responseJson);
+      setIsEvaluationPopupOpen(true);
+
+      await refetchRec();
+      await refetchAIData();
+      setShowRecommendations(false);
+    } catch (err: any) {
+      console.error('Error saving all recommendations:', err);
+      console.log('API Error Details:', JSON.stringify(err.data, null, 2));
+    }
+  };
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = async () => {
+    await refetchRec();
+    // await triggerForecast(projectKey);
+    await refetchAIData();
+  };
+
   return (
-    <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4'>
-      <div className='col-span-full grid grid-cols-3 gap-4'>
-        <div className='col-span-1'>
-          <DashboardCard title='Impact of AI Recommendations'>
+    <div className="container mx-auto p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="col-span-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="col-span-1">
+          <DashboardCard title="Impact of AI Recommendations">
             {(recRes?.data?.length ?? 0) > 0 && metricData && metricAIData ? (
               <ImpactChart
                 spiBefore={metricData.data?.schedulePerformanceIndex ?? 0}
@@ -350,15 +479,13 @@ const ProjectDashboard = () => {
                 cpiAfter={metricAIData.data?.costPerformanceIndex ?? 0}
               />
             ) : (
-              <p className='text-sm text-gray-500 italic'>No AI recommendations applied yet.</p>
+              <p className="text-sm text-gray-500 italic">No AI recommendations applied yet.</p>
             )}
           </DashboardCard>
         </div>
-
-        <div className='col-span-2'>
+        <div className="col-span-2">
           <ApprovedAIImpactPanel
             approvedRecs={approvedRecs}
-            // forecast={forecastRes?.data}
             forecast={metricAIData}
             metricData={metricData}
             refetchApprovedRecs={refetchRec}
@@ -373,7 +500,7 @@ const ProjectDashboard = () => {
         cpi={cpi}
         showRecommendations={showRecommendations}
         onShowAIRecommendations={() => {
-          triggerGetRecommendations(projectKey);
+          triggerGetRecommendations(projectKey, false);
           setShowRecommendations(true);
         }}
       />
@@ -385,65 +512,94 @@ const ProjectDashboard = () => {
         edac={metricData?.data?.estimateDurationAtCompletion ?? 0}
       />
 
-      <DashboardCard title='Health Overview'>
+      <DashboardCard title="Health Overview">
         <HealthOverview data={healthData} isLoading={isHealthLoading} />
       </DashboardCard>
 
-      <DashboardCard title='Task Status'>
+      <DashboardCard title="Task Status">
         <TaskStatusChart data={taskStatusData} isLoading={isTaskStatusLoading} />
       </DashboardCard>
 
-      <DashboardCard title='Progress'>
+      <DashboardCard title="Progress">
         <ProgressPerSprint data={progressData} isLoading={isProgressLoading} />
       </DashboardCard>
 
-      <DashboardCard title='Time Tracking'>
+      <DashboardCard title="Time Tracking">
         <TimeComparisonChart data={timeData} isLoading={isTimeLoading} />
       </DashboardCard>
 
-      <DashboardCard title='Cost'>
+      <DashboardCard title="Cost">
         <CostBarChart data={costData} isLoading={isCostLoading} />
       </DashboardCard>
 
-      <DashboardCard title='Workload'>
+      <DashboardCard title="Workload">
         <WorkloadChart data={workloadData} isLoading={isWorkloadLoading} />
       </DashboardCard>
 
       {showRecommendations && (
-        <div className='fixed inset-0 z-50 bg-black bg-opacity-30 flex justify-center items-center'>
-          <div className='bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto'>
-            <h2 className='text-lg font-semibold mb-4'>📌 AI Suggestions</h2>
-
-            {isRecLoading ? (
-              <p>Đang lấy gợi ý...</p>
-            ) : recommendations.length > 0 ? (
-              recommendations.map((rec, idx) => (
-                <RecommendationCard
-                  key={idx}
-                  rec={rec}
-                  index={idx}
-                  projectId={metricData?.data?.projectId}
-                  approvedIds={approvedIds}
-                  setApprovedIds={setApprovedIds}
-                />
-              ))
-            ) : (
-              <p className='text-sm text-gray-600'>Không có gợi ý nào từ AI.</p>
-            )}
-
-            <div className='mt-4 text-right'>
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                </svg>
+                AI Suggestions
+              </h2>
               <button
-                onClick={() => setShowRecommendations(false)}
-                className='px-4 py-1.5 bg-gray-200 rounded hover:bg-gray-300'
+                // onClick={() => setShowRecommendations(false)}
+                onClick={handleExit}
+                className="text-gray-500 hover:text-gray-700"
               >
-                Close
+                <X size={24} />
               </button>
             </div>
+
+            {isRecLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : recommendations.length > 0 ? (
+              <div className="flex flex-col gap-4">
+                {recommendations.map((rec, idx) => (
+                  <RecommendationCard
+                    key={idx}
+                    rec={rec}
+                    index={idx}
+                    projectId={projectId}
+                    approvedIds={approvedIds}
+                    setApprovedIds={setApprovedIds}
+                  />
+                ))}
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleSaveAll}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <Save size={16} /> Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">No AI suggestions available.</p>
+            )}
           </div>
         </div>
+      )}
+
+      {isEvaluationPopupOpen && projectId && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={projectId}
+          aiFeature="RECOMMENDATION_SUGGESTION"
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
       )}
     </div>
   );
 };
 
 export default ProjectDashboard;
+

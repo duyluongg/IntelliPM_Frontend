@@ -51,6 +51,8 @@ import { documentExportApi } from '../services/Document/documentExportApi';
 import { labelApi } from '../services/labelApi';
 import { milestoneCommentApi } from '../services/milestoneCommentApi';
 import { adminApi } from '../services/adminApi';
+import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
+import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
 
 const persistConfig = {
   key: 'root',
@@ -105,6 +107,8 @@ const rootReducer = combineReducers({
   [labelApi.reducerPath]: labelApi.reducer,
   [milestoneCommentApi.reducerPath]: milestoneCommentApi.reducer,
   [adminApi.reducerPath]: adminApi.reducer,
+  [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
+  [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -164,7 +168,9 @@ export const store = configureStore({
       documentExportApi.middleware,
       labelApi.middleware,
       milestoneCommentApi.middleware,
-      adminApi.middleware
+      adminApi.middleware,
+      aiResponseHistoryApi.middleware,
+      aiResponseEvaluationApi.middleware,
     ),
 });
 

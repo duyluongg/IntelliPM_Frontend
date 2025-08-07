@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
+import { useEffect } from 'react';
 import './../../WorkItem/WorkItem.css';
 import { useAuth, type Role } from '../../../services/AuthContext';
 import tickIcon from '../../../assets/icon/type_task.svg';
@@ -53,6 +54,10 @@ import type { TaskAssignmentDTO } from '../../../services/taskAssignmentApi';
 import { WorkLogModal } from '../../WorkItem/WorkLogModal';
 import TaskDependency from '../../WorkItem/TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../../services/activityLogApi';
+import { useRef } from 'react';
+import { useDeleteWorkItemLabelMutation } from '../../../services/workItemLabelApi';
+import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
+import { useCreateLabelAndAssignMutation } from '../../../services/labelApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -61,9 +66,9 @@ interface WorkItemProps {
 }
 
 const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId }) => {
-  //   const [searchParams] = useSearchParams();
-  //   const taskId = propTaskId ?? searchParams.get('taskId') ?? '';
   const taskId = propTaskId ?? '';
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [plannedStartDate, setPlannedStartDate] = React.useState('');
@@ -119,8 +124,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
-
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+
+  console.log('ProjectKey: ', projectKey);
 
   const {
     data: attachments = [],
@@ -242,6 +253,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !isOpen || !taskId,
   });
 
+  useEffect(() => {
+    if (taskId) {
+      refetchTask();
+    }
+  }, [taskId, refetchTask]);
+
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
@@ -260,12 +277,84 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !taskId,
   });
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading } = useGetWorkItemLabelsByTaskQuery(
-    taskId,
-    {
-      skip: !taskId,
+  const {
+    data: workItemLabels = [],
+    isLoading: isLabelLoading,
+    refetch: refetchWorkItemLabels,
+  } = useGetWorkItemLabelsByTaskQuery(taskId, {
+    skip: !taskId,
+  });
+
+  const {
+    data: projectLabels = [],
+    isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels,
+  } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
+
+  const filteredLabels = projectLabels.filter((label) => {
+    const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
+
+    if (newLabelName.trim() === '') {
+      return notAlreadyAdded;
     }
-  );
+
+    return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
+  });
+
+  const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
+
+  const handleCreateLabelAndAssign = async (labelName?: string) => {
+    const nameToAssign = labelName?.trim() || newLabelName.trim();
+
+    if (!taskData?.projectId || !taskId || !nameToAssign) {
+      alert('Missing projectId, taskId or label name!');
+      return;
+    }
+
+    try {
+      await createLabelAndAssign({
+        projectId: taskData.projectId,
+        name: nameToAssign,
+        taskId,
+        epicId: null,
+        subtaskId: null,
+      }).unwrap();
+
+      alert('✅ Label assigned successfully!');
+      setNewLabelName('');
+      setIsEditingLabel(false);
+      await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
+    } catch (error) {
+      console.error('❌ Failed to create and assign label:', error);
+      alert('❌ Failed to assign label');
+    }
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (labelRef.current && !labelRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+        setIsEditingLabel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleDeleteWorkItemLabel = async (id: number) => {
+    try {
+      await deleteWorkItemLabel(id).unwrap();
+      console.log('Delete successfully');
+      await refetchWorkItemLabels();
+    } catch (error) {
+      console.error(':', error);
+    }
+  };
 
   const {
     data: comments = [],
@@ -334,10 +423,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
-  const formatDate = (isoString: string | undefined) => {
-    if (!isoString) return 'None';
-    const date = new Date(isoString);
-    return date.toLocaleDateString('vi-VN');
+  const isUserAssignee = (taskId: string, subtaskAssigneeId?: number) => {
+    const currentUserId = accountId.toString();
+
+    // For task: Check if the user is in the task's assignees list
+    if (!subtaskAssigneeId) {
+      const taskAssignees = taskAssignmentMap[taskId] || [];
+      return taskAssignees.some((assignee) => assignee.accountId.toString() === currentUserId);
+    }
+
+    // For subtask: Check if the user matches the subtask's assignee
+    return subtaskAssigneeId.toString() === currentUserId;
   };
 
   const handleWorkTypeChange = async (type: string) => {
@@ -373,7 +469,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const navigate = useNavigate();
 
   const handleKeyClick = () => {
-    navigate(`/project/work-item-detail?taskId=${taskId}`);
+    navigate(`/project/${projectKey}/work-item-detail?taskId=${taskId}`);
   };
 
   if (!isOpen) return null;
@@ -1018,17 +1114,27 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             </td>
 
                             <td>
-                              <select
-                                value={item.status}
-                                onChange={(e) => handleStatusChange(item.key, e.target.value)}
-                                className={`custom-status-select status-${item.status
-                                  .toLowerCase()
-                                  .replace('_', '-')}`}
-                              >
-                                <option value='TO_DO'>To Do</option>
-                                <option value='IN_PROGRESS'>In Progress</option>
-                                <option value='DONE'>Done</option>
-                              </select>
+                              {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => handleStatusChange(item.key, e.target.value)}
+                                  className={`custom-status-select status-${item.status
+                                    .toLowerCase()
+                                    .replace('_', '-')}`}
+                                >
+                                  <option value='TO_DO'>To Do</option>
+                                  <option value='IN_PROGRESS'>In Progress</option>
+                                  <option value='DONE'>Done</option>
+                                </select>
+                              ) : (
+                                <span
+                                  className={`custom-status-select status-${item.status
+                                    .toLowerCase()
+                                    .replace('_', '-')}`}
+                                >
+                                  {item.status.replace('_', ' ')}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1286,15 +1392,36 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
           {/* Details Panel */}
           <div className='details-panel'>
             <div className='panel-header'>
-              <select
-                value={status}
-                onChange={(e) => handleTaskStatusChange(e.target.value)}
-                className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
-              >
-                <option value='TO_DO'>To Do</option>
-                <option value='IN_PROGRESS'>In Progress</option>
-                <option value='DONE'>Done</option>
-              </select>
+              {isUserAssignee(taskId) || canEdit ? (
+                <select
+                  value={status}
+                  onChange={(e) => handleTaskStatusChange(e.target.value)}
+                  className={`custom-status-select status-${status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                >
+                  <option value='TO_DO'>To Do</option>
+                  <option value='IN_PROGRESS'>In Progress</option>
+                  <option value='DONE'>Done</option>
+                </select>
+              ) : (
+                <span
+                  className={`custom-status-select status-${status
+                    .toLowerCase()
+                    .replace('_', '-')}`}
+                >
+                  {status.replace('_', ' ')}
+                </span>
+              )}
+              {taskData?.warnings && taskData.warnings.length > 0 && (
+                <div className='warning-box'>
+                  {taskData.warnings.map((warning, idx) => (
+                    <div key={idx} className='warning-text'>
+                      ⚠️ {warning}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className='details-content'>
               <h4>Details</h4>
@@ -1387,24 +1514,77 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 )}
               </div>
 
-              <div className='detail-item'>
-                <label>Labels</label>
-                <span>
-                  {isLabelLoading
-                    ? 'Loading...'
-                    : workItemLabels.length === 0
-                    ? 'None'
-                    : workItemLabels.map((label) => label.labelName).join(', ')}
-                </span>
-              </div>
-              <div className='detail-item'>
-                <label>Parent</label>
-                <span>{taskData?.epicId ?? 'None'}</span>
-              </div>
-              <div className='detail-item'>
-                <label>Sprint</label>
-                <span>{taskData?.sprintName ?? 'None'}</span>
-              </div>
+              {isEditingLabel ? (
+                <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
+                  <div className='flex flex-col gap-2 w-full relative'>
+                    <label className='font-semibold'>Labels</label>
+
+                    {/* Tag list + input */}
+                    <div
+                      className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
+                      onClick={() => setDropdownOpen(true)}
+                    >
+                      {workItemLabels.map((label) => (
+                        <span
+                          key={label.id}
+                          className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1'
+                        >
+                          {label.labelName}
+                          <button
+                            onClick={() => handleDeleteWorkItemLabel(label.id)}
+                            className='text-red-500 hover:text-red-700 font-bold text-sm'
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+
+                      <input
+                        value={newLabelName}
+                        onChange={(e) => {
+                          setNewLabelName(e.target.value);
+                          setDropdownOpen(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCreateLabelAndAssign();
+                        }}
+                        placeholder='Type to search or add'
+                        className='flex-1 min-w-[100px] border-none outline-none py-1'
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Dropdown suggestion */}
+                    {dropdownOpen && filteredLabels.length > 0 && (
+                      <ul className='absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto'>
+                        <li className='px-3 py-1 font-semibold text-gray-600 border-b'>
+                          All labels
+                        </li>
+                        {filteredLabels.map((label) => (
+                          <li
+                            key={label.id}
+                            onClick={() => handleCreateLabelAndAssign(label.name)}
+                            className='px-3 py-1 hover:bg-blue-100 cursor-pointer'
+                          >
+                            {label.name}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className='detail-item' onClick={() => setIsEditingLabel(true)}>
+                  <label className='font-semibold'>Labels</label>
+                  <span>
+                    {isLabelLoading
+                      ? 'Loading...'
+                      : workItemLabels.length === 0
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                  </span>
+                </div>
+              )}
 
               <div className='detail-item'>
                 <label>Priority</label>
@@ -1532,6 +1712,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 workItemId={taskId}
                 type='task'
               />
+
               <div className='detail-item'>
                 <label>Connections</label>
                 <span

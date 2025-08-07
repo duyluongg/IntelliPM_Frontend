@@ -51,7 +51,10 @@ import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useParams } from 'react-router-dom';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
@@ -253,6 +256,12 @@ const WorkItemDetail: React.FC = () => {
     skip: !taskId,
   });
 
+  useEffect(() => {
+    if (taskId) {
+      refetchTask();
+    }
+  }, [taskId, refetchTask]);
+
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
@@ -356,17 +365,21 @@ const WorkItemDetail: React.FC = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsByTaskQuery(
-    taskId,
-    {
-      skip: !taskId,
-    }
-  );
+  const {
+    data: workItemLabels = [],
+    isLoading: isLabelLoading,
+    refetch: refetchWorkItemLabels,
+  } = useGetWorkItemLabelsByTaskQuery(taskId, {
+    skip: !taskId,
+  });
 
-  const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
-    refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
-      skip: !taskData?.projectId,
-    });
+  const {
+    data: projectLabels = [],
+    isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels,
+  } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -375,10 +388,7 @@ const WorkItemDetail: React.FC = () => {
       return notAlreadyAdded; // Hiện toàn bộ nếu chưa nhập gì
     }
 
-    return (
-      label.name.toLowerCase().includes(newLabelName.toLowerCase()) &&
-      notAlreadyAdded
-    );
+    return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
   });
 
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
@@ -403,10 +413,7 @@ const WorkItemDetail: React.FC = () => {
       alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
-      await Promise.all([
-        refetchWorkItemLabels?.(),
-        refetchProjectLabels?.(),
-      ]);
+      await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
       alert('❌ Failed to assign label');
@@ -1104,8 +1111,12 @@ const WorkItemDetail: React.FC = () => {
                               {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
                                 <select
                                   value={item.status}
-                                  onChange={(e) => handleSubtaskStatusChange(item.key, e.target.value)}
-                                  className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}
+                                  onChange={(e) =>
+                                    handleSubtaskStatusChange(item.key, e.target.value)
+                                  }
+                                  className={`custom-status-select status-${item.status
+                                    .toLowerCase()
+                                    .replace('_', '-')}`}
                                 >
                                   {loadSubtaskStatus ? (
                                     <option>Loading...</option>
@@ -1405,7 +1416,6 @@ const WorkItemDetail: React.FC = () => {
                     {taskStatusLabel}
                   </span>
                 )}
-
                 {taskData?.warnings && taskData.warnings.length > 0 && (
                   <div className='warning-box'>
                     {taskData.warnings.map((warning, idx) => (
@@ -1496,8 +1506,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1507,24 +1517,24 @@ const WorkItemDetail: React.FC = () => {
               </div>
 
               {isEditingLabel ? (
-                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
-                  <div className="flex flex-col gap-2 w-full relative">
-                    <label className="font-semibold">Labels</label>
+                <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
+                  <div className='flex flex-col gap-2 w-full relative'>
+                    <label className='font-semibold'>Labels</label>
 
                     {/* Tag list + input */}
                     <div
-                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                      className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
                     >
                       {workItemLabels.map((label) => (
                         <span
                           key={label.id}
-                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                          className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1'
                         >
                           {label.labelName}
                           <button
                             onClick={() => handleDeleteWorkItemLabel(label.id)}
-                            className="text-red-500 hover:text-red-700 font-bold text-sm"
+                            className='text-red-500 hover:text-red-700 font-bold text-sm'
                           >
                             ×
                           </button>
@@ -1540,21 +1550,23 @@ const WorkItemDetail: React.FC = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleCreateLabelAndAssign();
                         }}
-                        placeholder="Type to search or add"
-                        className="flex-1 min-w-[100px] border-none outline-none py-1"
+                        placeholder='Type to search or add'
+                        className='flex-1 min-w-[100px] border-none outline-none py-1'
                         autoFocus
                       />
                     </div>
 
                     {/* Dropdown suggestion */}
                     {dropdownOpen && filteredLabels.length > 0 && (
-                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
-                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                      <ul className='absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto'>
+                        <li className='px-3 py-1 font-semibold text-gray-600 border-b'>
+                          All labels
+                        </li>
                         {filteredLabels.map((label) => (
                           <li
                             key={label.id}
                             onClick={() => handleCreateLabelAndAssign(label.name)}
-                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                            className='px-3 py-1 hover:bg-blue-100 cursor-pointer'
                           >
                             {label.name}
                           </li>
@@ -1564,14 +1576,14 @@ const WorkItemDetail: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
-                  <label className="font-semibold">Labels</label>
+                <div className='detail-item' onClick={() => setIsEditingLabel(true)}>
+                  <label className='font-semibold'>Labels</label>
                   <span>
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}

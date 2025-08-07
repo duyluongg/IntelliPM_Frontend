@@ -615,9 +615,9 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
             </>
           ) : hasSubtasks ? (
             <>
-              <p>Planned: {taskWithSubtasks?.plannedHours} hrs</p>
-              <p>Actual: {taskWithSubtasks?.actualHours} hrs</p>
-              <p>Remaining: {taskWithSubtasks?.remainingHours} hrs</p>
+              <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
+              <p>Actual: {taskWithSubtasks?.actualHours ?? 0} hrs</p>
+              <p>Remaining: {taskWithSubtasks?.remainingHours ?? 0} hrs</p>
             </>
           ) : (
             <>

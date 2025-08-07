@@ -65,7 +65,7 @@ const HealthOverview = ({
         <Row
           label='Cost Performance Index'
           value={
-            costStatus === 0 || costStatus === undefined ? 'No budget specified.' : `${costStatus}`
+            costStatus === 0 || costStatus === undefined ? '0' : `${costStatus}`
           }
         />
         <Row label='Schedule Performance Index' value={`${cost.schedulePerformanceIndex}`} />

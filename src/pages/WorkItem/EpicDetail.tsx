@@ -23,6 +23,8 @@ import accountIcon from '../../assets/account.png';
 import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetProjectByIdQuery } from '../../services/projectApi';
+import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -32,7 +34,7 @@ const EpicDetail: React.FC = () => {
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [status, setStatus] = React.useState('');
   const [projectId, setProjectId] = React.useState("");
-  const [epicStateId, setEpicStateId] = React.useState<string>(''); // thay vì string | undefined
+  const [epicStateId, setEpicStateId] = React.useState<string>('');
   const [updateEpicStatus] = useUpdateEpicStatusMutation();
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const navigate = useNavigate();
@@ -88,6 +90,10 @@ const EpicDetail: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+  const [generateTasksByEpicByAI, { isLoading: loadingSuggest }] = useGenerateTasksByEpicByAIMutation();
+  const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedTask[]>([]);
+  const [showSuggestionList, setShowSuggestionList] = React.useState(false);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<AiSuggestedTask[]>([]);
   const { data: taskTypeOptions, isLoading: isTaskTypeLoading, isError: isTaskTypeError } = useGetCategoriesByGroupQuery("task_type");
   const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
   const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
@@ -246,6 +252,17 @@ const EpicDetail: React.FC = () => {
     epicIdFromUrl!, { skip: !epicIdFromUrl, }
   );
 
+  console.log("epic?.projectId:", epic?.projectId);
+
+  const { data: projectData, isLoading: isProjectDataLoading, refetch: refetchProjectData } =
+    useGetProjectByIdQuery(epic?.projectId!, {
+      skip: !epic?.projectId,
+    });
+
+  const projectKey = projectData?.data?.projectKey;
+  console.log('projectData:', projectData);
+  console.log('projectKey:', projectKey);
+
   const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
     refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(epic?.projectId!, {
       skip: !epic?.projectId,
@@ -327,15 +344,6 @@ const EpicDetail: React.FC = () => {
       case 'STORY': return storyIcon;
       default: return taskIcon;
     }
-  };
-
-  const { data: epicLabels = [] } = useGetWorkItemLabelsByEpicQuery(epicIdFromUrl ?? '', {
-    skip: !epicIdFromUrl,
-  });
-
-  const formatDate = (iso: string | null | undefined) => {
-    if (!iso) return 'None';
-    return new Date(iso).toLocaleDateString('vi-VN');
   };
 
   if (isLoading || !epic) return <div className="epic-page-container"><p>🔄 Đang tải Epic...</p></div>;
@@ -478,6 +486,245 @@ const EpicDetail: React.FC = () => {
 
             <div className="field-group">
               <label>Child Work Items</label>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  border: '1px solid #ddd',
+                  borderRadius: '6px',
+                  padding: '16px',
+                  margin: '12px 0',
+                  backgroundColor: '#fff',
+                  fontSize: '14px',
+                }}
+              >
+                {/* Header */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      fontSize: '15px',
+                      fontWeight: '500',
+                    }}
+                  >
+                    <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
+                    Create suggested work items
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await generateTasksByEpicByAI(epicIdFromUrl!).unwrap();
+                        setAiSuggestions(result);
+                        setShowSuggestionList(true);
+                        setSelectedSuggestions([]);
+                      } catch (err) {
+                        alert('❌ Failed to get suggestions');
+                        console.error(err);
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px',
+                      backgroundColor: '#f4f5f7',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {loadingSuggest ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span
+                          role='img'
+                          style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
+                        >
+                          🧠
+                        </span>
+                        <div className='dot-loader'>
+                          <span>.</span>
+                          <span>.</span>
+                          <span>.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      'Suggest'
+                    )}
+                  </button>
+                </div>
+
+                {/* Suggestions */}
+                {showSuggestionList && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: 'rgba(0,0,0,0.4)',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      zIndex: 1000,
+                    }}
+                    onClick={() => setShowSuggestionList(false)}
+                  >
+                    <div
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: '8px',
+                        width: '480px',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
+                        padding: '20px',
+                        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '15px',
+                            fontWeight: '500',
+                          }}
+                        >
+                          <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
+                          AI Suggested Tasks
+                        </div>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '18px',
+                            cursor: 'pointer',
+                          }}
+                          title='Close'
+                        >
+                          ✖
+                        </button>
+                      </div>
+
+                      {/* Suggestion List */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          padding: '4px 8px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        {aiSuggestions.map((item, idx) => (
+                          <label
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '2px',
+                              lineHeight: '1.4',
+                              wordBreak: 'break-word',
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type='checkbox'
+                              checked={selectedSuggestions.includes(item)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setSelectedSuggestions((prev) =>
+                                  checked
+                                    ? [...prev, item]
+                                    : prev.filter((s) => s.title !== item.title)
+                                );
+                              }}
+                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
+                            />
+                            <div style={{ flex: 7 }}>
+                              <div style={{ fontWeight: 'bold' }}>{item.title}</div>
+                              <div style={{ color: '#666', fontSize: '13px' }}>{item.description}</div>
+                              <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                                <strong>Type:</strong> {item.type}
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Create Button */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                        <button
+                          onClick={async () => {
+                            for (const suggestion of selectedSuggestions) {
+                              try {
+                                await createTask({
+                                  reporterId: accountId,
+                                  projectId: parseInt(projectId),
+                                  epicId: epic.id,
+                                  title: suggestion.title,
+                                  description: suggestion.description,
+                                  type: suggestion.type,
+                                  createdBy: accountId,
+                                }).unwrap();
+                              } catch (err) {
+                                console.error(`❌ Failed to create: ${suggestion.title}`, err);
+                              }
+                            }
+
+                            alert('✅ Created selected tasks');
+                            setShowSuggestionList(false);
+                            setSelectedSuggestions([]);
+                            await refetch();
+                            await refetchActivityLogs();
+                          }}
+                          disabled={selectedSuggestions.length === 0}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontWeight: 500,
+                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Create Selected
+                        </button>
+                        <button
+                          onClick={() => setShowSuggestionList(false)}
+                          style={{
+                            padding: '8px 16px',
+                            backgroundColor: '#eee',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div style={{ marginBottom: '8px' }}>
                 <div style={{
                   height: '8px',
@@ -549,7 +796,7 @@ const EpicDetail: React.FC = () => {
                               <td>
                                 <span
                                   className="hover-underline"
-                                  onClick={() => navigate(`/project/work-item-detail?taskId=${task.id}`)}
+                                  onClick={() => navigate(`/project/${projectKey}/work-item-detail?taskId=${task.id}`)}
                                   style={{ cursor: 'pointer' }}
                                 >
                                   {task.id}

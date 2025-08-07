@@ -8,7 +8,10 @@ import {
   useGetSubtaskByIdQuery,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
-import { useGetWorkItemLabelsBySubtaskQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
+import {
+  useGetWorkItemLabelsBySubtaskQuery,
+  useDeleteWorkItemLabelMutation,
+} from '../../services/workItemLabelApi';
 import {
   useDeleteSubtaskFileMutation,
   useGetSubtaskFilesBySubtaskIdQuery,
@@ -26,7 +29,10 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 
 interface SubtaskDetail {
   id: string;
@@ -132,6 +138,12 @@ const ChildWorkItem: React.FC = () => {
   } = useGetSubtaskByIdQuery(subtaskId ?? '', { skip: !subtaskId });
 
   useEffect(() => {
+    if (subtaskId) {
+      refetchSubtask();
+    }
+  }, [subtaskId, refetchSubtask]);
+
+  useEffect(() => {
     if (fetchedSubtask) {
       setSubtaskDetail(fetchedSubtask);
     }
@@ -145,14 +157,19 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.id!,
   });
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsBySubtaskQuery(
-    subtaskDetail?.id!, { skip: !subtaskDetail?.id!, }
-  );
+  const {
+    data: workItemLabels = [],
+    isLoading: isLabelLoading,
+    refetch: refetchWorkItemLabels,
+  } = useGetWorkItemLabelsBySubtaskQuery(subtaskDetail?.id!, { skip: !subtaskDetail?.id! });
 
-  const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
-    refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(projectId!, {
-      skip: !projectId,
-    });
+  const {
+    data: projectLabels = [],
+    isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels,
+  } = useGetLabelsByProjectIdQuery(projectId!, {
+    skip: !projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -161,10 +178,7 @@ const ChildWorkItem: React.FC = () => {
       return notAlreadyAdded;
     }
 
-    return (
-      label.name.toLowerCase().includes(newLabelName.toLowerCase()) &&
-      notAlreadyAdded
-    );
+    return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
   });
 
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
@@ -189,10 +203,7 @@ const ChildWorkItem: React.FC = () => {
       alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
-      await Promise.all([
-        refetchWorkItemLabels?.(),
-        refetchProjectLabels?.(),
-      ]);
+      await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
       alert('❌ Failed to assign label');
@@ -696,24 +707,24 @@ const ChildWorkItem: React.FC = () => {
               </div>
 
               {isEditingLabel ? (
-                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
-                  <div className="flex flex-col gap-2 w-full relative">
-                    <label className="font-semibold">Labels</label>
+                <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
+                  <div className='flex flex-col gap-2 w-full relative'>
+                    <label className='font-semibold'>Labels</label>
 
                     {/* Tag list + input */}
                     <div
-                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                      className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
                     >
                       {workItemLabels.map((label) => (
                         <span
                           key={label.id}
-                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                          className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1'
                         >
                           {label.labelName}
                           <button
                             onClick={() => handleDeleteWorkItemLabel(label.id)}
-                            className="text-red-500 hover:text-red-700 font-bold text-sm"
+                            className='text-red-500 hover:text-red-700 font-bold text-sm'
                           >
                             ×
                           </button>
@@ -729,21 +740,23 @@ const ChildWorkItem: React.FC = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleCreateLabelAndAssign();
                         }}
-                        placeholder="Type to search or add"
-                        className="flex-1 min-w-[100px] border-none outline-none py-1"
+                        placeholder='Type to search or add'
+                        className='flex-1 min-w-[100px] border-none outline-none py-1'
                         autoFocus
                       />
                     </div>
 
                     {/* Dropdown suggestion */}
                     {dropdownOpen && filteredLabels.length > 0 && (
-                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
-                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                      <ul className='absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto'>
+                        <li className='px-3 py-1 font-semibold text-gray-600 border-b'>
+                          All labels
+                        </li>
                         {filteredLabels.map((label) => (
                           <li
                             key={label.id}
                             onClick={() => handleCreateLabelAndAssign(label.name)}
-                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                            className='px-3 py-1 hover:bg-blue-100 cursor-pointer'
                           >
                             {label.name}
                           </li>
@@ -753,14 +766,14 @@ const ChildWorkItem: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
-                  <label className="font-semibold">Labels</label>
+                <div className='detail-item' onClick={() => setIsEditingLabel(true)}>
+                  <label className='font-semibold'>Labels</label>
                   <span>
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}

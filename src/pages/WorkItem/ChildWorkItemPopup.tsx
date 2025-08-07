@@ -151,6 +151,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     refetch: refetchSubtask,
   } = useGetSubtaskByIdQuery(item.key, { skip: !item.key });
 
+    useEffect(() => {
+      if (item.key) {
+        refetchSubtask();
+      }
+    }, [item.key, refetchSubtask]);
+
   useEffect(() => {
     if (fetchedSubtask) {
       setSubtaskDetail(fetchedSubtask);

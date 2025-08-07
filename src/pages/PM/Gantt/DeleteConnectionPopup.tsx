@@ -1,77 +1,43 @@
 import React from 'react';
+import './DeleteConnectionPopup.css';
 
 interface DeleteConnectionPopupProps {
-  connection: any;
+  isOpen: boolean;
   onClose: () => void;
-  onDelete: (connectionId: any) => void;
+  onConfirm: () => void;
+  fromId: string;
+  toId: string;
+  type: string;
+  fromLabel?: string;
+  toLabel?: string;
 }
 
 const DeleteConnectionPopup: React.FC<DeleteConnectionPopupProps> = ({
-  connection,
+  isOpen,
   onClose,
-  onDelete,
+  onConfirm,
+  fromId,
+  toId,
+  type,
+  fromLabel = fromId,
+  toLabel = toId,
 }) => {
-  if (!connection) return null;
+  if (!isOpen) return null;
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 9999,
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          width: '400px',
-          maxWidth: '90%',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-          padding: '20px',
-        }}
-      >
-        <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '1rem' }}>
-          Delete Dependency
-        </h2>
-
-        <p style={{ marginBottom: '1.5rem' }}>
-          Are you sure you want to delete this dependency from{' '}
-          <strong>{connection.source}</strong> to <strong>{connection.target}</strong>?
+    <div className="modal-overlay">
+      <div className="delete-connection-popup" onClick={(e) => e.stopPropagation()}>
+        <h3>Confirm Delete Connection</h3>
+        <p>
+          Do you want to delete the connection from <strong>{fromLabel}</strong> to{' '}
+          <strong>{toLabel}</strong> ({type})?
         </p>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-          <button
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#e0e0e0',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
+        <div className="button-group">
+          <button onClick={onConfirm} className="btn-confirm">
+            Yes, Delete
           </button>
-          <button
-            onClick={() => onDelete(connection)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#e53935',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Delete
+          <button onClick={onClose} className="btn-cancel">
+            Cancel
           </button>
         </div>
       </div>

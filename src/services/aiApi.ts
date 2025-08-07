@@ -30,6 +30,15 @@ export interface TaskState {
   suggestedRole: string;
   assignedMembers: Member[];
 }
+export interface EpicState {
+  epicId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  tasks: TaskState[];
+  backendEpicId?: string;
+}
 
 // Định nghĩa kiểu dữ liệu cho requirement
 export interface Requirement {

@@ -6,6 +6,8 @@ import {
 import { useSprintPlanningMutation } from '../../../services/aiApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import EditSprintDetails from './EditSprintDetails';
+import aiIcon from '../../../assets/icon/ai.png';
+import galaxyaiIcon from '../../../assets/galaxyai.gif';
 
 interface PlanTasksPopupProps {
   isOpen: boolean;
@@ -234,6 +236,7 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
             }`}
             disabled={isPlanning || isSubmitting}
           >
+            <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
             {isPlanning ? 'Generating Plan...' : 'Generate Sprint Plan'}
           </button>
         </div>

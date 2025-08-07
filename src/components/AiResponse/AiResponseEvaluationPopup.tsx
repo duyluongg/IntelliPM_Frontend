@@ -1,14 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Star } from 'lucide-react';
-import {
-  useCreateAiResponseHistoryMutation,
-  type AiResponseHistoryRequestDTO,
-} from '../../services/aiResponseHistoryApi';
-
-import {
-  useCreateAiResponseEvaluationMutation,
-  type AiResponseEvaluationRequestDTO,
-} from '../../services/aiResponseEvaluationApi';
+import { useCreateAiResponseHistoryMutation, type AiResponseHistoryRequestDTO } from '../../services/aiResponseHistoryApi';
+import { useCreateAiResponseEvaluationMutation, type AiResponseEvaluationRequestDTO } from '../../services/aiResponseEvaluationApi';
 import galaxyaiIcon from '../../assets/galaxyai.gif';
 
 interface AiResponseEvaluationPopupProps {
@@ -16,7 +9,7 @@ interface AiResponseEvaluationPopupProps {
   onClose: () => void;
   aiResponseJson: string;
   projectId: number;
-  aiFeature: string; 
+  aiFeature: string;
   onSubmitSuccess: (aiResponseId: number) => void;
 }
 
@@ -45,9 +38,8 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
     setErrorMessage(null);
 
     try {
-      // Lưu AiResponseHistory
       const historyRequest: AiResponseHistoryRequestDTO = {
-        aiFeature: aiFeature,
+        aiFeature,
         projectId,
         responseJson: aiResponseJson,
         status: 'ACTIVE',
@@ -60,7 +52,6 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
 
       const aiResponseId = historyResponse.data.id;
 
-      // Lưu AiResponseEvaluation
       const evaluationRequest: AiResponseEvaluationRequestDTO = {
         aiResponseId,
         rating,
@@ -111,7 +102,6 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
         </style>
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-center gap-2">
-            <img src={galaxyaiIcon} alt="AI Icon" className="w-8 h-8" />
             <h3 className="text-xl font-bold gradient-text">Rate AI-Generated Plan</h3>
           </div>
           <button

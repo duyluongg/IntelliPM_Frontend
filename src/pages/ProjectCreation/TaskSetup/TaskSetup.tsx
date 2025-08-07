@@ -1,24 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pencil, Trash2, Brain, X, Plus, Minus, Calendar,Star  } from 'lucide-react';
+import { Brain, Calendar, Plus } from 'lucide-react';
 import { useGetTaskPlanningMutation, type TaskState } from '../../../services/aiApi';
 import {
   useGetProjectDetailsByKeyQuery,
   useSendEmailToPMMutation,
 } from '../../../services/projectApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
-import { useCreateEpicsWithTasksMutation } from '../../../services/epicApi';
-import { type EpicWithTaskRequestDTO } from '../../../services/epicApi';
+import { useCreateEpicsWithTasksMutation, type EpicWithTaskRequestDTO } from '../../../services/epicApi';
 import galaxyaiIcon from '../../../assets/galaxyai.gif';
 import aiIcon from '../../../assets/icon/ai.png';
-import {
-  useCreateAiResponseHistoryMutation,
-  type AiResponseHistoryRequestDTO,
-} from '../../../services/aiResponseHistoryApi';
-import {
-  useCreateAiResponseEvaluationMutation,
-  type AiResponseEvaluationRequestDTO,
-} from '../../../services/aiResponseEvaluationApi';
+import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
+import EpicDisplay from './EpicDisplay';
+import CreateTaskPopup from './CreateTaskPopup';
+import EditTaskPopup from './EditTaskPopup';
+import EditEpicPopup from './EditEpicPopup';
+import EditDatePopup from './EditDatePopup';
+import NotifyPMConfirmPopup from './NotifyPMConfirmPopup';
 
 interface EpicState {
   epicId: string;
@@ -29,182 +27,6 @@ interface EpicState {
   tasks: TaskState[];
   backendEpicId?: string;
 }
-
-const AiResponseEvaluationPopup: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  aiResponseJson: string;
-  projectId: number;
-  aiFeature: string;
-  onSubmitSuccess: (aiResponseId: number) => void;
-}> = ({ isOpen, onClose, aiResponseJson, projectId, aiFeature, onSubmitSuccess }) => {
-  const [rating, setRating] = useState<number>(0);
-  const [feedback, setFeedback] = useState<string>('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [createAiResponseHistory] = useCreateAiResponseHistoryMutation();
-  const [createAiResponseEvaluation] = useCreateAiResponseEvaluationMutation();
-
-  const handleSubmit = async () => {
-    if (rating < 1 || rating > 5) {
-      setErrorMessage('Please select a rating between 1 and 5.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      const historyRequest: AiResponseHistoryRequestDTO = {
-        aiFeature,
-        projectId,
-        responseJson: aiResponseJson,
-        status: 'ACTIVE',
-      };
-
-      const historyResponse = await createAiResponseHistory(historyRequest).unwrap();
-      if (!historyResponse.isSuccess) {
-        throw new Error(historyResponse.message || 'Failed to save AI response history.');
-      }
-
-      const aiResponseId = historyResponse.data.id;
-
-      const evaluationRequest: AiResponseEvaluationRequestDTO = {
-        aiResponseId,
-        rating,
-        feedback: feedback.trim() || null,
-      };
-
-      const evaluationResponse = await createAiResponseEvaluation(evaluationRequest).unwrap();
-      if (!evaluationResponse.isSuccess) {
-        throw new Error(evaluationResponse.message || 'Failed to save AI response evaluation.');
-      }
-
-      onSubmitSuccess(aiResponseId);
-      onClose();
-    } catch (error: any) {
-      console.error('Error saving AI response or evaluation:', error);
-      setErrorMessage(error.message || 'An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-        <style>
-          {`
-            @keyframes gradientText {
-              0% { background-position: 200% 50%; }
-              100% { background-position: 0% 50%; }
-            }
-            .gradient-text {
-              background: linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd);
-              background-size: 200% auto;
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
-              animation: gradientText 3s linear infinite;
-            }
-            @keyframes scale-pulse {
-              0%, 100% { transform: scale(1); }
-              50% { transform: scale(1.05); }
-            }
-            .animate-scale-pulse {
-              animation: scale-pulse 1.5s ease-in-out infinite;
-            }
-          `}
-        </style>
-        <div className="flex justify-between items-center mb-5">
-          <div className="flex items-center gap-2">
-            <img src={galaxyaiIcon} alt="AI Icon" className="w-8 h-8" />
-            <h3 className="text-xl font-bold gradient-text">Rate AI-Generated Plan</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200"
-            disabled={isSubmitting}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Rating</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className={`p-2 rounded-full transition-colors duration-200 ${
-                    rating >= star
-                      ? 'text-yellow-400 hover:text-yellow-500'
-                      : 'text-gray-300 hover:text-gray-400'
-                  }`}
-                  disabled={isSubmitting}
-                >
-                  <Star className="w-8 h-8 fill-current" />
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Feedback (Optional)</label>
-            <textarea
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200 resize-none"
-              rows={4}
-              placeholder="Share your thoughts on the AI-generated plan..."
-              disabled={isSubmitting}
-            />
-          </div>
-          {errorMessage && <p className="text-red-500 text-sm font-medium">{errorMessage}</p>}
-        </div>
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200"
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            className={`px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200 flex items-center gap-2 ${
-              isSubmitting ? 'opacity-70 cursor-not-allowed' : 'animate-scale-pulse'
-            }`}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <span>Submitting...</span>
-                <div className="flex gap-1">
-                  <div
-                    className="w-2 h-2 bg-white rounded-full animate-pulse"
-                    style={{ animationDelay: '0s' }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-white rounded-full animate-pulse"
-                    style={{ animationDelay: '0.2s' }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-white rounded-full animate-pulse"
-                    style={{ animationDelay: '0.4s' }}
-                  ></div>
-                </div>
-              </>
-            ) : (
-              'Submit'
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TaskSetup: React.FC = () => {
   const navigate = useNavigate();
@@ -292,7 +114,8 @@ const TaskSetup: React.FC = () => {
       .split('T')[0],
   });
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
-  const memberDropdownRef = useRef<HTMLDivElement>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const memberDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const handleAICreate = async () => {
     if (!projectKey) {
@@ -345,7 +168,6 @@ const TaskSetup: React.FC = () => {
         });
         setEpics((prev) => [...prev, ...newEpics]);
         setAiResponseJson(JSON.stringify(response.data));
-        setIsEvaluationPopupOpen(true);
       } else if ('error' in response) {
         console.error('API Error:', response.error);
         setErrorMessage('Failed to generate tasks. Please check the console for details.');
@@ -360,11 +182,13 @@ const TaskSetup: React.FC = () => {
 
   const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
     console.log('AI Response ID:', aiResponseId);
+    navigate('/project/list');
   };
 
   const handleCloseEvaluationPopup = () => {
     setIsEvaluationPopupOpen(false);
     setAiResponseJson('');
+    navigate('/project/list');
   };
 
   const handleOpenCreateTask = () => {
@@ -384,11 +208,6 @@ const TaskSetup: React.FC = () => {
         .toISOString()
         .split('T')[0],
     });
-  };
-
-  const handleCloseCreateTask = () => {
-    setIsCreatingTask(false);
-    setIsMemberDropdownOpen(false);
   };
 
   const handleCreateTask = () => {
@@ -450,7 +269,8 @@ const TaskSetup: React.FC = () => {
         )
       );
     }
-    handleCloseCreateTask();
+    setIsCreatingTask(false);
+    setIsMemberDropdownOpen(false);
   };
 
   const handleAddNewTaskMember = (accountId: number) => {
@@ -501,6 +321,7 @@ const TaskSetup: React.FC = () => {
     if (sendEmail) {
       setIsNotifyPMConfirmOpen(true);
     } else {
+      setIsSaving(true);
       try {
         const requestPayload: EpicWithTaskRequestDTO[] = epics
           .filter((epic) => !epic.backendEpicId)
@@ -531,14 +352,20 @@ const TaskSetup: React.FC = () => {
             })
           );
           setSuccessMessage('Epics and tasks saved successfully!');
-          setTimeout(() => navigate('/project/list'), 1000);
+          if (aiResponseJson) {
+            setIsEvaluationPopupOpen(true);
+          } else {
+            navigate('/project/list');
+          }
         } else {
           setSuccessMessage('No new epics to save.');
-          setTimeout(() => navigate('/project/list'), 1000);
+          navigate('/project/list');
         }
       } catch (error: any) {
         console.error('Error saving epics:', error);
         setErrorMessage(error.data?.message || 'Failed to save epics and tasks. Please try again.');
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -550,11 +377,13 @@ const TaskSetup: React.FC = () => {
       return;
     }
 
+    setIsSaving(true);
+    setIsNotifyPMConfirmOpen(false);
+
     try {
       const error = validateEpics(epics);
       if (error) {
         setErrorMessage(error);
-        setIsNotifyPMConfirmOpen(false);
         return;
       }
 
@@ -598,6 +427,11 @@ const TaskSetup: React.FC = () => {
             ', '
           )}`
         );
+        if (aiResponseJson) {
+          setIsEvaluationPopupOpen(true);
+        } else {
+          navigate('/project/list');
+        }
       } else {
         setErrorMessage(emailResponse.message || 'Failed to send email to Project Manager.');
       }
@@ -607,39 +441,8 @@ const TaskSetup: React.FC = () => {
         error.data?.message || 'Failed to save epics or send email to Project Manager.'
       );
     } finally {
-      setIsNotifyPMConfirmOpen(false);
-      setTimeout(() => navigate('/project/list'), 1000);
+      setIsSaving(false);
     }
-  };
-
-  const handleCloseNotifyPMConfirm = () => {
-    setIsNotifyPMConfirmOpen(false);
-  };
-
-  const handleOpenEditPopup = (epicId: string, task: TaskState) => {
-    setEditingTask({ epicId, task });
-    setDropdownTaskId(null);
-  };
-
-  const handleCloseEditPopup = () => {
-    setEditingTask(null);
-  };
-
-  const handleOpenDatePopup = (epicId: string, task: TaskState, field: 'startDate' | 'endDate') => {
-    setEditingDateTask({ epicId, task, field });
-    setDropdownTaskId(null);
-  };
-
-  const handleCloseDatePopup = () => {
-    setEditingDateTask(null);
-  };
-
-  const handleOpenEditEpic = (epic: EpicState) => {
-    setEditingEpic(epic);
-  };
-
-  const handleCloseEditEpic = () => {
-    setEditingEpic(null);
   };
 
   const handleEditEpic = () => {
@@ -669,7 +472,7 @@ const TaskSetup: React.FC = () => {
           : epic
       )
     );
-    handleCloseEditEpic();
+    setEditingEpic(null);
   };
 
   const handleEditTask = (epicId: string, taskId: string, updatedTask: Partial<TaskState>) => {
@@ -693,8 +496,8 @@ const TaskSetup: React.FC = () => {
           : epic
       )
     );
-    if (editingTask) handleCloseEditPopup();
-    if (editingDateTask) handleCloseDatePopup();
+    setEditingTask(null);
+    setEditingDateTask(null);
   };
 
   const handleDeleteTask = (epicId: string, taskId: string) => {
@@ -782,7 +585,7 @@ const TaskSetup: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (isCreatingEpics || isSendingEmail) {
+  if (isSaving || isCreatingEpics || isSendingEmail) {
     return (
       <div className='flex justify-center items-center h-screen bg-gray-50'>
         <style>
@@ -846,15 +649,15 @@ const TaskSetup: React.FC = () => {
       <style>
         {`
           @keyframes scale-pulse {
-            0%, 100% {
-              transform: scale(1);
-            }
-            50% {
-              transform: scale(1.05);
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
           }
           .animate-scale-pulse {
             animation: scale-pulse 1.5s ease-in-out infinite;
+          }
+          @keyframes gradientLoading {
+            0% { background-position: 200% 50%; }
+            100% { background-position: 0% 50%; }
           }
         `}
       </style>
@@ -896,796 +699,68 @@ const TaskSetup: React.FC = () => {
       {errorMessage && <p className='text-red-500 mb-4 font-medium'>{errorMessage}</p>}
       {successMessage && <p className='text-green-500 mb-4 font-medium'>{successMessage}</p>}
 
-      <div className='mb-8'>
-        <h2 className='text-2xl font-semibold text-gray-800 mb-5'>Epics & Tasks</h2>
-        {epics.length === 0 ? (
-          isGenerating ? (
-            <div className='flex justify-center items-center py-8 bg-white/50 rounded-2xl shadow-md'>
-              <div className='flex flex-col items-center gap-4'>
-                <img src={galaxyaiIcon} alt='AI Processing' className='w-8 h-8' />
-                <div className='flex items-center gap-2'>
-                  <style>
-                    {`
-                      @keyframes gradientLoading {
-                         0% {
-                              background-position: 200% 50%;
-                      }
-                         100% {
-                            background-position: 0% 50%;
-                      }
-                    }
-                    `}
-                  </style>
-                  <span
-                    style={{
-                      background:
-                        'linear-gradient(90deg, #1c73fd 0%, #4a90e2 25%, #00d4ff 50%, #4a90e2 75%, #1c73fd 100%)',
-                      backgroundSize: '200% auto',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      display: 'inline-block',
-                      animation: 'gradientLoading 1.8s ease-in-out infinite',
-                    }}
-                    className='text-2xl font-semibold'
-                  >
-                    Processing with AI
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className='text-gray-500 italic'>
-              No epics or tasks generated yet. Click "Generate with AI" or "Create Task" to start.
-            </p>
-          )
-        ) : (
-          epics.map((epic) => (
-            <div key={epic.epicId} className='mb-8'>
-              <div className='bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] p-5 rounded-2xl text-white shadow-lg flex justify-between items-center'>
-                <div>
-                  <h3 className='text-xl font-bold'>
-                    {epic.title}{' '}
-                    <span className='text-sm font-normal'>
-                      ({epic.backendEpicId || epic.epicId})
-                    </span>
-                  </h3>
-                  <p className='text-sm mt-2 font-light'>{epic.description}</p>
-                  <div className='flex gap-4 mt-3 text-sm'>
-                    <span className='flex items-center gap-1'>
-                      <Calendar className='w-4 h-4' />{' '}
-                      {new Date(epic.startDate).toLocaleDateString('en-GB')}
-                    </span>
-                    <span className='flex items-center gap-1'>
-                      <Calendar className='w-4 h-4' />{' '}
-                      {new Date(epic.endDate).toLocaleDateString('en-GB')}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleOpenEditEpic(epic)}
-                  className='p-2 text-white hover:bg-white/20 rounded-full transition-colors duration-200'
-                >
-                  <Pencil className='w-5 h-5' />
-                </button>
-              </div>
-              <div className='grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5'>
-                {epic.tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className='bg-white border border-gray-200 p-5 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300'
-                  >
-                    <h4 className='font-semibold text-lg text-[#1c73fd] mb-2'>{task.title}</h4>
-                    <p className='text-sm text-gray-600 mb-2'>
-                      <span className='font-medium'>Task ID:</span> {task.taskId || 'Not assigned'}
-                    </p>
-                    <p className='text-sm text-gray-600 mb-2'>
-                      <span className='font-medium'>Description:</span> {task.description}
-                    </p>
-                    <div className='text-sm text-gray-600 mb-2'>
-                      <span className='font-medium'>Start Date: </span>
-                      <span
-                        onClick={() => handleOpenDatePopup(epic.epicId, task, 'startDate')}
-                        className='inline-flex items-center gap-1 cursor-pointer text-[#1c73fd] hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors duration-200'
-                      >
-                        <Calendar className='w-4 h-4' />{' '}
-                        {new Date(task.startDate).toLocaleDateString('en-GB')}
-                      </span>
-                    </div>
-                    <div className='text-sm text-gray-600 mb-2'>
-                      <span className='font-medium'>End Date: </span>
-                      <span
-                        onClick={() => handleOpenDatePopup(epic.epicId, task, 'endDate')}
-                        className='inline-flex items-center gap-1 cursor-pointer text-[#1c73fd] hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors duration-200'
-                      >
-                        <Calendar className='w-4 h-4' />{' '}
-                        {new Date(task.endDate).toLocaleDateString('en-GB')}
-                      </span>
-                    </div>
-                    <p className='text-sm text-gray-600 mb-3'>
-                      <span className='font-medium'>Suggested Role:</span> {task.suggestedRole}
-                    </p>
-                    <div className='relative'>
-                      <div className='text-sm text-gray-600 flex items-center gap-2 mb-2'>
-                        <span className='font-medium'>Assigned Members:</span>
-                        <button
-                          onClick={() =>
-                            setDropdownTaskId(dropdownTaskId === task.id ? null : task.id)
-                          }
-                          className='text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
-                        >
-                          <Plus className='w-5 h-5' />
-                        </button>
-                      </div>
-                      {dropdownTaskId === task.id && (
-                        <div className='absolute z-10 top-full left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto transition-all duration-200'>
-                          <div className='px-4 py-2 border-b border-gray-200 font-semibold text-gray-700 bg-gray-50'>
-                            Select Members
-                          </div>
-                          {membersData?.data?.map((member) => {
-                            const isAssigned = task.assignedMembers.some(
-                              (m) => m.accountId === member.accountId
-                            );
-                            return (
-                              <div
-                                key={member.accountId}
-                                className={`flex items-center gap-2 px-4 py-2 text-sm hover:bg-blue-50 transition-colors duration-150 ${
-                                  isAssigned ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                                }`}
-                                onClick={() =>
-                                  !isAssigned &&
-                                  handleAddMember(epic.epicId, task.id, member.accountId)
-                                }
-                              >
-                                <img
-                                  src={member.picture || 'https://i.pravatar.cc/40'}
-                                  alt={member.fullName}
-                                  className='w-6 h-6 rounded-full object-cover'
-                                  onError={(e) => {
-                                    e.currentTarget.src = 'https://i.pravatar.cc/40';
-                                  }}
-                                />
-                                <span className='truncate'>
-                                  {member.fullName} (
-                                  {member.projectPositions[0]?.position || 'No Position'})
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <div className='flex flex-wrap gap-3 mt-2'>
-                      {task.assignedMembers.length === 0 ? (
-                        <p className='text-sm text-gray-500 italic'>No members assigned</p>
-                      ) : (
-                        task.assignedMembers.map((member) => (
-                          <div
-                            key={member.accountId}
-                            className='flex items-center gap-2 relative group'
-                          >
-                            <button
-                              onClick={() =>
-                                handleRemoveMember(epic.epicId, task.id, member.accountId)
-                              }
-                              className='absolute -top-1 -left-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
-                            >
-                              <Minus className='w-4 h-4' />
-                            </button>
-                            <img
-                              src={member.picture}
-                              alt={member.fullName}
-                              className='w-7 h-7 rounded-full object-cover'
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://i.pravatar.cc/40';
-                              }}
-                            />
-                            <span className='text-sm text-gray-600 truncate'>
-                              {member.fullName}
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className='mt-4 flex justify-end gap-2'>
-                      <button
-                        onClick={() => handleOpenEditPopup(epic.epicId, task)}
-                        className='p-2 text-[#1c73fd] hover:bg-blue-50 rounded-full transition-colors duration-200'
-                      >
-                        <Pencil className='w-5 h-5' />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(epic.epicId, task.id)}
-                        className='p-2 text-[#1c73fd] hover:bg-blue-50 rounded-full transition-colors duration-200'
-                      >
-                        <Trash2 className='w-5 h-5' />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <EpicDisplay
+        epics={epics}
+        isGenerating={isGenerating}
+        membersData={membersData}
+        dropdownTaskId={dropdownTaskId}
+        setDropdownTaskId={setDropdownTaskId}
+        handleOpenEditEpic={setEditingEpic}
+        handleOpenEditPopup={setEditingTask}
+        handleOpenDatePopup={setEditingDateTask}
+        handleAddMember={handleAddMember}
+        handleRemoveMember={handleRemoveMember}
+        handleDeleteTask={handleDeleteTask}
+      />
 
       {editingEpic && (
-        <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto'>
-            <div className='flex justify-between items-center mb-5'>
-              <h3 className='text-xl font-bold text-[#1c73fd]'>Edit Epic</h3>
-              <button
-                onClick={handleCloseEditEpic}
-                className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
-              >
-                <X className='w-5 h-5' />
-              </button>
-            </div>
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>Epic Title</label>
-                <input
-                  type='text'
-                  value={editingEpic.title}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, title: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Epic Description
-                </label>
-                <textarea
-                  value={editingEpic.description}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, description: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>Start Date</label>
-                <input
-                  type='date'
-                  value={editingEpic.startDate}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, startDate: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>End Date</label>
-                <input
-                  type='date'
-                  value={editingEpic.endDate}
-                  onChange={(e) => setEditingEpic({ ...editingEpic, endDate: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-            </div>
-            <div className='mt-6 flex justify-end gap-3'>
-              <button
-                onClick={handleCloseEditEpic}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleEditEpic}
-                className='px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200'
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditEpicPopup
+          editingEpic={editingEpic}
+          setEditingEpic={setEditingEpic}
+          handleEditEpic={handleEditEpic}
+        />
       )}
 
       {editingTask && (
-        <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto'>
-            <div className='flex justify-between items-center mb-5'>
-              <h3 className='text-xl font-bold text-[#1c73fd]'>Edit Task</h3>
-              <button
-                onClick={handleCloseEditPopup}
-                className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
-              >
-                <X className='w-5 h-5' />
-              </button>
-            </div>
-            <div className='space-y-5'>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>Title</label>
-                <input
-                  type='text'
-                  defaultValue={editingTask.task.title}
-                  onChange={(e) =>
-                    setEditingTask({
-                      ...editingTask,
-                      task: { ...editingTask.task, title: e.target.value },
-                    })
-                  }
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Description
-                </label>
-                <textarea
-                  defaultValue={editingTask.task.description}
-                  onChange={(e) =>
-                    setEditingTask({
-                      ...editingTask,
-                      task: { ...editingTask.task, description: e.target.value },
-                    })
-                  }
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                  rows={4}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Suggested Role
-                </label>
-                <select
-                  defaultValue={editingTask.task.suggestedRole}
-                  onChange={(e) =>
-                    setEditingTask({
-                      ...editingTask,
-                      task: { ...editingTask.task, suggestedRole: e.target.value },
-                    })
-                  }
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                >
-                  <option value='Designer'>Designer</option>
-                  <option value='Developer'>Developer</option>
-                  <option value='Tester'>Tester</option>
-                </select>
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Assigned Members
-                </label>
-                <div className='relative'>
-                  <div className='flex items-center gap-2 mb-2'>
-                    <button
-                      onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-                      className='text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
-                    >
-                      <Plus className='w-5 h-5' />
-                    </button>
-                  </div>
-                  {isMemberDropdownOpen && (
-                    <div
-                      ref={memberDropdownRef}
-                      className='absolute z-10 top-full left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto transition-all duration-200'
-                    >
-                      <div className='px-4 py-2 border-b border-gray-200 font-semibold text-gray-700 bg-gray-50'>
-                        Select Members
-                      </div>
-                      {membersData?.data?.map((member) => {
-                        const isAssigned = editingTask.task.assignedMembers.some(
-                          (m) => m.accountId === member.accountId
-                        );
-                        return (
-                          <div
-                            key={member.accountId}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm hover:bg-blue-50 transition-colors duration-150 ${
-                              isAssigned ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                            }`}
-                            onClick={() => {
-                              if (!isAssigned) {
-                                setEditingTask({
-                                  ...editingTask,
-                                  task: {
-                                    ...editingTask.task,
-                                    assignedMembers: [
-                                      ...editingTask.task.assignedMembers,
-                                      {
-                                        accountId: member.accountId,
-                                        fullName: member.fullName,
-                                        picture: member.picture || 'https://i.pravatar.cc/40',
-                                      },
-                                    ],
-                                  },
-                                });
-                                setIsMemberDropdownOpen(false);
-                              }
-                            }}
-                          >
-                            <img
-                              src={member.picture || 'https://i.pravatar.cc/40'}
-                              alt={member.fullName}
-                              className='w-6 h-6 rounded-full object-cover'
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://i.pravatar.cc/40';
-                              }}
-                            />
-                            <span className='truncate'>
-                              {member.fullName} (
-                              {member.projectPositions[0]?.position || 'No Position'})
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className='flex flex-wrap gap-3 mt-2'>
-                  {editingTask.task.assignedMembers.length === 0 ? (
-                    <p className='text-sm text-gray-500 italic'>No members assigned</p>
-                  ) : (
-                    editingTask.task.assignedMembers.map((member) => (
-                      <div
-                        key={member.accountId}
-                        className='flex items-center gap-2 relative group'
-                      >
-                        <button
-                          onClick={() => {
-                            setEditingTask({
-                              ...editingTask,
-                              task: {
-                                ...editingTask.task,
-                                assignedMembers: editingTask.task.assignedMembers.filter(
-                                  (m) => m.accountId !== member.accountId
-                                ),
-                              },
-                            });
-                          }}
-                          className='absolute -top-1 -left-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
-                        >
-                          <Minus className='w-4 h-4' />
-                        </button>
-                        <img
-                          src={member.picture}
-                          alt={member.fullName}
-                          className='w-7 h-7 rounded-full object-cover'
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://i.pravatar.cc/40';
-                          }}
-                        />
-                        <span className='text-sm text-gray-600 truncate'>{member.fullName}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className='mt-6 flex justify-end gap-3'>
-              <button
-                onClick={handleCloseEditPopup}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  handleEditTask(editingTask.epicId, editingTask.task.id, editingTask.task)
-                }
-                className='px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200'
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditTaskPopup
+          editingTask={editingTask}
+          setEditingTask={setEditingTask}
+          membersData={membersData}
+          isMemberDropdownOpen={isMemberDropdownOpen}
+          setIsMemberDropdownOpen={setIsMemberDropdownOpen}
+          handleEditTask={handleEditTask}
+          memberDropdownRef={memberDropdownRef}
+        />
       )}
 
       {editingDateTask && (
-        <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto'>
-            <div className='flex justify-between items-center mb-5'>
-              <h3 className='text-xl font-bold text-[#1c73fd]'>
-                Edit {editingDateTask.field === 'startDate' ? 'Start Date' : 'End Date'}
-              </h3>
-              <button
-                onClick={handleCloseDatePopup}
-                className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
-              >
-                <X className='w-5 h-5' />
-              </button>
-            </div>
-            <div className='space-y-4'>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  {editingDateTask.field === 'startDate' ? 'Start Date' : 'End Date'}
-                </label>
-                <input
-                  type='date'
-                  defaultValue={editingDateTask.task[editingDateTask.field]}
-                  onChange={(e) =>
-                    setEditingDateTask({
-                      ...editingDateTask,
-                      task: { ...editingDateTask.task, [editingDateTask.field]: e.target.value },
-                    })
-                  }
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-            </div>
-            <div className='mt-6 flex justify-end gap-3'>
-              <button
-                onClick={handleCloseDatePopup}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() =>
-                  handleEditTask(editingDateTask.epicId, editingDateTask.task.id, {
-                    [editingDateTask.field]: editingDateTask.task[editingDateTask.field],
-                  })
-                }
-                className='px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200'
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditDatePopup
+          editingDateTask={editingDateTask}
+          setEditingDateTask={setEditingDateTask}
+          handleEditTask={handleEditTask}
+        />
       )}
 
       {isCreatingTask && (
-        <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto'>
-            <div className='flex justify-between items-center mb-5'>
-              <h3 className='text-xl font-bold text-[#1c73fd]'>Create Task</h3>
-              <button
-                onClick={handleCloseCreateTask}
-                className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
-              >
-                <X className='w-5 h-5' />
-              </button>
-            </div>
-            <div className='space-y-4'>
-              {epics.length > 0 ? (
-                <div>
-                  <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                    Select Epic
-                  </label>
-                  <select
-                    value={newTask.epicId}
-                    onChange={(e) => setNewTask({ ...newTask, epicId: e.target.value })}
-                    className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                  >
-                    <option value=''>Select an Epic</option>
-                    {epics.map((epic) => (
-                      <option key={epic.epicId} value={epic.epicId}>
-                        {epic.title} ({epic.backendEpicId || epic.epicId})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className='grid grid-cols-1 gap-4'>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                      New Epic Title
-                    </label>
-                    <input
-                      type='text'
-                      value={newTask.newEpicTitle}
-                      onChange={(e) => setNewTask({ ...newTask, newEpicTitle: e.target.value })}
-                      className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                    />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                      New Epic Description
-                    </label>
-                    <textarea
-                      value={newTask.newEpicDescription}
-                      onChange={(e) =>
-                        setNewTask({ ...newTask, newEpicDescription: e.target.value })
-                      }
-                      className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                      rows={3}
-                    />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                      New Epic Start Date
-                    </label>
-                    <input
-                      type='date'
-                      value={newTask.newEpicStartDate}
-                      onChange={(e) => setNewTask({ ...newTask, newEpicStartDate: e.target.value })}
-                      className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                    />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                      New Epic End Date
-                    </label>
-                    <input
-                      type='date'
-                      value={newTask.newEpicEndDate}
-                      onChange={(e) => setNewTask({ ...newTask, newEpicEndDate: e.target.value })}
-                      className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                    />
-                  </div>
-                </div>
-              )}
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>Task Title</label>
-                <input
-                  type='text'
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Task Description
-                </label>
-                <textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                  rows={3}
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Suggested Role
-                </label>
-                <select
-                  value={newTask.suggestedRole}
-                  onChange={(e) => setNewTask({ ...newTask, suggestedRole: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                >
-                  <option value='Designer'>Designer</option>
-                  <option value='Developer'>Developer</option>
-                  <option value='Tester'>Tester</option>
-                </select>
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>Start Date</label>
-                <input
-                  type='date'
-                  value={newTask.startDate}
-                  onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>End Date</label>
-                <input
-                  type='date'
-                  value={newTask.endDate}
-                  onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
-                  className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
-                />
-              </div>
-              <div>
-                <label className='block text-sm font-semibold text-gray-700 mb-1'>
-                  Assigned Members
-                </label>
-                <div className='relative'>
-                  <div className='flex items-center gap-2 mb-2'>
-                    <button
-                      onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-                      className='text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
-                    >
-                      <Plus className='w-5 h-5' />
-                    </button>
-                  </div>
-                  {isMemberDropdownOpen && (
-                    <div
-                      ref={memberDropdownRef}
-                      className='absolute z-10 top-full left-0 w-64 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto transition-all duration-200'
-                    >
-                      <div className='px-4 py-2 border-b border-gray-200 font-semibold text-gray-700 bg-gray-50'>
-                        Select Members
-                      </div>
-                      {membersData?.data?.map((member) => {
-                        const isAssigned = newTask.assignedMembers.some(
-                          (m) => m.accountId === member.accountId
-                        );
-                        return (
-                          <div
-                            key={member.accountId}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm hover:bg-blue-50 transition-colors duration-150 ${
-                              isAssigned ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                            }`}
-                            onClick={() => !isAssigned && handleAddNewTaskMember(member.accountId)}
-                          >
-                            <img
-                              src={member.picture || 'https://i.pravatar.cc/40'}
-                              alt={member.fullName}
-                              className='w-6 h-6 rounded-full object-cover'
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://i.pravatar.cc/40';
-                              }}
-                            />
-                            <span className='truncate'>
-                              {member.fullName} (
-                              {member.projectPositions[0]?.position || 'No Position'})
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <div className='flex flex-wrap gap-3 mt-2'>
-                  {newTask.assignedMembers.length === 0 ? (
-                    <p className='text-sm text-gray-500 italic'>No members assigned</p>
-                  ) : (
-                    newTask.assignedMembers.map((member) => (
-                      <div
-                        key={member.accountId}
-                        className='flex items-center gap-2 relative group'
-                      >
-                        <button
-                          onClick={() => handleRemoveNewTaskMember(member.accountId)}
-                          className='absolute -top-1 -left-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
-                        >
-                          <Minus className='w-4 h-4' />
-                        </button>
-                        <img
-                          src={member.picture}
-                          alt={member.fullName}
-                          className='w-7 h-7 rounded-full object-cover'
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://i.pravatar.cc/40';
-                          }}
-                        />
-                        <span className='text-sm text-gray-600 truncate'>{member.fullName}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className='mt-6 flex justify-end gap-3'>
-              <button
-                onClick={handleCloseCreateTask}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateTask}
-                className='px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200'
-              >
-                Create
-              </button>
-            </div>
-          </div>
-        </div>
+        <CreateTaskPopup
+          epics={epics}
+          newTask={newTask}
+          setNewTask={setNewTask}
+          membersData={membersData}
+          isMemberDropdownOpen={isMemberDropdownOpen}
+          setIsMemberDropdownOpen={setIsMemberDropdownOpen}
+          handleCreateTask={handleCreateTask}
+          handleAddNewTaskMember={handleAddNewTaskMember}
+          handleRemoveNewTaskMember={handleRemoveNewTaskMember}
+          memberDropdownRef={memberDropdownRef}
+        />
       )}
 
       {isNotifyPMConfirmOpen && (
-        <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full'>
-            <div className='flex justify-between items-center mb-5'>
-              <h3 className='text-xl font-bold text-[#1c73fd]'>Confirm Notification</h3>
-              <button
-                onClick={handleCloseNotifyPMConfirm}
-                className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
-              >
-                <X className='w-5 h-5' />
-              </button>
-            </div>
-            <p className='text-gray-600 mb-6'>
-              Are you sure you want to save and notify the Project Manager via email?
-            </p>
-            <div className='flex justify-end gap-3'>
-              <button
-                onClick={handleCloseNotifyPMConfirm}
-                className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmNotifyPM}
-                className='px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200'
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
+        <NotifyPMConfirmPopup
+          handleConfirmNotifyPM={handleConfirmNotifyPM}
+          setIsNotifyPMConfirmOpen={setIsNotifyPMConfirmOpen}
+        />
       )}
 
       {isEvaluationPopupOpen && projectId && (
@@ -1702,25 +777,25 @@ const TaskSetup: React.FC = () => {
       <div className='flex justify-end gap-4'>
         <button
           onClick={() => handleSaveAndProceed(false)}
-          disabled={isCreatingEpics || isSendingEmail}
+          disabled={isCreatingEpics || isSendingEmail || isSaving}
           className={`px-6 py-3 rounded-xl text-white font-semibold transition-all duration-300 ${
-            isCreatingEpics || isSendingEmail
+            isCreatingEpics || isSendingEmail || isSaving
               ? 'bg-gray-500 opacity-70 cursor-not-allowed'
               : 'bg-gradient-to-r from-[#6b7280] to-[#4b5563] hover:from-[#4b5563] hover:to-[#374151] shadow-md hover:shadow-lg'
           }`}
         >
-          {isCreatingEpics ? 'Saving...' : 'Save & View Overview'}
+          {isSaving ? 'Saving...' : 'Save & View Overview'}
         </button>
         <button
           onClick={() => handleSaveAndProceed(true)}
-          disabled={isCreatingEpics || isSendingEmail}
+          disabled={isCreatingEpics || isSendingEmail || isSaving}
           className={`px-6 py-3 rounded-xl text-white font-semibold transition-all duration-300 ${
-            isCreatingEpics || isSendingEmail
+            isCreatingEpics || isSendingEmail || isSaving
               ? 'bg-gray-500 opacity-70 cursor-not-allowed'
               : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] shadow-md hover:shadow-lg'
           }`}
         >
-          {isSendingEmail ? 'Sending...' : 'Save & Notify PM'}
+          {isSaving ? 'Saving...' : 'Save & Notify PM'}
         </button>
       </div>
     </div>

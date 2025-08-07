@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
-import CompleteSprintPopup from '../BacklogPage/CompleteSprintPopup';
+import CompleteSprintPopup from './CompleteSprintPopup';
 import { useGetTasksBySprintIdQuery } from '../../../services/taskApi';
 import {
   useGetActiveSprintByProjectKeyQuery,
@@ -41,6 +41,7 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
+
 const formatDate = (isoDate: string | null | undefined): string => {
   if (!isoDate) return 'N/A';
   return new Date(isoDate).toLocaleDateString('en-US', {
@@ -83,19 +84,19 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   });
 
   const {
-    data: tasks = [],
-    isLoading: tasksLoading,
-    error: tasksError,
-  } = useGetTasksBySprintIdQuery(projectId, {
-    skip: !projectId || projectId === 0,
-  });
-
-  const {
     data: sprintData,
     isLoading: sprintLoading,
     error: sprintError,
   } = useGetActiveSprintByProjectKeyQuery(projectKey, {
     skip: !projectId || projectId === 0,
+  });
+
+  const {
+    data: tasks = [],
+    isLoading: tasksLoading,
+    error: tasksError,
+  } = useGetTasksBySprintIdQuery(sprintData?.id ?? 0, {
+    skip: !sprintData?.id,
   });
 
   const members: Member[] =
@@ -126,7 +127,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   };
 
   const sprint = {
-    name: sprintData?.name || sprintName || 'Sprint 1',
+    name: sprintData?.name || sprintName || 'No active sprint',
     startDate: sprintData?.plannedStartDate
       ? formatDate(sprintData.plannedStartDate)
       : sprintData?.startDate
@@ -136,7 +137,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
       ? formatDate(sprintData.plannedEndDate)
       : sprintData?.endDate
       ? formatDate(sprintData.endDate)
-      : 'Aug 3, 2025',
+      : 'N/A',
     daysLeft: sprintData?.plannedEndDate
       ? Math.max(
           0,
@@ -152,22 +153,102 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
             (new Date(sprintData.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
           )
         )
-      : Math.max(
-          0,
-          Math.ceil(
-            (new Date('Aug 3, 2025').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-          )
-        ),
+      : 0,
   };
   const workItem = tasks.length;
   const workItemCompleted = tasks.filter((task) => task.status === 'DONE').length;
-  const workItemOpen = workItem - workItemCompleted; 
+  const workItemOpen = workItem - workItemCompleted;
 
   if (membersLoading || tasksLoading || sprintLoading) {
     return <div className='p-4 text-center text-gray-500'>Loading...</div>;
   }
 
   if (membersError || tasksError || sprintError) {
+    if (sprintError && 'status' in sprintError && sprintError.status === 404) {
+      return (
+        <div className='flex items-center justify-between px-1 pb-5 bg-white'>
+          <div className='flex items-center gap-4'>
+            <div className='flex items-center border border-gray-300 rounded-md w-64 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
+              <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
+              <input
+                type='text'
+                value={searchQuery}
+                onChange={handleSearch}
+                placeholder='Search backlog...'
+                className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
+                style={{ all: 'unset', width: '100%' }}
+              />
+            </div>
+
+            <div className='flex items-center'>
+              {members.length > 0 ? (
+                isMembersExpanded ? (
+                  <div className='flex items-center'>
+                    {members.map((member, index) => (
+                      <div
+                        key={member.id}
+                        className='relative w-8 h-8 group'
+                        style={{ marginLeft: index > 0 ? '-4px' : '0' }}
+                      >
+                        <img
+                          src={member.avatar}
+                          alt={member.name}
+                          className='w-8 h-8 rounded-full object-cover border cursor-pointer'
+                          onClick={toggleMembers}
+                        />
+                        <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                          {member.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className='relative w-8 h-8 group'>
+                    <img
+                      src={members[0].avatar}
+                      alt={members[0].name}
+                      className='w-8 h-8 rounded-full object-cover border cursor-pointer'
+                      onClick={toggleMembers}
+                    />
+                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                      {members[0].name}
+                    </span>
+                    {members.length > 1 && (
+                      <div
+                        className='absolute -right-3 -bottom-1 bg-gray-100 border text-xs text-gray-700 px-1 rounded-full cursor-pointer'
+                        onClick={toggleMembers}
+                      >
+                        +{members.length - 1}
+                      </div>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div className='w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center'>
+                  <User2 size={18} className='text-gray-400' />
+                </div>
+              )}
+            </div>
+
+            <button className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'>
+              Epic <ChevronDown className='w-4 h-4 ml-1' />
+            </button>
+          </div>
+
+          <div className='flex items-center gap-2'>
+            <button className='p-2 rounded hover:bg-gray-100'>
+              <LineChart className='w-5 h-5 text-gray-700' />
+            </button>
+            <button className='p-2 rounded hover:bg-gray-100'>
+              <SlidersHorizontal className='w-5 h-5 text-gray-700' />
+            </button>
+            <button className='p-2 rounded hover:bg-gray-100'>
+              <MoreHorizontal className='w-5 h-5 text-gray-700' />
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className='p-4 text-center text-red-500'>
         Error loading data:{' '}
@@ -259,19 +340,16 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
               Complete sprint
             </button>
 
-            {/* Render the CompleteSprintPopup */}
             <CompleteSprintPopup
               isOpen={isCompletePopupOpen}
               onClose={toggleCompletePopup}
               sprintId={sprintData?.id ?? projectId}
               sprintName={sprint.name}
-              onTaskUpdated={() => {}}
               projectKey={projectKey}
               projectId={projectId}
               workItem={workItem}
               workItemCompleted={workItemCompleted}
               workItemOpen={workItemOpen}
-              refetchSprint={() => {}}
             />
 
             <div className='relative'>

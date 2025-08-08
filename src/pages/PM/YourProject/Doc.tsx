@@ -94,7 +94,7 @@ export default function Doc({ docId, mode }: Props) {
       isUpdatingRef.current = true;
       await updateDocument({
         id: docId,
-        data: { title: newTitle, updatedBy: user?.id },
+        data: { title: newTitle, updatedBy: user?.id, visibility },
       }).unwrap();
       console.log('[PUT] title updated:', newTitle);
     } catch (err) {
@@ -115,6 +115,8 @@ export default function Doc({ docId, mode }: Props) {
           showTemplatePicker={showTemplatePicker}
           setShowTemplatePicker={setShowTemplatePicker}
           permission={permission}
+          createdAt={docData?.createdAt} // 🆕 thêm dòng này
+          updatedAt={docData?.updatedAt}
         />
       </DocumentContext.Provider>
 

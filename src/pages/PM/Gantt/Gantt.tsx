@@ -28,13 +28,18 @@ interface UpdateMilestonePopupProps {
   refetchMilestones: () => void;
 }
 
-const Gantt = () => {
+type GanttProps = {
+  projectKey?: string; // optional
+};
+
+const Gantt = ({ projectKey: propKey }: GanttProps) => {
   const ganttRef = useRef<any>(null);
   const { projectKey: paramKey } = useParams<{ projectKey?: string }>();
   const [searchParams] = useSearchParams();
   const searchKey = searchParams.get('projectKey');
 
-  const projectKey = paramKey || searchKey || 'NotFound';
+  const projectKey = propKey || paramKey || searchKey || 'NotFound';
+
   const customWindowRef = useRef<HTMLDivElement>(document.createElement('div'));
   const selectedTaskRef = useRef<any>(null);
   const [selectedConnection, setSelectedConnection] = useState<any>(null);

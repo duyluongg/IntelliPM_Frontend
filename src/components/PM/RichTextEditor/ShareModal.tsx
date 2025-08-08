@@ -8,7 +8,13 @@ import { useSearchParams } from 'react-router-dom';
 import { useDocumentId } from '../../context/DocumentContext';
 import toast from 'react-hot-toast';
 
-const ShareModal = ({ isOpen, onClose }) => {
+type ShareModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+};
+
+
+const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose }) => {
   const [emails, setEmails] = useState('');
   const [permissionType, setPermissionType] = useState<'VIEW' | 'EDIT'>('VIEW');
   const [shareDocument, { isLoading }] = useShareDocumentByEmailsMutation();

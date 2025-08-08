@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLoginMutation } from '../services/authApi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type Role } from '../services/AuthContext';
 import { useGetProjectsByAccountQuery } from '../services/accountApi';
-import { Eye, EyeOff } from 'lucide-react'; // npm install lucide-react
+import { Eye, EyeOff } from 'lucide-react'; 
+
+
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -65,7 +66,7 @@ const Login: React.FC = () => {
   }, [user, hasProjects, projectData, navigate]);
 
   return (
-    <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4'>
+<div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4'>
       <form
         onSubmit={handleSubmit}
         className='bg-white p-8 rounded-xl shadow-xl w-full max-w-sm space-y-6 animate-fade-in'

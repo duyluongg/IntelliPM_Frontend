@@ -15,3 +15,7 @@
   background-size: 600% 600%;
   animation: gradientFlow 12s ease infinite;
 }
+
+.grid.sm\:grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3.gap-10.place-items-center.paddigGuest {
+      padding: 5px 200px;
+}

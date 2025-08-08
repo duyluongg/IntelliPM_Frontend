@@ -27,7 +27,6 @@ export interface MyMeeting {
   projectName: string | null;
 }
 
-
 // 👉 Interface cho rejected feedback
 export interface RejectedFeedback {
   id: number;
@@ -76,11 +75,10 @@ export const meetingFeedbackApi = createApi({
         method: 'POST',
       }),
     }),
-        // ✅ Lấy danh sách meeting của tài khoản hiện tại
+    // ✅ Lấy danh sách meeting của tài khoản hiện tại
     getMyMeetings: builder.query<MyMeeting[], void>({
       query: () => 'meetings/my',
     }),
-
 
     // ✅ Lấy rejected feedbacks theo meeting
     getRejectedFeedbacks: builder.query<RejectedFeedback[], number>({
@@ -104,7 +102,8 @@ export const {
   useSubmitFeedbackMutation,
   useApproveMilestoneMutation,
   useGetRejectedFeedbacksQuery,
- useGetMyMeetingsQuery,
+  useGetMyMeetingsQuery,
+  useLazyGetRejectedFeedbacksQuery,
  useDeleteMeetingSummaryMutation,
 
 } = meetingFeedbackApi;

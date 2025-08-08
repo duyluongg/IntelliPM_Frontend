@@ -11,16 +11,14 @@ import { useGetProjectMembersWithPositionsQuery } from '../../../services/projec
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useCreateRiskSolutionMutation } from '../../../services/riskSolutionApi';
-import './Risk.css';
 import { useState } from 'react';
 import RiskDetail from './RiskDetail';
 import ManualRiskModal from './ManualRiskModal';
 import SuggestedRisksModal from './SuggestedRisksModal';
 import { useParams } from 'react-router-dom';
+import './Risk.css';
 
 const Risk = () => {
-  // const [searchParams] = useSearchParams();
-  // const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchParams] = useSearchParams();
   const { projectKey: paramProjectKey } = useParams();
   const queryProjectKey = searchParams.get('projectKey');
@@ -48,17 +46,27 @@ const Risk = () => {
   const [updateResponsible] = useUpdateRiskResponsibleMutation();
   const [updateRiskDueDate] = useUpdateRiskDueDateMutation();
   const [createRiskSolution] = useCreateRiskSolutionMutation();
-  const [editingResponsibleId, setEditingResponsibleId] = useState<number | null>(null);
 
   const { data: categoryData, isLoading: isCategoryLoading } =
     useGetCategoriesByGroupQuery('risk_type');
 
-  if (isLoading) return <div className='text-sm text-gray-500'>Loading risks...</div>;
-  if (error || !data?.data) return <div>Error loading risks</div>;
+  if (isLoading || isProjectLoading || isCategoryLoading) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+        Loading risks...
+      </div>
+    );
+  }
+  if (error || !data?.data) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500 text-sm">
+        Error loading risks
+      </div>
+    );
+  }
 
   const risks = data.data;
   const riskTypes = categoryData?.data || [];
-
   const assignees =
     membersData?.data?.map((m) => ({
       id: m.accountId,
@@ -74,12 +82,12 @@ const Risk = () => {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  function getDueClass(dueDate: string): string {
+  const getDueClass = (dueDate: string): string => {
     const today = new Date().toISOString().split('T')[0];
-    if (dueDate === today) return 'due-today';
-    if (dueDate < today) return 'due-warning';
-    return '';
-  }
+    if (dueDate === today) return 'bg-yellow-100 text-yellow-800';
+    if (dueDate < today) return 'bg-red-100 text-red-800';
+    return 'bg-gray-100 text-gray-800';
+  };
 
   const Severity: React.FC<{ status: string }> = ({ status }) => {
     const formatStatusForDisplay = (status: string) => {
@@ -109,11 +117,12 @@ const Risk = () => {
     };
 
     return (
-      <div className='status-container'>
-        <span className='status-line' style={getStatusStyle()}>
-          {formatStatusForDisplay(status)}
-        </span>
-      </div>
+      <span
+        className="inline-block px-3 py-1 text-xs font-semibold rounded-full"
+        style={getStatusStyle()}
+      >
+        {formatStatusForDisplay(status)}
+      </span>
     );
   };
 
@@ -131,30 +140,15 @@ const Risk = () => {
   }: {
     assignees: Assignee[];
     selectedId: number | null;
-    // onChange: (id: number) => void;
     onChange: (id: number | null) => void;
   }) => {
-    const getInitials = (name?: string | null) => {
-      if (!name) return '';
-      const parts = name.trim().split(' ');
-      if (parts.length === 1) return parts[0][0].toUpperCase();
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    };
-
     return (
       <select
-        className='responsible-dropdown'
+        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={selectedId?.toString() ?? ''}
-        onChange={(e) => {
-          const selectedValue = e.target.value;
-          onChange(selectedValue === '' ? null : Number(selectedValue));
-        }}
-        style={{ padding: '8px 8px', borderRadius: '4px', fontSize: '13px', cursor: 'pointer' }}
+        onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
       >
-        {/* <option value='' disabled>
-          -- Select --
-        </option> */}
-        <option value=''>No Assignee</option>
+        <option value="">No Assignee</option>
         {assignees.map((user) => (
           <option key={user.id} value={user.id}>
             {user.fullName || user.userName}
@@ -174,11 +168,11 @@ const Risk = () => {
     const getStyle = (status: string) => {
       switch (status.toUpperCase()) {
         case 'OPEN':
-          return { backgroundColor: '#DBEAFE', color: '#1D4ED8' }; // blue
+          return { backgroundColor: '#DBEAFE', color: '#1D4ED8' };
         case 'MITIGATED':
-          return { backgroundColor: '#D1FAE5', color: '#047857' }; // green
+          return { backgroundColor: '#D1FAE5', color: '#047857' };
         case 'CLOSED':
-          return { backgroundColor: '#E5E7EB', color: '#6B7280' }; // gray
+          return { backgroundColor: '#E5E7EB', color: '#6B7280' };
         default:
           return {};
       }
@@ -186,28 +180,19 @@ const Risk = () => {
 
     return (
       <select
-        className={`risk-status-select status-${status.toLowerCase()}`}
+        className="p-2 text-xs font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         value={status}
         onChange={(e) => onChange(e.target.value)}
-        style={{
-          ...getStyle(status),
-          border: 'none',
-          borderRadius: '4px',
-          padding: '4px 8px',
-          fontWeight: 600,
-          fontSize: '12px',
-          cursor: 'pointer',
-        }}
+        style={getStyle(status)}
       >
-        <option value='OPEN'>OPEN</option>
-        <option value='MITIGATED'>MITIGATED</option>
-        <option value='CLOSED'>CLOSED</option>
+        <option value="OPEN">OPEN</option>
+        <option value="MITIGATED">MITIGATED</option>
+        <option value="CLOSED">CLOSED</option>
       </select>
     );
   };
 
   const openCreateRiskModal = () => {
-    console.log('Open create risk modal');
     setShowCreateModal(true);
   };
 
@@ -218,7 +203,7 @@ const Risk = () => {
   const handleSaveRisk = async (newRisk: any) => {
     try {
       const request = {
-        projectKey: projectKey,
+        projectKey,
         responsibleId: null,
         createdBy: accountId,
         taskId: null,
@@ -234,9 +219,8 @@ const Risk = () => {
         dueDate: newRisk.dueDate + 'T00:00:00Z',
       };
 
-      const res = await createRisk(request).unwrap();
+      await createRisk(request).unwrap();
       refetch();
-      console.log('Created risk:', res.data);
     } catch (error) {
       console.error('Failed to create risk:', error);
     }
@@ -251,12 +235,10 @@ const Risk = () => {
   };
 
   const handleApproveSuggestedRisk = async (risk: any) => {
-    const today = new Date();
-    const isoDate = today.toISOString().split('T')[0] + 'T00:00:00Z';
-
+    const today = new Date().toISOString().split('T')[0] + 'T00:00:00Z';
     try {
       const request = {
-        projectKey: projectKey,
+        projectKey,
         responsibleId: null,
         createdBy: accountId,
         taskId: null,
@@ -269,10 +251,9 @@ const Risk = () => {
         probability: risk.probability || risk.likelihood,
         impactLevel: risk.impactLevel || risk.impact,
         isApproved: true,
-        dueDate: isoDate,
+        dueDate: today,
       };
 
-      console.log('Creating risk with request:', request);
       const res = await createRisk(request).unwrap();
       if (risk.mitigationPlan || risk.contingencyPlan) {
         await createRiskSolution({
@@ -282,58 +263,70 @@ const Risk = () => {
         });
       }
       refetch();
-      console.log('Created risk:', res.data);
     } catch (error) {
       console.error('Failed to create risk:', error);
     }
   };
 
   return (
-    <div className='risk-page-wrapper'>
-      <div className='risk-toolbar'>
-        <button className='btn btn-primary' onClick={() => openCreateRiskModal()}>
-          + Add Risk
-        </button>
-        <button className='btn btn-secondary' onClick={() => openSuggestedRisks()}>
-          🤖 Suggest by AI
-        </button>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Risk Management</h1>
+        <div className="space-x-4">
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            onClick={openCreateRiskModal}
+          >
+            + Add Risk
+          </button>
+          <button
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition"
+            onClick={openSuggestedRisks}
+          >
+            🤖 Suggest by AI
+          </button>
+        </div>
       </div>
 
-      <div className='risk-table-container'>
-        <table className='risk-table'>
-          <thead>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-100">
             <tr>
-              <th>Key</th>
-              <th>Risk Name</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Severity</th>
-              <th>Responsible</th>
-              <th>Due Date</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Key</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Risk Name</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Type</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Status</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Severity</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Responsible</th>
+              <th className="p-3 text-left text-sm font-semibold text-gray-600">Due Date</th>
             </tr>
           </thead>
           <tbody>
             {risks.map((risk) => (
-              <tr key={risk.id}>
-                <td onClick={() => setSelectedRisk(risk)} style={{ cursor: 'pointer' }}>
-                  <div className='risk-key-wrapper'>
-                    <div className='risk-key'>{risk.riskKey}</div>
-                  </div>
+              <tr key={risk.id} className="border-b hover:bg-gray-50">
+                <td className="p-3">
+                  <span
+                    className="text-black-600 cursor-pointer hover:underline"
+                    onClick={() => setSelectedRisk(risk)}
+                  >
+                    {risk.riskKey}
+                  </span>
                 </td>
-                <td onClick={() => setSelectedRisk(risk)} style={{ cursor: 'pointer' }}>
-                  <div className='risk-key-wrapper'>
-                    <div className='risk-key'>{risk.title}</div>
-                  </div>
+                <td className="p-3">
+                  <span
+                    className="text-black-600 cursor-pointer hover:underline"
+                    onClick={() => setSelectedRisk(risk)}
+                  >
+                    {risk.title}
+                  </span>
                 </td>
-                <td>
+                <td className="p-3">
                   <select
-                    className='risk-type-select'
+                    className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={risk.type}
-                    style={{ cursor: 'pointer' }}
                     onChange={async (e) => {
-                      const newType = e.target.value;
                       try {
-                        await updateRiskType({ id: risk.id, type: newType }).unwrap();
+                        await updateRiskType({ id: risk.id, type: e.target.value }).unwrap();
                         refetch();
                       } catch (err) {
                         console.error('Failed to update risk type:', err);
@@ -347,78 +340,54 @@ const Risk = () => {
                     ))}
                   </select>
                 </td>
-
-                <td>
+                <td className="p-3">
                   <RiskStatusDropdown
                     status={risk.status}
                     onChange={async (newStatus) => {
                       try {
                         await updateRiskStatus({ id: risk.id, status: newStatus }).unwrap();
                         refetch();
-                        console.log(`Updated status for risk ${risk.id} to ${newStatus}`);
                       } catch (err) {
                         console.error('Failed to update status:', err);
                       }
                     }}
                   />
                 </td>
-                <td>
-                  <span className={`risk-severity-${risk.severityLevel}`}>
-                    <Severity status={risk.severityLevel} />
-                  </span>
+                <td className="p-3">
+                  <Severity status={risk.severityLevel} />
                 </td>
-
-                <td style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <td className="p-3 flex items-center space-x-2">
                   {risk.responsibleId ? (
                     risk.responsiblePicture ? (
                       <img
                         src={risk.responsiblePicture}
-                        alt='avatar'
-                        className='avatar'
-                        style={{ width: 24, height: 24, borderRadius: '50%' }}
+                        alt="avatar"
+                        className="w-6 h-6 rounded-full"
                       />
                     ) : (
-                      <div
-                        style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: '50%',
-                          backgroundColor: '#4C9AFF',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 10,
-                          fontWeight: 'bold',
-                        }}
-                      >
+                      <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
                         {getInitials(risk.responsibleFullName || risk.responsibleUserName)}
                       </div>
                     )
                   ) : (
-                    <span style={{ fontSize: 13, color: '#888' }}></span>
+                    <span className="text-gray-500 text-sm">No Assignee</span>
                   )}
-
                   <ResponsibleDropdown
                     assignees={assignees}
-                    selectedId={risk.responsibleId ?? ''}
+                    selectedId={risk.responsibleId}
                     onChange={async (newId) => {
                       try {
                         await updateResponsible({ id: risk.id, responsibleId: newId }).unwrap();
                         refetch();
-                      } catch (error) {
-                        console.error('Failed to update responsible:', error);
+                      } catch (err) {
+                        console.error('Failed to update responsible:', err);
                       }
                     }}
                   />
                 </td>
-
-                {/* <td className={getDueClass(risk.dueDate?.split('T')[0])}>
-                  {risk.dueDate ? new Date(risk.dueDate).toLocaleDateString('vi-VN') : '--'}
-                </td> */}
-                <td>
+                <td className="p-3">
                   <input
-                    type='date'
+                    type="date"
                     value={risk.dueDate?.split('T')[0] || ''}
                     onChange={async (e) => {
                       const newDate = e.target.value + 'T00:00:00Z';
@@ -429,14 +398,9 @@ const Risk = () => {
                         console.error('Failed to update due date:', err);
                       }
                     }}
-                    className={`due-date-input ${getDueClass(risk.dueDate?.split('T')[0])}`}
-                    style={{
-                      padding: '4px 8px',
-                      fontSize: '13px',
-                      borderRadius: '4px',
-                      border: '1px solid #ccc',
-                      cursor: 'pointer',
-                    }}
+                    className={`p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${getDueClass(
+                      risk.dueDate?.split('T')[0]
+                    )}`}
                   />
                 </td>
               </tr>
@@ -444,6 +408,7 @@ const Risk = () => {
           </tbody>
         </table>
       </div>
+
       {selectedRisk && (
         <RiskDetail
           risk={selectedRisk}
@@ -457,7 +422,7 @@ const Risk = () => {
         <ManualRiskModal onClose={closeCreateRiskModal} onSave={handleSaveRisk} />
       )}
       {showSuggestedModal && (
-        <SuggestedRisksModal onClose={closeSuggestedRisks} onApprove={handleApproveSuggestedRisk} />
+        <SuggestedRisksModal onClose={closeSuggestedRisks} onApprove={handleApproveSuggestedRisk} projectId={projectId} />
       )}
     </div>
   );

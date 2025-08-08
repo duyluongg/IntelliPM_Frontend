@@ -183,6 +183,29 @@ export const projectMemberApi = createApi({
       },
       providesTags: ['ProjectMember'],
     }),
+    changeHourlyRate: builder.mutation<
+      ApiResponse<ProjectMemberWithTasksResponse>,
+      { projectId: number; memberId: number; hourlyRate: number }
+    >({
+      query: ({ projectId, memberId, hourlyRate }) => ({
+        url: `project/${projectId}/projectmember/${memberId}/hourly-rate`,
+        method: 'PATCH',
+        body: hourlyRate,
+      }),
+      invalidatesTags: ['ProjectMember'],
+    }),
+    // New endpoint for changing working hours per day
+    changeWorkingHoursPerDay: builder.mutation<
+      ApiResponse<ProjectMemberWithTasksResponse>,
+      { projectId: number; memberId: number; workingHoursPerDay: number }
+    >({
+      query: ({ projectId, memberId, workingHoursPerDay }) => ({
+        url: `project/${projectId}/projectmember/${memberId}/working-hours-per-day`,
+        method: 'PATCH',
+        body: workingHoursPerDay,
+      }),
+      invalidatesTags: ['ProjectMember'],
+    }),
   }),
 });
 
@@ -196,4 +219,6 @@ export const {
   useGetProjectMemberByAccountQuery,
   useUpdateProjectMemberStatusMutation,
   useGetProjectMembersWithTasksQuery,
+  useChangeHourlyRateMutation, 
+  useChangeWorkingHoursPerDayMutation,
 } = projectMemberApi;

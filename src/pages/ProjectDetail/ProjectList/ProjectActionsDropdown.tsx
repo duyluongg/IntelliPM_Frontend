@@ -18,7 +18,7 @@ const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project
   };
 
   const handleDetails = () => {
-    navigate(`/project/${project.projectKey}/details`);
+    navigate(`/project/${project.projectKey}/summary`);
     setIsOpen(false);
   };
 

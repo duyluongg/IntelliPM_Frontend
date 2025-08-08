@@ -51,6 +51,7 @@ import GuestIntroPage from '../pages/Guest/IntroPage';
 import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
 import Report from '../pages/Admin/ReportPage/Report';
 import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
+import Document from '../pages/PM/YourProject/Document';
 
 export const router = createBrowserRouter([
   {
@@ -107,7 +108,8 @@ export const router = createBrowserRouter([
   },
 
   {
-    path: '/project/projects/form/:type/:id',
+    // path: '/project/projects/form/:type/:id',
+    path: '/project/projects/form/document/:documentId',
     element: (
       <ProtectedRoute allowedRoles={['CLIENT', 'PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <LayoutSwitch />
@@ -116,7 +118,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <DocWrapper />,
+        element: <Document />,
       },
     ],
   },
@@ -140,7 +142,7 @@ export const router = createBrowserRouter([
         element: <MeetingRequestRejectPage />,
       },
 
-         {
+      {
         path: 'meeting-management/send-request',
         element: <CreateDocumentRequestMeeting />,
       },

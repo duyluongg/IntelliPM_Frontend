@@ -29,8 +29,10 @@ export default function RecentForm() {
   const projectKey = searchParams.get('projectKey');
 
   useEffect(() => {
-    refetch();
-  }, []);
+    if (projectId) {
+      refetch();
+    }
+  }, [projectId, refetch]);
 
   const handleDelete = async (id: number) => {
     const confirmed = window.confirm('Bạn có chắc chắn muốn xóa tài liệu này?');
@@ -66,9 +68,7 @@ export default function RecentForm() {
             {/* Click để mở form */}
             <div
               className='cursor-pointer'
-              onClick={() =>
-                navigate(`/project/projects/form/${doc.type}/${doc.id}?projectKey=${projectKey}`)
-              }
+              onClick={() => navigate(`/project/projects/form/document/${doc.id}`)}
             >
               <div className='bg-purple-400 h-32 rounded-lg flex items-center justify-center'>
                 <FileText size={48} className='text-white' />

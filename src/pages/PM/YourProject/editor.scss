@@ -1,0 +1,52 @@
+.tiptap {
+  :first-child {
+    margin-top: 0;
+  }
+
+  .tableWrapper {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+
+  &.resize-cursor {
+    cursor: ew-resize;
+    cursor: col-resize;
+  }
+}
+
+.slash-command-menu {
+  background: red;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  max-width: 250px;
+}
+
+.slash-item {
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.slash-item:hover {
+  background-color: #f3f4f6;
+}
+
+.comment-highlight {
+    background-color: rgba(250, 204, 21, 0.3); // Màu vàng nhạt, hơi trong suốt
+    border-radius: 3px;
+    padding: 1px 3px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out;
+
+    &:hover {
+      background-color: rgba(250, 204, 21, 0.5); // Đậm hơn khi hover
+    }
+
+    // Class này sẽ được thêm bằng JS khi comment được chọn ở sidebar
+    &.is-active {
+      background-color: rgba(250, 204, 21, 0.7); // Rất nổi bật khi active
+    }
+  }

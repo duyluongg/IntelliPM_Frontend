@@ -24,6 +24,7 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
+  useUpdateTaskSprintMutation
 } from '../../services/taskApi';
 import {
   useGetTaskFilesByTaskIdQuery,
@@ -57,6 +58,7 @@ import {
 } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -94,12 +96,14 @@ const WorkItemDetail: React.FC = () => {
   const [plannedEndDate, setPlannedEndDate] = React.useState('');
   const [projectName, setProjectName] = React.useState('');
   const [projectId, setProjectId] = React.useState('');
+  const [sprintId, setSprintId] = useState<number | null>(null);
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
   const [selectedAssignees, setSelectedAssignees] = React.useState<{ [key: string]: string }>({});
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
   const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
+  const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
@@ -125,22 +129,11 @@ const WorkItemDetail: React.FC = () => {
   const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
   const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
   const taskStatusLabel = taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
-  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } =
-      useGetCategoriesByGroupQuery('task_type');
-    const {
-      data: priorityOptions,
-      isLoading: isPriorityLoading,
-      isError: isPriorityError
-    } = useGetCategoriesByGroupQuery('subtask_priority');
-    const {
-    data: priorityTaskOptions, 
-    isLoading: isPriorityTaskLoading, 
-    isError: isPriorityTaskError 
-  } = useGetCategoriesByGroupQuery('task_priority');
-
+  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } = useGetCategoriesByGroupQuery('task_type');
+  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
+  const { data: priorityTaskOptions, isLoading: isPriorityTaskLoading, isError: isPriorityTaskError } = useGetCategoriesByGroupQuery('task_priority');
   const currentType = taskTypes?.data.find((t) => t.name === workType);
-  const currentIcon = currentType?.iconLink || ''; 
-
+  const currentIcon = currentType?.iconLink || '';
 
   const { data: assignees = [], isLoading: isAssigneeLoading } =
     useGetTaskAssignmentsByTaskIdQuery(taskId);
@@ -305,6 +298,7 @@ const WorkItemDetail: React.FC = () => {
       setPlannedEndDate(taskData.plannedEndDate);
       setPlannedStartDate(taskData.plannedStartDate);
       setProjectName(taskData.projectName ?? '');
+      setSprintId(taskData.sprintId);
       setProjectId(String(taskData.projectId));
       setSelectedReporter(taskData.reporterId ?? null);
     }
@@ -359,6 +353,26 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
+  const handleSprintTaskChange = async (newSprintId: number | null) => {
+    console.log('Calling handleSprintTaskChange with sprintId:', newSprintId);
+    if (newSprintId === taskData?.sprintId) return;
+
+    try {
+      await updateTaskSprint({
+        id: taskId,
+        sprintId: newSprintId,
+        createdBy: accountId
+      }).unwrap();
+      setSprintId(newSprintId);
+      await Promise.all([refetchActivityLogs(), refetchTask()]);
+      console.log('Update sprint task successfully!');
+      alert('✅ Sprint updated successfully');
+    } catch (err: any) {
+      console.error('Error update sprint:', err);
+      alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
+    }
+  };
+
   const handleDropdownClick = (e: React.MouseEvent) => e.stopPropagation();
 
   const handleIconClick = (e: React.MouseEvent) => {
@@ -366,27 +380,24 @@ const WorkItemDetail: React.FC = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const {
-    data: workItemLabels = [],
-    isLoading: isLabelLoading,
-    refetch: refetchWorkItemLabels,
-  } = useGetWorkItemLabelsByTaskQuery(taskId, {
+  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels, } = useGetWorkItemLabelsByTaskQuery(taskId, {
     skip: !taskId,
   });
 
-  const {
-    data: projectLabels = [],
-    isLoading: isProjectLabelsLoading,
-    refetch: refetchProjectLabels,
-  } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+  const { data: projectLabels = [], isLoading: isProjectLabelsLoading, refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
 
     if (newLabelName.trim() === '') {
-      return notAlreadyAdded; // Hiện toàn bộ nếu chưa nhập gì
+      return notAlreadyAdded;
     }
 
     return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
@@ -1510,8 +1521,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1586,8 +1597,8 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1596,9 +1607,35 @@ const WorkItemDetail: React.FC = () => {
                 <label>Parent</label>
                 <span>{subtaskData[0]?.taskId ?? 'None'}</span>
               </div>
+
               <div className='detail-item'>
                 <label>Sprint</label>
-                <span>{taskData?.sprintName ?? 'None'}</span>
+                {isProjectSprintsLoading ? (
+                  <span>Loading sprints...</span>
+                ) : isProjectSprintsError ? (
+                  <span>Error loading sprints</span>
+                ) : projectSprints.length === 0 ? (
+                  <span>No sprints available</span>
+                ) : (
+                  <select
+                    style={{ width: '150px' }}
+                    value={sprintId ?? 'none'}
+                    onChange={(e) => {
+                      const val = e.target.value === 'none' ? null : Number(e.target.value);
+                      setSprintId(val);
+                      if (val !== null) {
+                        handleSprintTaskChange(val);
+                      }
+                    }}
+                  >
+                    <option value="none">No Sprint</option>
+                    {projectSprints.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className='detail-item'>

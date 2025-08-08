@@ -41,6 +41,9 @@ interface ProjectMetricResponse {
     varianceAtCompletion: number;
     estimateDurationAtCompletion: number;
     calculatedBy: string;
+    isImproved: boolean;
+    improvementSummary: string;
+    confidenceScore: number;
     createdAt: string;
     updatedAt: string;
   };
@@ -204,6 +207,13 @@ export const projectMetricApi = createApi({
         method: 'POST',
       }),
     }),
+
+    getProjectMetricAIByProjectKey: builder.query<ProjectMetricResponse, string>({
+      query: (projectKey) => ({
+        url: `projectmetric/ai-forecast?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -217,4 +227,5 @@ export const {
   useGetWorkloadDashboardQuery,
   useGetProjectMetricByProjectKeyQuery,
   useCalculateMetricsBySystemMutation,
+  useGetProjectMetricAIByProjectKeyQuery,
 } = projectMetricApi;

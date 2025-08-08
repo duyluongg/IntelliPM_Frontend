@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState, Fragment, useRef } from 'react';
-import { useNavigate } from 'react-router-dom'; 
-import { useGetSprintByIdQuery, useUpdateSprintDetailsMutation, useCheckSprintDatesMutation, useCheckWithinProjectMutation } from '../../../services/sprintApi';
+import { useNavigate } from 'react-router-dom';
+import { useGetSprintByIdQuery, useUpdateSprintDetailsMutation, useCheckActiveSprintStartDateMutation } from '../../../services/sprintApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import dayjs from 'dayjs';
+import { debounce } from 'lodash';
 
 interface StartSprintPopupProps {
   isOpen: boolean;
@@ -28,7 +30,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   projectKey,
   workItem,
 }) => {
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const {
     data: sprint,
     isLoading: isSprintLoading,
@@ -45,8 +47,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   });
 
   const [updateSprintDetails] = useUpdateSprintDetailsMutation();
-  const [checkSprintDates] = useCheckSprintDatesMutation();
-  const [checkWithinProject] = useCheckWithinProjectMutation();
+  const [checkSprintDates] = useCheckActiveSprintStartDateMutation();
 
   const [sprintName, setSprintName] = useState('');
   const [duration, setDuration] = useState('1 week');
@@ -61,8 +62,87 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   const [hasChangedStart, setHasChangedStart] = useState(false);
   const [hasChangedEnd, setHasChangedEnd] = useState(false);
   const [validWeeks, setValidWeeks] = useState<number[]>([1, 2, 3, 4]);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const isInitialized = useRef(false);
+
+  const debouncedCheckDates = useRef(
+    debounce(async (projectKey: string, startDate: string, startTime: string, endDate: string, endTime: string, sprintId: number) => {
+      try {
+        setGeneralError(null);
+        if (!dayjs(`${startDate}T${startTime}`).isValid() || !dayjs(`${endDate}T${endTime}`).isValid()) {
+          setStartDateError('Invalid date format');
+          setEndDateError('Invalid date format');
+          setValidWeeks([]);
+          setDuration('custom');
+          return;
+        }
+
+        const checkStartDate = dayjs(`${startDate}T${startTime}`).toISOString();
+        const checkEndDate = dayjs(`${endDate}T${endTime}`).toISOString();
+        const result = await checkSprintDates({ projectKey, checkStartDate, checkEndDate, activeSprintId: sprintId }).unwrap();
+        
+        if (!result.data.isValid) {
+          setStartDateError(result.message);
+          setEndDateError(result.message);
+          setValidWeeks([]);
+          setDuration('custom');
+          return;
+        }
+
+        setStartDateError(null);
+        setEndDateError(null);
+
+        if (!project?.data || !sprint?.id) return;
+        const start = dayjs(`${startDate}T${startTime}`);
+        const projectStart = dayjs(project.data.startDate);
+        const projectEnd = dayjs(project.data.endDate);
+
+        if (!projectStart.isValid() || !projectEnd.isValid()) {
+          setStartDateError('Invalid project dates');
+          setValidWeeks([]);
+          setDuration('custom');
+          return;
+        }
+
+        if (start.isBefore(projectStart) || start.isAfter(projectEnd)) {
+          setStartDateError('Start date is not within project duration');
+          setValidWeeks([]);
+          setDuration('custom');
+          return;
+        }
+
+        const newValidWeeks: number[] = [];
+        for (let weeks = 1; weeks <= 4; weeks++) {
+          const sprintEnd = start.add(weeks, 'week');
+          if (sprintEnd.isBefore(projectEnd) || sprintEnd.isSame(projectEnd)) {
+            const endCheck = await checkSprintDates({
+              projectKey,
+              checkStartDate: start.toISOString(),
+              checkEndDate: sprintEnd.toISOString(),
+              activeSprintId: sprintId,
+            }).unwrap();
+            if (endCheck.data.isValid) {
+              newValidWeeks.push(weeks);
+            }
+          }
+        }
+
+        setValidWeeks(newValidWeeks);
+        if (newValidWeeks.length === 0) {
+          setGeneralError('Sprint duration cannot exceed project end date or overlaps with other sprints. Please use custom duration.');
+          setDuration('custom');
+        } else if (!newValidWeeks.includes(parseInt(duration.split(' ')[0]) || 1)) {
+          setDuration(newValidWeeks.includes(1) ? '1 week' : 'custom');
+        }
+      } catch (err: any) {
+        setStartDateError(err?.data?.message || 'Failed to check sprint dates');
+        setEndDateError(err?.data?.message || 'Failed to check sprint dates');
+        setValidWeeks([]);
+        setDuration('custom');
+      }
+    }, 500)
+  ).current;
 
   useEffect(() => {
     if (isOpen && sprint && !isInitialized.current) {
@@ -124,148 +204,47 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   }, [duration, startDate, startTime, validWeeks]);
 
   useEffect(() => {
-    if (!hasChangedStart || !startDate || !startTime || !projectKey || !project) return;
-
-    const checkStartDate = async () => {
-      try {
-        setGeneralError(null);
-        const checkDate = dayjs(`${startDate}T${startTime}`).toISOString();
-        const result = await checkSprintDates({ projectKey, checkDate }).unwrap();
-        if (!result.data.isValid) {
-          setStartDateError(result.message);
-          setValidWeeks([]);
-          setDuration('custom');
-          return;
-        } else {
-          setStartDateError(null);
-        }
-
-        const start = dayjs(`${startDate}T${startTime}`);
-        const projectStart = dayjs(project.data.startDate);
-        const projectEnd = dayjs(project.data.endDate);
-        if (!projectStart.isValid() || !projectEnd.isValid()) {
-          setStartDateError('Invalid project dates');
-          setValidWeeks([]);
-          setDuration('custom');
-          return;
-        }
-
-        if (start.isBefore(projectStart) || start.isAfter(projectEnd)) {
-          setStartDateError('Start date is not within project duration');
-          setValidWeeks([]);
-          setDuration('custom');
-          return;
-        }
-
-        const newValidWeeks: number[] = [];
-        for (let weeks = 1; weeks <= 4; weeks++) {
-          const sprintEnd = start.add(weeks, 'week');
-          if (sprintEnd.isBefore(projectEnd) || sprintEnd.isSame(projectEnd)) {
-            newValidWeeks.push(weeks);
-          }
-        }
-
-        setValidWeeks(newValidWeeks);
-        if (newValidWeeks.length === 0) {
-          setGeneralError('Sprint duration cannot exceed project end date. Please use custom duration.');
-          setDuration('custom');
-        } else if (!newValidWeeks.includes(parseInt(duration.split(' ')[0]) || 1)) {
-          setDuration(newValidWeeks.includes(1) ? '1 week' : 'custom');
-        }
-      } catch (err: any) {
-        setStartDateError(err?.data?.message || 'Failed to check start date');
-        setValidWeeks([]);
-        setDuration('custom');
-      }
-    };
-
-    checkStartDate();
-  }, [startDate, startTime, hasChangedStart, projectKey, project, checkSprintDates]);
+    if (!hasChangedStart || !startDate || !startTime || !projectKey || !project || !sprint?.id) return;
+    debouncedCheckDates(projectKey, startDate, startTime, endDate, endTime, sprint.id);
+  }, [startDate, startTime, hasChangedStart, projectKey, project, sprint, endDate, endTime]);
 
   useEffect(() => {
-    if (!hasChangedEnd || !endDate || !endTime || duration !== 'custom' || !projectKey) return;
-
-    const checkEndDate = async () => {
-      try {
-        setGeneralError(null);
-        const checkDate = dayjs(`${endDate}T${endTime}`).toISOString();
-        const result = await checkWithinProject({ projectKey, checkDate }).unwrap();
-        if (!result.isWithin) {
-          setEndDateError('End date is not within project duration');
-        } else {
-          setEndDateError(null);
-        }
-      } catch (err: any) {
-        setEndDateError(err?.data?.message || 'Failed to check end date');
-      }
-    };
-
-    checkEndDate();
-  }, [endDate, endTime, hasChangedEnd, duration, projectKey, checkWithinProject]);
+    if (!hasChangedEnd || !endDate || !endTime || duration !== 'custom' || !projectKey || !sprint?.id) return;
+    debouncedCheckDates(projectKey, startDate, startTime, endDate, endTime, sprint.id);
+  }, [endDate, endTime, hasChangedEnd, duration, projectKey, sprint, startDate, startTime]);
 
   const handleConfirm = async () => {
     try {
+      setIsUpdating(true);
       setGeneralError(null);
       if (!projectKey) {
         setGeneralError('Project key is missing');
-        alert('Project key is missing');
         return;
       }
 
       if (!project || !project.data) {
         setGeneralError('Project details not available');
-        alert('Project details not available');
         return;
       }
 
       if (!project.data.id) {
         setGeneralError('Project ID is missing');
-        alert('Project ID is missing');
+        return;
+      }
+
+      if (!sprint?.id) {
+        setGeneralError('Sprint ID is missing');
         return;
       }
 
       if (!startDate || !startTime) {
         setStartDateError('Please select a valid start date and time.');
-        alert('Please select a valid start date and time.');
         return;
       }
 
-      const checkDate = dayjs(`${startDate}T${startTime}`).toISOString();
-      const result = await checkSprintDates({ projectKey, checkDate }).unwrap();
-      if (!result.data.isValid) {
-        setStartDateError(result.message);
-        alert(`Invalid start date: ${result.message}`);
+      if (startDateError || endDateError) {
+        setGeneralError('Please fix date errors before starting the sprint.');
         return;
-      }
-
-      const start = dayjs(`${startDate}T${startTime}`);
-      const projectStart = dayjs(project.data.startDate);
-      const projectEnd = dayjs(project.data.endDate);
-      if (!projectStart.isValid() || !projectEnd.isValid()) {
-        setStartDateError('Invalid project dates');
-        alert('Invalid project dates');
-        return;
-      }
-      if (start.isBefore(projectStart) || start.isAfter(projectEnd)) {
-        setStartDateError('Start date is not within project duration');
-        alert('Start date is not within project duration');
-        return;
-      }
-
-      if (duration === 'custom' && (!endDate || !endTime)) {
-        setEndDateError('Please select a valid end date and time.');
-        alert('Please select a valid end date and time.');
-        return;
-      }
-
-      if (duration === 'custom') {
-        const checkDate = dayjs(`${endDate}T${endTime}`).toISOString();
-        const result = await checkWithinProject({ projectKey, checkDate }).unwrap();
-        if (!result.isWithin) {
-          setEndDateError('End date is not within project duration');
-          alert('End date is not within project duration');
-          return;
-        }
       }
 
       const startDateTime = dayjs(`${startDate}T${startTime}`).toISOString();
@@ -290,7 +269,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
       navigate(`/project?projectKey=${projectKey}#board`);
     } catch (err: any) {
       setGeneralError(err?.data?.message || 'Failed to update sprint');
-      alert(`Failed to update sprint: ${err?.data?.message || 'Unknown error'}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -485,9 +465,10 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
             </button>
             <button
               onClick={handleConfirm}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+              disabled={isUpdating || !!startDateError || !!endDateError}
+              className={`px-4 py-2 text-sm text-white rounded-md transition ${isUpdating || !!startDateError || !!endDateError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
-              Start
+              {isUpdating ? 'Starting...' : 'Start'}
             </button>
           </div>
         </div>

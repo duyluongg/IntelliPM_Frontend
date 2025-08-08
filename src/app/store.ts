@@ -31,6 +31,7 @@ import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
 import { subtaskAiApi } from '../services/subtaskAiApi';
+import { taskAiApi } from '../services/taskAiApi';
 import { projectPositionApi } from '../services/projectPositionApi';
 import { projectRecommendationApi } from '../services/projectRecommendationApi';
 import { epicFileApi } from '../services/epicFileApi';
@@ -50,7 +51,11 @@ import { taskDependencyApi } from '../services/taskDependencyApi';
 import { documentExportApi } from '../services/Document/documentExportApi';
 import { labelApi } from '../services/labelApi';
 import { milestoneCommentApi } from '../services/milestoneCommentApi';
+import { documentCommentApi } from '../services/Document/documentCommentAPI';
+import { documentRequestMeetingApi } from '../services/ProjectManagement/MeetingServices/documentRequestMeetingApi';
 import { adminApi } from '../services/adminApi';
+import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
+import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
 
 const persistConfig = {
   key: 'root',
@@ -87,6 +92,7 @@ const rootReducer = combineReducers({
   [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
   [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
   [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
+  [taskAiApi.reducerPath]: taskAiApi.reducer,
   [projectPositionApi.reducerPath]: projectPositionApi.reducer,
   [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
   [epicFileApi.reducerPath]: epicFileApi.reducer,
@@ -104,7 +110,12 @@ const rootReducer = combineReducers({
   [documentExportApi.reducerPath]: documentExportApi.reducer,
   [labelApi.reducerPath]: labelApi.reducer,
   [milestoneCommentApi.reducerPath]: milestoneCommentApi.reducer,
+  [documentCommentApi.reducerPath]: documentCommentApi.reducer,
+  [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
+
   [adminApi.reducerPath]: adminApi.reducer,
+  [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
+  [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -151,7 +162,7 @@ export const store = configureStore({
       projectRecommendationApi.middleware,
       epicFileApi.middleware,
       meetingRescheduleRequestApi.middleware,
-      epicCommentApi.middleware, 
+      epicCommentApi.middleware,
       workLogApi.middleware,
       activityLogApi.middleware,
       riskSolutionApi.middleware,
@@ -164,7 +175,12 @@ export const store = configureStore({
       documentExportApi.middleware,
       labelApi.middleware,
       milestoneCommentApi.middleware,
-      adminApi.middleware
+      documentCommentApi.middleware,
+      documentRequestMeetingApi.middleware,
+      adminApi.middleware,
+      aiResponseHistoryApi.middleware,
+      aiResponseEvaluationApi.middleware,
+      taskAiApi.middleware,
     ),
 });
 

@@ -19,7 +19,7 @@ interface ProjectPositionResponse {
   assignedAt: string;
 }
 
-interface ProjectMemberResponse {
+export interface ProjectMemberResponse {
   id: number;
   accountId: number;
   accountName: string | null;
@@ -56,6 +56,24 @@ interface GetProjectMembersWithPositionsResponse {
   code: number;
   data: ProjectMemberWithPositionsResponse[];
   message: string;
+}
+
+export interface TaskSummary {
+  id: string;
+  title: string;
+  status: string;
+  percentComplete: number;
+}
+
+export interface ProjectMemberWithTasksResponse {
+  id: number;
+  accountId: number;
+  fullName: string;
+  username: string;
+  accountPicture: string;
+  hourlyRate: number;
+  workingHoursPerDay: number;
+  tasks: TaskSummary[];
 }
 
 export const projectMemberApi = createApi({
@@ -140,7 +158,8 @@ export const projectMemberApi = createApi({
       ApiResponse<ProjectMemberResponse>,
       { projectId: number; accountId: number }
     >({
-      query: ({ projectId, accountId }) => `project/${projectId}/projectmember/by-account/${accountId}`,
+      query: ({ projectId, accountId }) =>
+        `project/${projectId}/projectmember/by-account/${accountId}`,
       providesTags: ['ProjectMember'],
     }),
     updateProjectMemberStatus: builder.mutation<
@@ -152,6 +171,17 @@ export const projectMemberApi = createApi({
         method: 'PATCH',
       }),
       invalidatesTags: ['ProjectMember', 'Projects'],
+    }),
+
+    getProjectMembersWithTasks: builder.query<ProjectMemberWithTasksResponse[], number>({
+      query: (projectId) => `project/${projectId}/projectmember/members/tasks`,
+      transformResponse: (response: any) => {
+        if (response?.isSuccess && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      },
+      providesTags: ['ProjectMember'],
     }),
   }),
 });
@@ -165,4 +195,5 @@ export const {
   useGetProjectMembersWithPositionsQuery,
   useGetProjectMemberByAccountQuery,
   useUpdateProjectMemberStatusMutation,
+  useGetProjectMembersWithTasksQuery,
 } = projectMemberApi;

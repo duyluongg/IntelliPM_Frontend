@@ -19,6 +19,7 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
     skip: !user?.email,
   });
 
+
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'

@@ -1,0 +1,24 @@
+[data-comment-id] {
+  background-color: transparent;
+  cursor: pointer;
+}
+
+/* Chỉ style khi hover hoặc khi chọn */
+[data-comment-id]:hover,
+[data-comment-id].highlight {
+  background-color: #fef3c7; /* yellow-100 */
+  text-decoration: underline dotted;
+}
+.comment {
+  background-color: #fef9c3; /* tailwind yellow-100 */
+  border-radius: 2px;
+}
+
+.comment.highlight {
+  outline: 2px solid #60a5fa; /* blue-400 */
+  outline-offset: 1px;
+}
+
+.comment {
+  transition: background-color 0.3s ease;
+}

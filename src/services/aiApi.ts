@@ -21,14 +21,23 @@ export interface Task {
 
 // Định nghĩa kiểu dữ liệu cho task trong state (dùng trong TaskSetup)
 export interface TaskState {
-  id: string; // UUID cho frontend
-  taskId: string; // taskId từ backend
+  id: string; 
+  taskId: string; 
   title: string;
   description: string;
   startDate: string;
   endDate: string;
   suggestedRole: string;
   assignedMembers: Member[];
+}
+export interface EpicState {
+  epicId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  tasks: TaskState[];
+  backendEpicId?: string;
 }
 
 // Định nghĩa kiểu dữ liệu cho requirement
@@ -87,7 +96,34 @@ export interface EpicResponse {
     tasks: Task[];
   };
 }
+export interface SprintWithTasksDTO {
+  sprintId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  aiGenerated: boolean;
+  tasks: SprintTaskDTO[];
+}
 
+export interface SprintTaskDTO {
+  taskId: string;
+  title: string;
+  priority: string;
+  plannedHours: number;
+}
+
+export interface SprintPlanningRequestDTO {
+  numberOfSprints: number;
+  weeksPerSprint: number;
+}
+
+export interface SprintPlanningResponseDTO {
+  isSuccess: boolean;
+  code: number;
+  data: SprintWithTasksDTO[];
+  message: string;
+}
 export interface AiResponse {
   isSuccess: boolean;
   code: number;
@@ -112,7 +148,21 @@ export const aiApi = createApi({
         body: {},
       }),
     }),
+
+     sprintPlanning: builder.mutation<SprintPlanningResponseDTO, { projectId: number; body: SprintPlanningRequestDTO }>({
+      query: ({ projectId, body }) => ({
+        url: `ai/project/${projectId}/sprint-planning`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: SprintPlanningResponseDTO) => response,
+    }),
+
   }),
 });
 
-export const { useGetTaskPlanningMutation } = aiApi;
+export const { useGetTaskPlanningMutation, useSprintPlanningMutation } = aiApi;

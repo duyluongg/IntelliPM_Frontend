@@ -77,6 +77,30 @@ export interface MoveTasksToSprintRequestDTO {
   type: string;
 }
 
+export interface SprintWithTasksDTO {
+  sprintId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  aiGenerated: boolean;
+  tasks: SprintTaskDTO[];
+}
+
+export interface SprintTaskDTO {
+  taskId: string;
+  title: string;
+  priority: string;
+  plannedHours: number;
+}
+
+export interface CheckActiveSprintStartDateRequestDTO {
+  projectKey: string;
+  checkStartDate: string;
+  checkEndDate:string;
+  activeSprintId: number;
+}
+
 interface ApiResponse<T> {
   isSuccess: boolean;
   code: number;
@@ -238,6 +262,37 @@ export const sprintApi = createApi({
       transformResponse: (response: ApiResponse<SprintResponseDTO>) => response.data,
       providesTags: ['Sprint'],
     }),
+
+    createSprintsWithTasks: builder.mutation<SprintResponseDTO[], { projectKey: string; body: SprintWithTasksDTO[] }>({
+      query: ({ projectKey, body }) => ({
+        url: `sprint/project/${projectKey}/sprints-with-tasks`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: ApiResponse<SprintResponseDTO[]>) => response.data,
+      invalidatesTags: ['Sprint'],
+    }),
+
+checkActiveSprintStartDate: builder.mutation<
+      ApiResponse<{ isValid: boolean }>,
+      CheckActiveSprintStartDateRequestDTO
+    >({
+      query: (body) => ({
+        url: 'sprint/check-active-sprint-start-date',
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: ApiResponse<{ isValid: boolean }>) => response,
+    }),
+
   }),
 });
 
@@ -254,4 +309,6 @@ export const {
   useDeleteSprintMutation,
   useMoveTasksMutation,
   useGetActiveSprintByProjectKeyQuery,
+  useCreateSprintsWithTasksMutation,
+  useCheckActiveSprintStartDateMutation,
 } = sprintApi;

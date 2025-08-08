@@ -21,6 +21,8 @@ export default function DocWrapper() {
   const mode = searchParams.get('mode') || type || 'edit';
 
   useEffect(() => {
+
+    
     const createNewDocument = async () => {
       if (!projectKey || !user?.id || !projectId) return;
 

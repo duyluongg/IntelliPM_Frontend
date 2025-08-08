@@ -14,6 +14,22 @@ interface ShareDocumentByEmailRequest {
   projectKey: string;
 }
 
+export interface DocumentResponseDTO {
+  id: number;
+  projectId: number;
+  taskId?: string;
+  title: string;
+  type?: string;
+  template?: string;
+  content?: string;
+  fileUrl?: string;
+  isActive: boolean;
+  createdBy: number;
+  updatedBy?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
   baseQuery: fetchBaseQuery({
@@ -187,6 +203,18 @@ export const documentApi = createApi({
     getMyPermission: builder.query<{ permission: string }, number>({
       query: (documentId) => `documents/${documentId}/permission/current-user`,
     }),
+
+    getDocumentsByProjectId: builder.query<DocumentResponseDTO[], number>({
+      query: (projectId) => `documents/project/${projectId}`,
+    }),
+
+    deleteDocument: builder.mutation<void, number>({
+  query: (id) => ({
+    url: `documents/${id}`,
+    method: 'DELETE',
+  }),
+}),
+
   }),
 });
 
@@ -208,4 +236,6 @@ export const {
   useShareDocumentToEmailsMutation,
   useShareDocumentByEmailsMutation,
   useGetMyPermissionQuery,
+  useGetDocumentsByProjectIdQuery,
+  useDeleteDocumentMutation,
 } = documentApi;

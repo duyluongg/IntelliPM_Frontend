@@ -322,6 +322,7 @@ const WorkItemDetail: React.FC = () => {
     reporterId: item.reporterId,
     reporterName: item.reporterName,
     description: item.description,
+    sprintId: item.sprintId ?? 'None'
   }));
 
   const handleTaskStatusChange = async (newStatus: string) => {
@@ -994,6 +995,7 @@ const WorkItemDetail: React.FC = () => {
                                           ),
                                           title: newTitle,
                                           description: item?.description ?? '',
+                                          sprintId: item.sprintId ?? 'None',
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1035,6 +1037,7 @@ const WorkItemDetail: React.FC = () => {
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
+                                      sprintId: item.sprintId ?? 'None',
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1083,6 +1086,7 @@ const WorkItemDetail: React.FC = () => {
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
+                                        sprintId: item.sprintId ?? 'None',
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,

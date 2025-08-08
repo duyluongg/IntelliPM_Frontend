@@ -60,6 +60,7 @@ import {
 } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -301,6 +302,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     skip: !taskData?.projectId,
   });
 
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
+
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
 
@@ -404,6 +410,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     endDate: item.endDate,
     reporterId: item.reporterId,
     reporterName: item.reporterName,
+    sprintId: item.sprintId ?? 'None'
   }));
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
@@ -416,6 +423,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
       refetch();
       await refetchActivityLogs();
+      await refetchTask();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -1004,6 +1012,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           ),
                                           title: newTitle,
                                           description: item.description ?? '',
+                                          sprintId: item.sprintId ?? 'None',
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1045,6 +1054,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
+                                      sprintId: item.sprintId ?? 'None',
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1093,6 +1103,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
+                                        sprintId: item.sprintId ?? 'None',
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
@@ -1445,7 +1456,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Assignee</label>
                 {canEdit ? (
                   <div className='multi-select-dropdown'>
-                    {/* Hiển thị danh sách đã chọn */}
+
                     <div
                       className='selected-list'
                       style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1519,8 +1530,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1595,11 +1606,33 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
+
+              <div className='detail-item'>
+                <label>Sprint</label>
+                <select
+                  style={{ width: '150px' }}
+                  value={newSprintId ?? subtaskDetail?.sprintId}
+                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
+                  onBlur={handleUpdateSubtask}
+                >
+                  {isProjectSprintsLoading ? (
+                    <option>Loading...</option>
+                  ) : isProjectSprintsError ? (
+                    <option>Error loading Sprint</option>
+                  ) : (
+                    projectSprints?.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
 
               <div className='detail-item'>
                 <label>Priority</label>

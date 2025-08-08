@@ -11,6 +11,7 @@ import {
   LogOut,
   CalendarCheck,
   Plus,
+  Settings,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -77,6 +78,10 @@ export default function Sidebar() {
     navigate('/Guest');
   };
 
+  const handleViewAllProjectsManage = () => {
+    setShowManageProjects(false);
+    navigate('/project/manage');
+  };
   const handleViewAllProjects = () => {
     setShowManageProjects(false);
     navigate('/project/list');
@@ -162,12 +167,22 @@ export default function Sidebar() {
                               transition={{ duration: 0.2 }}
                               className='absolute top-0 left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
                             >
+                              {isRole && (
+                                <div
+                                  onClick={handleViewAllProjectsManage}
+                                  className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                >
+                                  <Settings className='w-5 h-5 text-gray-500' />
+                                  <span>Manage Projects</span>
+                                </div>
+                              )}
+
                               <div
                                 onClick={handleViewAllProjects}
                                 className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
                               >
                                 <Rocket className='w-5 h-5 text-gray-500' />
-                                <span>Manage Projects</span>
+                                <span>Projects</span>
                               </div>
                             </motion.div>
                           )}
@@ -247,7 +262,7 @@ export default function Sidebar() {
                                       </div>
 
                                       <div
-                                        onClick={() => handleTeamMemberClick(proj.key)} 
+                                        onClick={() => handleTeamMemberClick(proj.key)}
                                         className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
                                       >
                                         <Users className='w-5 h-5 text-gray-500' />

@@ -19,7 +19,7 @@ interface ProjectPositionResponse {
   assignedAt: string;
 }
 
-interface ProjectMemberResponse {
+export interface ProjectMemberResponse {
   id: number;
   accountId: number;
   accountName: string | null;

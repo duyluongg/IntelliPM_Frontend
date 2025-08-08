@@ -157,6 +157,29 @@ export interface TaskAssignmentResponseDTO {
   accountPicture?: string | null;
 }
 
+export interface CreateTaskRequest {
+  reporterId: number | null;
+  projectId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  type: string;
+  title: string;
+  description: string;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  status: string;
+  createdBy: number;
+  dependencies: TaskDependency[];
+  priority?: string;
+  plannedHours?: number;
+  manualInput: boolean;
+  generationAiInput: boolean;
+}
+
+export interface CreateTasksRequest {
+  tasks: CreateTaskRequest[];
+}
+
 export const taskApi = createApi({
   reducerPath: 'taskApi',
   baseQuery: fetchBaseQuery({
@@ -421,6 +444,19 @@ export const taskApi = createApi({
       }),
       invalidatesTags: ['Task'],
     }),
+        createTasks: builder.mutation<TaskListResponse, CreateTasksRequest>({
+      query: ({ tasks }) => ({
+        url: 'task/bulk',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: tasks,
+      }),
+      transformResponse: (response: TaskListResponse) => response,
+      invalidatesTags: ['Task'],
+    }),
 
   }),
 });
@@ -447,4 +483,6 @@ export const {
   useGetTasksBySprintIdQuery,
   useGetTasksBySprintIdAndStatusQuery,
   useUpdatePlannedHoursMutation,
+  useCreateTasksMutation,
+  
 } = taskApi;

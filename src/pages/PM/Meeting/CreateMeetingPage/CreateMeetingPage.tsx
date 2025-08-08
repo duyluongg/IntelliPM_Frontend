@@ -123,6 +123,23 @@ const CreateMeetingPage: React.FC = () => {
 
   const handleSelectAll = () => {
     const members = projectDetails?.data?.projectMembers ?? [];
+const getFilteredTimeSlots = () => {
+  if (!meetingDate) return timeSlots;
+
+  const today = new Date();
+  const selectedDate = new Date(meetingDate);
+  const isToday = selectedDate.toDateString() === today.toDateString();
+
+  if (!isToday) return timeSlots;
+
+  const currentTime = today.getHours() + today.getMinutes() / 60;
+
+  return timeSlots.filter((slot) => {
+    const [hour, minute] = slot.start.split(':').map(Number);
+    const slotStartTime = hour + minute / 60;
+    return slotStartTime > currentTime;
+  });
+};
 
     if (participantIds.length === members.length) {
       // Nếu tất cả đã được chọn, bỏ chọn tất cả
@@ -276,27 +293,6 @@ const CreateMeetingPage: React.FC = () => {
 
         {selectedProjectId && projectDetails && (
           <>
-            {/* <div>
-              <label className='block mb-2 font-medium text-gray-700'>Select participants</label>
-              <div className='grid grid-cols-2 md:grid-cols-3 gap-2'>
-                {projectDetails.data.projectMembers
-                  .filter((member) => member.accountId !== user?.id)
-                  .map((member) => {
-                    const isSelected = participantIds.includes(member.accountId); // ✅
-                    return (
-                      <label
-                        key={member.id}
-                        className={`flex items-center p-2 rounded-md cursor-pointer transition 
-        ${isSelected ? 'bg-blue-100 border border-blue-500' : 'bg-white border border-gray-300'}`}
-                        onClick={() => handleParticipantToggle(member.accountId)} // ✅
-                      >
-                        <input type='checkbox' checked={isSelected} readOnly className='mr-2' />
-                        {member.fullName} ({member.username})
-                      </label>
-                    );
-                  })}
-              </div>
-            </div> */}
 
             <div>
               <label className='block mb-3 text-lg font-semibold text-gray-800'>
@@ -391,7 +387,7 @@ const CreateMeetingPage: React.FC = () => {
                   <option value='' disabled>
                     -- Select Time Slot --
                   </option>
-                  {timeSlots.map((slot) => (
+                 {getFilteredTimeSlots().map((slot) => (
                     <option key={slot.label} value={`${slot.start}|${slot.end}`}>
                       {slot.label}
                     </option>
@@ -428,43 +424,30 @@ const CreateMeetingPage: React.FC = () => {
                 <strong className='font-semibold'>Error:</strong> <span>{errorMessage}</span>
               </div>
             )}
+{conflictMessage && (
+  <div className="mt-6 flex items-start p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md">
+    <div className="flex-shrink-0">
+      <svg
+        className="h-6 w-6 text-red-500 mt-1"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+        />
+      </svg>
+    </div>
+    <div className="ml-3">
+      <div className="mt-1 text-sm text-red-700">{conflictMessage}</div>
+    </div>
+  </div>
+)}
 
-            {/* <button
-              onClick={handleCreateMeeting}
-              disabled={isCreating}
-              className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
-              ${
-                isCreating
-                  ? 'bg-blue-400 cursor-not-allowed opacity-50'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              {isCreating ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
-            </button> */}
-
-            {conflictMessage && (
-              <div className='mt-6 flex items-start p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md'>
-                <div className='flex-shrink-0'>
-                  <svg
-                    className='h-6 w-6 text-red-500 mt-1'
-                    xmlns='http://www.w3.org/2000/svg'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      d='M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z'
-                    />
-                  </svg>
-                </div>
-                <div className='ml-3'>
-                  <div className='mt-1 text-sm text-red-700'>{conflictMessage}</div>
-                </div>
-              </div>
-            )}
 
             <button
               onClick={handleCreateMeeting}

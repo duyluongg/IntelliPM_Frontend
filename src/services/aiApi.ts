@@ -21,14 +21,23 @@ export interface Task {
 
 // Định nghĩa kiểu dữ liệu cho task trong state (dùng trong TaskSetup)
 export interface TaskState {
-  id: string; // UUID cho frontend
-  taskId: string; // taskId từ backend
+  id: string; 
+  taskId: string; 
   title: string;
   description: string;
   startDate: string;
   endDate: string;
   suggestedRole: string;
   assignedMembers: Member[];
+}
+export interface EpicState {
+  epicId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  tasks: TaskState[];
+  backendEpicId?: string;
 }
 
 // Định nghĩa kiểu dữ liệu cho requirement

@@ -52,6 +52,8 @@ import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
 import Report from '../pages/Admin/ReportPage/Report';
 import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 import Document from '../pages/PM/YourProject/Document';
+import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTable';
+import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
 
 export const router = createBrowserRouter([
   {
@@ -179,7 +181,14 @@ export const router = createBrowserRouter([
         path: `list`,
         element: <ProjectList />,
       },
-
+      {
+        path: `manage`,
+        element: <ProjectListTable />,
+      },
+      {
+        path: `:projectKey/details`,
+        element: <UpdateProjectPage />,
+      },
       {
         path: `:projectKey/task-setup`,
         element: <TaskSetup />,

@@ -31,6 +31,7 @@ import { aiApi } from '../services/aiApi';
 import { subtaskCommentApi } from '../services/subtaskCommentApi';
 import { taskAssignmentApi } from '../services/taskAssignmentApi';
 import { subtaskAiApi } from '../services/subtaskAiApi';
+import { taskAiApi } from '../services/taskAiApi';
 import { projectPositionApi } from '../services/projectPositionApi';
 import { projectRecommendationApi } from '../services/projectRecommendationApi';
 import { epicFileApi } from '../services/epicFileApi';
@@ -53,6 +54,8 @@ import { milestoneCommentApi } from '../services/milestoneCommentApi';
 import { documentCommentApi } from '../services/Document/documentCommentAPI';
 import { documentRequestMeetingApi } from '../services/ProjectManagement/MeetingServices/documentRequestMeetingApi';
 import { adminApi } from '../services/adminApi';
+import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
+import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
 
 const persistConfig = {
   key: 'root',
@@ -89,6 +92,7 @@ const rootReducer = combineReducers({
   [subtaskCommentApi.reducerPath]: subtaskCommentApi.reducer,
   [taskAssignmentApi.reducerPath]: taskAssignmentApi.reducer,
   [subtaskAiApi.reducerPath]: subtaskAiApi.reducer,
+  [taskAiApi.reducerPath]: taskAiApi.reducer,
   [projectPositionApi.reducerPath]: projectPositionApi.reducer,
   [projectRecommendationApi.reducerPath]: projectRecommendationApi.reducer,
   [epicFileApi.reducerPath]: epicFileApi.reducer,
@@ -110,6 +114,8 @@ const rootReducer = combineReducers({
   [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
 
   [adminApi.reducerPath]: adminApi.reducer,
+  [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
+  [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -171,7 +177,10 @@ export const store = configureStore({
       milestoneCommentApi.middleware,
       documentCommentApi.middleware,
       documentRequestMeetingApi.middleware,
-      adminApi.middleware
+      adminApi.middleware,
+      aiResponseHistoryApi.middleware,
+      aiResponseEvaluationApi.middleware,
+      taskAiApi.middleware,
     ),
 });
 

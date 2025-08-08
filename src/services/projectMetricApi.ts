@@ -41,6 +41,9 @@ interface ProjectMetricResponse {
     varianceAtCompletion: number;
     estimateDurationAtCompletion: number;
     calculatedBy: string;
+    isImproved: boolean;
+    improvementSummary: string;
+    confidenceScore: number;
     createdAt: string;
     updatedAt: string;
   };

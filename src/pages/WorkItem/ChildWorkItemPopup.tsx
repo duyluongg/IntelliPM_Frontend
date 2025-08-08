@@ -28,6 +28,7 @@ import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useSearchParams } from 'react-router-dom';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 
 interface SubtaskDetail {
   id: string;
@@ -106,6 +107,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
+  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -124,10 +127,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       skip: !subtaskDetail?.id,
     });
 
-  const {
-    data: comments = [],
-    isLoading: isCommentsLoading,
-    refetch: refetchComments,
+  const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments,
   } = useGetSubtaskCommentsBySubtaskIdQuery(subtaskDetail?.id ?? '', {
     skip: !subtaskDetail?.id,
   });
@@ -137,19 +137,19 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     return subtaskAssigneeId?.toString() === currentUserId;
   };
 
-  const {
-    data: activityLogs = [],
-    isLoading: isActivityLogsLoading,
-    refetch: refetchActivityLogs,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs,
   } = useGetActivityLogsBySubtaskIdQuery(subtaskDetail?.id!, {
     skip: !subtaskDetail?.id!,
   });
 
-  const {
-    data: fetchedSubtask,
-    isLoading: isSubtaskLoading,
-    refetch: refetchSubtask,
+  const { data: fetchedSubtask, isLoading: isSubtaskLoading, refetch: refetchSubtask,
   } = useGetSubtaskByIdQuery(item.key, { skip: !item.key });
+
+    useEffect(() => {
+      if (item.key) {
+        refetchSubtask();
+      }
+    }, [item.key, refetchSubtask]);
 
   useEffect(() => {
     if (fetchedSubtask) {
@@ -654,9 +654,17 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     .replace('_', '-')}`}
                   onChange={handleStatusChange}
                 >
-                  <option value='TO_DO'>To Do</option>
-                  <option value='IN_PROGRESS'>In Progress</option>
-                  <option value='DONE'>Done</option>
+                  {loadSubtaskStatus ? (
+                    <option>Loading...</option>
+                  ) : subtaskStatusError ? (
+                    <option>Error loading status</option>
+                  ) : (
+                    subtaskStatus?.data.map((status) => (
+                      <option key={status.id} value={status.name}>
+                        {status.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               ) : (
                 <span
@@ -804,11 +812,17 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   onChange={(e) => setNewPriority(e.target.value)}
                   onBlur={handleUpdateSubtask}
                 >
-                  <option value='HIGH'>High</option>
-                  <option value='HIGHEST'>Highest</option>
-                  <option value='MEDIUM'>Medium</option>
-                  <option value='LOW'>Low</option>
-                  <option value='LOWEST'>Lowest</option>
+                  {isPriorityLoading ? (
+                    <option>Loading...</option>
+                  ) : isPriorityError ? (
+                    <option>Error loading priorities</option>
+                  ) : (
+                    priorityOptions?.data.map((priority) => (
+                      <option key={priority.id} value={priority.name}>
+                        {priority.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

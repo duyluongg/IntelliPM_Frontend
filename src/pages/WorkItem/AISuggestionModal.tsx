@@ -2,6 +2,7 @@ import React from 'react';
 
 interface AISuggestionModalProps {
   isOpen: boolean;
+  type: 'task' | 'subtask';
   suggestions: string[];
   selected: string[];
   onSelect: (title: string, checked: boolean) => void;
@@ -11,6 +12,7 @@ interface AISuggestionModalProps {
 
 const AISuggestionModal: React.FC<AISuggestionModalProps> = ({
   isOpen,
+  type,
   suggestions,
   selected,
   onSelect,
@@ -19,12 +21,15 @@ const AISuggestionModal: React.FC<AISuggestionModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const title =
+    type === 'task' ? 'AI Suggested Tasks' : 'AI Suggested Subtasks';
+
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
           <span style={styles.icon}>🧠</span>
-          <strong style={{ fontSize: '16px' }}>AI Suggested Subtasks</strong>
+          <strong style={{ fontSize: '16px' }}>{title}</strong>
         </div>
 
         <div style={styles.list}>

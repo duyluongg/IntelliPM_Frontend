@@ -124,7 +124,7 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
                   const confirmed = window.confirm(
                     `Are you sure you want to delete this dependency? "${
                       selectedDep.name || selectedDep.id
-                    }" không?`
+                    }"?`
                   );
 
                   if (!confirmed) return;

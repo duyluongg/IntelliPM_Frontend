@@ -6,10 +6,9 @@ export interface AIRecommendationDTO {
   details: string;
   type: string;
   affectedTasks: string[];
-  suggestedTask: string | null;
   expectedImpact: string;
-  // suggestedChanges: Record<string, any>;
   suggestedChanges: string;
+  priority: number;
 }
 
 interface AIRecommendationsResponse {
@@ -21,9 +20,10 @@ interface AIRecommendationsResponse {
 
 export interface CreateRecommendationRequest {
   projectId: number;
-  taskId: string | null;
   type: string;
   recommendation: string;
+  suggestedChanges: string | null;
+  details: string | null;
 }
 
 interface BaseResponse {
@@ -39,6 +39,9 @@ export interface AIForecast {
   estimateToComplete: number;
   varianceAtCompletion: number;
   estimatedDurationAtCompletion: number;
+  isImproved: boolean;
+  improvementSummary: string;
+  confidenceScore: number;
 }
 
 export interface AIForecastResponse {
@@ -58,10 +61,10 @@ interface RecommendationsResponse {
 export interface RecommendationDTO {
   id: number;
   projectId: number;
-  taskId: string | null;
-  taskTitle: string;
   type: string;
   recommendation: string;
+  details: string;
+  suggestedChanges: string;
   createdAt: string;
 }
 
@@ -97,7 +100,7 @@ export const projectRecommendationApi = createApi({
     getAIForecastByProjectKey: builder.query<AIForecastResponse, string>({
       query: (projectKey) => ({
         url: `projectrecommendation/ai-forecast?projectKey=${projectKey}`,
-        method: 'GET',
+        method: 'POST',
       }),
     }),
 

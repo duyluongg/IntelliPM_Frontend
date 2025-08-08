@@ -29,6 +29,7 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useSearchParams } from 'react-router-dom';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 
 interface SubtaskDetail {
   id: string;
@@ -43,6 +44,8 @@ interface SubtaskDetail {
   endDate: string;
   reporterId: number;
   reporterName: string;
+  sprintId: number;
+  sprintName: string;
 }
 
 interface ChildWorkItemPopupProps {
@@ -82,9 +85,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const [priority, setPriority] = React.useState('');
   const [startDate, setStartDate] = React.useState('');
   const [endDate, setEndDate] = React.useState('');
+  const [sprintName, setSprintName] = React.useState('');
   const [reporterId, setReporterId] = React.useState('');
+  const [sprinId, setSprintId] = React.useState('');
   const [newTitle, setNewTitle] = useState<string>();
   const [newDescription, setNewDescription] = useState<string>();
+  const [newSprintId, setNewSprintId] = useState<number>();
   const [newPriority, setNewPriority] = useState<string>();
   const [newStartDate, setNewStartDate] = useState<string>();
   const [newEndDate, setNewEndDate] = useState<string>();
@@ -118,6 +124,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       setPriority(subtaskDetail.priority || '');
       setStartDate(subtaskDetail.startDate || '');
       setEndDate(subtaskDetail.endDate || '');
+      setSprintName(subtaskDetail.sprintName || '');
+      setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
     }
   }, [subtaskDetail]);
@@ -145,11 +153,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: fetchedSubtask, isLoading: isSubtaskLoading, refetch: refetchSubtask,
   } = useGetSubtaskByIdQuery(item.key, { skip: !item.key });
 
-    useEffect(() => {
-      if (item.key) {
-        refetchSubtask();
-      }
-    }, [item.key, refetchSubtask]);
+  useEffect(() => {
+    if (item.key) {
+      refetchSubtask();
+    }
+  }, [item.key, refetchSubtask]);
 
   useEffect(() => {
     if (fetchedSubtask) {
@@ -160,6 +168,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsBySubtaskQuery(
     subtaskDetail?.id!, { skip: !subtaskDetail?.id!, }
   );
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError} = useGetSprintsByProjectIdQuery(projectId!, {
+      skip: !projectId,
+    });
 
   const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
     refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(projectId!, {
@@ -246,6 +259,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     if (
       newTitle === undefined &&
       newDescription === undefined &&
+      newSprintId === undefined &&
       newPriority === undefined &&
       newStartDate === undefined &&
       newEndDate === undefined &&
@@ -260,6 +274,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         id: subtaskDetail.id,
         title: newTitle ?? subtaskDetail.title,
         description: newDescription ?? subtaskDetail.description,
+        sprintId: newSprintId ?? subtaskDetail.sprintId,
         priority: newPriority ?? subtaskDetail.priority,
         startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
@@ -702,6 +717,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
                           title: subtaskDetail.title,
+                          sprintId: subtaskDetail.sprintId ?? 'None',
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
@@ -805,6 +821,28 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               </div>
 
               <div className='detail-item'>
+                <label>Sprint</label>
+                <select
+                  style={{ width: '150px' }}
+                  value={newSprintId ?? subtaskDetail?.sprintId}
+                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
+                  onBlur={handleUpdateSubtask}
+                >
+                  {isProjectSprintsLoading ? (
+                    <option>Loading...</option>
+                  ) : isProjectSprintsError ? (
+                    <option>Error loading Sprint</option>
+                  ) : (
+                    projectSprints?.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div className='detail-item'>
                 <label>Priority</label>
                 <select
                   style={{ width: '150px' }}
@@ -862,6 +900,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           id: subtaskDetail.id,
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
+                          sprintId: subtaskDetail.sprintId ?? 'None',
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,

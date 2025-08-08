@@ -780,7 +780,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
 
   const moveTask = async (taskId: string, toSprintId: number | null, toStatus: string | null) => {
     try {
-      await updateTaskSprint({ id: taskId, sprintId: toSprintId }).unwrap();
+      await updateTaskSprint({ id: taskId, sprintId: toSprintId, createdBy: accountId }).unwrap();
       if (toStatus && statusCategories?.data) {
         const apiStatus =
           statusCategories.data.find((c) => c.label.toUpperCase() === toStatus)?.name ||

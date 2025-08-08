@@ -822,6 +822,8 @@ interface SubtaskDetail {
   endDate: string;
   reporterId: number;
   reporterName: string;
+  sprintName: string;
+  sprintId: number;
 }
 
 interface ChildWorkItemPopupProps {
@@ -880,7 +882,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
-
+  const [sprinId, setSprintId] = React.useState('');
+  const [sprintName, setSprintName] = React.useState('');
+  
   React.useEffect(() => {
     if (subtaskDetail) {
       setDescription(subtaskDetail.description || '');
@@ -889,6 +893,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
       setPriority(subtaskDetail.priority || '');
       setStartDate(subtaskDetail.startDate || '');
       setEndDate(subtaskDetail.endDate || '');
+      setSprintId(String(subtaskDetail.sprintId) || '');
+      setSprintName(subtaskDetail.sprintName || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
     }
   }, [subtaskDetail]);
@@ -1020,12 +1026,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
     return date.toISOString(); // "2025-07-21T00:00:00.000Z"
   };
 
+  const [newSprintId, setNewSprintId] = useState<number>();
+
   const handleUpdateSubtask = async () => {
     if (!subtaskDetail) return;
 
     if (
       newTitle === undefined &&
       newDescription === undefined &&
+      newSprintId === undefined &&
       newPriority === undefined &&
       newStartDate === undefined &&
       newEndDate === undefined &&
@@ -1040,6 +1049,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
         id: subtaskDetail.id,
         title: newTitle ?? subtaskDetail.title,
         description: newDescription ?? subtaskDetail.description,
+        sprintId: newSprintId ?? subtaskDetail.sprintId,
         priority: newPriority ?? subtaskDetail.priority,
         startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
@@ -1477,6 +1487,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
+                          sprintId: newSprintId ?? subtaskDetail.sprintId,
                           endDate: subtaskDetail.endDate,
                           reporterId: subtaskDetail.reporterId,
                           createdBy: accountId,
@@ -1629,6 +1640,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ subtaskId, task
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
+                          sprintId: newSprintId ?? subtaskDetail.sprintId,
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,

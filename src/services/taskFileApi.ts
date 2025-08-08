@@ -9,6 +9,7 @@ export interface TaskFileDTO {
     urlFile: string;
     status: string;
     createdAt: string;
+    createdBy: number;
 }
 
 interface TaskFileListResponse {
@@ -37,12 +38,13 @@ export const taskFileApi = createApi({
             }),
             transformResponse: (response: TaskFileListResponse) => response.data,
         }),
-        uploadTaskFile: builder.mutation<void, { taskId: string; title: string; file: File }>({
-            query: ({ taskId, title, file }) => {
+        uploadTaskFile: builder.mutation<void, { taskId: string; title: string; file: File; createdBy: number }>({
+            query: ({ taskId, title, file, createdBy }) => {
                 const formData = new FormData();
                 formData.append('taskId', taskId);
                 formData.append('title', title);
                 formData.append('file', file);
+                formData.append('createdBy', createdBy.toString());
 
                 return {
                     url: 'taskfile/upload',
@@ -51,10 +53,11 @@ export const taskFileApi = createApi({
                 };
             },
         }),
-        deleteTaskFile: builder.mutation<void, number>({
-            query: (id) => ({
+        deleteTaskFile: builder.mutation<void, { id: number; createdBy: number }>({
+            query: ({ id, createdBy }) => ({
                 url: `taskfile/${id}`,
                 method: 'DELETE',
+                body: { createdBy },
             }),
         }),
 

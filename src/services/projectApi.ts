@@ -1,7 +1,7 @@
+// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\services\projectApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
-// Project-related interfaces
 export interface CreateProjectRequest {
   name: string;
   projectKey: string;
@@ -78,35 +78,43 @@ export interface ProjectDetailsById {
 }
 
 // Work Item-related interfaces
-interface Assignee {
+export interface Assignee {
+  accountId: number;
   fullname: string;
   picture: string | null;
 }
 
-interface WorkItem {
-  type: string;
+export interface WorkItemList {
+  projectId: number;
+  type: string | 'epic' | 'task' | 'bug' | 'subtask' | 'story';
   key: string;
   taskId: string | null;
   summary: string;
   status: string;
   commentCount: number;
   sprintId: number | null;
+  sprintName: string | null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
   createdAt: string;
   updatedAt: string;
+  reporterId: number | null;
   reporterFullname: string;
   reporterPicture: string | null;
 }
 
-// Task, Sprint, and Milestone interfaces
 interface TaskItem {
-  id: string | null;
+  id: string;
   reporterId: number;
+  reporterName: string | null;
+  reporterPicture: string | null;
   projectId: number;
+  projectName: string | null;
   epicId: string;
+  epicName: string | null;
   sprintId: number;
+  sprintName: string | null;
   type: string | null;
   manualInput: boolean;
   generationAiInput: boolean;
@@ -131,14 +139,49 @@ interface TaskItem {
   createdAt: string;
   updatedAt: string;
   dependencies: TaskDependency[];
+  subtasks: SubtaskItem[];
 }
 
 interface TaskDependency {
   id: number;
-  taskId: string;
+  FromType: string;
   linkedFrom: string;
+  ToType: string;
   linkedTo: string;
-  type: string; 
+  type: string;
+}
+
+interface SubtaskItem {
+  id: string;
+  taskId: string;
+  assignedBy: number;
+  title: string;
+  description: string;
+  reporterId: number | null;
+  status: string;
+  priority: string | null;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  sprintId: number | null;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  duration: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  percentComplete: number | null;
+  plannedHours: number | null;
+  actualHours: number | null;
+  remainingHours: number | null;
+  plannedCost: number | null;
+  plannedResourceCost: number | null;
+  actualCost: number | null;
+  actualResourceCost: number | null;
+  evaluate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  startDate: string | null;
+  endDate: string | null;
+  dependencies: TaskDependency[];
 }
 
 interface SprintItem {
@@ -155,6 +198,7 @@ interface SprintItem {
 
 interface MilestoneItem {
   id: number;
+  key: string;
   projectId: number;
   sprintId: number | null;
   name: string;
@@ -164,6 +208,7 @@ interface MilestoneItem {
   createdAt: string;
   updatedAt: string;
   status: string;
+  dependencies: TaskDependency[];
 }
 
 interface ProjectDetailsFull {
@@ -197,7 +242,15 @@ export interface CreateProjectResponse {
 export interface GetWorkItemsResponse {
   isSuccess: boolean;
   code: number;
-  data: WorkItem[];
+  data: WorkItemList[];
+  message: string;
+  error?: string;
+}
+
+export interface GetAllProjectsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails[];
   message: string;
   error?: string;
 }
@@ -283,6 +336,18 @@ export interface SendEmailRejectToLeaderRequest {
   reason: string;
 }
 
+export interface ProjectItem {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface GetProjectItemsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectItem[];
+}
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -299,6 +364,20 @@ export const projectApi = createApi({
   }),
   tagTypes: ['Project', 'WorkItem', 'ProjectDetails'],
   endpoints: (builder) => ({
+    getAllProjects: builder.query<GetAllProjectsResponse, void>({
+      query: () => ({
+        url: 'project',
+        method: 'GET',
+      }),
+      providesTags: ['Project'],
+    }),
+    getProjectById: builder.query<GetProjectDetailsResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
+    }),
     getWorkItemsByProjectId: builder.query<GetWorkItemsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/workitems`,
@@ -333,7 +412,10 @@ export const projectApi = createApi({
       }),
       invalidatesTags: ['Project', 'ProjectDetails'],
     }),
-    updateProject: builder.mutation<CreateProjectResponse, { id: number; body: CreateProjectRequest }>({
+    updateProject: builder.mutation<
+      CreateProjectResponse,
+      { id: number; body: CreateProjectRequest }
+    >({
       query: ({ id, body }) => ({
         url: `project/${id}`,
         method: 'PUT',
@@ -372,7 +454,10 @@ export const projectApi = createApi({
       }),
       invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
     }),
-    sendEmailRejectToLeader: builder.mutation<SendEmailRejectToLeaderResponse, SendEmailRejectToLeaderRequest>({
+    sendEmailRejectToLeader: builder.mutation<
+      SendEmailRejectToLeaderResponse,
+      SendEmailRejectToLeaderRequest
+    >({
       query: ({ projectId, reason }) => ({
         url: `project/${projectId}/send-email-reject-to-leader`,
         method: 'POST',
@@ -387,10 +472,20 @@ export const projectApi = createApi({
       }),
       invalidatesTags: (result, error, projectId) => [{ type: 'Project', id: projectId }],
     }),
+    getProjectItemsByKey: builder.query<GetProjectItemsResponse, string>({
+      query: (projectKey) => ({
+        url: `project/items?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
+    }),
   }),
 });
 
 export const {
+  useGetAllProjectsQuery,
+  useGetProjectByIdQuery,
+  useLazyGetProjectByIdQuery  ,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,
@@ -403,4 +498,6 @@ export const {
   useSendInvitationsMutation,
   useSendEmailRejectToLeaderMutation,
   useRejectProjectMutation,
+  useGetProjectItemsByKeyQuery,
+  useLazyCheckProjectKeyQuery,
 } = projectApi;

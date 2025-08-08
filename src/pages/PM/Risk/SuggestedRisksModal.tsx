@@ -1,5 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './SuggestedRisksModal.css';
+import {
+  useGetAiSuggestedRisksQuery,
+  useLazyGetAiSuggestedRisksQuery,
+} from '../../../services/riskApi';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
 interface SuggestedRisk {
   id: number;
@@ -8,50 +14,55 @@ interface SuggestedRisk {
   impactLevel: 'Low' | 'Medium' | 'High';
   probability: 'Low' | 'Medium' | 'High';
   type: string;
-  responsibleUserName: string;
-  dueDate: string;
+  mitigationPlan: string;
+  contingencyPlan: string;
+  approved?: boolean;
 }
 
 interface Props {
   onClose: () => void;
-  onApprove: (risk: SuggestedRisk) => void;
+  onApprove: (risk: any) => void;
+  // onApprove: (risk: SuggestedRisk) => void;
 }
 
-const sampleSuggestedRisks: SuggestedRisk[] = [
-  {
-    id: 1,
-    title: 'Vendor delay in API delivery',
-    description: 'External API from third-party vendor may be delayed due to contract issues.',
-    impactLevel: 'High',
-    probability: 'Medium',
-    type: 'Schedule Risk',
-    responsibleUserName: 'vendor_team',
-    dueDate: '2025-07-15',
-  },
-  {
-    id: 2,
-    title: 'Lack of testing coverage',
-    description: 'Current test coverage is below 50%, which could lead to production bugs.',
-    impactLevel: 'Medium',
-    probability: 'High',
-    type: 'Quality Risk',
-    responsibleUserName: 'qa_lead',
-    dueDate: '2025-07-20',
-  },
-  {
-    id: 3,
-    title: 'Team member availability during holidays',
-    description: 'Reduced team capacity expected in August due to planned vacations.',
-    impactLevel: 'Medium',
-    probability: 'Medium',
-    type: 'Resource Risk',
-    responsibleUserName: 'hr_manager',
-    dueDate: '2025-08-01',
-  },
-];
-
 const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove }) => {
-  const [suggestedRisks, setSuggestedRisks] = useState(sampleSuggestedRisks);
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+
+  const [isReloading, setIsReloading] = useState(false);
+
+  // const { data, isLoading } = useGetAiSuggestedRisksQuery(projectKey);
+  const [trigger, { data, isLoading }] = useLazyGetAiSuggestedRisksQuery();
+  const [suggestedRisks, setSuggestedRisks] = useState<SuggestedRisk[]>([]);
+  const { data: categoryData, isLoading: isCategoryLoading } =
+    useGetCategoriesByGroupQuery('risk_type');
+  const riskTypes = categoryData?.data || [];
+
+  useEffect(() => {
+    trigger(projectKey);
+  }, [projectKey]);
+
+  const handleReload = async () => {
+    setIsReloading(true);
+    await trigger(projectKey).unwrap();
+    setIsReloading(false);
+  };
+
+  useEffect(() => {
+    if (data?.data) {
+      const mapped = data.data.map((item, idx) => ({
+        id: idx + 1,
+        title: item.title,
+        description: item.description,
+        impactLevel: item.impactLevel as 'Low' | 'Medium' | 'High',
+        probability: item.probability as 'Low' | 'Medium' | 'High',
+        type: item.type,
+        mitigationPlan: item.mitigationPlan,
+        contingencyPlan: item.contingencyPlan,
+      }));
+      setSuggestedRisks(mapped);
+    }
+  }, [data]);
 
   const handleUpdateField = <K extends keyof SuggestedRisk>(
     index: number,
@@ -63,23 +74,76 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove }) => {
     setSuggestedRisks(updated);
   };
 
+  // const handleApprove = (risk: any) => {
+  //   onApprove({
+  //     title: risk.title,
+  //     description: risk.description,
+  //     impactLevel: risk.impactLevel,
+  //     probability: risk.probability,
+  //     type: risk.type,
+  //     mitigationPlan: risk.mitigationPlan,
+  //     contingencyPlan: risk.contingencyPlan,
+  //   });
+  // };
+
+  const handleApprove = (risk: SuggestedRisk, index: number) => {
+    onApprove({
+      title: risk.title,
+      description: risk.description,
+      impactLevel: risk.impactLevel,
+      probability: risk.probability,
+      type: risk.type,
+      mitigationPlan: risk.mitigationPlan,
+      contingencyPlan: risk.contingencyPlan,
+    });
+
+    const updated = [...suggestedRisks];
+    updated[index].approved = true; // ✅ đánh dấu đã approved
+    setSuggestedRisks(updated);
+  };
+
+  if (isLoading || isReloading) {
+    return (
+      <div className='suggested-modal-overlay'>
+        <div className='suggested-modal'>
+          <h2 className='modal-title'>AI Suggested Risks</h2>
+          <div className='loading-container'>
+            <div className='spinner' />
+            <p>Loading AI suggestions...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className='suggested-modal-overlay'>
       <div className='suggested-modal'>
-        <h2 className='modal-title'>AI Suggested Risks</h2>
+        <div className='modal-header'>
+          <h2 className='modal-title'>AI Suggested Risks</h2>
+          <button className='refresh-btn' onClick={handleReload} disabled={isReloading}>
+            ↻ Gọi lại AI
+          </button>
+        </div>
         <div className='suggested-risk-list'>
           {suggestedRisks.map((risk, index) => (
             <div key={risk.id} className='suggested-risk-card'>
-              <input
-                className='modal-input'
-                value={risk.title}
-                onChange={(e) => handleUpdateField(index, 'title', e.target.value)}
-              />
-              <textarea
-                className='modal-textarea'
-                value={risk.description}
-                onChange={(e) => handleUpdateField(index, 'description', e.target.value)}
-              />
+              <div>
+                <label>Title</label>
+                <input
+                  className='modal-input'
+                  value={risk.title}
+                  onChange={(e) => handleUpdateField(index, 'title', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>Description</label>
+                <textarea
+                  className='modal-textarea'
+                  value={risk.description}
+                  onChange={(e) => handleUpdateField(index, 'description', e.target.value)}
+                />
+              </div>
 
               <div className='grid-2'>
                 <div>
@@ -90,7 +154,7 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove }) => {
                       handleUpdateField(
                         index,
                         'impactLevel',
-                        e.target.value as 'Low' | 'Medium' | 'High'
+                        e.target.value as SuggestedRisk['impactLevel']
                       )
                     }
                   >
@@ -107,7 +171,7 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove }) => {
                       handleUpdateField(
                         index,
                         'probability',
-                        e.target.value as 'Low' | 'Medium' | 'High'
+                        e.target.value as SuggestedRisk['probability']
                       )
                     }
                   >
@@ -118,39 +182,56 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove }) => {
                 </div>
               </div>
 
-              <div className='grid-2'>
-                <div>
-                  <label>Type</label>
-                  <input
-                    value={risk.type}
-                    onChange={(e) => handleUpdateField(index, 'type', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label>Responsible</label>
-                  <input
-                    value={risk.responsibleUserName}
-                    onChange={(e) =>
-                      handleUpdateField(index, 'responsibleUserName', e.target.value)
-                    }
-                  />
-                </div>
+              <div>
+                <label>Type</label>
+                {/* <input
+                  className='modal-input'
+                  value={risk.type}
+                  onChange={(e) => handleUpdateField(index, 'type', e.target.value)}
+                /> */}
+                <select
+                  className='modal-input'
+                  value={risk.type}
+                  style={{ cursor: 'pointer' }}
+                  onChange={(e) => handleUpdateField(index, 'type', e.target.value)}
+                >
+                  {riskTypes.map((type: any) => (
+                    <option key={type.id} value={type.name}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className='grid-2'>
-                <div>
-                  <label>Due Date</label>
-                  <input
-                    type='date'
-                    value={risk.dueDate}
-                    onChange={(e) => handleUpdateField(index, 'dueDate', e.target.value)}
-                  />
-                </div>
-                <div className='approve-btn-wrapper'>
-                  <button className='approve-btn' onClick={() => onApprove(risk)}>
-                    ✅ Approve
-                  </button>
-                </div>
+              <div>
+                <label>Mitigation Plan</label>
+                <textarea
+                  className='modal-textarea'
+                  value={risk.mitigationPlan}
+                  onChange={(e) => handleUpdateField(index, 'mitigationPlan', e.target.value)}
+                />
+              </div>
+              <div>
+                <label>Contingency Plan</label>
+                <textarea
+                  className='modal-textarea'
+                  value={risk.contingencyPlan}
+                  onChange={(e) => handleUpdateField(index, 'contingencyPlan', e.target.value)}
+                />
+              </div>
+
+              <div className='approve-btn-wrapper'>
+                {/* <button className='approve-btn' onClick={() => handleApprove(risk)}>
+                  ✅ Approve
+                </button> */}
+                <button
+                  className='approve-btn'
+                  onClick={() => handleApprove(risk, index)}
+                  disabled={risk.approved}
+                >
+                  {risk.approved ? '✔ Approved' : '✅ Approve'}
+                </button>
+                
               </div>
             </div>
           ))}

@@ -1,0 +1,11 @@
+/* src/pages/CustomerHome.css */
+.customer-home {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background-image: url("../../assets/background.jpg"); /* ← ảnh từ thư mục public */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+}

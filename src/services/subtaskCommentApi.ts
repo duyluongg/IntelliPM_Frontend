@@ -5,9 +5,11 @@ export interface SubtaskComment {
     id: number;
     subtaskId: string;
     accountId: number;
-    accountName?: string;
+    accountName: string;
     content: string;
     createdAt: string;
+    accountPicture: string;
+    createdBy: number;
 }
 
 interface SubtaskCommentListResponse {
@@ -44,7 +46,7 @@ export const subtaskCommentApi = createApi({
         }),
 
         // PUT
-        updateSubtaskComment: builder.mutation<SubtaskComment, { id: number; subtaskId: string; accountId: number; content: string }>({
+        updateSubtaskComment: builder.mutation<SubtaskComment, { id: number; subtaskId: string; accountId: number; content: string; createdBy: number }>({
             query: ({ id, ...body }) => ({
                 url: `subtaskcomment/${id}`,
                 method: 'PUT',
@@ -54,15 +56,16 @@ export const subtaskCommentApi = createApi({
         }),
 
         // DELETE
-        deleteSubtaskComment: builder.mutation<void, number>({
-            query: (id) => ({
+        deleteSubtaskComment: builder.mutation<void, { id: number; createdBy: number }>({
+            query: ({id, createdBy}) => ({
                 url: `subtaskcomment/${id}`,
                 method: 'DELETE',
+                body: { createdBy },
             }),
         }),
 
         // POST - Create subtask comment
-        createSubtaskComment: builder.mutation<SubtaskComment, { subtaskId: string; accountId: number; content: string }>({
+        createSubtaskComment: builder.mutation<SubtaskComment, { subtaskId: string; accountId: number; content: string; createdBy: number }>({
             query: (body) => ({
                 url: `subtaskcomment`,
                 method: 'POST',

@@ -1,19 +1,28 @@
 import React from 'react';
+import { useState, useRef } from 'react';
 import './EpicPopup.css';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
-import { useGetEpicByIdQuery, useUpdateEpicStatusMutation } from '../../services/epicApi';
+import { useAuth, type Role } from '../../services/AuthContext';
+import { useGetEpicByIdQuery, useUpdateEpicStatusMutation, useUpdateEpicMutation } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
-import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation } from '../../services/taskApi';
-import { useGetWorkItemLabelsByEpicQuery } from '../../services/workItemLabelApi';
+import accountIcon from '../../assets/account.png';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
+import { useGetWorkItemLabelsByEpicQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
 import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
+import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 
 interface EpicPopupProps {
     id: string;
@@ -23,11 +32,14 @@ interface EpicPopupProps {
 const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
     const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
+    const { user } = useAuth();
+    const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
     const [status, setStatus] = React.useState("");
     const [projectId, setProjectId] = React.useState("");
     const [epicId, setEpicId] = React.useState("");
     const [updateEpicStatus] = useUpdateEpicStatusMutation();
     const [updateTaskStatus] = useUpdateTaskStatusMutation();
+    const [updateTaskPriority] = useUpdateTaskPriorityMutation();
     const navigate = useNavigate();
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
@@ -37,11 +49,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const taskInputRef = React.useRef<HTMLTableRowElement>(null);
     const [newTaskType, setNewTaskType] = React.useState<'TASK' | 'BUG' | 'STORY'>('TASK');
     const [showTypeDropdown, setShowTypeDropdown] = React.useState(false);
-    const taskTypes = [
-        { label: 'Task', value: 'TASK', icon: taskIcon },
-        { label: 'Bug', value: 'BUG', icon: bugIcon },
-        { label: 'Story', value: 'STORY', icon: storyIcon },
-    ];
     const [description, setDescription] = React.useState('');
     const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
     const { data: attachments = [], refetch: refetchAttachments } = useGetEpicFilesByEpicIdQuery(id);
@@ -60,6 +67,57 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
     const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
+    const [updateEpic] = useUpdateEpicMutation();
+    const [newName, setNewName] = React.useState<string | undefined>();
+    const [newDescription, setNewDescription] = React.useState<string | undefined>();
+    const [newStartDate, setNewStartDate] = React.useState<string | undefined>();
+    const [newEndDate, setNewEndDate] = React.useState<string | undefined>();
+    //const [newSprintId, setNewSprintId] = React.useState<number | null>(null);
+    const [selectedAssignee, setSelectedAssignee] = React.useState<number | null>(null);
+    const [newAssignedBy, setNewAssignedBy] = React.useState<number | null>(null);
+    const [selectedReporter, setSelectedReporter] = React.useState<number | null>(null);
+    const [newReporterId, setNewReporterId] = React.useState<number | null>(null);
+    const [commentContent, setCommentContent] = React.useState('');
+    const [activeTab, setActiveTab] = React.useState<'COMMENTS' | 'HISTORY'>('COMMENTS');
+    const [updateEpicComment] = useUpdateEpicCommentMutation();
+    const [deleteEpicComment] = useDeleteEpicCommentMutation();
+    const [createEpicComment] = useCreateEpicCommentMutation();
+    const [isEditingLabel, setIsEditingLabel] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const labelRef = useRef<HTMLDivElement>(null);
+    const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
+    const [generateTasksByEpicByAI, { isLoading: loadingSuggest }] = useGenerateTasksByEpicByAIMutation();
+    const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedTask[]>([]);
+    const [showSuggestionList, setShowSuggestionList] = React.useState(false);
+    const [selectedSuggestions, setSelectedSuggestions] = useState<AiSuggestedTask[]>([]);
+    const { data: taskTypeOptions, isLoading: isTaskTypeLoading, isError: isTaskTypeError } = useGetCategoriesByGroupQuery("task_type");
+    const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
+    const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
+    const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
+
+    const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(id!, {
+        skip: !id,
+    });
+    const { data: sprints = [] } = useGetSprintsByProjectIdQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
+
+    const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
+        skip: !epic?.projectId,
+    });
+
+    React.useEffect(() => {
+        if (epic && newAssignedBy !== null && newAssignedBy !== epic.assignedBy) {
+            handleUpdateEpic();
+        }
+    }, [newAssignedBy]);
+
+    React.useEffect(() => {
+        if (epic && newReporterId !== null && newReporterId !== epic.reporterId) {
+            handleUpdateEpic();
+        }
+    }, [newReporterId]);
 
     React.useEffect(() => {
         const fetchAllTaskAssignments = async () => {
@@ -73,7 +131,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
                 }
             }
-
             setTaskAssignmentMap(result);
         };
 
@@ -103,18 +160,33 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         }
     };
 
+    const canEditStatus = (assigneeIds: number[] | number | null) => {
+        const currentUserId = accountId.toString();
+        const isAssignee = Array.isArray(assigneeIds)
+            ? assigneeIds.map(id => id.toString()).includes(currentUserId)
+            : assigneeIds?.toString() === currentUserId;
+        return isAssignee || canEdit;
+    };
+
     React.useEffect(() => {
-        if (epic) {
+        if (epic && epic.assignedBy !== undefined) {
             setEpicId(epic.id);
             setStatus(epic.status);
             setDescription(epic.description);
             setProjectId(String(epic.projectId));
+            setSelectedAssignee(epic.assignedBy);
+            setNewAssignedBy(epic.assignedBy);
+            if (epic?.reporterId) {
+                setSelectedReporter(epic.reporterId);
+                setNewReporterId(epic.reporterId);
+            }
+
+            if (epic?.assignedBy) {
+                setSelectedAssignee(epic.assignedBy);
+                setNewAssignedBy(epic.assignedBy);
+            }
         }
     }, [epic]);
-
-    const { data: epicLabels = [] } = useGetWorkItemLabelsByEpicQuery(id, {
-        skip: !id,
-    });
 
     const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
         const startX = e.clientX;
@@ -135,29 +207,119 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         document.addEventListener('mouseup', onMouseUp);
     };
 
-    const formatDate = (iso: string | null | undefined) => {
-        if (!iso) return 'None';
-        return new Date(iso).toLocaleDateString('vi-VN');
+    const handleUpdateEpic = async () => {
+        if (!epic) return;
+
+        try {
+            await updateEpic({
+                id: epic.id,
+                data: {
+                    projectId: epic.projectId,
+                    name: newName ?? epic.name,
+                    description: newDescription ?? epic.description,
+                    assignedBy: newAssignedBy ?? epic.assignedBy,
+                    reporterId: newReporterId ?? epic.reporterId,
+                    startDate: newStartDate ?? epic.startDate,
+                    endDate: newEndDate ?? epic.endDate,
+                    status: epic.status,
+                },
+            }).unwrap();
+
+            alert("✅ Epic updated");
+            console.error("✅ Epic updated");
+        } catch (err) {
+            console.error("❌ Failed to update epic", err);
+            alert("❌ Update failed");
+        }
     };
 
-    const getTypeIcon = (type: string) => {
-        switch (type) {
-            case 'TASK':
-                return taskIcon;
-            case 'BUG':
-                return bugIcon;
-            case 'STORY':
-                return storyIcon;
-            default:
-                return taskIcon;
+    const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels } = useGetWorkItemLabelsByEpicQuery(
+        id, { skip: !id, }
+    );
+
+    const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
+        refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(epic?.projectId!, {
+            skip: !epic?.projectId,
+        });
+
+    const filteredLabels = projectLabels.filter((label) => {
+        const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
+
+        if (newLabelName.trim() === '') {
+            return notAlreadyAdded;
         }
+
+        return (
+            label.name.toLowerCase().includes(newLabelName.toLowerCase()) &&
+            notAlreadyAdded
+        );
+    });
+
+    const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
+
+    const handleCreateLabelAndAssign = async (labelName?: string) => {
+        const nameToAssign = labelName?.trim() || newLabelName.trim();
+
+        if (!epic?.projectId || !epicId || !nameToAssign) {
+            alert('Missing projectId, taskId or label name!');
+            return;
+        }
+
+        try {
+            await createLabelAndAssign({
+                projectId: epic.projectId,
+                name: nameToAssign,
+                taskId: null,
+                epicId,
+                subtaskId: null,
+            }).unwrap();
+
+            alert('✅ Label assigned successfully!');
+            setNewLabelName('');
+            setIsEditingLabel(false);
+            await Promise.all([
+                refetchWorkItemLabels?.(),
+                refetchProjectLabels?.(),
+            ]);
+        } catch (error) {
+            console.error('❌ Failed to create and assign label:', error);
+            alert('❌ Failed to assign label');
+        }
+    };
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (labelRef.current && !labelRef.current.contains(event.target as Node)) {
+                setDropdownOpen(false);
+                setIsEditingLabel(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleDeleteWorkItemLabel = async (id: number) => {
+        try {
+            await deleteWorkItemLabel(id).unwrap();
+            console.log('Delete successfully');
+            await refetchWorkItemLabels();
+        } catch (error) {
+            console.error(':', error);
+        }
+    };
+
+    const getTypeIcon = (taskTypeName: string) => {
+        return taskTypeOptions?.data?.find(opt => opt.name === taskTypeName)?.iconLink || '';
     };
 
 
     if (isLoading || !epic) {
         return (
             <div className="modal-overlay">
-                <div className="work-item-modal">Đang tải Epic...</div>
+                <div className="work-item-modal">Loading Epic...</div>
             </div>
         );
     }
@@ -185,11 +347,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             className="issue-summary"
                             placeholder="Enter epic name"
                             defaultValue={epic.name}
+                            onChange={(e) => setNewName(e.target.value)}
+                            onBlur={handleUpdateEpic}
+                            disabled={!canEdit}
+                            style={{ width: 300 }}
                         />
+                        <div className="modal-container">
+                            <button className="close-btn" onClick={onClose}>✖</button>
+                        </div>
                     </div>
-                    <div className="header-actions">
-                        <button className="close-btn" onClick={onClose}>✖</button>
-                    </div>
+
                 </div>
 
                 {/* Content */}
@@ -206,16 +373,18 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     <div className="add-item" onClick={() => fileInputRef.current?.click()}>
                                         📁 Attachment
                                     </div>
-                                    <div className="add-item" onClick={() => {
-                                        setShowTaskInput(true);
-                                        setIsAddDropdownOpen(false);
 
-                                        setTimeout(() => {
-                                            taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        }, 100);
-                                    }}>
-                                        📝 Task
-                                    </div>
+                                    {(user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER') && (
+                                        <div className="add-item" onClick={() => {
+                                            setShowTaskInput(true);
+                                            setIsAddDropdownOpen(false);
+                                            setTimeout(() => {
+                                                taskInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            }, 100);
+                                        }}>
+                                            📝 Task
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -243,8 +412,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         <div className="field-group">
                             <label>Description</label>
                             <textarea
-                                placeholder="Add a description..."
-                                defaultValue={epic.description}
+                                value={newDescription ?? epic?.description ?? ''}
+                                onChange={(e) => setNewDescription(e.target.value)}
+                                onBlur={handleUpdateEpic}
+                                disabled={!canEdit}
                             />
                         </div>
 
@@ -299,6 +470,244 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
 
                         <div className="field-group">
                             <label>Child Work Items</label>
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '6px',
+                                    padding: '16px',
+                                    margin: '12px 0',
+                                    backgroundColor: '#fff',
+                                    fontSize: '14px',
+                                }}
+                            >
+                                {/* Header */}
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            fontSize: '15px',
+                                            fontWeight: '500',
+                                        }}
+                                    >
+                                        <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
+                                        Create suggested work items
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const result = await generateTasksByEpicByAI(epicId).unwrap();
+                                                setAiSuggestions(result);
+                                                setShowSuggestionList(true);
+                                                setSelectedSuggestions([]);
+                                            } catch (err) {
+                                                alert('❌ Failed to get suggestions');
+                                                console.error(err);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            backgroundColor: '#f4f5f7',
+                                            border: '1px solid #ccc',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {loadingSuggest ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span
+                                                    role='img'
+                                                    style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
+                                                >
+                                                    🧠
+                                                </span>
+                                                <div className='dot-loader'>
+                                                    <span>.</span>
+                                                    <span>.</span>
+                                                    <span>.</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            'Suggest'
+                                        )}
+                                    </button>
+                                </div>
+
+                                {/* Suggestions */}
+                                {showSuggestionList && (
+                                    <div
+                                        style={{
+                                            position: 'fixed',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            bottom: 0,
+                                            backgroundColor: 'rgba(0,0,0,0.4)',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            zIndex: 1000,
+                                        }}
+                                        onClick={() => setShowSuggestionList(false)}
+                                    >
+                                        <div
+                                            style={{
+                                                backgroundColor: '#fff',
+                                                borderRadius: '8px',
+                                                width: '480px',
+                                                maxHeight: '80vh',
+                                                overflowY: 'auto',
+                                                padding: '20px',
+                                                boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {/* Header */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: '16px',
+                                                }}
+                                            >
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        fontSize: '15px',
+                                                        fontWeight: '500',
+                                                    }}
+                                                >
+                                                    <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
+                                                    AI Suggested Tasks
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowSuggestionList(false)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        fontSize: '18px',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    title='Close'
+                                                >
+                                                    ✖
+                                                </button>
+                                            </div>
+
+                                            {/* Suggestion List */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '8px',
+                                                    padding: '4px 8px',
+                                                    marginBottom: '16px',
+                                                }}
+                                            >
+                                                {aiSuggestions.map((item, idx) => (
+                                                    <label
+                                                        key={idx}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'flex-start',
+                                                            gap: '2px',
+                                                            lineHeight: '1.4',
+                                                            wordBreak: 'break-word',
+                                                            fontSize: '14px',
+                                                            cursor: 'pointer',
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type='checkbox'
+                                                            checked={selectedSuggestions.includes(item)}
+                                                            onChange={(e) => {
+                                                                const checked = e.target.checked;
+                                                                setSelectedSuggestions((prev) =>
+                                                                    checked
+                                                                        ? [...prev, item]
+                                                                        : prev.filter((s) => s.title !== item.title)
+                                                                );
+                                                            }}
+                                                            style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
+                                                        />
+                                                        <div style={{ flex: 7 }}>
+                                                            <div style={{ fontWeight: 'bold' }}>{item.title}</div>
+                                                            <div style={{ color: '#666', fontSize: '13px' }}>{item.description}</div>
+                                                            <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                                                                <strong>Type:</strong> {item.type}
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+
+                                            {/* Create Button */}
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                                                <button
+                                                    onClick={async () => {
+                                                        for (const suggestion of selectedSuggestions) {
+                                                            try {
+                                                                await createTask({
+                                                                    reporterId: accountId,
+                                                                    projectId: parseInt(projectId),
+                                                                    epicId: epic.id,
+                                                                    title: suggestion.title,
+                                                                    description: suggestion.description,
+                                                                    type: suggestion.type,
+                                                                    createdBy: accountId,
+                                                                }).unwrap();
+                                                            } catch (err) {
+                                                                console.error(`❌ Failed to create: ${suggestion.title}`, err);
+                                                            }
+                                                        }
+
+                                                        alert('✅ Created selected tasks');
+                                                        setShowSuggestionList(false);
+                                                        setSelectedSuggestions([]);
+                                                        await refetch();
+                                                        await refetchActivityLogs();
+                                                    }}
+                                                    disabled={selectedSuggestions.length === 0}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        fontWeight: 500,
+                                                        cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                                                    }}
+                                                >
+                                                    Create Selected
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowSuggestionList(false)}
+                                                    style={{
+                                                        padding: '8px 16px',
+                                                        backgroundColor: '#eee',
+                                                        border: 'none',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
                             <div style={{ marginBottom: '8px' }}>
                                 <div style={{
@@ -357,189 +766,236 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             ) : (
                                                 tasks.map((task) => (
                                                     <tr key={task.id}>
-                                                        <td><img
-                                                            src={getTypeIcon(task.type)}
-                                                            alt={task.type}
-                                                            title={task.type.charAt(0) + task.type.slice(1).toLowerCase()}
-                                                        />
+                                                        <td>
+                                                            <img
+                                                                src={getTypeIcon(task.type)}
+                                                                alt={task.type}
+                                                                title={
+                                                                    taskTypeOptions?.data?.find(opt => opt.name === task.type)?.label ??
+                                                                    task.type.charAt(0).toUpperCase() + task.type.slice(1).toLowerCase()
+                                                                }
+                                                                className='w-5 h-5'
+                                                            />
                                                         </td>
+
                                                         <td>
                                                             <a onClick={() => setSelectedTaskId(task.id)} style={{ cursor: 'pointer' }}>
                                                                 {task.id}
                                                             </a>
                                                         </td>
 
-                                                        <td onClick={() => setEditingTaskId(task.id)} style={{ cursor: 'pointer' }}>
+                                                        <td onClick={() => canEdit && setEditingTaskId(task.id)} style={{
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'normal',
+                                                            wordBreak: 'break-word',
+                                                            maxWidth: '300px',
+                                                        }}>
                                                             {editingTaskId === task.id ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={editableTitles[task.id] ?? task.title}
-                                                                    onChange={(e) =>
-                                                                        setEditableTitles((prev) => ({ ...prev, [task.id]: e.target.value }))
-                                                                    }
-                                                                    onBlur={async () => {
-                                                                        const newTitle = editableTitles[task.id]?.trim();
-                                                                        if (newTitle && newTitle !== task.title) {
-                                                                            try {
-                                                                                await updateTaskTitle({ id: task.id, title: newTitle }).unwrap();
-                                                                                await refetch();
-                                                                            } catch (err) {
-                                                                                console.error('❌ Failed to update title:', err);
+                                                                canEdit ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={editableTitles[task.id] ?? task.title}
+                                                                        onChange={(e) =>
+                                                                            setEditableTitles((prev) => ({ ...prev, [task.id]: e.target.value }))
+                                                                        }
+                                                                        onBlur={async () => {
+                                                                            const newTitle = editableTitles[task.id]?.trim();
+                                                                            if (newTitle && newTitle !== task.title) {
+                                                                                try {
+                                                                                    await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
+                                                                                    await refetch();
+                                                                                    await refetchActivityLogs();
+                                                                                } catch (err) {
+                                                                                    console.error('❌ Failed to update title:', err);
+                                                                                }
                                                                             }
+                                                                            setEditingTaskId(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') {
+                                                                                e.preventDefault();
+                                                                                (e.target as HTMLInputElement).blur();
+                                                                            }
+                                                                        }}
+                                                                        autoFocus
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            padding: '4px 6px',
+                                                                            border: '1px solid #ccc',
+                                                                            borderRadius: 4,
+                                                                        }}
+                                                                    />
+                                                                ) : task.title
+                                                            ) : task.title}
+                                                        </td>
+
+                                                        <td>
+                                                            {canEdit ? (
+                                                                <select
+                                                                    value={task.priority}
+                                                                    onChange={async (e) => {
+                                                                        const newPriority = e.target.value;
+                                                                        try {
+                                                                            await updateTaskPriority({
+                                                                                id: task.id,
+                                                                                priority: newPriority,
+                                                                                createdBy: accountId,
+                                                                            }).unwrap();
+                                                                            await refetch();
+                                                                            await refetchActivityLogs();
+                                                                        } catch (err) {
+                                                                            console.error('❌ Error updating priority:', err);
                                                                         }
-                                                                        setEditingTaskId(null);
                                                                     }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') {
-                                                                            e.preventDefault();
-                                                                            (e.target as HTMLInputElement).blur();
-                                                                        }
-                                                                    }}
-                                                                    autoFocus
                                                                     style={{
-                                                                        width: '100%',
-                                                                        padding: '4px 6px',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
                                                                         border: '1px solid #ccc',
-                                                                        borderRadius: 4,
+                                                                        backgroundColor: 'white',
                                                                     }}
-                                                                />
+                                                                >
+                                                                    {taskPriorityOptions?.data?.map((opt) => (
+                                                                        <option key={opt.name} value={opt.name}>
+                                                                            {opt.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
                                                             ) : (
-                                                                task.title
+                                                                <>
+                                                                    {taskPriorityOptions?.data?.find((opt) => opt.name === task.priority)?.label || task.priority || 'NONE'}
+                                                                </>
                                                             )}
                                                         </td>
 
-
                                                         <td>
-                                                            <select
-                                                                value={task.priority}
-                                                                onChange={async (e) => {
-                                                                    const newPriority = e.target.value;
-                                                                    // try {
-                                                                    //     await updateTaskStatus({
-                                                                    //         id: task.id,
-                                                                    //         priority: newPriority,
-                                                                    //     }).unwrap();
-                                                                    //     await refetch(); // refresh task list
-                                                                    // } catch (err) {
-                                                                    //     console.error('❌ Error updating priority:', err);
-                                                                    // }
-                                                                }}
-                                                                style={{
-                                                                    padding: '4px 8px',
-                                                                    borderRadius: '4px',
-                                                                    border: '1px solid #ccc',
-                                                                    backgroundColor: 'white',
-                                                                }}
-                                                            >
-                                                                <option value="HIGHEST">Highest</option>
-                                                                <option value="HIGH">High</option>
-                                                                <option value="MEDIUM">Medium</option>
-                                                                <option value="LOW">Low</option>
-                                                                <option value="LOWEST">Lowest</option>
-                                                            </select>
-                                                        </td>
+                                                            {canEdit ? (
+                                                                <div className="multi-select-dropdown">
+                                                                    {/* Hiển thị danh sách đã chọn */}
+                                                                    <div className="selected-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                        {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
+                                                                            <span className="selected-tag" key={assignment.accountId}>
+                                                                                {assignment.accountFullname ?? 'Unknown'}
+                                                                                <button
+                                                                                    className="remove-tag"
+                                                                                    onClick={async () => {
+                                                                                        try {
+                                                                                            await deleteTaskAssignment({
+                                                                                                taskId: task.id,
+                                                                                                assignmentId: assignment.id,
+                                                                                            }).unwrap();
 
-                                                        <td>
-                                                            <div className="multi-select-dropdown">
-                                                                {/* Hiển thị danh sách đã chọn */}
-                                                                <div className="selected-list">
-                                                                    {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
-                                                                        <span className="selected-tag" key={assignment.accountId}>
-                                                                            {assignment.accountFullname ?? 'Unknown'}
-                                                                            <button
-                                                                                className="remove-tag"
-                                                                                onClick={async () => {
+                                                                                            setTaskAssignmentMap((prev) => ({
+                                                                                                ...prev,
+                                                                                                [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
+                                                                                            }));
+                                                                                        } catch (err) {
+                                                                                            console.error('❌ Failed to delete assignee:', err);
+                                                                                        }
+                                                                                    }}
+                                                                                >
+                                                                                    ✖
+                                                                                </button>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+
+                                                                    {/* Dropdown chọn thêm */}
+                                                                    <div className="dropdown-select-wrapper">
+                                                                        <select
+                                                                            onChange={async (e) => {
+                                                                                const selectedId = parseInt(e.target.value);
+                                                                                if (!selectedAssignees[task.id]?.includes(selectedId)) {
                                                                                     try {
-                                                                                        await deleteTaskAssignment({
+                                                                                        await createTaskAssignment({
                                                                                             taskId: task.id,
-                                                                                            assignmentId: assignment.id,
+                                                                                            accountId: selectedId,
                                                                                         }).unwrap();
+
+                                                                                        const data = await getTaskAssignments(task.id).unwrap();
 
                                                                                         setTaskAssignmentMap((prev) => ({
                                                                                             ...prev,
-                                                                                            [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
+                                                                                            [task.id]: data,
+                                                                                        }));
+
+                                                                                        setSelectedAssignees((prev) => ({
+                                                                                            ...prev,
+                                                                                            [task.id]: [...(prev[task.id] ?? []), selectedId],
                                                                                         }));
                                                                                     } catch (err) {
-                                                                                        console.error('❌ Failed to delete assignee:', err);
+                                                                                        console.error('❌ Failed to create assignee:', err);
+                                                                                        alert('❌ Error adding assignee');
                                                                                     }
-                                                                                }}
-                                                                            >
-                                                                                ✖
-                                                                            </button>
+                                                                                }
+                                                                            }}
+                                                                            value=""
+                                                                        >
+                                                                            <option value="" disabled hidden>
+                                                                                + Add assignee
+                                                                            </option>
+                                                                            {projectMembers
+                                                                                .filter(
+                                                                                    (m) =>
+                                                                                        !(taskAssignmentMap[task.id] ?? []).some(
+                                                                                            (a) => a.accountId === m.accountId
+                                                                                        )
+                                                                                )
+                                                                                .map((member) => (
+                                                                                    <option key={member.accountId} value={member.accountId}>
+                                                                                        {member.accountName}
+                                                                                    </option>
+                                                                                ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                    {(taskAssignmentMap[task.id] ?? []).map((assignment) => (
+                                                                        <span key={assignment.accountId} style={{ marginBottom: '4px' }}>
+                                                                            {assignment.accountFullname ?? 'Unknown'}
                                                                         </span>
                                                                     ))}
-
-                                                                </div>                                              {/* Dropdown chọn thêm */}
-                                                                <div className="dropdown-select-wrapper">
-                                                                    <select
-                                                                        onChange={async (e) => {
-                                                                            const selectedId = parseInt(e.target.value);
-                                                                            if (!selectedAssignees[task.id]?.includes(selectedId)) {
-                                                                                try {
-                                                                                    await createTaskAssignment({ taskId: task.id, accountId: selectedId }).unwrap();
-
-                                                                                    // Gọi lại API để lấy thông tin đầy đủ bao gồm fullname
-                                                                                    const data = await getTaskAssignments(task.id).unwrap();
-
-                                                                                    setTaskAssignmentMap((prev) => ({
-                                                                                        ...prev,
-                                                                                        [task.id]: data, // cập nhật lại danh sách mới
-                                                                                    }));
-
-                                                                                    setSelectedAssignees((prev) => ({
-                                                                                        ...prev,
-                                                                                        [task.id]: [...(prev[task.id] ?? []), selectedId],
-                                                                                    }));
-
-                                                                                } catch (err) {
-                                                                                    console.error('❌ Failed to create assignee:', err);
-                                                                                    alert('❌ Error adding assignee');
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                        value=""
-                                                                    >
-                                                                        <option value="" disabled hidden>+ Add assignee</option>
-                                                                        {projectMembers
-                                                                            .filter((m) => !(taskAssignmentMap[task.id] ?? []).some((a) => a.accountId === m.accountId))
-                                                                            .map((member) => (
-                                                                                <option key={member.accountId} value={member.accountId}>
-                                                                                    {member.accountName}
-                                                                                </option>
-                                                                            ))}
-                                                                    </select>
                                                                 </div>
-                                                            </div>
+                                                            )}
                                                         </td>
 
                                                         <td>
-                                                            <select
-                                                                className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
-                                                                value={task.status}
-                                                                onChange={async (e) => {
-                                                                    try {
-                                                                        await updateTaskStatus({
-                                                                            id: task.id,
-                                                                            status: e.target.value,
-                                                                        }).unwrap();
-                                                                        await refetch();
-                                                                    } catch (err) {
-                                                                        console.error('❌ Error updating status:', err);
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <option value="TO_DO">To Do</option>
-                                                                <option value="IN_PROGRESS">In Progress</option>
-                                                                <option value="DONE">Done</option>
-                                                            </select>
+                                                            {canEditStatus((taskAssignmentMap[task.id] ?? []).map(a => a.accountId)) ? (
+                                                                <select
+                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')}`}
+                                                                    value={task.status}
+                                                                    onChange={async (e) => {
+                                                                        try {
+                                                                            await updateTaskStatus({
+                                                                                id: task.id,
+                                                                                status: e.target.value,
+                                                                                createdBy: accountId,
+                                                                            }).unwrap();
+                                                                            await refetch();
+                                                                            await refetchActivityLogs();
+                                                                        } catch (err) {
+                                                                            console.error('❌ Error updating status:', err);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {taskStatusOptions?.data?.map((opt) => (
+                                                                        <option key={opt.name} value={opt.name}>
+                                                                            {opt.label}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            ) : (
+                                                                <span
+                                                                    className={`custom-epic-status-select status-${task.status.toLowerCase().replace('_', '-')} flex items-center gap-2`}
+                                                                >
+                                                                    {taskStatusOptions?.data?.find(opt => opt.name === task.status)?.label ?? task.status.replace('_', ' ')}
+                                                                </span>
+                                                            )}
                                                         </td>
-
                                                     </tr>
                                                 ))
                                             )}
                                         </tbody>
-
-
                                     </table>
                                 </div>
                             </div>
@@ -562,17 +1018,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             >
                                                 <img
                                                     src={
-                                                        newTaskType === 'BUG'
-                                                            ? bugIcon
-                                                            : newTaskType === 'STORY'
-                                                                ? storyIcon
-                                                                : taskIcon
+                                                        taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.iconLink ?? taskIcon
                                                     }
                                                     alt={newTaskType}
                                                     style={{ width: 16, marginRight: 6 }}
                                                 />
-                                                {newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
-
+                                                {taskTypeOptions?.data?.find((t) => t.name === newTaskType)?.label ??
+                                                    newTaskType.charAt(0) + newTaskType.slice(1).toLowerCase()}
                                             </button>
 
                                             {showTypeDropdown && (
@@ -587,15 +1039,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         borderRadius: 4,
                                                         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                                                         zIndex: 1000,
-                                                        width: 120,
+                                                        width: 140,
                                                     }}
                                                 >
-                                                    {taskTypes.map((type) => (
+                                                    {taskTypeOptions?.data?.map((type) => (
                                                         <div
-                                                            key={type.value}
+                                                            key={type.name}
                                                             className="dropdown-item"
                                                             onClick={() => {
-                                                                setNewTaskType(type.value as 'TASK' | 'BUG' | 'STORY');
+                                                                setNewTaskType(type.name as 'TASK' | 'BUG' | 'STORY');
                                                                 setShowTypeDropdown(false);
                                                             }}
                                                             style={{
@@ -606,7 +1058,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                 gap: 6,
                                                             }}
                                                         >
-                                                            <img src={type.icon} alt={type.label} style={{ width: 16 }} />
+                                                            <img src={type.iconLink ?? ''} alt={type.label} style={{ width: 16 }} />
                                                             {type.label}
                                                         </div>
                                                     ))}
@@ -632,20 +1084,20 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    const now = new Date().toISOString();
-
                                                     await createTask({
                                                         reporterId: accountId,
                                                         projectId: parseInt(projectId),
                                                         epicId: epic.id,
                                                         title: newTaskTitle.trim(),
                                                         type: newTaskType,
+                                                        createdBy: accountId,
                                                     }).unwrap();
 
                                                     console.log('✅ Task created');
                                                     setNewTaskTitle('');
                                                     setShowTaskInput(false);
                                                     await refetch();
+                                                    await refetchActivityLogs();
                                                 } catch (err) {
                                                     console.error('❌ Failed to create task:', err);
                                                     alert('❌ Failed to create task');
@@ -685,56 +1137,362 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             )}
                         </div>
 
-                        <div className="activity-tabs">
-                            <button className="tab active">All</button>
-                            <button className="tab">Comments</button>
-                            <button className="tab">History</button>
-                        </div>
-                        <div className="comment-list">
-                            <textarea className="activity-input" />
+                        <div className="activity-section">
+                            <h4 style={{ marginBottom: '8px' }}>Activity</h4>
 
+                            <div className="activity-tabs">
+                                <button
+                                    className={`activity-tab-btn ${activeTab === 'COMMENTS' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('COMMENTS')}
+                                >
+                                    Comments
+                                </button>
+                                <button
+                                    className={`activity-tab-btn ${activeTab === 'HISTORY' ? 'active' : ''}`}
+                                    onClick={() => setActiveTab('HISTORY')}
+                                >
+                                    History
+                                </button>
+                            </div>
+
+                            {/* Tab Content */}
+                            {activeTab === 'HISTORY' && (
+                                <div className="history-list">
+                                    {isActivityLogsLoading ? (
+                                        <div>Loading...</div>
+                                    ) : activityLogs.length === 0 ? (
+                                        <div>No history available.</div>
+                                    ) : (
+                                        activityLogs.map((log) => (
+                                            <div key={log.id} className="history-item">
+                                                <div className="history-header">
+                                                    <span className="history-user">{log.createdByName}</span>
+                                                    <span className="history-time">
+                                                        {new Date(log.createdAt).toLocaleTimeString()} {new Date(log.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="history-message">{log.message}</div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
+                            {activeTab === 'COMMENTS' ? (
+                                <>
+                                    <div className="comment-list">
+                                        {isCommentsLoading ? (
+                                            <p>Loading comments...</p>
+                                        ) : comments.length === 0 ? (
+                                            <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
+                                        ) : (
+                                            comments
+                                                .slice()
+                                                .reverse()
+                                                .map((comment: any) => (
+                                                    <div key={comment.id} className="simple-comment">
+                                                        <div className="avatar-circle">
+                                                            <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                                                        </div>
+                                                        <div className="comment-content">
+                                                            <div className="comment-header">
+                                                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
+                                                                <span className="comment-time">
+                                                                    {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="comment-text">{comment.content}</div>
+                                                            {comment.accountId === accountId && (
+                                                                <div className="comment-actions">
+                                                                    <button
+                                                                        className="edit-btn"
+                                                                        onClick={async () => {
+                                                                            const newContent = prompt("✏ Edit your comment:", comment.content);
+                                                                            if (newContent && newContent !== comment.content) {
+                                                                                try {
+                                                                                    await updateEpicComment({
+                                                                                        id: comment.id,
+                                                                                        epicId,
+                                                                                        accountId,
+                                                                                        content: newContent,
+                                                                                    }).unwrap();
+                                                                                    alert("✅ Comment updated");
+                                                                                    await refetchComments();
+                                                                                } catch (err) {
+                                                                                    console.error("❌ Failed to update comment", err);
+                                                                                    alert("❌ Update failed");
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        ✏ Edit
+                                                                    </button>
+                                                                    <button
+                                                                        className="delete-btn"
+                                                                        onClick={async () => {
+                                                                            if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
+                                                                                try {
+                                                                                    await deleteEpicComment(comment.id).unwrap();
+                                                                                    alert("🗑️ Deleted successfully");
+                                                                                    await refetchComments();
+                                                                                } catch (err) {
+                                                                                    console.error("❌ Failed to delete comment", err);
+                                                                                    alert("❌ Delete failed");
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        🗑 Delete
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                        </div>
+                                                    </div>
+                                                ))
+                                        )}
+                                    </div>
+
+                                    {/* Comment Input */}
+                                    <div className="simple-comment-input">
+                                        <textarea
+                                            placeholder="Add a comment..."
+                                            value={commentContent}
+                                            onChange={(e) => setCommentContent(e.target.value)}
+                                        />
+                                        <button
+                                            disabled={!commentContent.trim()}
+                                            onClick={async () => {
+                                                try {
+                                                    if (!accountId || isNaN(accountId)) {
+                                                        alert('❌ User not identified. Please log in again.');
+                                                        return;
+                                                    }
+                                                    createEpicComment({
+                                                        epicId,
+                                                        accountId,
+                                                        content: commentContent.trim(),
+                                                    }).unwrap();
+                                                    alert("✅ Comment posted");
+                                                    setCommentContent('');
+                                                    await refetchComments();
+                                                } catch (err: any) {
+                                                    console.error('❌ Failed to post comment:', err);
+                                                    alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                                                }
+                                            }}
+                                        >
+                                            Comment
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="activity-placeholder">
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Right - Sidebar */}
                     <div className="details-panel">
                         <div className="panel-header">
-                            <select
-                                value={status}
-                                onChange={(e) => handleStatusChange(e.target.value)}
-                                className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
-                            >
-                                <option value="TO_DO">To Do</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="DONE">Done</option>
-                            </select>
+                            {canEditStatus(epic.assignedBy) ? (
+                                <select
+                                    value={status}
+                                    onChange={(e) => handleStatusChange(e.target.value)}
+                                    className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                                >
+                                    {epicStatusOptions?.data?.map((option) => (
+                                        <option key={option.name} value={option.name}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <span
+                                    className={`custom-epic-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                                >
+                                    {
+                                        epicStatusOptions?.data?.find((item) => item.name === status)?.label ??
+                                        status.replace('_', ' ')
+                                    }
+                                </span>
+                            )}
                         </div>
 
                         <div className="details-content">
-                            <div className="detail-item"><label>Assignee</label><span>{epic.assignedByFullname ?? 'None'}</span></div>
                             <div className="detail-item">
-                                <label>Labels</label>
-                                <span>
-                                    {epicLabels.length === 0
-                                        ? 'None'
-                                        : epicLabels.map((label) => label.labelName).join(', ')}
-                                </span>
+                                <label>Assignee</label>
+                                {canEdit ? (
+                                    <select
+                                        value={selectedAssignee ?? ''}
+                                        onChange={(e) => {
+                                            const assigneeId = Number(e.target.value);
+                                            setSelectedAssignee(assigneeId);
+                                            setNewAssignedBy(assigneeId);
+                                        }}
+                                        style={{ padding: '2px 0px', borderRadius: '4px', border: '1px solid #ccc', backgroundColor: 'white', width: '150px' }}
+                                    >
+                                        <option value="" disabled>-- Select assignee --</option>
+                                        {projectMembers.map((member) => (
+                                            <option key={member.accountId} value={member.accountId}>
+                                                {member.accountName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <span>
+                                        {projectMembers.find((m) => m.accountId === selectedAssignee)?.accountName ?? 'None'}
+                                    </span>
+                                )}
                             </div>
 
-                            <div className="detail-item"><label>Start date</label><span>{formatDate(epic.startDate)}</span></div>
-                            <div className="detail-item"><label>Due date</label><span>{formatDate(epic.endDate)}</span></div>
+                            {isEditingLabel ? (
+                                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
+                                    <div className="flex flex-col gap-2 w-full relative">
+                                        <label className="font-semibold">Labels</label>
+
+                                        <div
+                                            className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                                            onClick={() => setDropdownOpen(true)}
+                                        >
+                                            {workItemLabels.map((label) => (
+                                                <span
+                                                    key={label.id}
+                                                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                                                >
+                                                    {label.labelName}
+                                                    <button
+                                                        onClick={() => handleDeleteWorkItemLabel(label.id)}
+                                                        className="text-red-500 hover:text-red-700 font-bold text-sm"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+
+                                            <input
+                                                value={newLabelName}
+                                                onChange={(e) => {
+                                                    setNewLabelName(e.target.value);
+                                                    setDropdownOpen(true);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleCreateLabelAndAssign();
+                                                }}
+                                                placeholder="Type to search or add"
+                                                className="flex-1 min-w-[100px] border-none outline-none py-1"
+                                                autoFocus
+                                            />
+                                        </div>
+
+                                        {dropdownOpen && filteredLabels.length > 0 && (
+                                            <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
+                                                <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                                                {filteredLabels.map((label) => (
+                                                    <li
+                                                        key={label.id}
+                                                        onClick={() => handleCreateLabelAndAssign(label.name)}
+                                                        className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                                                    >
+                                                        {label.name}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
+                                    <label className="font-semibold">Labels</label>
+                                    <span>
+                                        {isLabelLoading
+                                            ? 'Loading...'
+                                            : workItemLabels.length === 0
+                                                ? 'None'
+                                                : workItemLabels.map((label) => label.labelName).join(', ')}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
+                            <div className="detail-item">
+                                <label>Start date</label>
+                                {canEdit ? (
+                                    <input
+                                        type="date"
+                                        value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                            setNewStartDate(fullDate);
+                                        }}
+                                        onBlur={handleUpdateEpic}
+                                        style={{ width: '150px' }}
+                                    />
+                                ) : (
+                                    <span>{epic?.startDate?.slice(0, 10) ?? 'None'}</span>
+                                )}
+                            </div>
+
+                            <div className="detail-item">
+                                <label>Due date</label>
+                                {canEdit ? (
+                                    <input
+                                        type="date"
+                                        value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
+                                        onChange={(e) => {
+                                            const selectedDate = e.target.value;
+                                            const fullDate = `${selectedDate}T00:00:00.000Z`;
+                                            setNewEndDate(fullDate);
+                                        }}
+                                        onBlur={handleUpdateEpic}
+                                        style={{ width: '150px' }}
+                                    />
+                                ) : (
+                                    <span>{epic?.endDate?.slice(0, 10) ?? 'None'}</span>
+                                )}
+                            </div>
+
+                            <div className="detail-item">
+                                <label>Reporter</label>
+                                {canEdit ? (
+                                    <select
+                                        value={selectedReporter ?? ''}
+                                        onChange={(e) => {
+                                            const reporterId = Number(e.target.value);
+                                            setSelectedReporter(reporterId);
+                                            setNewReporterId(reporterId);
+                                        }}
+                                        style={{ padding: '2px 0px', width: '150px' }}
+                                    >
+                                        <option value="" disabled>-- Select reporter --</option>
+                                        {projectMembers.map((member) => (
+                                            <option key={member.accountId} value={member.accountId}>
+                                                {member.accountName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <span>
+                                        {projectMembers.find((m) => m.accountId === selectedReporter)?.accountName ?? 'None'}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            {selectedTaskId && (
-                <WorkItem
-                    isOpen={true}
-                    taskId={selectedTaskId}
-                    onClose={() => setSelectedTaskId(null)}
-                />
-            )}
-        </div>
+            {
+                selectedTaskId && (
+                    <WorkItem
+                        isOpen={true}
+                        taskId={selectedTaskId}
+                        onClose={() => setSelectedTaskId(null)}
+                    />
+                )
+            }
+        </div >
     );
 };
 

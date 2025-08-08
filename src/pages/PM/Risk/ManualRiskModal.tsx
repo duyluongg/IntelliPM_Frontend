@@ -1,5 +1,9 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './ManualRiskModal.css';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
+import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
+import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 
 interface ManualRiskModalProps {
   onClose: () => void;
@@ -14,6 +18,30 @@ const ManualRiskModal: React.FC<ManualRiskModalProps> = ({ onClose, onSave }) =>
   const [type, setType] = useState('');
   const [responsible, setResponsible] = useState('');
   const [dueDate, setDueDate] = useState('');
+
+  const [searchParams] = useSearchParams();
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+
+  const { data: categoryData, isLoading: isCategoryLoading } =
+    useGetCategoriesByGroupQuery('risk_type');
+  const riskTypes = categoryData?.data || [];
+
+  const { data: projectData, isLoading: isProjectLoading } =
+    useGetProjectDetailsByKeyQuery(projectKey);
+
+  const projectId = projectData?.data?.id;
+  const skipMembers = !projectId;
+  const { data: membersData } = useGetProjectMembersWithPositionsQuery(projectId!, {
+    skip: skipMembers,
+  });
+
+  const assignees =
+    membersData?.data?.map((m) => ({
+      id: m.accountId,
+      fullName: m.fullName,
+      userName: m.username,
+      picture: m.picture,
+    })) || [];
 
   const handleSubmit = () => {
     const newRisk = {
@@ -67,15 +95,38 @@ const ManualRiskModal: React.FC<ManualRiskModalProps> = ({ onClose, onSave }) =>
             <option value='High'>High</option>
           </select>
 
-          <label className='modal-label'>Type</label>
-          <input className='modal-input' value={type} onChange={(e) => setType(e.target.value)} />
+          {/* <label className='modal-label'>Type</label>
+          <input className='modal-input' value={type} onChange={(e) => setType(e.target.value)} /> */}
 
-          <label className='modal-label'>Responsible (username)</label>
+          <label className='modal-label'>Type</label>
+          <select className='modal-input' value={type} onChange={(e) => setType(e.target.value)}>
+            {riskTypes.map((item) => (
+              <option key={item.id} value={item.name}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+
+          {/* <label className='modal-label'>Responsible (username)</label>
           <input
             className='modal-input'
             value={responsible}
             onChange={(e) => setResponsible(e.target.value)}
-          />
+          /> */}
+
+          <label className='modal-label'>Responsible</label>
+          <select
+            className='modal-input'
+            value={responsible}
+            onChange={(e) => setResponsible(e.target.value)}
+          >
+            <option value=''>Select a user</option>
+            {assignees.map((user) => (
+              <option key={user.id} value={user.userName}>
+                {user.fullName || user.userName}
+              </option>
+            ))}
+          </select>
 
           <label className='modal-label'>Due Date</label>
           <input

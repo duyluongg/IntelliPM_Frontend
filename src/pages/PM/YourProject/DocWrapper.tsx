@@ -3,31 +3,38 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Doc from './Doc';
 import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../../app/store';
 
 export default function DocWrapper() {
-  const { id, type } = useParams(); // type = 'default', id = 'new' hoặc docId
+  const { id, type } = useParams();
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey');
+  console.log('id:', id, 'type:', type, 'projectKey:', projectKey);
 
   const [createDocument] = useCreateDocumentMutation();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
 
-  const [docId, setDocId] = useState<number | null>(null);
+  const [docId, setDocId] = useState<number | undefined>(undefined);
+  const mode = searchParams.get('mode') || type || 'edit';
 
   useEffect(() => {
+
+    
     const createNewDocument = async () => {
-      if (!projectKey || !user?.id) return;
+      if (!projectKey || !user?.id || !projectId) return;
 
       try {
         const res = await createDocument({
-          projectId: Number(projectKey), // Nếu projectKey là projectId, OK
+          projectId,
           title: 'New Document',
-          type: type || 'default',
+          visibility: type,
           content: '',
         }).unwrap();
 
-        navigate(`/project/projects/form/${res.type}/${res.id}?projectKey=${projectKey}`, {
+        navigate(`/project/projects/form/${res.visibility}/${res.id}?projectKey=${projectKey}`, {
           replace: true,
         });
       } catch (error) {
@@ -42,15 +49,15 @@ export default function DocWrapper() {
       if (!parsedId || isNaN(parsedId)) return;
       setDocId(parsedId);
     }
-  }, [id, projectKey, user?.id]);
+  }, [id, projectKey, user?.id, projectId, type, createDocument, navigate]);
 
   if (id === 'new') {
-    return <p className="p-4 text-gray-500">Đang tạo tài liệu...</p>;
+    return <p className='p-4 text-gray-500'>Đang tạo tài liệu...</p>;
   }
 
   if (!docId) {
-    return <p className="p-4 text-red-500">Invalid document ID.</p>;
+    return <p className='p-4 text-red-500'>Invalid document ID.</p>;
   }
 
-  return <Doc docId={docId} />;
+  return <Doc docId={docId} updatedBy={user?.id ?? 0} mode={mode} />;
 }

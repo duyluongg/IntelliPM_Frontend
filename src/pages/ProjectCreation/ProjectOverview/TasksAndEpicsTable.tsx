@@ -1,6 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useGetTasksByProjectIdQuery, type TaskResponseDTO, useUpdateTaskDatMutation } from '../../../services/taskApi';
-import { useGetEpicsByProjectIdQuery, type EpicResponseDTO, useUpdateEpicMutation } from '../../../services/epicApi';
+import {
+  useGetTasksByProjectIdQuery,
+  type TaskResponseDTO,
+  useUpdateTaskDatMutation,
+} from '../../../services/taskApi';
+import {
+  useGetEpicsByProjectIdQuery,
+  type EpicResponseDTO,
+  useUpdateEpicMutation,
+} from '../../../services/epicApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import {
   useLazyGetTaskAssignmentsByTaskIdQuery,
@@ -31,11 +39,12 @@ interface TableRow {
   reporter: { name: string | null | undefined; picture: string | null; id?: number | null };
   assignees: { name: string; picture: string | null; id?: number | null }[];
   status: string;
-  reporterId?: number | null; 
-  assignedBy?: number | null; 
-  projectId?: number; 
-  epicId?: string | null; 
-  sprintId?: number | null; 
+  reporterId?: number | null;
+  assignedBy?: number | null;
+  projectId?: number;
+  epicId?: string | null;
+  sprintId?: number | null;
+  createdBy?: number; 
 }
 
 interface ProjectMember {
@@ -76,7 +85,8 @@ const DateWithIcon = ({
       />
     </svg>
   );
-  let className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-gray-700 border';
+  let className =
+    'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-gray-700 border';
 
   if (isDueDate && dueDate) {
     const isOverdue = dueDate < currentDate;
@@ -85,7 +95,12 @@ const DateWithIcon = ({
 
     if (isOverdue && !isDone) {
       icon = (
-        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-3.5 h-3.5 text-red-600'>
+        <svg
+          fill='none'
+          viewBox='0 0 16 16'
+          role='presentation'
+          className='w-3.5 h-3.5 text-red-600'
+        >
           <path
             fill='currentColor'
             fill-rule='evenodd'
@@ -101,10 +116,16 @@ const DateWithIcon = ({
           <path fill='currentColor' d='M9 11.25a1 1 0 1 1-2 0 1 1 0 0 1 2 0'></path>
         </svg>
       );
-      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
+      className =
+        'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-red-600 border border-red-600';
     } else if (isDueToday && !isDone) {
       icon = (
-        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-3.5 h-3.5 text-orange-600'>
+        <svg
+          fill='none'
+          viewBox='0 0 16 16'
+          role='presentation'
+          className='w-3.5 h-3.5 text-orange-600'
+        >
           <circle cx='8' cy='8' r='7' stroke='currentColor' strokeWidth='1' fill='none' />
           <path
             fill='currentColor'
@@ -112,7 +133,8 @@ const DateWithIcon = ({
           ></path>
         </svg>
       );
-      className = 'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-orange-600 border-2 border-orange-600';
+      className =
+        'flex items-center gap-0.5 p-0.5 rounded text-xs font-medium text-orange-600 border-2 border-orange-600';
     }
   }
 
@@ -205,8 +227,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
   const projectMembers = projectMembersResponse?.data ?? [];
 
   const [fetchAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] = useUpdateEpicMutation();
-  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] = useUpdateTaskDatMutation();
+  const [updateEpic, { isLoading: isUpdatingEpic, error: updateEpicError }] =
+    useUpdateEpicMutation();
+  const [updateTask, { isLoading: isUpdatingTask, error: updateTaskError }] =
+    useUpdateTaskDatMutation();
   const [deleteTaskAssignment, { isLoading: isDeletingAssignment, error: deleteAssignmentError }] =
     useDeleteTaskAssignmentMutation();
   const [createTaskAssignment, { isLoading: isCreatingAssignment, error: createAssignmentError }] =
@@ -214,6 +238,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
   const [assignmentsMap, setAssignmentsMap] = useState<Record<string, TaskAssignmentDTO[]>>({});
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [editValue, setEditValue] = useState<string>('');
   const [showMemberDropdown, setShowMemberDropdown] = useState<{
     id: string;
@@ -391,6 +416,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           plannedStartDate: field === 'startDate' ? formattedDate : item.startDate,
           plannedEndDate: field === 'endDate' ? formattedDate : item.endDate,
           status: item.status,
+          createdBy: accountId || 0, 
         };
 
         await updateTask({
@@ -403,8 +429,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
     } catch (err: any) {
       console.error(`Error updating ${item.type.toLowerCase()}:`, err);
       console.log(JSON.stringify(err, null, 2));
-      const errorMessage =
-        err?.data?.message || err?.error || err?.message || 'Unknown error';
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
       alert(`Failed to update ${item.type.toLowerCase()}: ${errorMessage}`);
     }
   };
@@ -418,7 +443,11 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       const isAlreadyAssigned = item.assignees.some((assignee) => assignee.id === member.accountId);
       const isReporter = item.reporter.id === member.accountId;
       if (isAlreadyAssigned || isReporter) {
-        alert(isAlreadyAssigned ? 'This member is already assigned.' : 'This member is the reporter and cannot be assigned.');
+        alert(
+          isAlreadyAssigned
+            ? 'This member is already assigned.'
+            : 'This member is the reporter and cannot be assigned.'
+        );
         return;
       }
     }
@@ -443,7 +472,11 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
         const epicIndex = normalizedEpics.findIndex((e) => e.id === item.id);
         if (epicIndex !== -1) {
           if (field === 'reporter') {
-            normalizedEpics[epicIndex].reporter = { id: member.accountId, name: member.fullName, picture: member.picture };
+            normalizedEpics[epicIndex].reporter = {
+              id: member.accountId,
+              name: member.fullName,
+              picture: member.picture,
+            };
             normalizedEpics[epicIndex].reporterId = member.accountId;
           } else if (field === 'assignees') {
             normalizedEpics[epicIndex].assignees = [
@@ -465,6 +498,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           plannedStartDate: item.startDate,
           plannedEndDate: item.endDate,
           status: item.status,
+          createdBy: item.createdBy || 0, // Added createdBy, fallback to 0 if undefined
         };
         await updateTask({
           id: item.id,
@@ -496,22 +530,32 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       setShowMemberDropdown(null);
     } catch (err: any) {
       console.error(`Error updating ${item.type.toLowerCase()}:`, err);
-      const errorMessage =
-        err?.data?.message || err?.error || err?.message || 'Unknown error';
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
       alert(`Failed to update ${item.type.toLowerCase()}: ${errorMessage}`);
     }
   };
 
-  const handleDeleteAssignment = async (itemId: string, assigneeId: number, itemType: 'TASK' | 'EPIC') => {
+  const handleDeleteAssignment = async (
+    itemId: string,
+    assigneeId: number,
+    itemType: 'TASK' | 'EPIC'
+  ) => {
     console.log(`Attempting to delete assignment ID ${assigneeId} for ${itemType} ${itemId}`);
     try {
       if (itemType === 'TASK') {
+        await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
+        console.log(`Successfully deleted assignment ID ${assigneeId} for task ${itemId}`);
+        // Cập nhật assignmentsMap sau khi API thành công
         setAssignmentsMap((prev) => ({
           ...prev,
           [itemId]: (prev[itemId] || []).filter((assignment) => assignment.id !== assigneeId),
         }));
-        await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
-        console.log(`Successfully deleted assignment ID ${assigneeId} for task ${itemId}`);
+        // Đồng bộ lại dữ liệu từ server để đảm bảo
+        const result = await fetchAssignments(itemId).unwrap();
+        setAssignmentsMap((prev) => ({
+          ...prev,
+          [itemId]: result || [],
+        }));
       } else if (itemType === 'EPIC') {
         const epicIndex = normalizedEpics.findIndex((e) => e.id === itemId);
         if (epicIndex !== -1) {
@@ -522,25 +566,22 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
             startDate: normalizedEpics[epicIndex].startDate,
             endDate: normalizedEpics[epicIndex].endDate,
             status: normalizedEpics[epicIndex].status,
-            reporterId: null,
+            reporterId: normalizedEpics[epicIndex].reporterId,
             assignedBy: null,
           };
-          const response = await updateEpic({
+          await updateEpic({
             id: itemId,
             data: epicData,
           }).unwrap();
           normalizedEpics[epicIndex].assignees = [];
-          normalizedEpics[epicIndex].reporter = { name: '', picture: null, id: null };
-          normalizedEpics[epicIndex].reporterId = null;
           normalizedEpics[epicIndex].assignedBy = null;
-          refetchEpics(); // Làm mới dữ liệu từ server
+          refetchEpics();
         }
       }
     } catch (err: any) {
       console.error(`Error deleting assignment for ${itemType} ${itemId}:`, err);
       console.log(JSON.stringify(err, null, 2));
-      const errorMessage =
-        err?.data?.message || err?.error || err?.message || 'Unknown error';
+      const errorMessage = err?.data?.message || err?.error || err?.message || 'Unknown error';
       alert(`Failed to delete assignment: ${errorMessage}`);
       if (itemType === 'TASK') {
         const result = await fetchAssignments(itemId).unwrap();
@@ -551,18 +592,31 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       }
     }
   };
-
-  const handleShowMemberDropdown = (id: string, field: 'reporter' | 'assignees', type: 'TASK' | 'EPIC') => {
+  const handleShowMemberDropdown = (
+    id: string,
+    field: 'reporter' | 'assignees',
+    type: 'TASK' | 'EPIC'
+  ) => {
     setShowMemberDropdown({ id, field, type });
   };
 
   if (isTasksLoading || isEpicsLoading || loadingAssignments || isMembersLoading) {
     return (
-      <div className='text-center py-10 text-gray-600'>Loading tasks, epics, assignments, or members...</div>
+      <div className='text-center py-10 text-gray-600'>
+        Loading tasks, epics, assignments, or members...
+      </div>
     );
   }
 
-  if (tasksError || epicsError || updateEpicError || updateTaskError || membersError || deleteAssignmentError || createAssignmentError) {
+  if (
+    tasksError ||
+    epicsError ||
+    updateEpicError ||
+    updateTaskError ||
+    membersError ||
+    deleteAssignmentError ||
+    createAssignmentError
+  ) {
     console.error('Error:', {
       tasksError,
       epicsError,
@@ -576,13 +630,14 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
   }
 
   const normalizedTasks: TableRow[] = tasks.map((task) => {
-    const assignees = (assignmentsMap[task.id] || []).filter(
-      (assignment) => typeof assignment.id === 'string'
-    ).map((assignment) => ({
-      id: assignment.accountId,
-      name: assignment.accountFullname || '',
-      picture: assignment.accountPicture,
-    }));
+    const assignees = (assignmentsMap[task.id] || [])
+      .filter((assignment) => typeof assignment.id === 'number' && assignment.id != null)
+      .map((assignment) => ({
+        id: assignment.id,
+        name: assignment.accountFullname || '',
+        picture: assignment.accountPicture,
+        accountId: assignment.accountId,
+      }));
 
     return {
       id: task.id,
@@ -602,6 +657,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       projectId: task.projectId,
       epicId: task.epicId,
       sprintId: task.sprintId,
+      createdBy: task.createdBy, // Store createdBy from TaskResponseDTO
     };
   });
 
@@ -617,9 +673,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
       name: epic.reporterFullname ?? '',
       picture: epic.reporterPicture ?? null,
     },
-    assignees: epic.assignedBy && epic.assignedByFullname
-      ? [{ id: epic.assignedBy, name: epic.assignedByFullname, picture: epic.assignedByPicture }]
-      : [],
+    assignees:
+      epic.assignedBy && epic.assignedByFullname
+        ? [{ id: epic.assignedBy, name: epic.assignedByFullname, picture: epic.assignedByPicture }]
+        : [],
     status: epic.status || 'TO_DO',
     reporterId: epic.reporterId ?? null,
     assignedBy: epic.assignedBy ?? null,
@@ -631,9 +688,9 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
-        <h2 className="text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100">
-          Tasks and Epics
-        </h2>
+      <h2 className='text-2xl font-semibold text-gray-900 border-b-2 pb-2 border-blue-100'>
+        Tasks and Epics
+      </h2>
 
       <div className='overflow-x-auto bg-white w-full block'>
         {(isUpdatingEpic || isUpdatingTask || isDeletingAssignment || isCreatingAssignment) && (
@@ -736,18 +793,10 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
                     {item.type === 'TASK' && (
-                      <img
-                        src={taskIcon}
-                        alt='Task'
-                        className='w-5 h-5 rounded p-0.5'
-                      />
+                      <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
                     )}
                     {item.type === 'EPIC' && (
-                      <img
-                        src={epicIcon}
-                        alt='Epic'
-                        className='w-5 h-5 rounded p-0.5'
-                      />
+                      <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
                     )}
                   </td>
                   <td
@@ -789,7 +838,9 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                         className='w-full p-1 border border-gray-300 rounded'
                       />
                     ) : (
-                      <span onClick={() => handleEditClick(item.id, 'description', item.description)}>
+                      <span
+                        onClick={() => handleEditClick(item.id, 'description', item.description)}
+                      >
                         {item.description}
                       </span>
                     )}
@@ -836,7 +887,8 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     style={{ width: `${columnWidths.reporter}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
-                    {showMemberDropdown?.id === item.id && showMemberDropdown?.field === 'reporter' ? (
+                    {showMemberDropdown?.id === item.id &&
+                    showMemberDropdown?.field === 'reporter' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -847,9 +899,13 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                             <div
                               key={member.accountId}
                               className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                               }`}
-                              onClick={() => !isDisabled && handleMemberSelect(item, 'reporter', member)}
+                              onClick={() =>
+                                !isDisabled && handleMemberSelect(item, 'reporter', member)
+                              }
                             >
                               <div className='relative'>
                                 {member.picture ? (
@@ -871,13 +927,18 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                                   </div>
                                 )}
                               </div>
-                              <span className='text-gray-900 font-medium truncate'>{member.fullName}</span>
+                              <span className='text-gray-900 font-medium truncate'>
+                                {member.fullName}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <div onClick={() => handleShowMemberDropdown(item.id, 'reporter', item.type)} className='hover:bg-gray-200 cursor-pointer p-1 rounded'>
+                      <div
+                        onClick={() => handleShowMemberDropdown(item.id, 'reporter', item.type)}
+                        className='hover:bg-gray-200 cursor-pointer p-1 rounded'
+                      >
                         <Avatar person={item.reporter} />
                       </div>
                     )}
@@ -886,21 +947,28 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     style={{ width: `${columnWidths.assignees}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
-                    {showMemberDropdown?.id === item.id && showMemberDropdown?.field === 'assignees' ? (
+                    {showMemberDropdown?.id === item.id &&
+                    showMemberDropdown?.field === 'assignees' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                       >
                         {projectMembers.map((member) => {
-                          const currentAssignees = item.assignees.map(a => a.id).filter(id => id !== undefined) as number[];
+                          const currentAssignees = item.assignees
+                            .map((a) => a.id)
+                            .filter((id) => id !== undefined) as number[];
                           const isDisabled = currentAssignees.includes(member.accountId);
                           return (
                             <div
                               key={member.accountId}
                               className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
                               }`}
-                              onClick={() => !isDisabled && handleMemberSelect(item, 'assignees', member)}
+                              onClick={() =>
+                                !isDisabled && handleMemberSelect(item, 'assignees', member)
+                              }
                             >
                               <div className='relative'>
                                 {member.picture ? (
@@ -922,14 +990,16 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                                   </div>
                                 )}
                               </div>
-                              <span className='text-gray-900 font-medium truncate'>{member.fullName}</span>
+                              <span className='text-gray-900 font-medium truncate'>
+                                {member.fullName}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <div 
-                        onClick={() => handleShowMemberDropdown(item.id, 'assignees', item.type)} 
+                      <div
+                        onClick={() => handleShowMemberDropdown(item.id, 'assignees', item.type)}
                         className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
                       >
                         {item.assignees.length ? (
@@ -940,15 +1010,18 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                                 person={assignee}
                                 onDelete={
                                   item.type === 'TASK' && assignee.id != null
-                                    ? () => handleDeleteAssignment(item.id, assignee.id as number, item.type)
+                                    ? () =>
+                                        handleDeleteAssignment(
+                                          item.id,
+                                          assignee.id as number,
+                                          item.type
+                                        )
                                     : undefined
                                 }
                               />
                             ))
                           ) : (
-                            <Avatar
-                              person={item.assignees[0]}
-                            />
+                            <Avatar person={item.assignees[0]} />
                           )
                         ) : (
                           <span className='text-gray-500 text-xs'>-</span>

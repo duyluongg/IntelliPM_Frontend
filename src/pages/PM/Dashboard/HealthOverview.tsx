@@ -1,16 +1,58 @@
 import { useGetHealthDashboardQuery } from '../../../services/projectMetricApi';
 import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 
-const HealthOverview = () => {
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { data, isLoading, error } = useGetHealthDashboardQuery(projectKey);
+// const HealthOverview = () => {
+//   const [searchParams] = useSearchParams();
+//   const projectKey = searchParams.get('projectKey') || 'NotFound';
+//   const { data, isLoading, error } = useGetHealthDashboardQuery(projectKey);
+interface HealthData {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    timeStatus: string;
+    tasksToBeCompleted: number;
+    overdueTasks: number;
+    progressPercent: number;
+    costStatus: number;
+    cost: ProjectMetric;
+  };
+}
 
+interface ProjectMetric {
+  projectId: number;
+  plannedValue: number;
+  earnedValue: number;
+  actualCost: number;
+  budgetAtCompletion: number;
+  durationAtCompletion: number;
+  costVariance: number;
+  scheduleVariance: number;
+  costPerformanceIndex: number;
+  schedulePerformanceIndex: number;
+  estimateAtCompletion: number;
+  estimateToComplete: number;
+  varianceAtCompletion: number;
+  estimateDurationAtCompletion: number;
+  calculatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const HealthOverview = ({
+  data,
+  isLoading,
+}: {
+  data: HealthData | undefined;
+  isLoading: boolean;
+}) => {
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
-  if (error || !data || !data.data)
+  if (!data || !data.data)
     return <div className='text-sm text-red-500'>Error fetching health data</div>;
 
-  const { timeStatus, tasksToBeCompleted, overdueTasks, progressPercent, costStatus } = data.data;
+  const { timeStatus, tasksToBeCompleted, overdueTasks, progressPercent, costStatus, cost } =
+    data.data;
 
   return (
     <div className='p-4'>
@@ -23,9 +65,10 @@ const HealthOverview = () => {
         <Row
           label='Cost Performance Index'
           value={
-            costStatus === 0 || costStatus === undefined ? 'No budget specified.' : `${costStatus}`
+            costStatus === 0 || costStatus === undefined ? '0' : `${costStatus}`
           }
         />
+        <Row label='Schedule Performance Index' value={`${cost.schedulePerformanceIndex}`} />
       </div>
     </div>
   );

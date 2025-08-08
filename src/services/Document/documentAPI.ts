@@ -2,6 +2,34 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
 import type { DocumentType } from '../../types/DocumentType';
 
+interface ShareDocumentViaEmailRequest {
+  userIds: number[];
+  customMessage: string;
+  file: File;
+}
+interface ShareDocumentByEmailRequest {
+  documentId: number;
+  emails: string[];
+  message: string;
+  projectKey: string;
+}
+
+export interface DocumentResponseDTO {
+  id: number;
+  projectId: number;
+  taskId?: string;
+  title: string;
+  type?: string;
+  template?: string;
+  content?: string;
+  fileUrl?: string;
+  isActive: boolean;
+  createdBy: number;
+  updatedBy?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
   baseQuery: fetchBaseQuery({
@@ -23,9 +51,16 @@ export const documentApi = createApi({
     getDocumentById: builder.query<DocumentType, number>({
       query: (id) => `documents/${id}`,
     }),
+    createDocumentRequest: builder.mutation<DocumentType, Partial<DocumentType>>({
+      query: (body) => ({
+        url: 'documents/request',
+        method: 'POST',
+        body,
+      }),
+    }),
     createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
-        url: 'documents',
+        url: 'documents/create',
         method: 'POST',
         body,
       }),
@@ -90,14 +125,102 @@ export const documentApi = createApi({
       }),
     }),
 
-    summarizeAI: builder.query<{summary: string}, number>({
+    summarizeAI: builder.query<{ summary: string }, number>({
       query: (id) => `documents/${id}/summary`,
     }),
+    documentStatus: builder.query<DocumentType[], { projectId: number; status: string }>({
+      query: ({ projectId, status }) => `documents/project/${projectId}/status/${status}`,
+    }),
+
+    approveDocument: builder.mutation<
+      DocumentType,
+      { documentId: number; status: string; comment: string }
+    >({
+      query: ({ documentId, status, comment }) => ({
+        url: `documents/${documentId}/approve`,
+        method: 'POST',
+        body: {
+          status,
+          comment,
+        },
+      }),
+    }),
+
+    generateFromTasks: builder.mutation<string, number>({
+      query: (documentId) => ({
+        url: `documents/${documentId}/generate-from-tasks`,
+        method: 'POST',
+      }),
+      transformResponse: (response: { content: string }) => response.content,
+    }),
+
+    shareDocumentViaEmail: builder.mutation<any, ShareDocumentViaEmailRequest>({
+      query: ({ userIds, customMessage, file }) => {
+        const formData = new FormData();
+        userIds.forEach((id) => formData.append('userIds', id.toString()));
+        formData.append('customMessage', customMessage);
+        formData.append('file', file);
+
+        return {
+          url: 'documents/share-via-email',
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
+
+    shareDocumentToEmails: builder.mutation<any, ShareDocumentByEmailRequest>({
+      query: ({ documentId, emails, message }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body: {
+          emails,
+          message,
+        },
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+
+    shareDocumentByEmails: builder.mutation<
+      { success: boolean; failedEmails: string[] },
+      {
+        documentId: number;
+        permissionType: 'VIEW' | 'EDIT';
+        emails: string[];
+        message?: string;
+        projectKey?: string;
+      }
+    >({
+      query: ({ documentId, ...body }) => ({
+        url: `documents/${documentId}/share`,
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    getMyPermission: builder.query<{ permission: string }, number>({
+      query: (documentId) => `documents/${documentId}/permission/current-user`,
+    }),
+
+    getDocumentsByProjectId: builder.query<DocumentResponseDTO[], number>({
+      query: (projectId) => `documents/project/${projectId}`,
+    }),
+
+    deleteDocument: builder.mutation<void, number>({
+  query: (id) => ({
+    url: `documents/${id}`,
+    method: 'DELETE',
+  }),
+}),
+
   }),
 });
 
 export const {
   useGetDocumentByIdQuery,
+  useCreateDocumentRequestMutation,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useGetMyDocumentsQuery,
@@ -106,4 +229,13 @@ export const {
   useGetDocumentMappingQuery,
   useAskAIMutation,
   useSummarizeAIQuery,
+  useDocumentStatusQuery,
+  useApproveDocumentMutation,
+  useGenerateFromTasksMutation,
+  useShareDocumentViaEmailMutation,
+  useShareDocumentToEmailsMutation,
+  useShareDocumentByEmailsMutation,
+  useGetMyPermissionQuery,
+  useGetDocumentsByProjectIdQuery,
+  useDeleteDocumentMutation,
 } = documentApi;

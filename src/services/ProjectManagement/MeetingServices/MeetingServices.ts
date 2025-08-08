@@ -91,12 +91,6 @@ export interface MeetingEventWithStatus {
 }
 
 
-interface GetMeetingsResponse {
-  isSuccess: boolean;
-  code: number;
-  data: Meeting[];
-  message: string;
-}
 
 export const meetingApi = createApi({
   reducerPath: 'meetingApi',
@@ -144,6 +138,20 @@ export const meetingApi = createApi({
         method: 'GET',
       }),
     }),
+
+checkMeetingConflict: builder.query<
+  { message: string; conflictingAccountIds: number[] },
+  { date: string; startTime: string; endTime: string; participantIds: number[] }
+>({
+  query: ({ date, startTime, endTime, participantIds }) => {
+    const participantParams = participantIds.map(id => `participantIds=${id}`).join('&');
+    return {
+      url: `meetings/check-conflict?${participantParams}&date=${encodeURIComponent(date)}&startTime=${encodeURIComponent(startTime)}&endTime=${encodeURIComponent(endTime)}`,
+      method: 'GET',
+    };
+  },
+}),
+
     
     updateParticipantStatus: builder.mutation<void, { id: number; data: Partial<MeetingParticipant> }>({
       query: ({ id, data }) => ({
@@ -199,8 +207,8 @@ results.push({
   end: endDate.toISOString(),
   participants: `${meeting.attendees} người`,
   roomUrl: meeting.meetingUrl,
-  status: current?.status ?? 'Active',     // từ participant
-  meetingStatus: meeting.status,           // ✅ từ bảng meeting
+  status: current?.status ?? 'Active',     
+  meetingStatus: meeting.status,           
 });
 
           }
@@ -233,5 +241,6 @@ export const {
   useUpdateParticipantStatusMutation,
   useGetMeetingsWithParticipantStatusQuery,
   useCreateInternalMeetingMutation,
+  useCheckMeetingConflictQuery,
 
 } = meetingApi;

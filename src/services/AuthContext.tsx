@@ -26,10 +26,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userData ? JSON.parse(userData) : null;
   });
 
-  const login = (newUser: User) => {
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+const login = (newUser: User) => {
+  const standardizedUser: User = {
+    ...newUser,
+    role: (newUser.role || '').toUpperCase() as Role,
   };
+
+  setUser(standardizedUser);
+  localStorage.setItem('user', JSON.stringify(standardizedUser));
+};
+
 
 const logout = () => {
   setUser(null);

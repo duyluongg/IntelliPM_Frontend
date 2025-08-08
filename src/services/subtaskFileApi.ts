@@ -7,6 +7,7 @@ export interface SubtaskFileDTO {
   title: string;
   urlFile: string;
   createdAt: string;
+  createdBy: number;
 }
 
 interface SubtaskFileListResponse {
@@ -35,12 +36,13 @@ export const subtaskFileApi = createApi({
       }),
       transformResponse: (response: SubtaskFileListResponse) => response.data,
     }),
-    uploadSubtaskFile: builder.mutation<void, { subtaskId: string; title: string; file: File }>({
-      query: ({ subtaskId, title, file }) => {
+    uploadSubtaskFile: builder.mutation<void, { subtaskId: string; title: string; file: File, createdBy: number }>({
+      query: ({ subtaskId, title, file, createdBy }) => {
         const formData = new FormData();
         formData.append('subtaskId', subtaskId);
         formData.append('title', title);
         formData.append('file', file);
+        formData.append('createdBy', createdBy.toString());
 
         return {
           url: 'subtaskfile/upload',
@@ -49,10 +51,11 @@ export const subtaskFileApi = createApi({
         };
       },
     }),
-    deleteSubtaskFile: builder.mutation<void, number>({
-      query: (id) => ({
+    deleteSubtaskFile: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({ id, createdBy }) => ({
         url: `subtaskfile/${id}`,
         method: 'DELETE',
+        body: { createdBy },
       }),
     }),
   }),

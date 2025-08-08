@@ -11,13 +11,31 @@ import {
 } from 'recharts';
 import { useSearchParams } from 'react-router-dom';
 
-const TimeComparisonChart = () => {
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { data, isLoading, error } = useGetTimeDashboardQuery(projectKey);
+// const TimeComparisonChart = () => {
+//   const [searchParams] = useSearchParams();
+//   const projectKey = searchParams.get('projectKey') || 'NotFound';
+//   const { data, isLoading, error } = useGetTimeDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error || !data?.data) return <div>Error loading time dashboard</div>;
+interface TimeDashboardData {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: {
+    plannedCompletion: number;
+    actualCompletion: number;
+    status: string;
+  };
+}
+
+const TimeComparisonChart = ({
+  data,
+  isLoading,
+}: {
+  data: TimeDashboardData | undefined;
+  isLoading: boolean;
+}) => {
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
+  if (!data?.data) return <div>Error loading time dashboard</div>;
 
   const { plannedCompletion, actualCompletion, status } = data.data;
 
@@ -29,9 +47,11 @@ const TimeComparisonChart = () => {
       value: plannedCompletion,
       color:
         status === 'Ahead'
-          ? '#00BFFF' // Blue
+          ? '#00BFFF'
           : status === 'Behind'
-          ? '#FFA500' // Orange
+          ? '#FFA500'
+          : status === 'Not Started'
+          ? '#D3D3D3'
           : '#00C49F', // On Time
     },
     {
@@ -39,17 +59,61 @@ const TimeComparisonChart = () => {
       value: actualCompletion,
       color:
         status === 'Ahead'
-          ? '#00BFFF' // Blue
+          ? '#00BFFF'
           : status === 'Behind'
-          ? '#FFA500' // Orange
-          : '#00C49F', // On Time
+          ? '#FFA500'
+          : status === 'Not Started'
+          ? '#D3D3D3'
+          : '#00C49F',
     },
     {
-      name: status === 'Ahead' ? 'Ahead' : status === 'Behind' ? 'Behind' : 'On Time',
+      name:
+        status === 'Ahead'
+          ? 'Ahead'
+          : status === 'Behind'
+          ? 'Behind'
+          : status === 'Not Started'
+          ? 'Not Started'
+          : 'On Time',
       value: deltaValue,
-      color: status === 'Ahead' ? '#00BFFF' : status === 'Behind' ? '#FFA500' : '#00C49F',
+      color:
+        status === 'Ahead'
+          ? '#00BFFF'
+          : status === 'Behind'
+          ? '#FFA500'
+          : status === 'Not Started'
+          ? '#D3D3D3'
+          : '#00C49F',
     },
   ];
+
+  // const chartData = [
+  //   {
+  //     name: 'Planned Completion',
+  //     value: plannedCompletion,
+  //     color:
+  //       status === 'Ahead'
+  //         ? '#00BFFF' // Blue
+  //         : status === 'Behind'
+  //         ? '#FFA500' // Orange
+  //         : '#00C49F', // On Time
+  //   },
+  //   {
+  //     name: 'Actual Completion',
+  //     value: actualCompletion,
+  //     color:
+  //       status === 'Ahead'
+  //         ? '#00BFFF' // Blue
+  //         : status === 'Behind'
+  //         ? '#FFA500' // Orange
+  //         : '#00C49F', // On Time
+  //   },
+  //   {
+  //     name: status === 'Ahead' ? 'Ahead' : status === 'Behind' ? 'Behind' : 'On Time',
+  //     value: deltaValue,
+  //     color: status === 'Ahead' ? '#00BFFF' : status === 'Behind' ? '#FFA500' : '#00C49F',
+  //   },
+  // ];
 
   const WrappedYAxisTick = (props: any) => {
     const { x, y, payload } = props;
@@ -85,6 +149,10 @@ const TimeComparisonChart = () => {
             <span className='w-3 h-3 bg-[#00C49F] rounded-full inline-block' />
             On Time
           </div>
+          <div className='flex items-center gap-1'>
+            <span className='w-3 h-3 bg-[#D3D3D3] rounded-full inline-block' />
+            Not Started
+          </div>
         </div>
       </div>
 
@@ -113,7 +181,7 @@ const TimeComparisonChart = () => {
         </BarChart>
       </ResponsiveContainer>
 
-      <p className='text-sm text-gray-600 mt-2'>
+      {/* <p className='text-sm text-gray-600 mt-2'>
         Status:{' '}
         <span
           className={
@@ -127,10 +195,31 @@ const TimeComparisonChart = () => {
           {status === 'Ahead'
             ? '🚀 Ahead of schedule'
             : status === 'Behind'
-            ? // ? '⏳ Behind schedule'
+            ? 
               '🔺 Behind schedule'
             : '✅ On time'}
-          {/* ⏫ hoặc 🔺 */}
+        </span>
+      </p> */}
+      <p className='text-sm text-gray-600 mt-2'>
+        Status:{' '}
+        <span
+          className={
+            status === 'Ahead'
+              ? 'text-blue-500'
+              : status === 'Behind'
+              ? 'text-orange-500'
+              : status === 'Not Started'
+              ? 'text-gray-500'
+              : 'text-green-500'
+          }
+        >
+          {status === 'Ahead'
+            ? '🚀 Ahead of schedule'
+            : status === 'Behind'
+            ? '🔺 Behind schedule'
+            : status === 'Not Started'
+            ? '🕒 Not started yet'
+            : '✅ On time'}
         </span>
       </p>
     </div>

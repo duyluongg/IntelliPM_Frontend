@@ -19,6 +19,8 @@ export interface EpicResponseDTO {
   reporterFullname: string | null;
   reporterPicture: string | null;
   sprintId: number | null;
+  sprintName: string | null;
+  sprintGoal: string | null;
 }
 
 export interface UpdateEpicRequestDTO {
@@ -78,6 +80,45 @@ interface CreateEpicResponse {
   message: string;
   data: string;
 }
+interface CreateEpicsResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: string[];
+}
+
+export interface EpicWithStatsResponseDTO {
+  id: string;
+  projectId: number;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  status: string | null;
+  reporterId: number | null;
+  reporterFullname: string | null;
+  reporterPicture: string | null;
+  assignedBy: number | null;
+  assignedByFullname: string | null;
+  assignedByPicture: string | null;
+  sprintId: number | null;
+  sprintName: string | null;
+  sprintGoal: string | null;
+  totalTasks: number;
+  totalToDoTasks: number;
+  totalInProgressTasks: number;
+  totalDoneTasks: number;
+}
+
+interface EpicWithStatsListResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: EpicWithStatsResponseDTO[];
+}
+
 
 export const epicApi = createApi({
   reducerPath: 'epicApi',
@@ -136,6 +177,22 @@ export const epicApi = createApi({
       invalidatesTags: ['Epic'],
     }),
 
+        createEpicsWithTasks: builder.mutation<
+      CreateEpicsResponse,
+      { projectId: number; data: EpicWithTaskRequestDTO[] }
+    >({
+      query: ({ projectId, data }) => ({
+        url: `epic/projects/${projectId}/epics/batch`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data,
+      }),
+      transformResponse: (response: CreateEpicsResponse) => response,
+      invalidatesTags: ['Epic'],
+    }),
+
     updateEpic: builder.mutation<EpicDetailResponse, { id: string; data: UpdateEpicRequestDTO }>({
       query: ({ id, data }) => ({
         url: `epic/${id}`,
@@ -147,6 +204,12 @@ export const epicApi = createApi({
       }),
       invalidatesTags: ['Epic'],
     }),
+    getEpicsWithTasksByProjectKey: builder.query<EpicWithStatsResponseDTO[], string>({
+      query: (projectKey) => `epic/by-project/${projectKey}/tasks-with-stats`,
+      transformResponse: (response: EpicWithStatsListResponse) => response.data,
+      providesTags: ['Epic'],
+    }),
+
   }),
 });
 
@@ -155,5 +218,7 @@ export const {
   useGetEpicByIdQuery,
   useUpdateEpicStatusMutation,
   useCreateEpicWithTasksMutation,
+  useCreateEpicsWithTasksMutation,
   useUpdateEpicMutation,
+  useGetEpicsWithTasksByProjectKeyQuery,
 } = epicApi;

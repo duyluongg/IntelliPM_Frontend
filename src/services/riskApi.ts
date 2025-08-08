@@ -3,6 +3,11 @@ import { API_BASE_URL } from '../constants/api';
 
 export interface RiskItem {
   id: number;
+  riskKey: string;
+  createdBy: number;
+  creatorFullName: string | null;
+  creatorUserName: string | null;
+  creatorPicture: string | null;
   responsibleId: number;
   responsibleFullName: string | null;
   responsibleUserName: string | null;
@@ -20,6 +25,7 @@ export interface RiskItem {
   impactLevel: string;
   severityLevel: string;
   isApproved: boolean;
+  dueDate: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,12 +37,104 @@ export interface GetRisksByProjectKeyResponse {
   data: RiskItem[];
 }
 
+export interface CreateRiskRequest {
+  projectKey: string;
+  responsibleId: number | null;
+  createdBy: number;
+  taskId?: string | null;
+  riskScope: string;
+  title: string;
+  description?: string;
+  status?: string;
+  type?: string;
+  generatedBy?: string;
+  probability?: string;
+  impactLevel?: string;
+  isApproved?: boolean;
+  dueDate?: string;
+}
+
+export interface CreateRiskResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: RiskItem;
+}
+
+export interface UpdateRiskStatusRequest {
+  id: number;
+  status: string;
+}
+
+export interface UpdateRiskTypeRequest {
+  id: number;
+  type: string;
+}
+
+export interface UpdateRiskResponsibleRequest {
+  id: number;
+  responsibleId: number | null;
+}
+
+export interface UpdateRiskDueDateRequest {
+  id: number;
+  dueDate: string;
+}
+
+export interface UpdateRiskTitleRequest {
+  id: number;
+  title: string;
+}
+
+export interface UpdateRiskDescriptionRequest {
+  id: number;
+  description: string;
+}
+
+export interface UpdateRiskImpactLevelRequest {
+  id: number;
+  impactLevel: string;
+}
+
+export interface UpdateRiskProbabilityRequest {
+  id: number;
+  probability: string;
+}
+
+export interface UpdateRiskResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: RiskItem;
+}
+
+export interface AiSuggestedRisk {
+  projectId: number;
+  taskId: string | null;
+  riskScope: string;
+  title: string;
+  description: string;
+  type: string;
+  probability: string;
+  impactLevel: string;
+  mitigationPlan: string;
+  contingencyPlan: string;
+}
+
+export interface GetAiSuggestedRisksResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: AiSuggestedRisk[];
+}
+
 export const riskApi = createApi({
   reducerPath: 'riskApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
@@ -47,7 +145,104 @@ export const riskApi = createApi({
         method: 'GET',
       }),
     }),
+
+    createRisk: builder.mutation<CreateRiskResponse, CreateRiskRequest>({
+      query: (newRisk) => ({
+        url: 'risk',
+        method: 'POST',
+        body: newRisk,
+      }),
+    }),
+
+    updateRiskStatus: builder.mutation<UpdateRiskResponse, UpdateRiskStatusRequest>({
+      query: ({ id, status }) => ({
+        url: `risk/${id}/status`,
+        method: 'PATCH',
+        body: JSON.stringify(status),
+      }),
+    }),
+
+    updateRiskType: builder.mutation<UpdateRiskResponse, UpdateRiskTypeRequest>({
+      query: ({ id, type }) => ({
+        url: `risk/${id}/type`,
+        method: 'PATCH',
+        body: JSON.stringify(type),
+      }),
+    }),
+
+    updateRiskResponsible: builder.mutation<UpdateRiskResponse, UpdateRiskResponsibleRequest>({
+      query: ({ id, responsibleId }) => ({
+        url: `risk/${id}/responsible-id`,
+        method: 'PATCH',
+        body: JSON.stringify(responsibleId),
+      }),
+    }),
+
+    updateRiskDueDate: builder.mutation<UpdateRiskResponse, UpdateRiskDueDateRequest>({
+      query: ({ id, dueDate }) => ({
+        url: `risk/${id}/duedate`,
+        method: 'PATCH',
+        body: JSON.stringify(dueDate),
+      }),
+    }),
+
+    updateRiskTitle: builder.mutation<UpdateRiskResponse, UpdateRiskTitleRequest>({
+      query: ({ id, title }) => ({
+        url: `risk/${id}/title`,
+        method: 'PATCH',
+        body: JSON.stringify(title),
+      }),
+    }),
+
+    updateRiskDescription: builder.mutation<UpdateRiskResponse, UpdateRiskDescriptionRequest>({
+      query: ({ id, description }) => ({
+        url: `risk/${id}/description`,
+        method: 'PATCH',
+        body: JSON.stringify(description),
+      }),
+    }),
+
+    updateRiskImpactLevel: builder.mutation<UpdateRiskResponse, UpdateRiskImpactLevelRequest>({
+      query: ({ id, impactLevel }) => ({
+        url: `risk/${id}/impact-level`,
+        method: 'PATCH',
+        body: JSON.stringify(impactLevel),
+      }),
+    }),
+
+    updateRiskProbability: builder.mutation<UpdateRiskResponse, UpdateRiskProbabilityRequest>({
+      query: ({ id, probability }) => ({
+        url: `risk/${id}/probability`,
+        method: 'PATCH',
+        body: JSON.stringify(probability),
+      }),
+    }),
+
+    getAiSuggestedRisks: builder.query<GetAiSuggestedRisksResponse, string>({
+      query: (projectKey) => ({
+        url: `risk/ai-suggestion?projectKey=${projectKey}`,
+        method: 'GET',
+      }),
+    }),
+
+    getRiskByKey: builder.query<CreateRiskResponse, string>({
+      query: (riskKey) => `/risk/by-risk-key?key=${riskKey}`,
+    }),
   }),
 });
 
-export const { useGetRisksByProjectKeyQuery } = riskApi;
+export const {
+  useGetRisksByProjectKeyQuery,
+  useCreateRiskMutation,
+  useUpdateRiskStatusMutation,
+  useUpdateRiskTypeMutation,
+  useUpdateRiskResponsibleMutation,
+  useUpdateRiskDueDateMutation,
+  useUpdateRiskTitleMutation,
+  useUpdateRiskDescriptionMutation,
+  useUpdateRiskImpactLevelMutation,
+  useUpdateRiskProbabilityMutation,
+  useGetAiSuggestedRisksQuery,
+  useLazyGetAiSuggestedRisksQuery,
+  useGetRiskByKeyQuery,
+} = riskApi;

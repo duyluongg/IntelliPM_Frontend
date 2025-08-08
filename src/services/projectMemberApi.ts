@@ -6,7 +6,7 @@ interface ProjectMemberRequest {
   accountId: number;
 }
 
-interface ProjectMemberWithPositionRequest {
+export interface ProjectMemberWithPositionRequest {
   accountId: number;
   positions: string[];
 }
@@ -19,7 +19,7 @@ interface ProjectPositionResponse {
   assignedAt: string;
 }
 
-interface ProjectMemberResponse {
+export interface ProjectMemberResponse {
   id: number;
   accountId: number;
   accountName: string | null;
@@ -29,7 +29,7 @@ interface ProjectMemberResponse {
   status: string | null;
 }
 
-interface ProjectMemberWithPositionsResponse {
+export interface ProjectMemberWithPositionsResponse {
   id: number;
   accountId: number;
   accountName: string;
@@ -58,14 +58,31 @@ interface GetProjectMembersWithPositionsResponse {
   message: string;
 }
 
+export interface TaskSummary {
+  id: string;
+  title: string;
+  status: string;
+  percentComplete: number;
+}
+
+export interface ProjectMemberWithTasksResponse {
+  id: number;
+  accountId: number;
+  fullName: string;
+  username: string;
+  accountPicture: string;
+  hourlyRate: number;
+  workingHoursPerDay: number;
+  tasks: TaskSummary[];
+}
+
 export const projectMemberApi = createApi({
   reducerPath: 'projectMemberApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const accessToken = user?.accessToken || '';
+      const accessToken = localStorage.getItem('accessToken') || '';
       if (accessToken) {
         headers.set('Authorization', `Bearer ${accessToken}`);
       }
@@ -73,21 +90,30 @@ export const projectMemberApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ['ProjectMember', 'Projects'],
   endpoints: (builder) => ({
-    createProjectMember: builder.mutation<ApiResponse<ProjectMemberResponse>, { projectId: number; request: ProjectMemberRequest }>({
+    createProjectMember: builder.mutation<
+      ApiResponse<ProjectMemberResponse>,
+      { projectId: number; request: ProjectMemberRequest }
+    >({
       query: ({ projectId, request }) => ({
         url: `project/${projectId}/projectmember`,
         method: 'POST',
         body: request,
       }),
+      invalidatesTags: ['ProjectMember'],
     }),
     deleteProjectMember: builder.mutation<ApiResponse<null>, { projectId: number; id: number }>({
       query: ({ projectId, id }) => ({
         url: `project/${projectId}/projectmember/${id}`,
         method: 'DELETE',
       }),
+      invalidatesTags: ['ProjectMember'],
     }),
-    createBulkProjectMembersWithPositions: builder.mutation<ApiResponse<ProjectMemberWithPositionsResponse[]>, { projectId: number; requests: ProjectMemberWithPositionRequest[] }>({
+    createBulkProjectMembersWithPositions: builder.mutation<
+      ApiResponse<ProjectMemberWithPositionsResponse[]>,
+      { projectId: number; requests: ProjectMemberWithPositionRequest[] }
+    >({
       query: ({ projectId, requests }) => ({
         url: `project/${projectId}/projectmember/bulk-with-positions`,
         method: 'POST',
@@ -99,21 +125,63 @@ export const projectMemberApi = createApi({
         }
         return response;
       },
+      invalidatesTags: ['ProjectMember'],
     }),
-    getProjectMembers: builder.query<ProjectMemberWithPositionsResponse[], number>({
+    getProjectMembers: builder.query<ProjectMemberResponse[], number>({
       query: (projectId) => `project/${projectId}/projectmember`,
       transformResponse: (response: any) => {
         if (response?.isSuccess && Array.isArray(response.data)) {
-          return response.data.filter((member: any) => member.status === 'IN_PROGRESS');
+          return response.data.filter((member: any) => member.status === 'ACTIVE');
         }
         return [];
       },
+      providesTags: ['ProjectMember'],
+    }),
+    getProjectMembersNoStatus: builder.query<ProjectMemberWithPositionsResponse[], number>({
+      query: (projectId) => `project/${projectId}/projectmember`,
+      transformResponse: (response: any) => {
+        if (response?.isSuccess && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      },
+      providesTags: ['ProjectMember'],
     }),
     getProjectMembersWithPositions: builder.query<GetProjectMembersWithPositionsResponse, number>({
       query: (projectId) => ({
         url: `project/${projectId}/projectmember/with-positions`,
         method: 'GET',
       }),
+      providesTags: ['ProjectMember'],
+    }),
+    getProjectMemberByAccount: builder.query<
+      ApiResponse<ProjectMemberResponse>,
+      { projectId: number; accountId: number }
+    >({
+      query: ({ projectId, accountId }) =>
+        `project/${projectId}/projectmember/by-account/${accountId}`,
+      providesTags: ['ProjectMember'],
+    }),
+    updateProjectMemberStatus: builder.mutation<
+      ApiResponse<ProjectMemberResponse>,
+      { projectId: number; memberId: number; status: string }
+    >({
+      query: ({ projectId, memberId, status }) => ({
+        url: `project/${projectId}/projectmember/${memberId}/status/${status}`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['ProjectMember', 'Projects'],
+    }),
+
+    getProjectMembersWithTasks: builder.query<ProjectMemberWithTasksResponse[], number>({
+      query: (projectId) => `project/${projectId}/projectmember/members/tasks`,
+      transformResponse: (response: any) => {
+        if (response?.isSuccess && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      },
+      providesTags: ['ProjectMember'],
     }),
   }),
 });
@@ -123,5 +191,9 @@ export const {
   useDeleteProjectMemberMutation,
   useCreateBulkProjectMembersWithPositionsMutation,
   useGetProjectMembersQuery,
+  useGetProjectMembersNoStatusQuery,
   useGetProjectMembersWithPositionsQuery,
+  useGetProjectMemberByAccountQuery,
+  useUpdateProjectMemberStatusMutation,
+  useGetProjectMembersWithTasksQuery,
 } = projectMemberApi;

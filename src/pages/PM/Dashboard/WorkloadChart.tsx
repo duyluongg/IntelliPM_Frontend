@@ -17,13 +17,34 @@ import { useSearchParams } from 'react-router-dom';
 // }
 
 // const WorkloadChart: React.FC<WorkloadChartProps> = ({ projectId }) => {
-const WorkloadChart = () => {
-  const [searchParams] = useSearchParams();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectKey);
+// const WorkloadChart = () => {
+//   const [searchParams] = useSearchParams();
+//   const projectKey = searchParams.get('projectKey') || 'NotFound';
+//   const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectKey);
 
-  if (isLoading) return <div>Loading workload chart...</div>;
-  if (isError || !data?.data) return <div>Failed to load workload chart</div>;
+interface WorkloadMember {
+  memberName: string;
+  completed: number;
+  remaining: number;
+  overdue: number;
+}
+
+interface WorkloadDashboardData {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: WorkloadMember[];
+}
+
+const WorkloadChart = ({
+  data,
+  isLoading,
+}: {
+  data: WorkloadDashboardData | undefined;
+  isLoading: boolean;
+}) => {
+  if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
+  if (!data?.data) return <div>Failed to load workload chart</div>;
 
   const chartData = data.data.map((member) => ({
     name: member.memberName,
@@ -39,7 +60,7 @@ const WorkloadChart = () => {
           data={chartData}
           layout='vertical'
           margin={{ top: 20, right: 30, left: 10, bottom: 5 }}
-          barCategoryGap={25} 
+          barCategoryGap={25}
         >
           <CartesianGrid strokeDasharray='3 3' />
           <XAxis type='number' allowDecimals={false} />

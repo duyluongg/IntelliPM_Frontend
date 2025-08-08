@@ -13,6 +13,18 @@ export interface TaskAssignmentDTO {
   accountPicture: string | null;
 }
 
+export interface TaskAssignmentHoursDTO {
+  id: number;
+  taskId: string;
+  accountId: number;
+  hourlyRate: number | null;
+  accountFullname: string;
+  accountUsername: string;
+  accountPicture: string | null;
+  plannedHours: number | null;
+  actualHours: number | null;
+}
+
 interface ApiResponse<T> {
   isSuccess: boolean;
   code: number;
@@ -45,22 +57,46 @@ export const taskAssignmentApi = createApi({
         url: `task/${taskId}/taskassignment/${assignmentId}`,
         method: 'DELETE',
         headers: {
-          'accept': '*/*',
+          accept: '*/*',
         },
       }),
       invalidatesTags: ['TaskAssignment'],
     }),
-    createTaskAssignmentQuick: builder.mutation<TaskAssignmentDTO, { taskId: string; accountId: number }>({
+    createTaskAssignmentQuick: builder.mutation<
+      TaskAssignmentDTO,
+      { taskId: string; accountId: number }
+    >({
       query: ({ taskId, accountId }) => ({
         url: `task/${taskId}/taskassignment/quick`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'accept': '*/*',
+          accept: '*/*',
         },
         body: { accountId },
       }),
       transformResponse: (response: ApiResponse<TaskAssignmentDTO>) => response.data,
+      invalidatesTags: ['TaskAssignment'],
+    }),
+
+    getTaskAssignmentHoursByTaskId: builder.query<TaskAssignmentHoursDTO[], string>({
+      query: (taskId) => `task/${taskId}/taskassignment/hours`,
+      transformResponse: (response: ApiResponse<TaskAssignmentHoursDTO[]>) => response.data,
+      providesTags: ['TaskAssignment'],
+    }),
+
+    updateActualHoursByTaskId: builder.mutation<
+      void,
+      { taskId: string; data: { id: number; actualHours: number }[] }
+    >({
+      query: ({ taskId, data }) => ({
+        url: `task/${taskId}/taskassignment/update-actual-hours`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data,
+      }),
       invalidatesTags: ['TaskAssignment'],
     }),
   }),
@@ -68,10 +104,9 @@ export const taskAssignmentApi = createApi({
 
 export const {
   useGetTaskAssignmentsByTaskIdQuery,
-
   useLazyGetTaskAssignmentsByTaskIdQuery,
   useDeleteTaskAssignmentMutation,
   useCreateTaskAssignmentQuickMutation,
+  useGetTaskAssignmentHoursByTaskIdQuery,
+  useUpdateActualHoursByTaskIdMutation,
 } = taskAssignmentApi;
-
-

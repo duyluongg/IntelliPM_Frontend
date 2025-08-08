@@ -35,44 +35,42 @@ const StartWithAI: React.FC<Props> = ({ docId, onGenerated }) => {
 
   return (
     <div
-      className={`max-w-4xl mx-auto p-6 transition-all duration-500 ${
+      className={`mx-auto px-2 py-2 max-w-md transition-all duration-500 ${
         isDone ? 'opacity-0 translate-y-12 pointer-events-none' : 'opacity-100'
       }`}
     >
       <div
-        className={`bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-6 shadow-sm relative transition-all duration-300 ${
+        className={`bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 shadow-sm relative transition-all duration-300 ${
           isLoading ? 'opacity-60' : 'opacity-100'
         }`}
       >
         {isLoading && (
-          <div className='absolute inset-0 bg-white/30 backdrop-blur-[2px] rounded-xl flex items-center justify-center animate-pulse'>
-            <div className='flex items-center gap-3 text-gray-600'>
+          <div className='absolute inset-0 bg-white/30 backdrop-blur-sm rounded-lg flex items-center justify-center animate-pulse'>
+            <div className='flex items-center gap-2 text-gray-600 text-xs'>
               <div className='animate-spin'>
-                <Sparkles className='w-5 h-5 text-blue-500' />
+                <Sparkles className='w-4 h-4 text-blue-500' />
               </div>
-              <span className='text-sm font-medium'>Generating AI content...</span>
+              <span className='font-medium'>Generating AI content...</span>
             </div>
           </div>
         )}
 
-        <div className='flex items-center gap-3 mb-4'>
-          <div className='flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg'>
-            <Sparkles className='w-5 h-5 text-white' />
+        <div className='flex items-center gap-2 mb-3'>
+          <div className='flex items-center justify-center w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-md'>
+            <Sparkles className='w-4 h-4 text-white' />
           </div>
-          <h2 className='text-lg font-semibold text-gray-800'>Start with AI</h2>
+          <h2 className='text-sm font-semibold text-gray-800'>Start with AI</h2>
         </div>
 
-        <div className='space-y-4'>
-          <div className='space-y-2'>
-            <label className='text-sm font-medium text-gray-700'>
-              Describe the document you want to create
-            </label>
+        <div className='space-y-3'>
+          <div className='space-y-1'>
+            <label className='text-xs font-medium text-gray-700'>Describe the document</label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
-              className='w-full min-h-[100px] p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent text-gray-600 placeholder-gray-400 disabled:cursor-not-allowed'
-              placeholder='Enter your description here...'
+              className='w-full min-h-[80px] p-2 border border-gray-200 rounded-md resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 text-xs placeholder-gray-400 disabled:cursor-not-allowed'
+              placeholder='e.g. Weekly meeting summary...'
             />
           </div>
 
@@ -80,10 +78,10 @@ const StartWithAI: React.FC<Props> = ({ docId, onGenerated }) => {
             <button
               onClick={handleGenerate}
               disabled={isLoading || !prompt.trim()}
-              className='inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium rounded-lg hover:from-blue-600 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-blue-300-500 focus:ring-offset-2 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed'
+              className='inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white text-xs font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed'
             >
-              <Sparkles className='w-4 h-4' />
-              {isLoading ? 'Generating...' : 'Generate AI'}
+              <Sparkles className='w-3.5 h-3.5' />
+              {isLoading ? 'Generating...' : 'Generate'}
             </button>
           </div>
         </div>

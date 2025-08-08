@@ -82,7 +82,7 @@ const ProjectTableRow: React.FC<ProjectTableRowProps> = ({ project, accountId })
             <img
               src={project.iconUrl}
               alt={projectName}
-              className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+              className="w-7 h-7 rounded-sm object-cover "
               onError={(e) => (e.currentTarget.src = '/placeholder.png')} // Fallback image
             />
           )}

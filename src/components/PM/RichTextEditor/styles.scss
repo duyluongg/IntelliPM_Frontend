@@ -173,4 +173,8 @@
   td:hover .resize-handle {
     background-color: #cbd5e1; /* Tailwind gray-300 */
   }
+
+  [data-comment-id].ring {
+    transition: all 0.15s ease-in-out;
+  }
 }

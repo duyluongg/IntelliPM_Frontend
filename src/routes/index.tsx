@@ -3,7 +3,7 @@ import RootLayout from '../layout/RootLayout';
 import PMLayout from '../layout/PMLayout';
 import AdminLayout from '../layout/AdminLayout';
 import Homepage from '../pages/Homepage';
-import Login from '../components/Login';
+
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 // import Gantt from '../pages/PM/Gantt/Gantt';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -41,16 +41,21 @@ import InviteAccept from '../pages/ProjectCreation/InviteAccept/InviteAccept';
 import ProjectList from '../pages/ProjectDetail/ProjectList/ProjectList';
 import Risk from '../pages/PM/Risk/Risk';
 import RiskDetailPage from '../pages/PM/Risk/RiskDetailPage';
+import MeetingRequestRejectPage from '../pages/PM/Meeting/MeetingRequestReject/MeetingRequestRejectPage';
+import CreateDocumentRequestMeeting from '../pages/PM/Meeting/MeetingRequestReject/CreateDocumentRequestMeeting';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
+import Login from '../components/Login';
 import GuestIntroPage from '../pages/Guest/IntroPage';
 import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
 import Report from '../pages/Admin/ReportPage/Report';
 import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
+import Document from '../pages/PM/YourProject/Document';
 import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTable';
 import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
+
 
 export const router = createBrowserRouter([
   {
@@ -79,6 +84,7 @@ export const router = createBrowserRouter([
         path: 'meeting',
         element: <MeetingCore />,
       },
+
       {
         path: 'meeting-reschedule-request-send',
         element: <MeetingRescheduleRequestSend />,
@@ -106,7 +112,8 @@ export const router = createBrowserRouter([
   },
 
   {
-    path: '/project/projects/form/:type/:id',
+    // path: '/project/projects/form/:type/:id',
+    path: '/project/projects/form/document/:documentId',
     element: (
       <ProtectedRoute allowedRoles={['CLIENT', 'PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <LayoutSwitch />
@@ -115,7 +122,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <DocWrapper />,
+        element: <Document />,
       },
     ],
   },
@@ -124,7 +131,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -132,6 +139,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <ProjectDetailPage />,
+      },
+
+      {
+        path: 'meeting-management/view-reject',
+        element: <MeetingRequestRejectPage />,
+      },
+
+      {
+        path: 'meeting-management/send-request',
+        element: <CreateDocumentRequestMeeting />,
       },
 
       {
@@ -171,7 +188,7 @@ export const router = createBrowserRouter([
         element: <ProjectListTable />,
       },
       {
-        path: `:projectKey/details`,
+        path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
       },
       {

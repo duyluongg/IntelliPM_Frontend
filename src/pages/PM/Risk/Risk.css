@@ -1,4 +1,4 @@
-.risk-page-wrapper {
+/* .risk-page-wrapper {
   padding: 12px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
   background-color: #ffffff;
@@ -127,19 +127,11 @@
   overflow-x: auto;
   background-color: #ffffff;
   margin: 0;
-  /* width: 100%; */
   max-width: 100%;
   display: block;
 }
 
 .risk-table {
-  /* width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  min-width: 800px;
-  margin: 0;
-  table-layout: fixed; */
-
   width: 100%;
   min-width: 900px;
   border-collapse: collapse;
@@ -515,4 +507,54 @@
 .due-warning {
   font-weight: bold;
   color: #dc2626;
+} */
+
+.risk-page-wrapper {
+  @apply p-6 bg-gray-50 min-h-screen;
+}
+
+.risk-toolbar {
+  @apply flex justify-between items-center mb-6;
+}
+
+.risk-table-container {
+  @apply bg-white shadow-md rounded-lg overflow-hidden;
+}
+
+.risk-table {
+  @apply w-full;
+}
+
+.risk-table th {
+  @apply p-3 text-left text-sm font-semibold text-gray-600 bg-gray-100;
+}
+
+.risk-table td {
+  @apply p-3;
+}
+
+.risk-key-wrapper {
+  @apply flex items-center;
+}
+
+.risk-key {
+  @apply text-blue-600 cursor-pointer hover:underline;
+}
+
+.risk-type-select,
+.risk-status-select,
+.due-date-input {
+  @apply p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.avatar {
+  @apply w-6 h-6 rounded-full;
+}
+
+.due-today {
+  @apply bg-yellow-100 text-yellow-800;
+}
+
+.due-warning {
+  @apply bg-red-100 text-red-800;
 }

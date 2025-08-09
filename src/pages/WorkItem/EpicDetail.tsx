@@ -25,6 +25,7 @@ import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '.
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
+import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -142,6 +143,30 @@ const EpicDetail: React.FC = () => {
   const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
     skip: !epic?.projectId,
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ fileId: number } | null>(null);
+
+  const openDeleteModal = (fileId: number) => {
+    setDeleteInfo({ fileId });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
+    try {
+      await deleteEpicFile(deleteInfo.fileId).unwrap();
+      //alert("✅ Delete file successfully!");
+      await refetchAttachments();
+      await refetchActivityLogs();
+    } catch (error) {
+      console.error("❌ Error delete file:", error);
+      alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
+    }
+  };
 
   const handleDeleteFile = async (fileId: number) => {
     try {
@@ -437,11 +462,14 @@ const EpicDetail: React.FC = () => {
 
             {attachments.length > 0 && (
               <div className="attachments-section">
-                <label>Attachments <span>({attachments.length})</span></label>
-                <div className="attachments-grid">
+                <label className="block font-semibold mb-2">
+                  Attachments <span>({attachments.length})</span>
+                </label>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                   {attachments.map(file => (
                     <div
-                      className="attachment-card"
+                      className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
@@ -450,20 +478,31 @@ const EpicDetail: React.FC = () => {
                         href={file.urlFile}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+                        className="block text-gray-800 no-underline"
                       >
-                        <div className="thumbnail">
+                        <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
+                            <img
+                              src={file.urlFile}
+                              alt={file.title}
+                              className="w-[100%] h-[100%] object-cover rounded-lg"
+                            />
                           ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                            <div className="flex items-center justify-center h-full w-full bg-gray-200">
+                              <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                                {file.title.slice(0, 15)}...
+                              </span>
                             </div>
                           )}
                         </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>{file.title}</div>
-                          <div className="file-date">
+                        <div className="p-1">
+                          <div
+                            className="truncate text-sm font-medium"
+                            title={file.title}
+                          >
+                            {file.title}
+                          </div>
+                          <div className="text-xs text-gray-500">
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -471,11 +510,15 @@ const EpicDetail: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
+                          onClick={() => openDeleteModal(file.id)}
+                          className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
                           title="Delete file"
                         >
-                          <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          <img
+                            src={deleteIcon}
+                            alt="Delete"
+                            className="w-5 h-5"
+                          />
                         </button>
                       )}
                     </div>
@@ -1510,6 +1553,13 @@ const EpicDetail: React.FC = () => {
           onClose={() => setSelectedTaskId(null)}
         />
       )}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title="Delete this attachment?"
+        message="Once you delete, it's gone for good."
+      />
     </div>
   );
 };

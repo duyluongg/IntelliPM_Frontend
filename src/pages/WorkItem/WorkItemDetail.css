@@ -366,32 +366,6 @@ input {
   background-color: #e3fcef;
 }
 
-.attachments-section {
-  margin-top: 12px;
-}
-
-.attachments-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.attachment-card {
-  width: 140px;
-  border-radius: 8px;
-  background: #f4f5f7;
-  padding: 8px;
-  text-decoration: none;
-  color: #172b4d;
-  box-shadow: 0 0 2px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s ease;
-}
-
-.attachment-card:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
 .thumbnail {
   height: 100px;
   display: flex;

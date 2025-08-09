@@ -284,25 +284,6 @@
   color: #006644;
 }
 
-.attachments-section {
-  margin-top: 1rem;
-}
-
-.attachments-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.attachment-card {
-  position: relative;
-  width: 140px;
-  background: #f8f8f8;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
 
 .thumbnail {
   height: 100px;
@@ -346,15 +327,4 @@
 .file-date {
   color: #666;
   font-size: 11px;
-}
-
-.delete-file-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  color: red;
 }

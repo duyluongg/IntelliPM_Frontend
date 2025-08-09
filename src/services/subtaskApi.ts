@@ -29,6 +29,9 @@ export interface SubtaskFullResponseDTO {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedFullName: string;
+  assignedUsername: string;
+  assignedPicture: string;
   title: string;
   description: string;
   reporterId: number;
@@ -138,9 +141,23 @@ export const subtaskApi = createApi({
       transformResponse: (response: ApiResponse<SubtaskFullResponseDTO>) => response.data,
     }),
 
-    updateSubtaskPlannedHours: builder.mutation<void, { id: string; hours: number }>({
-      query: ({ id, hours }) => ({
-        url: `subtask/${id}/planned-hours`,
+    updateSubtaskPlannedHours: builder.mutation<
+      void,
+      { id: string; hours: number; createdBy: number }
+    >({
+      query: ({ id, hours, createdBy }) => ({
+        url: `subtask/${id}/planned-hours?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(hours),
+      }),
+    }),
+
+    updateSubtaskActualHours: builder.mutation<void, { id: string; hours: number; createdBy: number }>({
+      query: ({ id, hours, createdBy }) => ({
+        url: `subtask/${id}/actual-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -159,4 +176,5 @@ export const {
   useGetSubtaskByIdQuery,
   useGetSubtaskFullDetailedByIdQuery,
   useUpdateSubtaskPlannedHoursMutation,
+  useUpdateSubtaskActualHoursMutation,
 } = subtaskApi;

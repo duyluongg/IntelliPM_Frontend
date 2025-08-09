@@ -87,10 +87,10 @@ export const taskAssignmentApi = createApi({
 
     updateActualHoursByTaskId: builder.mutation<
       void,
-      { taskId: string; data: { id: number; actualHours: number }[] }
+      { taskId: string; data: { id: number; actualHours: number }[]; createdBy: number }
     >({
-      query: ({ taskId, data }) => ({
-        url: `task/${taskId}/taskassignment/update-actual-hours`,
+      query: ({ taskId, data, createdBy }) => ({
+        url: `task/${taskId}/taskassignment/update-actual-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

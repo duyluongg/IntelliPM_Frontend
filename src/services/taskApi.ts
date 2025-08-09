@@ -391,14 +391,14 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null }>({
-      query: ({ id, sprintId }) => ({
+    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null; createdBy: number }>({
+      query: ({ id, sprintId, createdBy }) => ({
         url: `task/${id}/sprint`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: sprintId,
+        body: JSON.stringify({sprintId, createdBy}),
       }),
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],

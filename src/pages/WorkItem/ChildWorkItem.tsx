@@ -31,7 +31,7 @@ import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
-
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 
 interface SubtaskDetail {
   id: string;
@@ -45,6 +45,8 @@ interface SubtaskDetail {
   startDate: string;
   endDate: string;
   reporterId: number;
+  sprintId: number;
+  sprintName: string;
 }
 
 const ChildWorkItem: React.FC = () => {
@@ -70,11 +72,14 @@ const ChildWorkItem: React.FC = () => {
   const [startDate, setStartDate] = React.useState('');
   const [endDate, setEndDate] = React.useState('');
   const [reporterId, setReporterId] = React.useState('');
+  const [sprintName, setSprintName] = React.useState('');
+  const [sprinId, setSprintId] = React.useState('');
   const [newTitle, setNewTitle] = useState<string>();
   const [newDescription, setNewDescription] = useState<string>();
   const [newPriority, setNewPriority] = useState<string>();
   const [newStartDate, setNewStartDate] = useState<string>();
   const [newEndDate, setNewEndDate] = useState<string>();
+  const [newSprintId, setNewSprintId] = useState<number>();
   const [newReporterId, setNewReporterId] = useState<number>();
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
@@ -109,6 +114,8 @@ const ChildWorkItem: React.FC = () => {
       setPriority(subtaskDetail.priority || '');
       setStartDate(subtaskDetail.startDate || '');
       setEndDate(subtaskDetail.endDate || '');
+      setSprintName(subtaskDetail.sprintName || '');
+      setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
     }
   }, [subtaskDetail]);
@@ -170,6 +177,11 @@ const ChildWorkItem: React.FC = () => {
   } = useGetLabelsByProjectIdQuery(projectId!, {
     skip: !projectId,
   });
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(projectId!, {
+      skip: !projectId,
+    });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -246,6 +258,7 @@ const ChildWorkItem: React.FC = () => {
       newTitle === undefined &&
       newDescription === undefined &&
       newPriority === undefined &&
+      newSprintId === undefined &&
       newStartDate === undefined &&
       newEndDate === undefined &&
       newReporterId === undefined &&
@@ -259,6 +272,7 @@ const ChildWorkItem: React.FC = () => {
         id: subtaskDetail.id,
         title: newTitle ?? subtaskDetail.title,
         description: newDescription ?? subtaskDetail.description,
+        sprintId: newSprintId ?? subtaskDetail.sprintId,
         priority: newPriority ?? subtaskDetail.priority,
         startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
@@ -686,6 +700,7 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
+                          sprintId: subtaskDetail.sprintId ?? 'None',
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
@@ -780,8 +795,8 @@ const ChildWorkItem: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -789,6 +804,28 @@ const ChildWorkItem: React.FC = () => {
               <div className='detail-item'>
                 <label>Parent</label>
                 <span>{subtaskDetail.taskId}</span>
+              </div>
+
+              <div className='detail-item'>
+                <label>Sprint</label>
+                <select
+                  style={{ width: '150px' }}
+                  value={newSprintId ?? subtaskDetail?.sprintId}
+                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
+                  onBlur={handleUpdateSubtask}
+                >
+                  {isProjectSprintsLoading ? (
+                    <option>Loading...</option>
+                  ) : isProjectSprintsError ? (
+                    <option>Error loading Sprint</option>
+                  ) : (
+                    projectSprints?.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
               <div className='detail-item'>
@@ -850,6 +887,7 @@ const ChildWorkItem: React.FC = () => {
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
+                          sprintId: subtaskDetail.sprintId ?? 'None',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,

@@ -5,18 +5,7 @@ import { useCreateBulkProjectMembersWithPositionsMutation } from '../../../servi
 import { useDispatch, useSelector } from 'react-redux';
 import { selectProjectId, setFormData } from '../../../components/slices/Project/projectCreationSlice';
 import InviteesTable from './InviteesTable';
-
-interface InviteesFormProps {
-  initialData: {
-    name: string;
-    projectKey: string;
-    description: string;
-    requirements: string[];
-    invitees: string[];
-  };
-  onNext: () => Promise<void>;
-  onBack: () => void;
-}
+import type { ProjectMemberWithPositionsResponse } from '../../../services/projectMemberApi';
 
 interface InviteeDetails {
   yearsExperience: number;
@@ -35,7 +24,26 @@ interface Invitee {
   avatar?: string;
 }
 
-const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack }) => {
+interface InviteesFormProps {
+  initialData: {
+    name: string;
+    projectKey: string;
+    description: string;
+    requirements: Array<{
+      id?: number;
+      title: string;
+      type: string;
+      description: string;
+      priority: string;
+    }>;
+    invitees: string[];
+  };
+  serverData?: ProjectMemberWithPositionsResponse[];
+  onNext: () => Promise<void>;
+  onBack: () => void;
+}
+
+const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, onNext, onBack }) => {
   const [invitees, setInvitees] = useState<Invitee[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [showTable, setShowTable] = useState(false);
@@ -53,12 +61,72 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
   const [createBulkProjectMembers, { isLoading: isBulkCreating }] = useCreateBulkProjectMembersWithPositionsMutation();
   const [checkAccountByEmail] = useLazyGetAccountByEmailQuery();
 
+  useEffect(() => {
+    if (serverData && serverData.length > 0) {
+      setInvitees(
+        serverData.map((member, index) => ({
+          email: member.email || `unknown${index}@example.com`,
+          role: member.status === 'PENDING' ? 'Team Member' : member.status || 'Team Member',
+          positions: member.projectPositions?.map((pos) => pos.position) || [],
+          details: member.accountId
+            ? {
+                yearsExperience: member.accountId === 5 ? 5 : 3,
+                role: member.status || 'Junior Developer',
+                completedProjects: member.accountId === 5 ? 8 : 2,
+                ongoingProjects: 0,
+                pastPositions: ['Developer'],
+                accountId: member.accountId,
+              }
+            : undefined,
+          avatar: member.picture || `https://i.pravatar.cc/40?img=${index + 1}`,
+        }))
+      );
+      setShowTable(true);
+    } else if (initialData?.invitees && initialData.invitees.length > 0) {
+      setInvitees(
+        initialData.invitees.map((email, index) => ({
+          email,
+          role: 'Team Member',
+          positions: ['Developer'],
+          details: undefined,
+          avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+        }))
+      );
+      setShowTable(true);
+    }
+  }, [serverData, initialData]);
+
+  useEffect(() => {
+    dispatch(
+      setFormData({
+        invitees: invitees.map((inv) => ({
+          email: inv.email,
+          role: inv.role,
+          positions: inv.positions,
+          accountId: inv.details?.accountId,
+        })),
+      })
+    );
+    localStorage.setItem(
+      'projectFormData',
+      JSON.stringify({
+        ...localStorage.getItem('projectFormData') ? JSON.parse(localStorage.getItem('projectFormData')!) : {},
+        invitees: invitees.map((inv) => ({
+          email: inv.email,
+          role: inv.role,
+          positions: inv.positions,
+          accountId: inv.details?.accountId,
+        })),
+      })
+    );
+  }, [invitees, dispatch]);
+
   const handleAddInvitee = async () => {
     if (!inputValue.trim()) return;
 
     // Split input by commas and trim each email
-    const emails = inputValue.split(',').map(email => email.trim()).filter(email => email);
-    const uniqueEmails = emails.filter(email => !invitees.some(inv => inv.email === email));
+    const emails = inputValue.split(',').map((email) => email.trim()).filter((email) => email);
+    const uniqueEmails = emails.filter((email) => !invitees.some((inv) => inv.email === email));
 
     if (uniqueEmails.length === 0) {
       setIsInvalidEmail(true);
@@ -85,8 +153,12 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
           continue;
         }
 
-        const newRole = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' :
-                        response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+        const newRole =
+          response.data.role === 'PROJECT_MANAGER'
+            ? 'Project Manager'
+            : response.data.role === 'CLIENT'
+            ? 'Client'
+            : 'Team Member';
         const initialPosition = response.data.position || 'Developer';
         const newInvitee: Invitee = {
           email,
@@ -120,8 +192,8 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
 
   const handleRemoveInvitee = (email: string) => {
     setInvitees(invitees.filter((inv) => inv.email !== email));
-    setEmailErrors(emailErrors.filter(err => !err.includes(`'${email}'`)));
-    setInfoMessages(infoMessages.filter(msg => !msg.includes(`'${email}'`)));
+    setEmailErrors(emailErrors.filter((err) => !err.includes(`'${email}'`)));
+    setInfoMessages(infoMessages.filter((msg) => !msg.includes(`'${email}'`)));
   };
 
   const handleAddPosition = (email: string, position: string) => {
@@ -144,6 +216,14 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
     );
   };
 
+  const handleRoleChange = (email: string, role: string) => {
+    setInvitees(
+      invitees.map((inv) =>
+        inv.email === email ? { ...inv, role } : inv
+      )
+    );
+  };
+
   const handleContinue = async () => {
     if (!projectId) {
       console.error('Project ID is not available');
@@ -151,9 +231,10 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
       return;
     }
 
-    let uniqueInvitees = invitees.filter((invitee) => 
-      invitee.details?.accountId !== undefined && 
-      !invitees.some((inv) => inv.details?.accountId === invitee.details?.accountId && inv.email !== invitee.email)
+    let uniqueInvitees = invitees.filter(
+      (invitee) =>
+        invitee.details?.accountId !== undefined &&
+        !invitees.some((inv) => inv.details?.accountId === invitee.details?.accountId && inv.email !== invitee.email)
     );
 
     let requests = uniqueInvitees.map((invitee) => ({
@@ -169,7 +250,16 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
         const response = await createBulkProjectMembers({ projectId, requests }).unwrap();
         console.log('Bulk create success:', response);
         if (response.isSuccess) {
-          dispatch(setFormData({ invitees: uniqueInvitees.map((inv) => inv.email) }));
+          dispatch(
+            setFormData({
+              invitees: uniqueInvitees.map((inv) => ({
+                email: inv.email,
+                role: inv.role,
+                positions: inv.positions,
+                accountId: inv.details?.accountId,
+              })),
+            })
+          );
           setEmailErrors([]);
           setInfoMessages([]);
           await onNext();
@@ -222,20 +312,20 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
   };
 
   return (
-    <div className='bg-white p-10 rounded-2xl shadow-xl border border-gray-100 text-sm'>
-      <h1 className='text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent'>
+    <div className="bg-white p-10 rounded-2xl shadow-xl border border-gray-100 text-sm">
+      <h1 className="text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent">
         Bring the Team with You
       </h1>
-      <p className='text-gray-600 mb-8 text-base leading-relaxed'>
+      <p className="text-gray-600 mb-8 text-base leading-relaxed">
         Invite your teammates to collaborate on this project and achieve greatness together. Enter one email or a comma-separated list (e.g., email1@example.com, email2@example.com). Your email is automatically included.
       </p>
 
-      <div className='space-y-6'>
-        <div className='flex flex-col sm:flex-row gap-4'>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row gap-4">
           <input
-            type='text'
+            type="text"
             value={inputValue}
-            placeholder='Enter name, email, or comma-separated emails'
+            placeholder="Enter name, email, or comma-separated emails"
             onChange={(e) => {
               setInputValue(e.target.value);
               setIsInvalidEmail(false);
@@ -249,44 +339,48 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
           />
           <button
             onClick={handleAddInvitee}
-            className='w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl'
-            disabled={false}
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl"
+            disabled={isBulkCreating}
           >
             Add Invitee
           </button>
         </div>
-        {emailErrors.length > 0 && (
-          <div className='text-red-500 text-sm mt-2'>
-            {emailErrors.map((error, index) => (
-              <p key={index}>{error}</p>
-            ))}
-          </div>
-        )}
-        {infoMessages.length > 0 && (
-          <div className='text-[#1c73fd] text-sm mt-2'>
-            {infoMessages.map((message, index) => (
-              <p key={index}>{message}</p>
-            ))}
+        {(emailErrors.length > 0 || infoMessages.length > 0) && (
+          <div className="mt-4 space-y-2">
+            {emailErrors.length > 0 && (
+              <div className="text-red-500 text-sm">
+                {emailErrors.map((error, index) => (
+                  <p key={index}>{error}</p>
+                ))}
+              </div>
+            )}
+            {infoMessages.length > 0 && (
+              <div className="text-[#1c73fd] text-sm">
+                {infoMessages.map((message, index) => (
+                  <p key={index}>{message}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div className='flex flex-wrap gap-3'>
+        <div className="flex flex-wrap gap-3">
           {invitees.map((invitee) => (
             <span
               key={invitee.email}
-              className='bg-[#e6f0fd] text-[#1c73fd] text-xs px-4 py-1.5 rounded-full flex items-center gap-2 shadow-md'
+              className="bg-[#e6f0fd] text-[#1c73fd] text-xs px-4 py-1.5 rounded-full flex items-center gap-2 shadow-md"
             >
               {invitee.avatar && (
                 <img
                   src={invitee.avatar}
                   alt={`${getFullnameFromEmail(invitee.email)} avatar`}
-                  className='w-6 h-6 rounded-full'
+                  className="w-6 h-6 rounded-full"
                 />
               )}
               {invitee.email}
               <button
                 onClick={() => handleRemoveInvitee(invitee.email)}
-                className='text-base font-bold text-[#1c73fd] hover:text-[#155ac7] transition'
+                className="text-base font-bold text-[#1c73fd] hover:text-[#155ac7] transition"
               >
                 ×
               </button>
@@ -296,7 +390,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
 
         <button
           onClick={() => setShowTable(!showTable)}
-          className='w-full mt-5 px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl'
+          className="w-full mt-5 px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl"
         >
           {showTable ? 'Hide Table' : 'Show Table'}
         </button>
@@ -314,49 +408,31 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, onNext, onBack
             setViewDetailsMember={setViewDetailsMember}
             handleAddPosition={handleAddPosition}
             handleRemovePosition={handleRemovePosition}
+            handleRoleChange={handleRoleChange}
             getFullnameFromEmail={getFullnameFromEmail}
           />
         )}
-      </div>
 
-      {(emailErrors.length > 0 || infoMessages.length > 0) && (
-        <div className='mt-4 space-y-2'>
-          {emailErrors.length > 0 && (
-            <div className='text-red-500 text-sm'>
-              {emailErrors.map((error, index) => (
-                <p key={index}>{error}</p>
-              ))}
-            </div>
-          )}
-          {infoMessages.length > 0 && (
-            <div className='text-[#1c73fd] text-sm'>
-              {infoMessages.map((message, index) => (
-                <p key={index}>{message}</p>
-              ))}
-            </div>
-          )}
+        <div className="mt-10 flex justify-end text-xs">
+          <button
+            onClick={() => {
+              localStorage.removeItem('projectFormData');
+              localStorage.removeItem('projectCreationStep');
+              localStorage.removeItem('projectCreationId');
+              onBack();
+            }}
+            className="mr-4 px-6 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl"
+          >
+            Back
+          </button>
+          <button
+            onClick={handleContinue}
+            className="px-6 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl"
+            disabled={isBulkCreating || !projectId}
+          >
+            {isBulkCreating ? 'Inviting...' : 'Invite and Continue'}
+          </button>
         </div>
-      )}
-
-      <div className='mt-10 flex justify-end text-xs'>
-        <button
-          onClick={() => {
-            localStorage.removeItem('projectFormData');
-            localStorage.removeItem('projectCreationStep');
-            localStorage.removeItem('projectCreationId');
-            onBack();
-          }}
-          className='mr-4 px-6 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl'
-        >
-          Back
-        </button>
-        <button
-          onClick={handleContinue}
-          className='px-6 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl'
-          disabled={isBulkCreating || !projectId}
-        >
-          {isBulkCreating ? 'Inviting...' : 'Invite and Continue'}
-        </button>
       </div>
     </div>
   );

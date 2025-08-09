@@ -7,7 +7,12 @@ export interface ProjectFormData {
   projectKey: string;
   description: string;
   requirements: RequirementRequest[];
-  invitees: string[];
+  invitees: Array<{
+    email: string;
+    role: string;
+    positions: string[];
+    accountId?: number;
+  }>;
 }
 
 interface ProjectCreationState {
@@ -24,7 +29,7 @@ const initialState: ProjectCreationState = {
     projectKey: '',
     description: '',
     requirements: [],
-    invitees: [''],
+    invitees: [],
   },
 };
 

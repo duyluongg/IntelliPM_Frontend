@@ -33,7 +33,7 @@ import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 import html2pdf from 'html2pdf.js';
 import { useExportDocumentMutation } from '../../../services/Document/documentExportApi';
-import { data, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useShareDocumentByEmailsMutation } from '../../../services/Document/documentAPI';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../app/store';

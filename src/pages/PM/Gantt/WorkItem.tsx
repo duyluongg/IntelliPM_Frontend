@@ -396,6 +396,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     endDate: item.endDate,
     reporterId: item.reporterId,
     reporterName: item.reporterName,
+    sprintId: item.sprintId ?? 'None'
   }));
 
   const handleStatusChange = async (id: string, newStatus: string) => {
@@ -1002,6 +1003,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           ),
                                           title: newTitle,
                                           description: item.description ?? '',
+                                          sprintId: item.sprintId ?? 'None',
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1045,6 +1047,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       ),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
+                                      sprintId: item.sprintId ?? 'None',
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1087,6 +1090,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
+                                        sprintId: item.sprintId ?? 'None',
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,

@@ -26,6 +26,7 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
+  useUpdateTaskSprintMutation
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -60,6 +61,7 @@ import {
 } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -81,7 +83,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [epicId, setEpicId] = React.useState('');
-  const [sprintId, setSprintId] = React.useState('');
+  const [sprintId, setSprintId] = useState<number | null>(null);
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -114,21 +116,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
-    Record<string, TaskAssignmentDTO[]>
-  >({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  const { data: assignees = [], isLoading: isAssigneeLoading } =
-    useGetTaskAssignmentsByTaskIdQuery(taskId);
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
+  const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
+  const [newSprintId, setNewSprintId] = useState<number>();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
@@ -240,6 +241,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
+  const handleSprintTaskChange = async (newSprintId: number | null) => {
+    console.log('Calling handleSprintTaskChange with sprintId:', newSprintId);
+    if (newSprintId === taskData?.sprintId) return;
+
+    try {
+      await updateTaskSprint({
+        id: taskId,
+        sprintId: newSprintId,
+        createdBy: accountId
+      }).unwrap();
+      setSprintId(newSprintId);
+      await Promise.all([refetchActivityLogs(), refetchTask()]);
+      console.log('Update sprint task successfully!');
+      alert('✅ Sprint updated successfully');
+    } catch (err: any) {
+      console.error('Error update sprint:', err);
+      alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
+    }
+  };
+
   const {
     data: subtaskData = [],
     isLoading,
@@ -300,6 +321,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -384,7 +410,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setReporterName(taskData.reporterName ?? '');
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
-      setSprintId(String(taskData.sprintId));
+      setSprintId(taskData.sprintId);
       setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
@@ -404,6 +430,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     endDate: item.endDate,
     reporterId: item.reporterId,
     reporterName: item.reporterName,
+    sprintId: item.sprintId ?? 'None'
   }));
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
@@ -416,6 +443,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
       refetch();
       await refetchActivityLogs();
+      await refetchTask();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -1004,6 +1032,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           ),
                                           title: newTitle,
                                           description: item.description ?? '',
+                                          sprintId: item.sprintId ?? 'None',
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1045,6 +1074,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
+                                      sprintId: item.sprintId ?? 'None',
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1093,6 +1123,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
+                                        sprintId: item.sprintId ?? 'None',
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
@@ -1445,7 +1476,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Assignee</label>
                 {canEdit ? (
                   <div className='multi-select-dropdown'>
-                    {/* Hiển thị danh sách đã chọn */}
+
                     <div
                       className='selected-list'
                       style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1519,8 +1550,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1595,11 +1626,41 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
+
+              <div className='detail-item'>
+                <label>Sprint</label>
+                {isProjectSprintsLoading ? (
+                  <span>Loading sprints...</span>
+                ) : isProjectSprintsError ? (
+                  <span>Error loading sprints</span>
+                ) : projectSprints.length === 0 ? (
+                  <span>No sprints available</span>
+                ) : (
+                  <select
+                    style={{ width: '150px' }}
+                    value={sprintId ?? 'none'}
+                    onChange={(e) => {
+                      const val = e.target.value === 'none' ? null : Number(e.target.value);
+                      setSprintId(val);
+                      if (val !== null) {
+                        handleSprintTaskChange(val);
+                      }
+                    }}
+                  >
+                    <option value="none">No Sprint</option>
+                    {projectSprints.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
               <div className='detail-item'>
                 <label>Priority</label>
@@ -1632,7 +1693,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       </option>
                     ))}
                   </select>
-
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
                 )}

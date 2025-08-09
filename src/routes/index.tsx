@@ -3,7 +3,7 @@ import RootLayout from '../layout/RootLayout';
 import PMLayout from '../layout/PMLayout';
 import AdminLayout from '../layout/AdminLayout';
 import Homepage from '../pages/Homepage';
-import Login from '../components/Login';
+
 import MeetingRoom from '../pages/PM/MeetingRoom/MeetingRoom';
 // import Gantt from '../pages/PM/Gantt/Gantt';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -47,6 +47,7 @@ import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
+import Login from '../components/Login';
 import GuestIntroPage from '../pages/Guest/IntroPage';
 import ProjectMember from '../pages/ProjectDetail/ProjectMember/ProjectMember';
 import Report from '../pages/Admin/ReportPage/Report';
@@ -54,6 +55,7 @@ import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 import Document from '../pages/PM/YourProject/Document';
 import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTable';
 import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
+
 
 export const router = createBrowserRouter([
   {
@@ -186,7 +188,7 @@ export const router = createBrowserRouter([
         element: <ProjectListTable />,
       },
       {
-        path: `:projectKey/details`,
+        path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
       },
       {

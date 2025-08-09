@@ -7,7 +7,8 @@ export interface SubtaskResponseDTO {
   assignedBy: number;
   assignedByName: string;
   plannedEndDate: string | null;
-
+  sprintId: number;
+  sprintName: string;
   title: string;
   description: string;
   status: string;
@@ -35,7 +36,7 @@ export interface SubtaskFullResponseDTO {
   priority: string;
   manualInput: boolean;
   generationAiInput: boolean;
-  sprintId: number | null;
+  sprintId: number;
   plannedStartDate: string | null;
   plannedEndDate: string | null;
   duration: number;
@@ -122,6 +123,7 @@ export const subtaskApi = createApi({
         endDate: string;
         reporterId: number;
         createdBy: number;
+        sprintId: number;
       }
     >({
       query: ({ id, ...body }) => ({

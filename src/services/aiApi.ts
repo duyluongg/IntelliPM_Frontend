@@ -131,6 +131,24 @@ export interface AiResponse {
   message: string;
 }
 
+export interface GenerateTasksForSprintResponseDTO {
+  isSuccess: boolean;
+  code: number;
+  data: AITaskForSprintDTO[];
+  message: string;
+}
+
+export interface AITaskForSprintDTO {
+  title: string;
+  type: string;
+  description: string;
+  priority: string;
+  plannedHours: number;
+}
+export interface GenerateTasksForSprintRequestDTO {
+  projectKey: string;
+}
+
 export const aiApi = createApi({
   reducerPath: 'aiApi',
   baseQuery: fetchBaseQuery({
@@ -161,8 +179,19 @@ export const aiApi = createApi({
       }),
       transformResponse: (response: SprintPlanningResponseDTO) => response,
     }),
-
+generateTasksForSprint: builder.mutation<GenerateTasksForSprintResponseDTO, { sprintId: number; body: GenerateTasksForSprintRequestDTO }>({
+      query: ({ sprintId, body }) => ({
+        url: `ai/sprint/${sprintId}/generate-tasks`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: GenerateTasksForSprintResponseDTO) => response,
+    }),
   }),
 });
 
-export const { useGetTaskPlanningMutation, useSprintPlanningMutation } = aiApi;
+export const { useGetTaskPlanningMutation, useSprintPlanningMutation, useGenerateTasksForSprintMutation } = aiApi;

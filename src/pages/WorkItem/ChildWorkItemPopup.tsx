@@ -90,7 +90,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const [sprinId, setSprintId] = React.useState('');
   const [newTitle, setNewTitle] = useState<string>();
   const [newDescription, setNewDescription] = useState<string>();
-  const [newSprintId, setNewSprintId] = useState<number>();
+  const [newSprintId, setNewSprintId] = useState<number | null>(null);
   const [newPriority, setNewPriority] = useState<string>();
   const [newStartDate, setNewStartDate] = useState<string>();
   const [newEndDate, setNewEndDate] = useState<string>();
@@ -170,7 +170,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   );
 
   const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
-    refetch: refetchProjectSprints, isError: isProjectSprintsError} = useGetSprintsByProjectIdQuery(projectId!, {
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(projectId!, {
       skip: !projectId,
     });
 
@@ -717,7 +717,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
                           title: subtaskDetail.title,
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
@@ -824,8 +824,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 <label>Sprint</label>
                 <select
                   style={{ width: '150px' }}
-                  value={newSprintId ?? subtaskDetail?.sprintId}
-                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
+                  value={newSprintId ?? subtaskDetail?.sprintId ?? 0}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setNewSprintId(val === 0 ? null : val);
+                  }}
                   onBlur={handleUpdateSubtask}
                 >
                   {isProjectSprintsLoading ? (
@@ -833,11 +836,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   ) : isProjectSprintsError ? (
                     <option>Error loading Sprint</option>
                   ) : (
-                    projectSprints?.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))
+                    <>
+                      <option value={0}>No Sprint</option>
+                      {projectSprints?.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </>
                   )}
                 </select>
               </div>
@@ -900,7 +906,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           id: subtaskDetail.id,
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,

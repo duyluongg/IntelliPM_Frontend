@@ -298,7 +298,7 @@ const WorkItemDetail: React.FC = () => {
       setPlannedEndDate(taskData.plannedEndDate);
       setPlannedStartDate(taskData.plannedStartDate);
       setProjectName(taskData.projectName ?? '');
-      setSprintId(taskData.sprintId);
+      setSprintId(taskData.sprintId ?? null);
       setProjectId(String(taskData.projectId));
       setSelectedReporter(taskData.reporterId ?? null);
     }
@@ -316,7 +316,7 @@ const WorkItemDetail: React.FC = () => {
     reporterId: item.reporterId,
     reporterName: item.reporterName,
     description: item.description,
-    sprintId: item.sprintId ?? 'None'
+    sprintId: item.sprintId ?? null
   }));
 
   const handleTaskStatusChange = async (newStatus: string) => {
@@ -537,6 +537,7 @@ const WorkItemDetail: React.FC = () => {
               defaultValue={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleTaskChange}
+              style={{ width: '500px' }}
               disabled={!canEdit}
             />
           </div>
@@ -1006,7 +1007,7 @@ const WorkItemDetail: React.FC = () => {
                                           ),
                                           title: newTitle,
                                           description: item?.description ?? '',
-                                          sprintId: item.sprintId ?? 'None',
+                                          sprintId: item.sprintId ?? null,
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1048,7 +1049,7 @@ const WorkItemDetail: React.FC = () => {
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
-                                      sprintId: item.sprintId ?? 'None',
+                                      sprintId: item.sprintId ?? null,
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1056,7 +1057,7 @@ const WorkItemDetail: React.FC = () => {
                                       createdBy: accountId,
                                     }).unwrap();
                                     console.log('✅ Updated priority');
-                                    await refetchTask();
+                                    await refetchSubtask();
                                     await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
@@ -1097,7 +1098,7 @@ const WorkItemDetail: React.FC = () => {
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
-                                        sprintId: item.sprintId ?? 'None',
+                                        sprintId: item.sprintId ?? null,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,

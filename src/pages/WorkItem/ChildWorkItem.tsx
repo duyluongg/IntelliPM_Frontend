@@ -700,7 +700,7 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
@@ -887,7 +887,7 @@ const ChildWorkItem: React.FC = () => {
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,

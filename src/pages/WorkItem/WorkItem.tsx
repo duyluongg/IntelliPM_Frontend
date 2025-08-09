@@ -410,7 +410,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setReporterName(taskData.reporterName ?? '');
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
-      setSprintId(taskData.sprintId);
+      setSprintId(taskData.sprintId ?? null);
       setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
@@ -430,7 +430,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     endDate: item.endDate,
     reporterId: item.reporterId,
     reporterName: item.reporterName,
-    sprintId: item.sprintId ?? 'None'
+    sprintId: item.sprintId ?? null,
   }));
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
@@ -1032,7 +1032,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           ),
                                           title: newTitle,
                                           description: item.description ?? '',
-                                          sprintId: item.sprintId ?? 'None',
+                                          sprintId: item.sprintId ?? null,
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1074,7 +1074,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
-                                      sprintId: item.sprintId ?? 'None',
+                                      sprintId: item.sprintId ?? null,
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1123,7 +1123,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
-                                        sprintId: item.sprintId ?? 'None',
+                                        sprintId: item.sprintId ?? null,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
@@ -1511,7 +1511,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     </div>
 
                     <div className='dropdown-select-wrapper'>
-                      <select
+                      <select 
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
                           if (!selectedId) return;

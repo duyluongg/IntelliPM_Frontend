@@ -6,6 +6,7 @@ export interface ActivityLogResponseDTO {
   projectId: number;
   taskId: string;
   subtask: string;
+  riskKey: string;
   createdBy: number;
   createdByName: string;
   createdAt: string; // ISO string
@@ -47,7 +48,17 @@ export const activityLogApi = createApi({
       query: (subtaskId) => `activitylog/subtask/${subtaskId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
     }),
+
+    getActivityLogsByRiskKey: builder.query<ActivityLogResponseDTO[], string>({
+      query: (riskKey) => `activitylog/risk/${riskKey}`,
+      transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+    }),
   }),
 });
 
-export const { useGetActivityLogsByProjectIdQuery, useGetActivityLogsBySubtaskIdQuery, useGetActivityLogsByTaskIdQuery } = activityLogApi;
+export const {
+  useGetActivityLogsByProjectIdQuery,
+  useGetActivityLogsBySubtaskIdQuery,
+  useGetActivityLogsByTaskIdQuery,
+  useGetActivityLogsByRiskKeyQuery,
+} = activityLogApi;

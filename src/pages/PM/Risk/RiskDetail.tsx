@@ -1097,6 +1097,7 @@
 
 // export default RiskDetail;
 
+//-------------------------------------------------------------
 import { useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -1141,6 +1142,8 @@ import {
 import deleteIcon from '../../../assets/delete.png';
 import accountIcon from '../../../assets/account.png';
 import { useParams } from 'react-router-dom';
+import { useGetActivityLogsByRiskKeyQuery } from '../../../services/activityLogApi';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
 export interface Risk {
   id: number;
@@ -1214,6 +1217,14 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
     isLoading: isCommentsLoading,
     refetch: refetchComments,
   } = useGetCommentsByRiskIdQuery(risk.id);
+
+  const {
+    data: activityLogs = [],
+    isLoading: isActivityLogsLoading,
+    refetch: refetchActivityLogs,
+  } = useGetActivityLogsByRiskKeyQuery(risk.riskKey, {
+    skip: !risk.riskKey,
+  });
 
   const projectId = projectData?.data?.id;
   const skipMembers = !projectId;
@@ -1390,7 +1401,11 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
   const renderAvatar = () => {
     if (editableRisk.responsiblePicture) {
       return (
-        <img src={editableRisk.responsiblePicture} alt='avatar' className='responsible-avatar' />
+        <img
+          src={editableRisk.responsiblePicture}
+          alt='avatar'
+          className='responsible-avatar w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm'
+        />
       );
     }
     const initials =
@@ -1400,8 +1415,49 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
         .join('') ||
       editableRisk.responsibleUserName?.slice(0, 2)?.toUpperCase() ||
       '?';
-    return <div className='responsible-avatar-placeholder'>{initials}</div>;
+    return <div className='responsible-avatar-placeholder bg-gray-300 text-white'>{initials}</div>;
   };
+
+  // const RiskStatusDropdown = ({
+  //   status,
+  //   onChange,
+  // }: {
+  //   status: string;
+  //   onChange: (newStatus: string) => void;
+  // }) => {
+  //   const getStyle = (status: string) => {
+  //     switch (status.toUpperCase()) {
+  //       case 'OPEN':
+  //         return 'bg-blue-100 text-blue-700';
+  //       case 'MITIGATED':
+  //         return 'bg-green-100 text-green-700';
+  //       case 'CLOSED':
+  //         return 'bg-gray-100 text-gray-700';
+  //       default:
+  //         return '';
+  //     }
+  //   };
+
+  //   return (
+  //     <select
+  //       className={`risk-detail-status-select ${getStyle(status)}`}
+  //       value={status}
+  //       onChange={(e) => onChange(e.target.value)}
+  //       style={{
+  //         border: 'none',
+  //         borderRadius: '6px',
+  //         padding: '6px 12px',
+  //         fontWeight: 600,
+  //         fontSize: '14px',
+  //         cursor: 'pointer',
+  //       }}
+  //     >
+  //       <option value='OPEN'>OPEN</option>
+  //       <option value='MITIGATED'>MITIGATED</option>
+  //       <option value='CLOSED'>CLOSED</option>
+  //     </select>
+  //   );
+  // };
 
   const RiskStatusDropdown = ({
     status,
@@ -1410,17 +1466,28 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
     status: string;
     onChange: (newStatus: string) => void;
   }) => {
-    const getStyle = (status: string) => {
-      switch (status.toUpperCase()) {
-        case 'OPEN':
-          return 'bg-blue-100 text-blue-700';
-        case 'MITIGATED':
-          return 'bg-green-100 text-green-700';
-        case 'CLOSED':
-          return 'bg-gray-100 text-gray-700';
-        default:
-          return '';
-      }
+    const {
+      data: categoriesData,
+      isLoading,
+      isError,
+    } = useGetCategoriesByGroupQuery('risk_status');
+
+    // const fallbackOptions = [
+    //   { name: 'OPEN', label: 'OPEN', color: '#bfdbfe,#1e40af' },
+    //   { name: 'MITIGATED', label: 'MITIGATED', color: '#bbf7d0,#15803d' },
+    //   { name: 'CLOSED', label: 'CLOSED', color: '#f3f4f6,#4b5563' },
+    // ];
+
+    const categories = categoriesData?.data?.filter((cat) => cat.isActive);
+
+    const getStyle = (categoryName: string) => {
+      const category = categories?.find((cat) => cat.name === categoryName);
+      if (!category?.color) return 'bg-gray-100 text-gray-700';
+      console.log(category.color);
+      const [bgColor, textColor] = category.color.includes(',')
+        ? category.color.split(',')
+        : [category.color, category.color];
+      return `bg-[${bgColor}] text-[${textColor}]`;
     };
 
     return (
@@ -1428,6 +1495,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
         className={`risk-detail-status-select ${getStyle(status)}`}
         value={status}
         onChange={(e) => onChange(e.target.value)}
+        disabled={isLoading}
         style={{
           border: 'none',
           borderRadius: '6px',
@@ -1437,9 +1505,15 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
           cursor: 'pointer',
         }}
       >
-        <option value='OPEN'>OPEN</option>
-        <option value='MITIGATED'>MITIGATED</option>
-        <option value='CLOSED'>CLOSED</option>
+        {isLoading ? (
+          <option value=''>Loading...</option>
+        ) : (
+          categories?.map((category) => (
+            <option key={category.name} value={category.name}>
+              {category.label}
+            </option>
+          ))
+        )}
       </select>
     );
   };
@@ -1462,7 +1536,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
 
     return (
       <select
-        className='responsible-dropdown'
+        className='responsible-dropdown p-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500'
         ref={dropdownRef}
         value={selectedId?.toString() ?? ''}
         onChange={(e) => {
@@ -1522,14 +1596,14 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
 
   return (
     <div className={isPage ? 'risk-page-container' : 'risk-detail-container'}>
-      <div className='risk-detail-panel bg-white rounded-lg p-6'>
-        <div className='detail-header flex justify-between items-center mb-6 border-b pb-4'>
-          <div className='detail-title-section'>
+      <div className='risk-detail-panel relative bg-white rounded-lg p-6'>
+        <div className='detail-header border-b-2 flex justify-between items-center mb-6 border-b pb-4'>
+          <div className='detail-title-section space-y-2'>
             <div className='risk-path text-gray-600 text-sm mb-2'>
               <div>
                 {projectKey} /{' '}
                 <span
-                  className='risk-code text-blue-600 hover:underline cursor-pointer'
+                  className='risk-code font-medium text-blue-600 hover:underline cursor-pointer'
                   onClick={() =>
                     navigate(
                       `/project/${projectKey}/risk/${
@@ -1553,7 +1627,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                   </div>
                 </div>
                 <div
-                  className='reporter-avatar w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gray-200'
+                  className='reporter-avatar w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-gray-200'
                   title={editableRisk.creatorFullName || editableRisk.creatorUserName || 'Unknown'}
                 >
                   {editableRisk.creatorPicture ? (
@@ -1563,7 +1637,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                       className='w-full h-full object-cover'
                     />
                   ) : (
-                    <div className='avatar-placeholder text-sm text-gray-700'>
+                    <div className='avatar-placeholder bg-gray-300 text-white'>
                       {editableRisk.creatorFullName
                         ?.split(' ')
                         .map((n) => n[0])
@@ -1584,7 +1658,11 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                   const newTitle = e.target.value.trim();
                   if (newTitle && newTitle !== risk.title) {
                     try {
-                      await updateRiskTitle({ id: editableRisk.id, title: newTitle }).unwrap();
+                      await updateRiskTitle({
+                        id: editableRisk.id,
+                        title: newTitle,
+                        createdBy: accountId,
+                      }).unwrap();
                       console.log('Title updated successfully');
                     } catch (err) {
                       console.error('Failed to update title:', err);
@@ -1597,8 +1675,13 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                 status={editableRisk.status || 'OPEN'}
                 onChange={async (newStatus) => {
                   try {
-                    await updateRiskStatus({ id: editableRisk.id, status: newStatus }).unwrap();
+                    await updateRiskStatus({
+                      id: editableRisk.id,
+                      status: newStatus,
+                      createdBy: accountId,
+                    }).unwrap();
                     handleChange('status', newStatus);
+                    refetchActivityLogs();
                     console.log(`Updated status to ${newStatus}`);
                   } catch (err) {
                     console.error('Failed to update status:', err);
@@ -1730,7 +1813,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
             </div> */}
           </div>
           <button
-            className='close-btn text-2xl text-gray-500 hover:text-red-500 transition'
+            className='close-btn absolute top-4 right-4 text-2xl text-gray-500 hover:text-red-500 transition'
             onClick={onClose}
           >
             ×
@@ -1806,7 +1889,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                 </button>
               </li>
             ))}
-            <li className='todo-item new'>
+            <li className='todo-item flex items-center gap-2 new'>
               <input
                 type='text'
                 placeholder='Add Contingency Plan'
@@ -1867,7 +1950,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                 </button>
               </li>
             ))}
-            <li className='todo-item new'>
+            <li className='todo-item flex items-center gap-2 new'>
               <input
                 type='text'
                 placeholder='Add Mitigation Plan'
@@ -1880,14 +1963,14 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
           </ul>
         </div>
 
-        <div className='detail-section triple-grid mt-6 p-4 bg-gray-50 rounded-lg'>
-          <div className='impactLikelihoodWrapper'>
+        <div className='detail-section triple-grid grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 p-4 bg-gray-50 rounded-lg'>
+          <div className='impactLikelihoodWrapper space-y-2'>
             <div className='section-label text-lg font-semibold text-gray-800 mb-2'>IMPACT</div>
             <ul className='radio-button-list space-y-2'>
               {['Low', 'Medium', 'High'].map((lvl) => (
                 <li key={lvl}>
                   <label
-                    className={`radio-label flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
+                    className={`radio-label flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
                       editableRisk.impactLevel === lvl
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-700'
@@ -1918,13 +2001,13 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
             </ul>
           </div>
 
-          <div className='impactLikelihoodWrapper'>
+          <div className='impactLikelihoodWrapper space-y-2'>
             <div className='section-label text-lg font-semibold text-gray-800 mb-2'>LIKELIHOOD</div>
             <ul className='radio-button-list space-y-2'>
               {['Low', 'Medium', 'High'].map((lvl) => (
                 <li key={lvl}>
                   <label
-                    className={`radio-label flex items-center gap-2 p-2 rounded-md hover:bg-gray-100 ${
+                    className={`radio-label flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-gray-100 ${
                       editableRisk.probability === lvl
                         ? 'bg-blue-100 text-blue-700'
                         : 'text-gray-700'
@@ -1974,7 +2057,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
         <div className='detail-section-no-border mt-6 p-4 bg-gray-50 rounded-lg'>
           <div className='section-label text-lg font-semibold text-gray-800 mb-2'>Attachments</div>
           {Array.isArray(attachments) && attachments.length > 0 ? (
-            <div className='attachments-section'>
+            <div className='attachments-section mt-2'>
               <div className='attachments-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
                 {attachments.map((file) => (
                   <div
@@ -1997,7 +2080,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                             className='w-full h-full object-cover'
                           />
                         ) : (
-                          <div className='doc-thumbnail flex items-center justify-center w-full h-full bg-gray-100'>
+                          <div className='doc-thumbnail flex items-center justify-center w-full h-32 overflow-hidden rounded-md bg-gray-100'>
                             <span className='doc-text text-gray-700'>
                               {file.filename?.length > 15
                                 ? file.filename.slice(0, 15) + '...'
@@ -2075,6 +2158,31 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
             </div>
           )}
         </div>
+
+        <div className='detail-section-no-border mt-6 p-4 bg-gray-50 rounded-lg'>
+          <div className='section-label text-lg font-semibold text-gray-800 mb-2'>ACTIVITY LOG</div>
+          <div className='activity-log-list space-y-4'>
+            {isActivityLogsLoading ? (
+              <p className='activity-log-loading text-gray-500 italic'>Loading activity logs...</p>
+            ) : activityLogs.length === 0 ? (
+              <p className='activity-log-empty text-gray-500 italic'>No activity logs available.</p>
+            ) : (
+              activityLogs.map((log) => (
+                <div key={log.id} className='activity-log-item bg-white p-3 rounded-lg shadow'>
+                  <div className='activity-log-header flex justify-between items-center text-sm'>
+                    <span className='activity-log-user font-semibold text-gray-800'>
+                      {log.createdByName || `User #${log.createdBy}`}
+                    </span>
+                    <span className='activity-log-time text-gray-500'>
+                      {new Date(log.createdAt).toLocaleString('vi-VN', { hour12: false })}
+                    </span>
+                  </div>
+                  <div className='activity-log-message mt-1 text-gray-700'>{log.message}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
       <div className='risk-comments-panel mt-6 p-4 bg-gray-50 rounded-lg shadow-md'>
         <div className='comments-header text-lg font-semibold text-gray-800 mb-4 border-b pb-2'>
@@ -2095,7 +2203,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                     key={comment.id}
                     className='simple-comment flex gap-3 bg-white p-3 rounded-lg shadow'
                   >
-                    <div className='avatar-circle w-10 h-10 rounded-full overflow-hidden bg-gray-200'>
+                    <div className='avatar-circle w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm'>
                       <img
                         src={comment.accountPicture || accountIcon}
                         alt='avatar'

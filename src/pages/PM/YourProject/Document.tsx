@@ -47,8 +47,8 @@ import SideMenu from './SideMenu';
 interface CommentItem {
   id: number | string;
   documentId: number; // ✅ BẮT BUỘC
-  from: number; // ✅ BẮT BUỘC
-  to: number; // ✅ BẮT BUỘC
+  fromPos: number; // ✅ BẮT BUỘC
+  toPos: number; // ✅ BẮT BUỘC
   content: string; // ✅ BẮT BUỘC
   comment: string;
 }
@@ -254,7 +254,7 @@ export const Document: React.FC = () => {
 
   // ✨ THAY ĐỔI: Cập nhật lại hàm được truyền vào sidebar
   const handleSidebarCommentClick = (comment: CommentItem) => {
-    handleGoToComment(comment.from, comment.to, comment.id.toString());
+    handleGoToComment(comment.fromPos, comment.toPos, comment.id.toString());
   };
 
   useEffect(() => {
@@ -339,68 +339,63 @@ export const Document: React.FC = () => {
 
   // Document.tsx
 
-  const handleDeleteComment = async (commentId: number | string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) {
-      const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
-
-      if (!commentToDelete) {
-        console.error('Không tìm thấy comment để xóa trong danh sách.');
-        return;
-      }
-
-      if (editor) {
-        editor
-          .chain()
-          .focus()
-          // ✨ SỬA LẠI TẠI ĐÂY
-          .setTextSelection({ from: commentToDelete.fromPos, to: commentToDelete.toPos })
-          .unsetMark('commentMark')
-          .run();
-      }
-
-      if (activeCommentId === commentId.toString()) {
-        setActiveCommentId(null);
-      }
-
-      try {
-        await deleteComment(commentId).unwrap();
-        refetchComments();
-      } catch (error) {
-        console.error('Xóa bình luận thất bại:', error);
-        alert('Đã xảy ra lỗi khi xóa bình luận.');
-      }
-    }
-  };
-
-  // ✨ 4. TẠO HÀM XỬ LÝ CẬP NHẬT
-  const handleUpdateComment = async (
-    commentToUpdate: CommentItem, // Nhận vào toàn bộ object comment gốc
-    newCommentText: string // và nội dung bình luận mới
-  ) => {
-    // Kiểm tra để đảm bảo có documentId
+  const handleUpdateComment = async (commentToUpdate: CommentItem, newCommentText: string) => {
     if (!documentId) {
       alert('Không tìm thấy ID của tài liệu.');
       return;
     }
 
-    // 1. Xây dựng payload đầy đủ mà API yêu cầu
-    const payload = {
-      id: Number(commentToUpdate.id),
-      documentId: Number(documentId),
-      fromPos: commentToUpdate.from,
-      toPos: commentToUpdate.to,
-      content: commentToUpdate.content, // Lấy content gốc từ object comment
-      comment: newCommentText, // Dùng nội dung mới từ textarea
-    };
-
-    // 2. Gọi mutation với payload hoàn chỉnh
     try {
-      console.log('Đang gửi payload để cập nhật:', payload);
-      await updateComment(payload).unwrap();
-      refetchComments(); // Cập nhật lại danh sách bình luận trên UI
+      // Gửi partial update: chỉ field cần đổi
+      await updateComment({
+        id: Number(commentToUpdate.id),
+        body: {
+          // Nếu chỉ sửa text comment:
+          comment: newCommentText,
+
+          // Nếu bạn cũng muốn cập nhật lại vùng highlight và content:
+          // fromPos: commentToUpdate.from,
+          // toPos: commentToUpdate.to,
+          // content: commentToUpdate.content,
+        },
+      }).unwrap();
+
+      await refetchComments();
     } catch (error) {
       console.error('Cập nhật bình luận thất bại:', error);
       alert('Đã xảy ra lỗi khi cập nhật bình luận.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number | string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+
+    const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
+    if (!commentToDelete) {
+      console.error('Không tìm thấy comment để xóa trong danh sách.');
+      return;
+    }
+
+    // Gỡ highlight trong editor nếu cần
+    if (editor) {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: commentToDelete.fromPos, to: commentToDelete.toPos })
+        .unsetMark('commentMark')
+        .run();
+    }
+
+    try {
+      await deleteComment({
+        id: Number(commentId),
+        documentId: Number(documentId),
+      }).unwrap();
+
+      if (activeCommentId === commentId.toString()) setActiveCommentId(null);
+    } catch (error) {
+      console.error('Xóa bình luận thất bại:', error);
+      alert('Đã xảy ra lỗi khi xóa bình luận.');
     }
   };
 
@@ -495,13 +490,14 @@ export const Document: React.FC = () => {
 
           {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor} />}
         </div>
-        {commentList.length > 0 && !isReadOnly && (
+        {commentList.length > 0 && (
           <CommentSidebar
             comments={commentList}
             activeCommentId={activeCommentId}
             onCommentClick={handleSidebarCommentClick}
             onUpdateComment={handleUpdateComment}
             onDeleteComment={handleDeleteComment}
+            currentUserId={user?.id}
           />
         )}
       </div>

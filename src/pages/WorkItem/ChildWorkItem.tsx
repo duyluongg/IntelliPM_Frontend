@@ -32,6 +32,7 @@ import TaskDependency from './TaskDependency';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 
 interface SubtaskDetail {
   id: string;
@@ -313,6 +314,31 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ id: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (id: number, createdBy: number) => {
+    setDeleteInfo({ id, createdBy });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
+    try {
+      await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
+
+      // alert("✅ Delete file successfully!");
+      await refetchAttachments();
+      await refetchActivityLogs();
+    } catch (error) {
+      console.error("❌ Error delete file:", error);
+      alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
+    }
+  };
+
   const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
     try {
@@ -410,42 +436,47 @@ const ChildWorkItem: React.FC = () => {
             </div>
 
             {attachments.length > 0 && (
-              <div className='attachments-section'>
-                <label>
+              <div className="attachments-section">
+                <label className="block font-semibold mb-2">
                   Attachments <span>({attachments.length})</span>
                 </label>
-                <div className='attachments-grid'>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                   {attachments.map((file) => (
                     <div
-                      className='attachment-card'
+                      className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
                     >
                       <a
                         href={file.urlFile}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-gray-800 no-underline"
                       >
-                        <div className='thumbnail'>
+                        <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
+                            <img
+                              src={file.urlFile}
+                              alt={file.title}
+                              className="w-[100%] h-[100%] object-cover rounded-lg"
+                            />
                           ) : (
-                            <div className='doc-thumbnail'>
-                              <span className='doc-text'>
-                                {file.title.length > 15
-                                  ? file.title.slice(0, 15) + '...'
-                                  : file.title}
+                            <div className="flex items-center justify-center h-full w-full bg-gray-200">
+                              <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                                {file.title.slice(0, 15)}...
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className='file-meta'>
-                          <div className='file-name' title={file.title}>
+                        <div className="p-1">
+                          <div
+                            className="truncate text-sm font-medium"
+                            title={file.title}
+                          >
                             {file.title}
                           </div>
-                          <div className='file-date'>
+                          <div className="text-xs text-gray-500">
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -453,14 +484,14 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
-                          className='delete-file-btn'
-                          title='Delete file'
+                          onClick={() => openDeleteModal(file.id, file.createdBy)}
+                          className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
+                          title="Delete file"
                         >
                           <img
                             src={deleteIcon}
-                            alt='Delete'
-                            style={{ width: '25px', height: '25px' }}
+                            alt="Delete"
+                            className="w-5 h-5"
                           />
                         </button>
                       )}
@@ -700,7 +731,7 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
@@ -887,7 +918,7 @@ const ChildWorkItem: React.FC = () => {
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
-                          sprintId: subtaskDetail.sprintId ?? 'None',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,
@@ -949,6 +980,13 @@ const ChildWorkItem: React.FC = () => {
           </div>
         </div>
       </div>
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title="Delete this attachment?"
+        message="Once you delete, it's gone for good."
+      />
     </div>
   );
 };

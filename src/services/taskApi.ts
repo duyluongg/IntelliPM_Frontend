@@ -432,10 +432,10 @@ export const taskApi = createApi({
 
     updatePlannedHours: builder.mutation<
       void,
-      { id: string; plannedHours: number }
+      { id: string; plannedHours: number; createdBy: number }
     >({
-      query: ({ id, plannedHours }) => ({
-        url: `task/${id}/planned-hours`,
+      query: ({ id, plannedHours, createdBy }) => ({
+        url: `task/${id}/planned-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

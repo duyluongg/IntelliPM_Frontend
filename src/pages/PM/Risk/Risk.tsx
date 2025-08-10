@@ -345,7 +345,7 @@ const Risk = () => {
                     status={risk.status}
                     onChange={async (newStatus) => {
                       try {
-                        await updateRiskStatus({ id: risk.id, status: newStatus }).unwrap();
+                        await updateRiskStatus({ id: risk.id, status: newStatus, createdBy: accountId }).unwrap();
                         refetch();
                       } catch (err) {
                         console.error('Failed to update status:', err);

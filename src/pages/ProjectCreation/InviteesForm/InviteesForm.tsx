@@ -49,7 +49,10 @@ interface InviteesFormProps {
 const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, onNext, onBack }) => {
   const [invitees, setInvitees] = useState<Invitee[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [showTable, setShowTable] = useState(false);
+  const [showTable, setShowTable] = useState(() => {
+    const saved = localStorage.getItem('projectCreationShowTable');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [newPosition, setNewPosition] = useState('');
   const [viewDetailsMember, setViewDetailsMember] = useState<string | null>(null);
@@ -76,56 +79,103 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     console.log('isAccountError:', isAccountError);
     console.log('showTeamsPopup:', showTeamsPopup);
     console.log('positionData:', positionData);
-  }, [emailCurrent, currentAccount, isAccountLoading, isAccountError, showTeamsPopup, positionData]);
+    console.log('showTable:', showTable);
+    console.log('invitees:', invitees);
+  }, [emailCurrent, currentAccount, isAccountLoading, isAccountError, showTeamsPopup, positionData, showTable, invitees]);
 
-  // Function to format position strings: remove underscores and capitalize first letter of each word
-  const formatPosition = (position: string) => {
-    return position
-      .replace(/_/g, ' ')
-      .split(' ')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  };
+  // Persist showTable to localStorage
+  useEffect(() => {
+    localStorage.setItem('projectCreationShowTable', JSON.stringify(showTable));
+  }, [showTable]);
 
-  // Validate position against positionData
+  // Function to validate position against positionData
   const isValidPosition = (position: string) => {
     return positionData?.data?.some((pos) => pos.name === position) || false;
   };
 
+  // Initialize invitees
   useEffect(() => {
+    console.log('--- useEffect for invitees initialization ---');
+    console.log('serverData:', serverData);
+    console.log('initialData.invitees:', initialData?.invitees);
+    console.log('localStorage.projectFormData:', localStorage.getItem('projectFormData'));
+
+    let newInvitees: Invitee[] = [];
+
+    // Map serverData roles to valid InviteesTable roles
+    const mapRole = (status: string | undefined) => {
+      if (status === 'PENDING') return 'Team Member';
+      if (status === 'ACTIVE') return 'Project Manager';
+      if (status === 'CREATED') return 'Team Member';
+      return status || 'Team Member';
+    };
+
+    // Prioritize serverData
     if (serverData && serverData.length > 0) {
-      setInvitees(
-        serverData.map((member, index) => ({
-          email: member.email || `unknown${index}@example.com`,
-          role: member.status === 'PENDING' ? 'Team Member' : member.status || 'Team Member',
-          positions: member.projectPositions?.map((pos) => pos.position) || [],
-          details: member.accountId
-            ? {
-                yearsExperience: member.accountId === 5 ? 5 : 3,
-                role: member.status || 'Junior Developer',
-                completedProjects: member.accountId === 5 ? 8 : 2,
-                ongoingProjects: 0,
-                pastPositions: ['Developer'],
-                accountId: member.accountId,
-              }
-            : undefined,
-          avatar: member.picture || `https://i.pravatar.cc/40?img=${index + 1}`,
-          accountId: member.accountId,
-        }))
-      );
-      setShowTable(true);
-    } else if (initialData?.invitees && initialData.invitees.length > 0) {
-      setInvitees(
-        initialData.invitees.map((email, index) => ({
-          email,
-          role: 'Team Member',
-          positions: [],
-          details: undefined,
-          avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
-          accountId: undefined,
-        }))
-      );
-      setShowTable(true);
+      console.log('Populating invitees from serverData');
+      newInvitees = serverData.map((member, index) => ({
+        email: member.email || `unknown${index}@example.com`,
+        role: mapRole(member.status),
+        positions: member.projectPositions?.map((pos) => pos.position) || [],
+        details: member.accountId
+          ? {
+              yearsExperience: member.accountId === 5 ? 5 : 3,
+              role: member.status || 'Junior Developer',
+              completedProjects: member.accountId === 5 ? 8 : 2,
+              ongoingProjects: 0,
+              pastPositions: ['Developer'],
+              accountId: member.accountId,
+            }
+          : undefined,
+        avatar: member.picture || `https://i.pravatar.cc/40?img=${index + 1}`,
+        accountId: member.accountId,
+      }));
+    }
+    // Fallback to initialData.invitees
+    else if (initialData?.invitees && initialData.invitees.length > 0) {
+      console.log('Populating invitees from initialData.invitees');
+      newInvitees = initialData.invitees.map((email, index) => ({
+        email,
+        role: 'Team Member',
+        positions: [],
+        details: undefined,
+        avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+        accountId: undefined,
+      }));
+    }
+    // Fallback to localStorage projectFormData
+    else {
+      const savedFormData = localStorage.getItem('projectFormData');
+      if (savedFormData) {
+        const parsedFormData = JSON.parse(savedFormData);
+        if (parsedFormData.invitees && parsedFormData.invitees.length > 0) {
+          console.log('Populating invitees from localStorage.projectFormData');
+          newInvitees = parsedFormData.invitees.map((inv: any, index: number) => ({
+            email: inv.email,
+            role: mapRole(inv.role),
+            positions: inv.positions || [],
+            details: inv.accountId
+              ? {
+                  yearsExperience: inv.accountId === 5 ? 5 : 3,
+                  role: inv.role || 'Junior Developer',
+                  completedProjects: inv.accountId === 5 ? 8 : 2,
+                  ongoingProjects: 0,
+                  pastPositions: inv.positions?.length ? inv.positions : ['Developer'],
+                  accountId: inv.accountId,
+                }
+              : undefined,
+            avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+            accountId: inv.accountId,
+          }));
+        }
+      }
+    }
+
+    if (newInvitees.length > 0) {
+      console.log('Setting invitees:', newInvitees);
+      setInvitees(newInvitees);
+    } else {
+      console.log('No invitees to set');
     }
   }, [serverData, initialData]);
 
@@ -260,7 +310,6 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         if (member.accountPosition && isValidPosition(member.accountPosition)) {
           position = [member.accountPosition];
         } else {
-          // Fallback to fetching position if not provided
           try {
             const response = await checkAccountByEmail(member.accountEmail).unwrap();
             if (response?.isSuccess && response.data?.position && isValidPosition(response.data.position)) {
@@ -489,35 +538,46 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         </div>
 
         <button
-          onClick={() => setShowTable(!showTable)}
+          onClick={() => {
+            console.log('Toggling showTable, current value:', showTable, 'invitees:', invitees);
+            setShowTable(!showTable);
+          }}
           className="w-full mt-5 px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl"
         >
           {showTable ? 'Hide Table' : 'Show Table'}
         </button>
 
+        {console.log('Evaluating showTable condition, showTable:', showTable, 'invitees.length:', invitees.length)}
         {showTable && (
-          <InviteesTable
-            invitees={invitees}
-            positionData={positionData?.data}
-            isPositionLoading={isPositionLoading}
-            expandedMember={expandedMember}
-            setExpandedMember={setExpandedMember}
-            newPosition={newPosition}
-            setNewPosition={setNewPosition}
-            viewDetailsMember={viewDetailsMember}
-            setViewDetailsMember={setViewDetailsMember}
-            handleAddPosition={handleAddPosition}
-            handleRemovePosition={handleRemovePosition}
-            getFullnameFromEmail={getFullnameFromEmail}
-          />
+          <div key={`table-${invitees.length}-${showTable}`} style={{ display: 'block', minHeight: '200px', visibility: 'visible', opacity: 1, position: 'relative' }}>
+            <>
+              {console.log('Rendering InviteesTable, invitees:', invitees, 'showTable:', showTable)}
+              <InviteesTable
+                invitees={invitees}
+                positionData={positionData?.data}
+                isPositionLoading={isPositionLoading}
+                expandedMember={expandedMember}
+                setExpandedMember={setExpandedMember}
+                newPosition={newPosition}
+                setNewPosition={setNewPosition}
+                viewDetailsMember={viewDetailsMember}
+                setViewDetailsMember={setViewDetailsMember}
+                handleAddPosition={handleAddPosition}
+                handleRemovePosition={handleRemovePosition}
+                getFullnameFromEmail={getFullnameFromEmail}
+              />
+            </>
+          </div>
         )}
 
         <div className="mt-10 flex justify-end text-xs">
           <button
             onClick={() => {
+              console.log('Clearing localStorage and going back');
               localStorage.removeItem('projectFormData');
               localStorage.removeItem('projectCreationStep');
               localStorage.removeItem('projectCreationId');
+              localStorage.removeItem('projectCreationShowTable');
               onBack();
             }}
             className="mr-4 px-6 py-4 bg-gray-500 text-white rounded-xl hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl"

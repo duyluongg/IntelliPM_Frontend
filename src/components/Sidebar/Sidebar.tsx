@@ -33,7 +33,7 @@ const menuItems = [
   { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
-  { icon: <Users className='w-5 h-5' />, label: 'Teams' },
+  { icon: <Users className='w-5 h-5' />, label: 'Teams', path: '/account/teams-history' },
   {
     icon: <Rocket className='w-5 h-5' />,
     label: 'Projects',

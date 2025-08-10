@@ -70,16 +70,19 @@ export interface UpdateRiskStatusRequest {
 export interface UpdateRiskTypeRequest {
   id: number;
   type: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskResponsibleRequest {
   id: number;
   responsibleId: number | null;
+  createdBy: number;
 }
 
 export interface UpdateRiskDueDateRequest {
   id: number;
   dueDate: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskTitleRequest {
@@ -91,16 +94,19 @@ export interface UpdateRiskTitleRequest {
 export interface UpdateRiskDescriptionRequest {
   id: number;
   description: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskImpactLevelRequest {
   id: number;
   impactLevel: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskProbabilityRequest {
   id: number;
   probability: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskResponse {
@@ -165,24 +171,24 @@ export const riskApi = createApi({
     }),
 
     updateRiskType: builder.mutation<UpdateRiskResponse, UpdateRiskTypeRequest>({
-      query: ({ id, type }) => ({
-        url: `risk/${id}/type`,
+      query: ({ id, type, createdBy }) => ({
+        url: `risk/${id}/type?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(type),
       }),
     }),
 
     updateRiskResponsible: builder.mutation<UpdateRiskResponse, UpdateRiskResponsibleRequest>({
-      query: ({ id, responsibleId }) => ({
-        url: `risk/${id}/responsible-id`,
+      query: ({ id, responsibleId, createdBy }) => ({
+        url: `risk/${id}/responsible-id?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(responsibleId),
       }),
     }),
 
     updateRiskDueDate: builder.mutation<UpdateRiskResponse, UpdateRiskDueDateRequest>({
-      query: ({ id, dueDate }) => ({
-        url: `risk/${id}/duedate`,
+      query: ({ id, dueDate, createdBy }) => ({
+        url: `risk/${id}/duedate?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(dueDate),
       }),
@@ -197,24 +203,24 @@ export const riskApi = createApi({
     }),
 
     updateRiskDescription: builder.mutation<UpdateRiskResponse, UpdateRiskDescriptionRequest>({
-      query: ({ id, description }) => ({
-        url: `risk/${id}/description`,
+      query: ({ id, description, createdBy }) => ({
+        url: `risk/${id}/description?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(description),
       }),
     }),
 
     updateRiskImpactLevel: builder.mutation<UpdateRiskResponse, UpdateRiskImpactLevelRequest>({
-      query: ({ id, impactLevel }) => ({
-        url: `risk/${id}/impact-level`,
+      query: ({ id, impactLevel, createdBy }) => ({
+        url: `risk/${id}/impact-level?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(impactLevel),
       }),
     }),
 
     updateRiskProbability: builder.mutation<UpdateRiskResponse, UpdateRiskProbabilityRequest>({
-      query: ({ id, probability }) => ({
-        url: `risk/${id}/probability`,
+      query: ({ id, probability, createdBy }) => ({
+        url: `risk/${id}/probability?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(probability),
       }),

@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../constants/api';
 export interface RiskFileDTO {
   id: number;
   riskId: number;
-  filename: string;
+  fileName: string;
   fileUrl: string;
   uploadedBy: number;
   uploadedAt: string;
@@ -53,12 +53,13 @@ export const riskFileApi = createApi({
       },
     }),
 
-    deleteRiskFile: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `riskfile/${id}`,
+    deleteRiskFile: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({id, createdBy}) => ({
+        url: `riskfile/${id}?createdBy=${createdBy}`,
         method: 'DELETE',
       }),
     }),
+
   }),
 });
 

@@ -61,6 +61,15 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
   const [createBulkProjectMembers, { isLoading: isBulkCreating }] = useCreateBulkProjectMembersWithPositionsMutation();
   const [checkAccountByEmail] = useLazyGetAccountByEmailQuery();
 
+  // Function to format position strings: remove underscores and capitalize first letter of each word
+  const formatPosition = (position: string) => {
+    return position
+      .replace(/_/g, ' ')
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   useEffect(() => {
     if (serverData && serverData.length > 0) {
       setInvitees(
@@ -124,7 +133,6 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
   const handleAddInvitee = async () => {
     if (!inputValue.trim()) return;
 
-    // Split input by commas and trim each email
     const emails = inputValue.split(',').map((email) => email.trim()).filter((email) => email);
     const uniqueEmails = emails.filter((email) => !invitees.some((inv) => inv.email === email));
 
@@ -139,7 +147,6 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     const errors: string[] = [];
     const infos: string[] = [];
 
-    // Validate each email
     for (const email of uniqueEmails) {
       if (email === emailCurrent) {
         infos.push(`Your email '${email}' is automatically included.`);
@@ -408,7 +415,6 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
             setViewDetailsMember={setViewDetailsMember}
             handleAddPosition={handleAddPosition}
             handleRemovePosition={handleRemovePosition}
-            handleRoleChange={handleRoleChange}
             getFullnameFromEmail={getFullnameFromEmail}
           />
         )}

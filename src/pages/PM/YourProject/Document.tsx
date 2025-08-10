@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import '../../../components/PM/RichTextEditor/styles.scss';
+import './editor.scss';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyle } from '@tiptap/extension-text-style';
@@ -14,7 +16,7 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
 
 import debounce from 'lodash.debounce';
-import './editor.scss';
+
 
 import MenuBar from './MenuBar';
 import {

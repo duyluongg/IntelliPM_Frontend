@@ -11,6 +11,8 @@ import './CreateMeetingPage.css';
 
 import { useAuth } from '../../../../services/AuthContext';
 import { useShareDocumentViaEmailMutation } from '../../../../services/Document/documentAPI';
+import axios from 'axios';
+import { API_BASE_URL } from '../../../../constants/api';
 
 const CreateMeetingPage: React.FC = () => {
   const { user } = useAuth();
@@ -31,7 +33,6 @@ const CreateMeetingPage: React.FC = () => {
   
 
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
-
 useEffect(() => {
   const shouldCheck =
     meetingDate && startTime && endTime && participantIds.length > 0;
@@ -55,13 +56,9 @@ useEffect(() => {
       queryParams.append('startTime', start);
       queryParams.append('endTime', end);
 
-      const response = await fetch(
-        `https://localhost:7128/api/meetings/check-conflict?${queryParams.toString()}`
+      const { data } = await axios.get(
+        `${API_BASE_URL}meetings/check-conflict?${queryParams.toString()}`
       );
-
-      if (!response.ok) throw new Error('Failed to check conflicts');
-
-      const data = await response.json();
 
       if (data.conflictingAccountIds?.length > 0) {
         const conflictedNames = data.conflictingAccountIds.map((id: number) => {

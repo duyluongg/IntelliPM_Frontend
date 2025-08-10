@@ -100,84 +100,137 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     console.log('initialData.invitees:', initialData?.invitees);
     console.log('localStorage.projectFormData:', localStorage.getItem('projectFormData'));
 
-    let newInvitees: Invitee[] = [];
-
-    // Map serverData roles to valid InviteesTable roles
+    // Map serverData status to valid InviteesTable roles
     const mapRole = (status: string | undefined) => {
       if (status === 'PENDING') return 'Team Member';
       if (status === 'ACTIVE') return 'Project Manager';
       if (status === 'CREATED') return 'Team Member';
-      return status || 'Team Member';
+      return 'Team Member'; // Default to Team Member if status is undefined or unrecognized
     };
 
-    // Prioritize serverData
-    if (serverData && serverData.length > 0) {
-      console.log('Populating invitees from serverData');
-      newInvitees = serverData.map((member, index) => ({
+    // Function to map a single member to an Invitee
+    const mapMemberToInvitee = async (member: ProjectMemberWithPositionsResponse, index: number): Promise<Invitee> => {
+      let role = mapRole(member.status);
+      let position: string[] = member.projectPositions?.map((pos) => pos.position) || [];
+
+      // Fetch role from API if accountId exists
+      if (member.accountId && member.email) {
+        try {
+          const response = await checkAccountByEmail(member.email).unwrap();
+          if (response?.isSuccess && response.data) {
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+            if (response.data.position && isValidPosition(response.data.position) && !position.includes(response.data.position)) {
+              position = [response.data.position];
+            }
+          }
+        } catch (err) {
+          console.log(`Failed to fetch role for ${member.email}:`, err);
+        }
+      }
+
+      return {
         email: member.email || `unknown${index}@example.com`,
-        role: mapRole(member.status),
-        positions: member.projectPositions?.map((pos) => pos.position) || [],
+        role,
+        positions: position,
         details: member.accountId
           ? {
               yearsExperience: member.accountId === 5 ? 5 : 3,
-              role: member.status || 'Junior Developer',
+              role: position[0] || 'Junior Developer',
               completedProjects: member.accountId === 5 ? 8 : 2,
               ongoingProjects: 0,
-              pastPositions: ['Developer'],
+              pastPositions: position.length > 0 ? position : ['Developer'],
               accountId: member.accountId,
             }
           : undefined,
         avatar: member.picture || `https://i.pravatar.cc/40?img=${index + 1}`,
         accountId: member.accountId,
-      }));
-    }
-    // Fallback to initialData.invitees
-    else if (initialData?.invitees && initialData.invitees.length > 0) {
-      console.log('Populating invitees from initialData.invitees');
-      newInvitees = initialData.invitees.map((email, index) => ({
-        email,
-        role: 'Team Member',
-        positions: [],
-        details: undefined,
-        avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
-        accountId: undefined,
-      }));
-    }
-    // Fallback to localStorage projectFormData
-    else {
-      const savedFormData = localStorage.getItem('projectFormData');
-      if (savedFormData) {
-        const parsedFormData = JSON.parse(savedFormData);
-        if (parsedFormData.invitees && parsedFormData.invitees.length > 0) {
-          console.log('Populating invitees from localStorage.projectFormData');
-          newInvitees = parsedFormData.invitees.map((inv: any, index: number) => ({
-            email: inv.email,
-            role: mapRole(inv.role),
-            positions: inv.positions || [],
-            details: inv.accountId
-              ? {
-                  yearsExperience: inv.accountId === 5 ? 5 : 3,
-                  role: inv.role || 'Junior Developer',
-                  completedProjects: inv.accountId === 5 ? 8 : 2,
-                  ongoingProjects: 0,
-                  pastPositions: inv.positions?.length ? inv.positions : ['Developer'],
-                  accountId: inv.accountId,
-                }
-              : undefined,
-            avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
-            accountId: inv.accountId,
-          }));
+      };
+    };
+
+    // Function to map a single localStorage invitee to an Invitee
+    const mapLocalInvitee = async (inv: any, index: number): Promise<Invitee> => {
+      let role = inv.role || 'Team Member';
+      let position: string[] = inv.positions || [];
+
+      // Fetch role from API if accountId exists
+      if (inv.accountId && inv.email) {
+        try {
+          const response = await checkAccountByEmail(inv.email).unwrap();
+          if (response?.isSuccess && response.data) {
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+            if (response.data.position && isValidPosition(response.data.position) && !position.includes(response.data.position)) {
+              position = [response.data.position];
+            }
+          }
+        } catch (err) {
+          console.log(`Failed to fetch role for ${inv.email}:`, err);
         }
       }
-    }
 
-    if (newInvitees.length > 0) {
+      return {
+        email: inv.email,
+        role,
+        positions: position,
+        details: inv.accountId
+          ? {
+              yearsExperience: inv.accountId === 5 ? 5 : 3,
+              role: position[0] || 'Junior Developer',
+              completedProjects: inv.accountId === 5 ? 8 : 2,
+              ongoingProjects: 0,
+              pastPositions: position.length ? position : ['Developer'],
+              accountId: inv.accountId,
+            }
+          : undefined,
+        avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+        accountId: inv.accountId,
+      };
+    };
+
+    // Initialize invitees
+    const initializeInvitees = async () => {
+      let newInvitees: Invitee[] = [];
+
+      // Prioritize serverData
+      if (serverData && serverData.length > 0) {
+        console.log('Populating invitees from serverData');
+        newInvitees = await Promise.all(serverData.map((member, index) => mapMemberToInvitee(member, index)));
+      }
+      // Fallback to initialData.invitees
+      else if (initialData?.invitees && initialData.invitees.length > 0) {
+        console.log('Populating invitees from initialData.invitees');
+        newInvitees = initialData.invitees
+          .filter((email) => email.toLowerCase() !== emailCurrent.toLowerCase()) // Exclude current user's email
+          .map((email, index) => ({
+            email,
+            role: 'Team Member',
+            positions: [],
+            details: undefined,
+            avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+            accountId: undefined,
+          }));
+      }
+      // Fallback to localStorage projectFormData
+      else {
+        const savedFormData = localStorage.getItem('projectFormData');
+        if (savedFormData) {
+          const parsedFormData = JSON.parse(savedFormData);
+          if (parsedFormData.invitees && parsedFormData.invitees.length > 0) {
+            console.log('Populating invitees from localStorage.projectFormData');
+            newInvitees = await Promise.all(
+              parsedFormData.invitees
+                .filter((inv: any) => inv.email.toLowerCase() !== emailCurrent.toLowerCase()) // Exclude current user's email
+                .map((inv: any, index: number) => mapLocalInvitee(inv, index))
+            );
+          }
+        }
+      }
+
       console.log('Setting invitees:', newInvitees);
       setInvitees(newInvitees);
-    } else {
-      console.log('No invitees to set');
-    }
-  }, [serverData, initialData]);
+    };
+
+    initializeInvitees();
+  }, [serverData, initialData, emailCurrent]);
 
   useEffect(() => {
     dispatch(
@@ -208,11 +261,13 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     if (!inputValue.trim()) return;
 
     const emails = inputValue.split(',').map((email) => email.trim()).filter((email) => email);
-    const uniqueEmails = emails.filter((email) => !invitees.some((inv) => inv.email.toLowerCase() === email.toLowerCase()));
+    const uniqueEmails = emails.filter(
+      (email) => !invitees.some((inv) => inv.email.toLowerCase() === email.toLowerCase()) && email.toLowerCase() !== emailCurrent.toLowerCase()
+    );
 
     if (uniqueEmails.length === 0) {
       setIsInvalidEmail(true);
-      setEmailErrors(['All emails are either empty or already added.']);
+      setEmailErrors(['All emails are either empty, already added, or belong to the current user.']);
       setInputValue('');
       return;
     }
@@ -292,47 +347,43 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     );
   };
 
-  const handleRoleChange = (email: string, role: string) => {
-    setInvitees(
-      invitees.map((inv) =>
-        inv.email === email ? { ...inv, role } : inv
-      )
-    );
-  };
-
   const handleAddTeamMembers = async (selectedMembers: { accountId: number; accountEmail: string; accountPicture: string; accountName: string; accountPosition?: string }[]) => {
     console.log('Selected members:', selectedMembers);
     const newInvitees: Invitee[] = [];
+    const errors: string[] = [];
 
     for (const member of selectedMembers) {
-      if (!invitees.some((inv) => inv.email.toLowerCase() === member.accountEmail.toLowerCase())) {
+      if (!invitees.some((inv) => inv.email.toLowerCase() === member.accountEmail.toLowerCase()) && member.accountEmail.toLowerCase() !== emailCurrent.toLowerCase()) {
         let position: string[] = [];
-        if (member.accountPosition && isValidPosition(member.accountPosition)) {
-          position = [member.accountPosition];
-        } else {
-          try {
-            const response = await checkAccountByEmail(member.accountEmail).unwrap();
-            if (response?.isSuccess && response.data?.position && isValidPosition(response.data.position)) {
+        let role = 'Team Member'; // Default role
+        try {
+          const response = await checkAccountByEmail(member.accountEmail).unwrap();
+          if (response?.isSuccess && response.data) {
+            if (response.data.position && isValidPosition(response.data.position)) {
               position = [response.data.position];
             }
-          } catch (err) {
-            console.log(`Failed to fetch position for ${member.accountEmail}:`, err);
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+          } else {
+            errors.push(`No valid account data for '${member.accountEmail}'. Added as Team Member.`);
           }
+        } catch (err) {
+          console.log(`Failed to fetch details for ${member.accountEmail}:`, err);
+          errors.push(`Failed to fetch details for '${member.accountEmail}'. Added as Team Member.`);
         }
 
         const newInvitee: Invitee = {
           email: member.accountEmail,
-          role: 'Team Member',
-          positions: position,
+          role,
+          positions: position.length > 0 ? position : member.accountPosition && isValidPosition(member.accountPosition) ? [member.accountPosition] : [],
           details: {
-            yearsExperience: 3,
+            yearsExperience: member.accountId === 5 ? 5 : 3,
             role: member.accountPosition || 'Junior Developer',
-            completedProjects: 2,
+            completedProjects: member.accountId === 5 ? 8 : 2,
             ongoingProjects: 0,
             pastPositions: member.accountPosition ? [member.accountPosition] : ['Developer'],
             accountId: member.accountId,
           },
-          avatar: member.accountPicture,
+          avatar: member.accountPicture || `https://i.pravatar.cc/40?img=${invitees.length + newInvitees.length + 1}`,
           accountId: member.accountId,
         };
         newInvitees.push(newInvitee);
@@ -342,6 +393,9 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     if (newInvitees.length > 0) {
       setInvitees([...invitees, ...newInvitees]);
       setInfoMessages([...infoMessages, `Added ${newInvitees.length} members from previous teams.`]);
+    }
+    if (errors.length > 0) {
+      setEmailErrors([...emailErrors, ...errors]);
     }
   };
 
@@ -547,7 +601,6 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           {showTable ? 'Hide Table' : 'Show Table'}
         </button>
 
-        {console.log('Evaluating showTable condition, showTable:', showTable, 'invitees.length:', invitees.length)}
         {showTable && (
           <div key={`table-${invitees.length}-${showTable}`} style={{ display: 'block', minHeight: '200px', visibility: 'visible', opacity: 1, position: 'relative' }}>
             <>
@@ -599,7 +652,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           accountId={currentAccount.data.id}
           onClose={() => setShowTeamsPopup(false)}
           onAddSelected={handleAddTeamMembers}
-          existingEmails={invitees.map((inv) => inv.email)}
+          existingEmails={[...invitees.map((inv) => inv.email), emailCurrent]} // Include emailCurrent in existingEmails
         />
       )}
     </div>

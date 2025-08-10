@@ -95,7 +95,7 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
     <div className='mt-6 space-y-6'>
       {projectManagers.length > 0 && (
         <div className='p-6 bg-gradient-to-br from-[#e6f0fd] to-white rounded-xl shadow-lg border border-[#d1e0f8]'>
-          <h3 className='text-xl font-semibold text-[#1c73fd] mb-4'>Project Manager</h3>
+          <h3 className='text-xl font-semibold text-[#1c73fd] mb-4'>Project Managers</h3>
           <div className='overflow-x-auto'>
             <table className='w-full bg-white rounded-lg border-collapse border border-[#d1e0f8] min-w-[700px] md:min-w-[500px]'>
               <thead>

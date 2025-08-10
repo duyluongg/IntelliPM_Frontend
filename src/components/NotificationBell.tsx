@@ -7,15 +7,19 @@ import {
 import { useGetAllNotificationsQuery } from '../services/notificationApi';
 import { connection } from '../services/SignalR/signalRConnection';
 import { useNavigate } from 'react-router-dom';
-import { useSearchParams } from 'react-router-dom';
-import { useParams } from 'react-router-dom';
+
 
 interface NotificationBellProps {
   accountId: number;
 }
 
+type NotiExtra = {
+  relatedEntityType?: string | null;
+  relatedEntityId?: number | null;
+};
+
 const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
-  const [searchParams] = useSearchParams();
+
   // const { projectKey: paramProjectKey } = useParams();
   // const queryProjectKey = searchParams.get('projectKey');
   // const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
@@ -33,8 +37,50 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
     refetch();
   };
 
-  const handleNotificationClick = async (recipientId: number, message: string) => {
+  // const handleNotificationClick = async (recipientId: number, message: string) => {
+  //   await handleMarkAsRead(recipientId);
+  //   console.log('Notification message:', message);
+
+  //   const projectMatch = message.match(/project (\w+)/i);
+  //   const taskMatch = message.match(/task (\w+-\d+)/i);
+  //   const subtaskMatch = message.match(/subtask (\w+-\d+)/i);
+  //   const epicMatch = message.match(/epic (\w+-\d+)/i);
+  //   const riskMatch = message.match(/risk\s+([A-Z0-9]+-[A-Z0-9]+)/i);
+
+  //   const projectKey = projectMatch?.[1];
+  //   console.log('✅ projectKey:', projectKey);
+  //   console.log('Parsed matches:');
+  //   console.log('Task:', taskMatch?.[1]);
+  //   console.log('Subtask:', subtaskMatch?.[1]);
+  //   console.log('Epic:', epicMatch?.[1]);
+  //   console.log('Risk:', riskMatch?.[1]);
+
+  //   console.log('Final navigation link:', `/project/${projectKey}/risk/${riskMatch?.[1]}`);
+  //   console.log('Params:', { projectKey, riskKey: riskMatch?.[1] });
+
+  //   if (subtaskMatch?.[1]) {
+  //     navigate(`/project/${projectKey}/child-work/${subtaskMatch[1]}`);
+  //   } else if (epicMatch?.[1]) {
+  //     navigate(`/project/epic/${epicMatch[1]}`);
+  //   } else if (taskMatch?.[1]) {
+  //     navigate(`/project/${projectKey}/work-item-detail?taskId=${taskMatch[1]}`);
+  //   } else if (riskMatch?.[1]) {
+  //     navigate(`/project/${projectKey}/risk/${riskMatch[1]}`);
+  //   }
+  // };
+
+  const handleNotificationClick = async (
+    recipientId: number,
+    message: string,
+    extra?: NotiExtra
+  ) => {
     await handleMarkAsRead(recipientId);
+
+    if (extra?.relatedEntityType?.toUpperCase() === 'DOCUMENT' && extra?.relatedEntityId) {
+      navigate(`/project/projects/form/document/${extra.relatedEntityId}`);
+      return;
+    }
+
     console.log('Notification message:', message);
 
     const projectMatch = message.match(/project (\w+)/i);
@@ -103,6 +149,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  console.log(recipientNotis);
+
   return (
     <div className='relative' ref={dropdownRef}>
       <button
@@ -135,7 +183,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
                   key={recipient.notificationId}
                   onClick={async () => {
                     await handleMarkAsRead(recipient.notificationId);
-                    handleNotificationClick(recipient.notificationId, notification?.message ?? '');
+                    handleNotificationClick(recipient.notificationId, notification?.message ?? '', {
+                      relatedEntityType: notification?.relatedEntityType,
+                      relatedEntityId: notification?.relatedEntityId,
+                    });
                   }}
                   className={`px-4 py-3 cursor-pointer border-b border-gray-100 transition duration-200 ${
                     isUnread ? 'bg-gray-100 hover:bg-gray-200' : 'hover:bg-gray-50'

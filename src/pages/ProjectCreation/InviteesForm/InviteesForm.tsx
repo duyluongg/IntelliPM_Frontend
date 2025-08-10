@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useLazyGetAccountByEmailQuery } from '../../../services/accountApi';
+import { useLazyGetAccountByEmailQuery, useGetAccountByEmailQuery } from '../../../services/accountApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useCreateBulkProjectMembersWithPositionsMutation } from '../../../services/projectMemberApi';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectProjectId, setFormData } from '../../../components/slices/Project/projectCreationSlice';
 import InviteesTable from './InviteesTable';
+import TeamsPopup from './TeamsPopup';
 import type { ProjectMemberWithPositionsResponse } from '../../../services/projectMemberApi';
+import { Users } from 'lucide-react';
 
 interface InviteeDetails {
   yearsExperience: number;
@@ -22,6 +24,7 @@ interface Invitee {
   positions: string[];
   details?: InviteeDetails;
   avatar?: string;
+  accountId?: number;
 }
 
 interface InviteesFormProps {
@@ -53,13 +56,27 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
   const [emailErrors, setEmailErrors] = useState<string[]>([]);
   const [infoMessages, setInfoMessages] = useState<string[]>([]);
   const [isInvalidEmail, setIsInvalidEmail] = useState(false);
+  const [showTeamsPopup, setShowTeamsPopup] = useState(false);
   const emailCurrent = localStorage.getItem('email') || '';
 
+  const { data: currentAccount, isLoading: isAccountLoading, isError: isAccountError } = useGetAccountByEmailQuery(emailCurrent, {
+    skip: !emailCurrent,
+  });
   const { data: positionData, isLoading: isPositionLoading } = useGetCategoriesByGroupQuery('account_position');
   const projectId = useSelector(selectProjectId);
   const dispatch = useDispatch();
   const [createBulkProjectMembers, { isLoading: isBulkCreating }] = useCreateBulkProjectMembersWithPositionsMutation();
   const [checkAccountByEmail] = useLazyGetAccountByEmailQuery();
+
+  // Debugging logs
+  useEffect(() => {
+    console.log('emailCurrent:', emailCurrent);
+    console.log('currentAccount:', currentAccount);
+    console.log('isAccountLoading:', isAccountLoading);
+    console.log('isAccountError:', isAccountError);
+    console.log('showTeamsPopup:', showTeamsPopup);
+    console.log('positionData:', positionData);
+  }, [emailCurrent, currentAccount, isAccountLoading, isAccountError, showTeamsPopup, positionData]);
 
   // Function to format position strings: remove underscores and capitalize first letter of each word
   const formatPosition = (position: string) => {
@@ -68,6 +85,11 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
       .split(' ')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
+  };
+
+  // Validate position against positionData
+  const isValidPosition = (position: string) => {
+    return positionData?.data?.some((pos) => pos.name === position) || false;
   };
 
   useEffect(() => {
@@ -88,6 +110,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
               }
             : undefined,
           avatar: member.picture || `https://i.pravatar.cc/40?img=${index + 1}`,
+          accountId: member.accountId,
         }))
       );
       setShowTable(true);
@@ -96,9 +119,10 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         initialData.invitees.map((email, index) => ({
           email,
           role: 'Team Member',
-          positions: ['Developer'],
+          positions: [],
           details: undefined,
           avatar: `https://i.pravatar.cc/40?img=${index + 1}`,
+          accountId: undefined,
         }))
       );
       setShowTable(true);
@@ -112,7 +136,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           email: inv.email,
           role: inv.role,
           positions: inv.positions,
-          accountId: inv.details?.accountId,
+          accountId: inv.accountId,
         })),
       })
     );
@@ -124,7 +148,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           email: inv.email,
           role: inv.role,
           positions: inv.positions,
-          accountId: inv.details?.accountId,
+          accountId: inv.accountId,
         })),
       })
     );
@@ -134,7 +158,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     if (!inputValue.trim()) return;
 
     const emails = inputValue.split(',').map((email) => email.trim()).filter((email) => email);
-    const uniqueEmails = emails.filter((email) => !invitees.some((inv) => inv.email === email));
+    const uniqueEmails = emails.filter((email) => !invitees.some((inv) => inv.email.toLowerCase() === email.toLowerCase()));
 
     if (uniqueEmails.length === 0) {
       setIsInvalidEmail(true);
@@ -148,7 +172,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     const infos: string[] = [];
 
     for (const email of uniqueEmails) {
-      if (email === emailCurrent) {
+      if (email.toLowerCase() === emailCurrent.toLowerCase()) {
         infos.push(`Your email '${email}' is automatically included.`);
         continue;
       }
@@ -160,26 +184,21 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           continue;
         }
 
-        const newRole =
-          response.data.role === 'PROJECT_MANAGER'
-            ? 'Project Manager'
-            : response.data.role === 'CLIENT'
-            ? 'Client'
-            : 'Team Member';
-        const initialPosition = response.data.position || 'Developer';
+        const position = response.data.position && isValidPosition(response.data.position) ? [response.data.position] : [];
         const newInvitee: Invitee = {
           email,
-          role: newRole,
-          positions: [initialPosition],
+          role: response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member',
+          positions: position,
           details: {
             yearsExperience: response.data.id === 5 ? 5 : 3,
             role: response.data.position || 'Junior Developer',
             completedProjects: response.data.id === 5 ? 8 : 2,
             ongoingProjects: 0,
-            pastPositions: ['Developer'],
+            pastPositions: response.data.position ? [response.data.position] : ['Developer'],
             accountId: response.data.id,
           },
           avatar: response.data?.picture || `https://i.pravatar.cc/40?img=${invitees.length + newInvitees.length + 1}`,
+          accountId: response.data.id,
         };
         newInvitees.push(newInvitee);
       } catch (err) {
@@ -198,7 +217,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
   };
 
   const handleRemoveInvitee = (email: string) => {
-    setInvitees(invitees.filter((inv) => inv.email !== email));
+    setInvitees(invitees.filter((inv) => inv.email.toLowerCase() !== email.toLowerCase()));
     setEmailErrors(emailErrors.filter((err) => !err.includes(`'${email}'`)));
     setInfoMessages(infoMessages.filter((msg) => !msg.includes(`'${email}'`)));
   };
@@ -231,6 +250,52 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     );
   };
 
+  const handleAddTeamMembers = async (selectedMembers: { accountId: number; accountEmail: string; accountPicture: string; accountName: string; accountPosition?: string }[]) => {
+    console.log('Selected members:', selectedMembers);
+    const newInvitees: Invitee[] = [];
+
+    for (const member of selectedMembers) {
+      if (!invitees.some((inv) => inv.email.toLowerCase() === member.accountEmail.toLowerCase())) {
+        let position: string[] = [];
+        if (member.accountPosition && isValidPosition(member.accountPosition)) {
+          position = [member.accountPosition];
+        } else {
+          // Fallback to fetching position if not provided
+          try {
+            const response = await checkAccountByEmail(member.accountEmail).unwrap();
+            if (response?.isSuccess && response.data?.position && isValidPosition(response.data.position)) {
+              position = [response.data.position];
+            }
+          } catch (err) {
+            console.log(`Failed to fetch position for ${member.accountEmail}:`, err);
+          }
+        }
+
+        const newInvitee: Invitee = {
+          email: member.accountEmail,
+          role: 'Team Member',
+          positions: position,
+          details: {
+            yearsExperience: 3,
+            role: member.accountPosition || 'Junior Developer',
+            completedProjects: 2,
+            ongoingProjects: 0,
+            pastPositions: member.accountPosition ? [member.accountPosition] : ['Developer'],
+            accountId: member.accountId,
+          },
+          avatar: member.accountPicture,
+          accountId: member.accountId,
+        };
+        newInvitees.push(newInvitee);
+      }
+    }
+
+    if (newInvitees.length > 0) {
+      setInvitees([...invitees, ...newInvitees]);
+      setInfoMessages([...infoMessages, `Added ${newInvitees.length} members from previous teams.`]);
+    }
+  };
+
   const handleContinue = async () => {
     if (!projectId) {
       console.error('Project ID is not available');
@@ -240,12 +305,12 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
 
     let uniqueInvitees = invitees.filter(
       (invitee) =>
-        invitee.details?.accountId !== undefined &&
-        !invitees.some((inv) => inv.details?.accountId === invitee.details?.accountId && inv.email !== invitee.email)
+        invitee.accountId !== undefined &&
+        !invitees.some((inv) => inv.accountId === invitee.accountId && inv.email.toLowerCase() !== invitee.email.toLowerCase())
     );
 
     let requests = uniqueInvitees.map((invitee) => ({
-      accountId: invitee.details?.accountId || 0,
+      accountId: invitee.accountId || 0,
       positions: invitee.positions,
     }));
 
@@ -263,7 +328,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
                 email: inv.email,
                 role: inv.role,
                 positions: inv.positions,
-                accountId: inv.details?.accountId,
+                accountId: inv.accountId,
               })),
             })
           );
@@ -281,9 +346,9 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           const match = err.data.message.match(/Account ID (\d+)/);
           if (match && match[1]) {
             const duplicateAccountId = parseInt(match[1], 10);
-            uniqueInvitees = uniqueInvitees.filter((inv) => inv.details?.accountId !== duplicateAccountId);
+            uniqueInvitees = uniqueInvitees.filter((inv) => inv.accountId !== duplicateAccountId);
             requests = uniqueInvitees.map((invitee) => ({
-              accountId: invitee.details?.accountId || 0,
+              accountId: invitee.accountId || 0,
               positions: invitee.positions,
             }));
             setInvitees(uniqueInvitees);
@@ -315,17 +380,45 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
   };
 
   const getFullnameFromEmail = (email: string) => {
-    return email.split('@')[0] || email;
+    const serverMember = serverData?.find((member) => member.email && member.email.toLowerCase() === email.toLowerCase());
+    if (serverMember) {
+      return serverMember.accountName || email.split('@')[0];
+    }
+    return email.split('@')[0];
   };
 
   return (
     <div className="bg-white p-10 rounded-2xl shadow-xl border border-gray-100 text-sm">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent">
-        Bring the Team with You
-      </h1>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-3xl font-extrabold text-gray-900 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] bg-clip-text text-transparent">
+          Bring the Team with You
+        </h1>
+        <button
+          onClick={() => {
+            console.log('Opening TeamsPopup, showTeamsPopup:', showTeamsPopup, 'accountId:', currentAccount?.data?.id);
+            setShowTeamsPopup(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white rounded-lg transition duration-200 ease-in-out"
+          aria-label="View previous teams"
+          disabled={isAccountLoading || isAccountError || !emailCurrent}
+        >
+          <Users size={20} />
+          Previous Teams
+        </button>
+      </div>
       <p className="text-gray-600 mb-8 text-base leading-relaxed">
         Invite your teammates to collaborate on this project and achieve greatness together. Enter one email or a comma-separated list (e.g., email1@example.com, email2@example.com). Your email is automatically included.
       </p>
+      {isAccountError && (
+        <div className="text-red-500 text-sm mb-4">
+          <p>Error loading account information. Please ensure you are logged in.</p>
+        </div>
+      )}
+      {!emailCurrent && (
+        <div className="text-red-500 text-sm mb-4">
+          <p>No email found in localStorage. Please log in to view previous teams.</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4">
@@ -440,6 +533,15 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           </button>
         </div>
       </div>
+
+      {showTeamsPopup && currentAccount?.data?.id && (
+        <TeamsPopup
+          accountId={currentAccount.data.id}
+          onClose={() => setShowTeamsPopup(false)}
+          onAddSelected={handleAddTeamMembers}
+          existingEmails={invitees.map((inv) => inv.email)}
+        />
+      )}
     </div>
   );
 };

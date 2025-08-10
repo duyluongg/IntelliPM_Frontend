@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookUser } from 'lucide-react';
+import { BookUser, Plus } from 'lucide-react';
 import ProfilePopup from './ProfilePopup';
 import PositionPopup from './PositionPopup';
 
@@ -100,35 +100,33 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
             <table className='w-full bg-white rounded-lg border-collapse border border-[#d1e0f8] min-w-[700px] md:min-w-[500px]'>
               <thead>
                 <tr className='bg-[#e6f0fd] text-left text-sm font-medium text-[#1c73fd]'>
-                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[100px]'>Avatar</th>
-                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[200px]'>Email</th>
-                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[150px]'>Fullname</th>
-                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[200px]'>Positions</th>
-                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[150px] text-center'>
-                    Actions
-                  </th>
+                  <th className='px-4 py-4 border-b-2 border-[#d1e0f8] min-w-[60px] text-center'>Avatar</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[220px]'>Email</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[160px]'>Fullname</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[160px]'>Positions</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[150px] text-center'>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {projectManagers.map((manager) => (
                   <tr key={manager.email} className='hover:bg-[#e6f0fd] transition-colors'>
-                    <td className='px-6 py-4'>
+                    <td className='px-4 py-4 text-center'>
                       {manager.avatar && (
                         <img
                           src={manager.avatar}
                           alt={`${getFullnameFromEmail(manager.email)} avatar`}
-                          className='w-10 h-10 rounded-full'
+                          className='w-8 h-8 rounded-full mx-auto'
                         />
                       )}
                     </td>
                     <td className='px-6 py-4 text-sm'>{manager.email}</td>
                     <td className='px-6 py-4 text-sm'>{getFullnameFromEmail(manager.email)}</td>
                     <td className='px-6 py-4'>
-                      <div className='flex flex-wrap gap-2'>
+                      <div className='flex flex-wrap gap-1.5'>
                         {manager.positions.map((position) => (
                           <span
                             key={position}
-                            className='bg-[#e6f0fd] text-[#1c73fd] text-xs px-3 py-1.5 rounded-full hover:bg-[#d1e0f8] transition'
+                            className='bg-[#e6f0fd] text-[#1c73fd] text-[14px] px-2 py-1 rounded-full hover:bg-[#d1e0f8] transition'
                           >
                             {formatPosition(position)}
                           </span>
@@ -159,35 +157,33 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
             <table className='w-full bg-white rounded-lg border-collapse border border-[#c2d6f8] min-w-[700px] md:min-w-[500px]'>
               <thead>
                 <tr className='bg-[#eef5ff] text-left text-sm font-medium text-[#1c73fd]'>
-                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[100px]'>Avatar</th>
-                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[200px]'>Email</th>
-                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[150px]'>Fullname</th>
-                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[200px]'>Positions</th>
-                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[150px] text-center'>
-                    Actions
-                  </th>
+                  <th className='px-4 py-4 border-b-2 border-[#c2d6f8] min-w-[60px] text-center'>Avatar</th>
+                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[220px]'>Email</th>
+                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[160px]'>Fullname</th>
+                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[160px]'>Positions</th>
+                  <th className='px-6 py-4 border-b-2 border-[#c2d6f8] min-w-[150px] text-center'>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.email} className='hover:bg-[#eef5ff] transition-colors'>
-                    <td className='px-6 py-4'>
+                    <td className='px-4 py-4 text-center'>
                       {client.avatar && (
                         <img
                           src={client.avatar}
                           alt={`${getFullnameFromEmail(client.email)} avatar`}
-                          className='w-10 h-10 rounded-full'
+                          className='w-8 h-8 rounded-full mx-auto'
                         />
                       )}
                     </td>
                     <td className='px-6 py-4 text-sm'>{client.email}</td>
                     <td className='px-6 py-4 text-sm'>{getFullnameFromEmail(client.email)}</td>
                     <td className='px-6 py-4'>
-                      <div className='flex flex-wrap gap-2'>
+                      <div className='flex flex-wrap gap-1.5'>
                         {client.positions.map((position) => (
                           <span
                             key={position}
-                            className='bg-[#eef5ff] text-[#1c73fd] text-xs px-3 py-1.5 rounded-full hover:bg-[#d1e0f8] transition'
+                            className='bg-[#eef5ff] text-[#1c73fd] text-[14px] px-2 py-1 rounded-full hover:bg-[#d1e0f8] transition'
                           >
                             {formatPosition(position)}
                           </span>
@@ -218,36 +214,34 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
             <table className='w-full bg-white rounded-lg border-collapse border border-[#e0e6ed] min-w-[700px] md:min-w-[500px]'>
               <thead>
                 <tr className='bg-[#f5f7fa] text-left text-sm font-medium text-gray-700'>
-                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[100px]'>Avatar</th>
-                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[200px]'>Email</th>
-                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[150px]'>Fullname</th>
-                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[200px]'>Positions</th>
-                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[150px] text-center'>
-                    Actions
-                  </th>
+                  <th className='px-4 py-4 border-b-2 border-[#e0e6ed] min-w-[60px] text-center'>Avatar</th>
+                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[220px]'>Email</th>
+                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[160px]'>Fullname</th>
+                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[160px]'>Positions</th>
+                  <th className='px-6 py-4 border-b-2 border-[#e0e6ed] min-w-[150px] text-center'>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {teamMembers.map((member) => (
                   <React.Fragment key={member.email}>
                     <tr className='hover:bg-[#f5f7fa] transition-colors'>
-                      <td className='px-6 py-4'>
+                      <td className='px-4 py-4 text-center'>
                         {member.avatar && (
                           <img
                             src={member.avatar}
                             alt={`${getFullnameFromEmail(member.email)} avatar`}
-                            className='w-10 h-10 rounded-full'
+                            className='w-8 h-8 rounded-full mx-auto'
                           />
                         )}
                       </td>
                       <td className='px-6 py-4 text-sm'>{member.email}</td>
                       <td className='px-6 py-4 text-sm'>{getFullnameFromEmail(member.email)}</td>
                       <td className='px-6 py-4'>
-                        <div className='flex flex-wrap gap-2'>
+                        <div className='flex flex-wrap gap-1.5'>
                           {member.positions.map((position) => (
                             <span
                               key={position}
-                              className='bg-[#e6f0fd] text-[#1c73fd] text-xs px-3 py-1.5 rounded-full hover:bg-[#d1e0f8] transition'
+                              className='bg-[#e6f0fd] text-[#1c73fd] text-[14px] px-2 py-1 rounded-full hover:bg-[#d1e0f8] transition'
                             >
                               {formatPosition(position)}
                             </span>
@@ -257,13 +251,11 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
                       <td className='px-6 py-4 flex items-center justify-center gap-3'>
                         <button
                           onClick={() => handlePositionPopupOpen(member.email)}
-                          className='flex items-center gap-2 bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white px-3 py-2 rounded-lg transition duration-200 ease-in-out text-sm font-medium'
-                          aria-label='Manage positions'
+                          className='bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white p-2 rounded-lg transition duration-200 ease-in-out'
+                          aria-label='Add positions'
                         >
-                          <span className='text-lg font-bold'>+</span>
-                          Positions
+                          <Plus size={20} />
                         </button>
-
                         <button
                           onClick={() => handleProfilePopupOpen(member.email)}
                           className='bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white p-2 rounded-lg transition duration-200 ease-in-out'
@@ -282,12 +274,12 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
                               maxHeight: expandedMember === member.email ? '300px' : '0',
                             }}
                           >
-                            <div className='p-5'>
-                              <div className='flex gap-4 mb-4'>
+                            <div className='p-4'>
+                              <div className='flex gap-3 mb-3'>
                                 <select
                                   value={newPosition}
                                   onChange={(e) => setNewPosition(e.target.value)}
-                                  className='flex-1 px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c73fd]/30 focus:border-[#1c73fd] transition-all text-sm'
+                                  className='flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1c73fd]/30 focus:border-[#1c73fd] transition-all text-sm'
                                 >
                                   <option value=''>Select a position</option>
                                   {positionData?.map((pos) => (
@@ -298,24 +290,24 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
                                 </select>
                                 <button
                                   onClick={() => handleAddPosition(member.email, newPosition)}
-                                  className='px-4 py-2.5 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-md text-sm'
+                                  className='px-3 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-md text-sm'
                                   disabled={!newPosition || isPositionLoading}
                                 >
                                   {isPositionLoading ? 'Loading...' : 'Add'}
                                 </button>
                               </div>
-                              <div className='space-y-2'>
+                              <div className='space-y-1.5'>
                                 {member.positions.map((position) => (
                                   <div
                                     key={position}
-                                    className='flex items-center justify-between bg-[#e6f0fd] px-4 py-2 rounded-lg hover:bg-[#d1e0f8] transition'
+                                    className='flex items-center justify-between bg-[#e6f0fd] px-3 py-1.5 rounded-lg hover:bg-[#d1e0f8] transition'
                                   >
-                                    <span className='text-[#1c73fd] text-sm'>
+                                    <span className='text-[#1c73fd] text-xs'>
                                       {formatPosition(position)}
                                     </span>
                                     <button
                                       onClick={() => handleRemovePosition(member.email, position)}
-                                      className='text-[#1c73fd] hover:text-[#155ac7] text-sm transition'
+                                      className='text-[#1c73fd] hover:text-[#155ac7] text-xs transition'
                                     >
                                       Remove
                                     </button>

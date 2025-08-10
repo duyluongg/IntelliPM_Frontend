@@ -1,7 +1,8 @@
-import React from "react";
-import { X, User, Mail, Calendar, Award, Folder } from "lucide-react";
-import { useGetProfileByEmailQuery } from "../../../services/accountApi";
-import type { Profile } from "../../../services/accountApi";
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { X, User, Mail, Calendar, Award, Folder } from 'lucide-react';
+import { useGetProfileByEmailQuery } from '../../../services/accountApi';
+import type { Profile } from '../../../services/accountApi';
 
 interface ProfilePopupProps {
   email: string;
@@ -14,14 +15,14 @@ const ProfilePopup: React.FC<ProfilePopupProps> = ({ email, onClose, getFullname
 
   const formatPosition = (position: string) =>
     position
-      .replace(/_/g, " ")
-      .split(" ")
+      .replace(/_/g, ' ')
+      .split(' ')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
+      .join(' ');
 
-  return (
+  const popupContent = (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[85vh] overflow-y-auto transform animate-scaleIn">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[85vh] overflow-y-auto animate-scaleIn">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -37,8 +38,16 @@ const ProfilePopup: React.FC<ProfilePopupProps> = ({ email, onClose, getFullname
           <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center gap-4 border-b pb-4">
-              <div className="w-16 h-16 rounded-full bg-[#e6f0fd] flex items-center justify-center shadow-md">
-                <User className="text-[#1c73fd]" size={32} />
+              <div className="w-16 h-16 rounded-full bg-[#e6f0fd] flex items-center justify-center shadow-md overflow-hidden">
+                {profileData.data.picture ? (
+                  <img
+                    src={profileData.data.picture}
+                    alt={profileData.data.fullName}
+                    className="w-16 h-16 object-cover rounded-full"
+                  />
+                ) : (
+                  <User className="text-[#1c73fd]" size={32} />
+                )}
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[#1c73fd]">{profileData.data.fullName}</h2>
@@ -57,7 +66,7 @@ const ProfilePopup: React.FC<ProfilePopupProps> = ({ email, onClose, getFullname
                 <span>
                   {profileData.data.dateOfBirth
                     ? new Date(profileData.data.dateOfBirth).toLocaleDateString()
-                    : "N/A"}
+                    : 'N/A'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -88,8 +97,8 @@ const ProfilePopup: React.FC<ProfilePopupProps> = ({ email, onClose, getFullname
               <div className="bg-gray-50 rounded-lg p-3 shadow-inner">
                 <p className="text-sm text-gray-600">
                   {profileData.data.positionsList.length > 0
-                    ? profileData.data.positionsList.map(formatPosition).join(", ")
-                    : "No past positions"}
+                    ? profileData.data.positionsList.map(formatPosition).join(', ')
+                    : 'No past positions'}
                 </p>
               </div>
             </div>
@@ -133,27 +142,19 @@ const ProfilePopup: React.FC<ProfilePopupProps> = ({ email, onClose, getFullname
             animation: scaleIn 0.3s ease-in-out;
           }
           @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
           @keyframes scaleIn {
-            from {
-              opacity: 0;
-              transform: scale(0.95);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
           }
         `}
       </style>
     </div>
   );
+
+  return ReactDOM.createPortal(popupContent, document.body);
 };
 
 export default ProfilePopup;

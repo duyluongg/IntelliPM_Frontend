@@ -134,16 +134,14 @@ const DocumentTypeSelector: React.FC = () => {
       // epicId: '',
       // subTaskId: '',
       title: title,
-      type: selectedType,
       template: '',
       content: '',
-      fileUrl: '',
       visibility: selectedType,
     };
 
     try {
       const res = await createDocument(payload).unwrap();
-      navigate(`/project/projects/form/document/${res.id}`);
+      navigate(`/project/projects/form/document/${res.data.id}`);
     } catch (err) {
       console.error('Error creating document:', err);
       alert('Tạo document thất bại');

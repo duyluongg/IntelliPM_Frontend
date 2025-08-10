@@ -37,6 +37,7 @@ export type ApiResponse<T> = {
 
 export const documentApi = createApi({
   reducerPath: 'documentApi',
+  tagTypes: ['Documents'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -210,6 +211,13 @@ export const documentApi = createApi({
     getDocumentsByProjectId: builder.query<DocumentType[], number>({
       query: (projectId) => `documents/project/${projectId}`,
       transformResponse: (response: ApiResponse<DocumentType[]>) => response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              { type: 'Documents', id: 'LIST' },
+              ...result.map((d) => ({ type: 'Documents' as const, id: d.id })),
+            ]
+          : [{ type: 'Documents', id: 'LIST' }],
     }),
 
     deleteDocument: builder.mutation<void, number>({
@@ -217,6 +225,10 @@ export const documentApi = createApi({
         url: `documents/${id}`,
         method: 'DELETE',
       }),
+      invalidatesTags: (_result, _error, _id) => [
+        { type: 'Documents', id: 'LIST' },
+        { type: 'Documents', id: _id },
+      ],
     }),
   }),
 });

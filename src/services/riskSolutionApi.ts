@@ -28,16 +28,19 @@ export interface CreateRiskSolutionRequest {
   riskId: number;
   mitigationPlan: string | null;
   contingencyPlan: string | null;
+  createdBy: number;
 }
 
 export interface UpdateMitigationPlanRequest {
   id: number;
   mitigationPlan: string | null;
+  createdBy : number;
 }
 
 export interface UpdateContigencyPlanRequest {
   id: number;
   contigencyPlan: string | null;
+  createdBy: number;
 }
 
 export const riskSolutionApi = createApi({
@@ -67,16 +70,16 @@ export const riskSolutionApi = createApi({
     }),
 
     updateRiskMitigationPlan: builder.mutation<RiskSolutionResponse, UpdateMitigationPlanRequest>({
-      query: ({ id, mitigationPlan }) => ({
-        url: `risksolution/${id}/mitigation-plan`,
+      query: ({ id, mitigationPlan, createdBy }) => ({
+        url: `risksolution/${id}/mitigation-plan?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(mitigationPlan),
       }),
     }),
 
     updateRiskContigencyPlan: builder.mutation<RiskSolutionResponse, UpdateContigencyPlanRequest>({
-      query: ({ id, contigencyPlan }) => ({
-        url: `risksolution/${id}/contigency-plan`,
+      query: ({ id, contigencyPlan, createdBy }) => ({
+        url: `risksolution/${id}/contigency-plan?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(contigencyPlan),
       }),
@@ -85,6 +88,20 @@ export const riskSolutionApi = createApi({
     deleteRiskSolution: builder.mutation<void, number>({
       query: (id) => ({
         url: `risksolution/${id}`,
+        method: 'DELETE',
+      }),
+    }),
+
+    deleteRiskMitigationPlan: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({id, createdBy}) => ({
+        url: `risksolution/${id}/mitigation-plan?createdBy=${createdBy}`,
+        method: 'DELETE',
+      }),
+    }),
+
+    deleteRiskContingencyPlan: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({id, createdBy}) => ({
+        url: `risksolution/${id}/contingency-plan?createdBy=${createdBy}`,
         method: 'DELETE',
       }),
     }),
@@ -97,4 +114,6 @@ export const {
   useUpdateRiskMitigationPlanMutation,
   useUpdateRiskContigencyPlanMutation,
   useDeleteRiskSolutionMutation,
+  useDeleteRiskContingencyPlanMutation,
+  useDeleteRiskMitigationPlanMutation
 } = riskSolutionApi;

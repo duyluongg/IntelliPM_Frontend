@@ -1,17 +1,15 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
 import type { DocumentType } from '../../types/DocumentType';
+import type {
+  ShareDocumentByEmailRequest,
+  ShareDocumentByEmailResult,
+} from '../../types/ShareDocumentType';
 
 interface ShareDocumentViaEmailRequest {
   userIds: number[];
   customMessage: string;
   file: File;
-}
-interface ShareDocumentByEmailRequest {
-  documentId: number;
-  emails: string[];
-  message: string;
-  projectKey: string;
 }
 
 export interface DocumentResponseDTO {
@@ -30,8 +28,16 @@ export interface DocumentResponseDTO {
   updatedAt: string;
 }
 
+export type ApiResponse<T> = {
+  isSuccess: boolean;
+  code: number;
+  data: T;
+  message: string;
+};
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
+  tagTypes: ['Documents'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -50,7 +56,9 @@ export const documentApi = createApi({
   endpoints: (builder) => ({
     getDocumentById: builder.query<DocumentType, number>({
       query: (id) => `documents/${id}`,
+      transformResponse: (response: ApiResponse<DocumentType>) => response.data,
     }),
+
     createDocumentRequest: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
         url: 'documents/request',
@@ -183,38 +191,45 @@ export const documentApi = createApi({
       }),
     }),
 
+    // --- RTK Query mutation ---
     shareDocumentByEmails: builder.mutation<
-      { success: boolean; failedEmails: string[] },
-      {
-        documentId: number;
-        permissionType: 'VIEW' | 'EDIT';
-        emails: string[];
-        message?: string;
-        projectKey?: string;
-      }
+      ShareDocumentByEmailResult,
+      ShareDocumentByEmailRequest
     >({
-      query: ({ documentId, ...body }) => ({
+      query: ({ documentId, emails, message, projectKey, permissionType }) => ({
         url: `documents/${documentId}/share`,
         method: 'POST',
-        body,
+        body: { emails, message, projectKey, permissionType },
       }),
+      transformResponse: (response: ApiResponse<ShareDocumentByEmailResult>) => response.data,
     }),
 
     getMyPermission: builder.query<{ permission: string }, number>({
       query: (documentId) => `documents/${documentId}/permission/current-user`,
     }),
 
-    getDocumentsByProjectId: builder.query<DocumentResponseDTO[], number>({
+    getDocumentsByProjectId: builder.query<DocumentType[], number>({
       query: (projectId) => `documents/project/${projectId}`,
+      transformResponse: (response: ApiResponse<DocumentType[]>) => response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              { type: 'Documents', id: 'LIST' },
+              ...result.map((d) => ({ type: 'Documents' as const, id: d.id })),
+            ]
+          : [{ type: 'Documents', id: 'LIST' }],
     }),
 
     deleteDocument: builder.mutation<void, number>({
-  query: (id) => ({
-    url: `documents/${id}`,
-    method: 'DELETE',
-  }),
-}),
-
+      query: (id) => ({
+        url: `documents/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, _id) => [
+        { type: 'Documents', id: 'LIST' },
+        { type: 'Documents', id: _id },
+      ],
+    }),
   }),
 });
 

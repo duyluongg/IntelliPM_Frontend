@@ -88,136 +88,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
     return 'Normal text';
   };
 
-  // const handleExportPDF = async () => {
-  //   if (!editor) return;
-
-  //   const content = document.createElement('html');
-  //   content.innerHTML = `
-  //   <head>
-  //     <meta charset="UTF-8">
-  //     <link rel="preconnect" href="https://fonts.googleapis.com">
-  //     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  //     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
-  //     <style>
-  //       /* CSS dành riêng cho file PDF */
-  //       body {
-  //         font-family: 'Lora', serif; /* Font có chân cho văn bản dài, dễ đọc */
-  //         font-size: 11pt;
-  //         line-height: 1.5;
-  //         background: white;
-  //       }
-  //       h1, h2, h3, h4, h5, h6 {
-  //         font-family: 'Inter', sans-serif; /* Font không chân cho tiêu đề, hiện đại */
-  //         color: #1a202c; /* Màu đen đậm */
-  //       }
-  //       h1 { font-size: 24pt; }
-  //       h2 { font-size: 18pt; }
-  //       h3 { font-size: 14pt; }
-
-  //       p {
-  //         widows: 3; /* Tránh 1 dòng mồ côi ở đầu trang */
-  //         orphans: 3; /* Tránh 1 dòng mồ côi ở cuối trang */
-  //       }
-
-  //       a {
-  //         color: #2563eb; /* Màu xanh dương cho link */
-  //         text-decoration: none;
-  //       }
-
-  //       table {
-  //         width: 100%;
-  //         border-collapse: collapse;
-  //         margin-top: 1em;
-  //         margin-bottom: 1em;
-  //       }
-
-  //       th, td {
-  //         border: 1px solid #e2e8f0;
-  //         padding: 8px 12px;
-  //         text-align: left;
-  //       }
-
-  //       th {
-  //         background-color: #f7fafc;
-  //         font-family: 'Inter', sans-serif;
-  //         font-weight: 700;
-  //       }
-
-  //       code {
-  //         font-family: monospace;
-  //         background-color: #f1f1f1;
-  //         padding: 2px 4px;
-  //         border-radius: 4px;
-  //         font-size: 90%;
-  //       }
-
-  //       blockquote {
-  //         border-left: 3px solid #cbd5e1;
-  //         padding-left: 1rem;
-  //         margin-left: 0;
-  //         font-style: italic;
-  //         color: #4a5568;
-  //       }
-  //     </style>
-  //   </head>
-  //   <body>
-  //     ${editor.getHTML()}
-  //   </body>
-  // `;
-
-  //   const body = content.querySelector('body');
-  //   if (body) {
-  //     const spacer = document.createElement('div');
-  //     spacer.style.height = '1in'; // Tạo một khoảng trống cao 1 inch
-  //     body.appendChild(spacer);
-  //   }
-
-  //   // 2. Cấu hình html2pdf với các tùy chọn nâng cao
-  //   const options = {
-  //     margin: [0.5, 0.5, 0.7, 0.5], // [top, left, bottom, right] in inches. Tăng margin dưới để có chỗ cho số trang.
-  //     filename: 'document.pdf',
-  //     image: { type: 'png', quality: 0.3 }, // PNG cho chất lượng text tốt hơn
-  //     html2canvas: {
-  //       scale: 0.8,
-  //       useCORS: true,
-  //       logging: false,
-  //     },
-  //     jsPDF: {
-  //       unit: 'in',
-  //       format: 'a4',
-  //       orientation: 'portrait',
-  //     },
-  //     // 👈 Xử lý ngắt trang thông minh
-  //     pagebreak: {
-  //       mode: ['avoid-all', 'css', 'legacy'],
-  //     },
-  //   };
-
-  //   const pdfExporter = html2pdf().from(content).set(options);
-
-  //   // 3. Thêm số trang thủ công để kiểm soát hoàn toàn
-  //   try {
-  //     const pdfBlob = await pdfExporter.outputPdf('blob');
-
-  //     const file = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
-
-  //     // ✅ Gọi API upload file với RTK Query
-  //     await exportDocument({ documentId: Number(documentId), file });
-
-  //     // Tải file về sau khi upload (tuỳ bạn)
-  //     const pdfUrl = URL.createObjectURL(pdfBlob);
-  //     const a = document.createElement('a');
-  //     a.href = pdfUrl;
-  //     a.download = 'document.pdf';
-  //     a.click();
-  //     URL.revokeObjectURL(pdfUrl);
-  //   } catch (err) {
-  //     console.error('Export and upload failed:', err);
-  //   }
-  // };
-
-  // 👈 Hàm xử lý xuất Excel
-
   const handleExportPDF = async () => {
     if (!editor) return;
 
@@ -367,8 +237,8 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
 
   return (
     <Fragment>
-      <div className='flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2'>
-        {/* Nút Undo/Redo */}
+      {/* Nút Undo/Redo */}
+      <div className='sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2'>
         <div className='flex items-center'>
           <button
             title='Undo'

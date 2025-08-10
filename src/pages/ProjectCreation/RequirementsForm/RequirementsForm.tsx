@@ -1,6 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
-import { useCreateRequirementsBulkMutation } from '../../../services/requirementApi';
+import {
+  useCreateRequirementMutation,
+  useUpdateRequirementMutation,
+  useDeleteRequirementMutation,
+} from '../../../services/requirementApi';
 import type {
   RequirementRequest,
   ApiResponse,
@@ -12,36 +16,54 @@ import RequirementInput from './RequirementInput';
 
 interface LocalRequirement extends RequirementRequest {
   uiId: string;
+  id?: number;
   expanded?: boolean;
   titleError?: string;
 }
 
 interface RequirementsFormProps {
-  initialData?: {
-    requirements: RequirementRequest[];
-  };
-  onNext: (data: RequirementRequest[]) => void;
+  initialData?: { requirements: Array<RequirementRequest & { id?: number }> };
+  serverData?: RequirementResponse[];
+  onNext: (data: RequirementRequest[]) => Promise<void>;
   onBack: () => void;
 }
 
-const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext, onBack }) => {
+const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, serverData, onNext, onBack }) => {
   const [requirements, setRequirements] = useState<LocalRequirement[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const { data: prioritiesResponse } = useGetCategoriesByGroupQuery('requirement_priority');
-  const [createRequirementsBulk] = useCreateRequirementsBulkMutation();
+  const [createRequirement] = useCreateRequirementMutation();
+  const [updateRequirementMutation] = useUpdateRequirementMutation();
+  const [deleteRequirement] = useDeleteRequirementMutation();
   const projectId = useSelector(selectProjectId);
   const [dropdownOpen, setDropdownOpen] = useState<{ [key: string]: boolean }>({});
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    if (initialData?.requirements && initialData.requirements.length > 0) {
+    if (serverData && serverData.length > 0) {
       setRequirements(
-        initialData.requirements.map((req) => ({
-          ...req,
-          uiId: crypto.randomUUID(),
+        serverData.map((req) => ({
+          id: req.id,
+          uiId: req.id.toString(),
+          title: req.title,
+          type: req.type,
+          description: req.description,
+          priority: req.priority,
           expanded: true,
           titleError: '',
-          priority: req.priority || 'MEDIUM', // Set default to MEDIUM if priority is undefined
+        }))
+      );
+    } else if (initialData?.requirements && initialData.requirements.length > 0) {
+      setRequirements(
+        initialData.requirements.map((req) => ({
+          id: req.id,
+          uiId: req.id ? req.id.toString() : crypto.randomUUID(),
+          title: req.title || '',
+          type: req.type || 'FUNCTIONAL',
+          description: req.description || '',
+          priority: req.priority || 'MEDIUM',
+          expanded: true,
+          titleError: '',
         }))
       );
     } else {
@@ -51,7 +73,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           title: '',
           type: 'FUNCTIONAL',
           description: '',
-          priority: 'MEDIUM', // Default to MEDIUM
+          priority: 'MEDIUM',
           expanded: true,
           titleError: '',
         },
@@ -60,7 +82,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
           title: '',
           type: 'NON_FUNCTIONAL',
           description: '',
-          priority: 'MEDIUM', // Default to MEDIUM
+          priority: 'MEDIUM',
           expanded: true,
           titleError: '',
         },
@@ -80,7 +102,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [initialData]);
+  }, [initialData, serverData]);
 
   const addRequirement = (type: 'FUNCTIONAL' | 'NON_FUNCTIONAL') => {
     setRequirements((prev) => [
@@ -90,7 +112,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
         title: '',
         type,
         description: '',
-        priority: 'MEDIUM', // Default to MEDIUM
+        priority: 'MEDIUM',
         expanded: true,
         titleError: '',
       },
@@ -98,7 +120,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
     setErrorMessage('');
   };
 
-  const updateRequirement = (id: string, field: keyof RequirementRequest, value: string) => {
+  const updateLocalRequirement = (id: string, field: keyof RequirementRequest, value: string) => {
     setRequirements((prev) =>
       prev.map((r) => {
         if (r.uiId === id) {
@@ -122,14 +144,9 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
   };
 
   const toggleExpand = (id: string) => {
-    setRequirements((prev) => {
-      return prev.map((r) => {
-        if (r.uiId === id) {
-          return { ...r, expanded: !r.expanded };
-        }
-        return r;
-      });
-    });
+    setRequirements((prev) =>
+      prev.map((r) => (r.uiId === id ? { ...r, expanded: !r.expanded } : r))
+    );
   };
 
   const removeRequirement = (id: string) => {
@@ -152,19 +169,19 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
     setErrorMessage('');
   };
 
-  const handleSubmit = async () => {
+  const handleSave = async () => {
     const cleaned = requirements
-      .map(({ uiId, expanded, titleError, ...req }) => req)
-      .filter((req) => req.title.trim().length > 0);
+      .filter((req) => req.title.trim().length > 0)
+      .map(({ uiId, expanded, titleError, ...req }) => req);
 
     if (cleaned.length === 0) {
-      setErrorMessage('No valid requirements detected to submit. Please add at least one requirement.');
-      return;
+      setErrorMessage('Please add at least one valid requirement.');
+      return false;
     }
 
     if (!projectId) {
       setErrorMessage('Project ID is not set.');
-      return;
+      return false;
     }
 
     const titles = cleaned.map((req) => req.title.trim().toLowerCase());
@@ -173,38 +190,59 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
       setErrorMessage(
         `Duplicate requirement titles found: ${duplicates.join(', ')}. Titles must be unique.`
       );
-      return;
+      return false;
     }
 
     const validRequirements = cleaned.filter(
       (req) => req.title.trim() && req.type && req.description.trim() && req.priority
     );
     if (validRequirements.length !== cleaned.length) {
-      setErrorMessage(
-        'Some requirements are incomplete. Ensure all fields (title, type, description, priority) are filled.'
-      );
-      return;
+      setErrorMessage('All fields (title, type, description, priority) are required.');
+      return false;
     }
 
     try {
-      const result = await createRequirementsBulk({ projectId, requirements: cleaned }).unwrap();
-      setErrorMessage('');
-      onNext(cleaned);
-    } catch (err) {
-      console.error('Failed to create requirements:', err);
-      if (err && typeof err === 'object' && 'data' in err) {
-        const errorData = err as { data?: ApiResponse<RequirementResponse[]> };
-        if (errorData.data) {
-          setErrorMessage(
-            `Server error: ${errorData.data.message || 'Failed to create requirements.'}`
-          );
-        } else {
-          setErrorMessage('Failed to create requirements due to an unknown server error.');
-        }
-      } else {
-        setErrorMessage('An unexpected error occurred.');
+      const initialReqs = serverData || [];
+      const newReqs = cleaned.filter((req) => !req.id);
+      const updatedReqs = cleaned.filter((req) =>
+        req.id &&
+        initialReqs.find(
+          (init) =>
+            init.id === req.id &&
+            (init.title !== req.title ||
+             init.type !== req.type ||
+             init.description !== req.description ||
+             init.priority !== req.priority)
+        )
+      );
+      const deletedIds = initialReqs
+        .filter((init) => !cleaned.some((req) => req.id === init.id))
+        .map((init) => init.id);
+
+      for (const req of newReqs) {
+        await createRequirement({ projectId, requirement: req }).unwrap();
       }
+      for (const req of updatedReqs) {
+        if (req.id) {
+          await updateRequirementMutation({ projectId, id: req.id, requirement: req }).unwrap();
+        }
+      }
+      for (const id of deletedIds) {
+        await deleteRequirement({ projectId, id }).unwrap();
+      }
+
+      setErrorMessage('');
+      await onNext(cleaned);
+      return true;
+    } catch (err) {
+      console.error('Failed to process requirements:', err);
+      setErrorMessage('Failed to process requirements. Please try again.');
+      return false;
     }
+  };
+
+  const handleSubmit = async () => {
+    await handleSave();
   };
 
   const functional = requirements.filter((r) => r.type === 'FUNCTIONAL');
@@ -236,9 +274,10 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
               dropdownOpen={dropdownOpen[req.uiId] || false}
               setDropdownOpen={setDropdownOpen}
               dropdownRefs={dropdownRefs}
-              updateRequirement={updateRequirement}
+              updateRequirement={updateLocalRequirement}
               toggleExpand={toggleExpand}
               removeRequirement={removeRequirement}
+              onSave={handleSave}
             />
           ))}
         </div>
@@ -262,9 +301,10 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, onNext
               dropdownOpen={dropdownOpen[req.uiId] || false}
               setDropdownOpen={setDropdownOpen}
               dropdownRefs={dropdownRefs}
-              updateRequirement={updateRequirement}
+              updateRequirement={updateLocalRequirement}
               toggleExpand={toggleExpand}
               removeRequirement={removeRequirement}
+              onSave={handleSave}
             />
           ))}
         </div>

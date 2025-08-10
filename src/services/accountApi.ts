@@ -19,6 +19,44 @@ export interface GetProjectsResponse {
   message: string;
 }
 
+export interface ProjectPosition {
+  id: number;
+  projectMemberId: number;
+  position: string;
+  assignedAt: string;
+}
+
+
+export interface Profile {
+  id: number;
+  username: string;
+  fullName: string;
+  email: string;
+  gender: string;
+  position: string;
+  dateOfBirth: string | null;
+  status: string;
+  role: string;
+  picture: string;
+  totalProjects: number;
+  completedProjects: number;
+  inProgressProjects: number;
+  upcomingProjects: number;
+  activeProjects: number;
+  cancelledProjects: number;
+  projectList: Project[];
+  totalPositions: number;
+  positionsList: string[];
+  recentPositions: ProjectPosition[];
+}
+
+export interface GetProfileResponse {
+  isSuccess: boolean;
+  code: number;
+  data: Profile;
+  message: string;
+}
+
 interface Account {
   id: number;
   username: string;
@@ -70,7 +108,13 @@ export const accountApi = createApi({
         method: 'GET',
       }),
     }),
+    getProfileByEmail: builder.query<GetProfileResponse, string>({
+      query: (email) => ({
+        url: `account/profile/${encodeURIComponent(email)}`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery } = accountApi;
+export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery, } = accountApi;

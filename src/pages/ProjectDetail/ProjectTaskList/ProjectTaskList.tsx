@@ -37,7 +37,8 @@ import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
-
+import UnifiedFilter from '../ProjectTaskList/UnifiedFilter'
+import ExportDropdown from '../ProjectTaskList/ExportDropdownProps'
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -82,6 +83,7 @@ interface UpdateSubtaskRequestDTO {
   assignedBy: number;
   priority: string;
   createdBy: number;
+  sprintId: number;
 }
 
 interface Reporter {
@@ -140,13 +142,18 @@ interface HeaderBarProps {
   setSelectedType: Dispatch<SetStateAction<string>>;
   selectedLabel: string;
   setSelectedLabel: Dispatch<SetStateAction<string>>;
+  selectedMemberId: number | null;
+  setSelectedMemberId: Dispatch<SetStateAction<number | null>>;
+  selectedCreatedDate: string;
+  setSelectedCreatedDate: Dispatch<SetStateAction<string>>;
+  selectedDueDate: string;
+  setSelectedDueDate: Dispatch<SetStateAction<string>>;
   onExportExcel: () => void;
   onExportPDF: () => void;
   onCreate: () => void;
   onViewAsChart: () => void;
 }
 
-// Status Component
 const Status: React.FC<{ status: string }> = ({ status }) => {
   const formatStatusForDisplay = (status: string) => {
     switch (status.toLowerCase()) {
@@ -327,6 +334,7 @@ const Avatar = ({
 };
 
 // HeaderBar Component
+
 const HeaderBar: React.FC<HeaderBarProps> = ({
   projectId,
   searchQuery,
@@ -337,15 +345,20 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   setSelectedType,
   selectedLabel,
   setSelectedLabel,
+  selectedMemberId,
+  setSelectedMemberId,
+  selectedCreatedDate,
+  setSelectedCreatedDate,
+  selectedDueDate,
+  setSelectedDueDate,
   onExportExcel,
   onExportPDF,
   onCreate,
   onViewAsChart,
 }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
-  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
-  const [isLabelDropdownOpen, setIsLabelDropdownOpen] = useState(false);
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
+
   const {
     data: membersData,
     isLoading,
@@ -378,11 +391,16 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       />
     </svg>
   );
+
+  const handleMemberClick = (memberId: number) => {
+    setSelectedMemberId((prev) => (prev === memberId ? null : memberId));
+  };
+
   const members =
     membersData?.data
       ?.filter((member) => member.status.toUpperCase() === 'ACTIVE')
       ?.map((member) => ({
-        id: member.id,
+        id: member.accountId, // Use accountId to match assignee.id
         name: member.fullName || member.accountName || 'Unknown',
         avatar: member.picture || 'https://via.placeholder.com/32',
       })) || [];
@@ -399,17 +417,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     })) || []),
   ];
 
-  const toggleLabelDropdown = () => {
-    setIsLabelDropdownOpen(!isLabelDropdownOpen);
-  };
-
-  const clearFilters = () => {
-    setSearchQuery('');
-    setSelectedStatus('');
-    setSelectedType('');
-    setSelectedLabel('');
-  };
-
   const typeOptions = [
     { value: '', label: 'All Types' },
     { value: 'epic', label: 'EPIC', icon: epicIcon },
@@ -419,10 +426,6 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     { value: 'story', label: 'STORY', icon: storyIcon },
   ];
 
-  const toggleTypeDropdown = () => {
-    setIsTypeDropdownOpen(!isTypeDropdownOpen);
-  };
-
   const toggleMenuDropdown = () => {
     setIsMenuDropdownOpen(!isMenuDropdownOpen);
   };
@@ -431,7 +434,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
     return <div className='p-4 text-center text-gray-500'>Loading members or labels...</div>;
   }
 
-  if (error || isLabelsLoading) {
+  if (error || labelsError) {
     return (
       <div className='p-4 text-center text-red-500'>
         Error loading members: {(error || labelsError as any)?.data?.message || 'Unknown error'}
@@ -467,8 +470,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className='w-8 h-8 rounded-full object-cover border cursor-pointer'
-                      onClick={toggleMembers}
+                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === member.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
+                        }`}
+                      onClick={() => handleMemberClick(member.id)}
                     />
                     <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                       {member.name}
@@ -481,8 +485,9 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className='w-8 h-8 rounded-full object-cover border cursor-pointer'
-                  onClick={toggleMembers}
+                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === members[0].id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
+                    }`}
+                  onClick={() => handleMemberClick(members[0].id)}
                 />
                 <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
                   {members[0].name}
@@ -502,124 +507,25 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
         </div>
 
-        <button className='flex items-center bg-white border border-blue-500 text-blue-500 px-2 py-1 rounded font-medium text-sm'>
-          <FaFilter className='mr-1' />
-          Filter{' '}
-          <span className='ml-1 bg-blue-500 text-white px-1.5 py-0.5 rounded-full text-[9px]'>
-            1
-          </span>
-        </button>
+        <UnifiedFilter
+          selectedStatus={selectedStatus}
+          setSelectedStatus={setSelectedStatus}
+          selectedType={selectedType}
+          setSelectedType={setSelectedType}
+          selectedLabel={selectedLabel}
+          setSelectedLabel={setSelectedLabel}
+          selectedCreatedDate={selectedCreatedDate}
+          setSelectedCreatedDate={setSelectedCreatedDate}
+          selectedDueDate={selectedDueDate}
+          setSelectedDueDate={setSelectedDueDate}
+          typeOptions={typeOptions}
+          labels={labels}
+        />
 
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40"
-        >
-          <option value="">All Statuses</option>
-          <option value="to_do">TO DO</option>
-          <option value="in_progress">IN PROGRESS</option>
-          <option value="done">DONE</option>
-        </select>
-
-        <div className="relative">
-          <button
-            onClick={toggleTypeDropdown}
-            className="border border-gray-300 rounded-md px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40 flex items-center justify-between"
-          >
-            {typeOptions.find(option => option.value === selectedType)?.label || 'All Types'}
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-          {isTypeDropdownOpen && (
-            <div className="absolute z-10 mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg">
-              {typeOptions.map((option) => (
-                <div
-                  key={option.value}
-                  onClick={() => {
-                    setSelectedType(option.value);
-                    setIsTypeDropdownOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                >
-                  {option.icon && (
-                    <img src={option.icon} alt={option.label} className="w-5 h-5 rounded p-0.5" />
-                  )}
-                  <span>{option.label}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className='relative'>
-          <button
-            onClick={toggleLabelDropdown}
-            className='border border-gray-300 rounded-md w-35 px-2 py-1 text-sm text-gray-700 bg-white focus:ring-1 focus:ring-blue-500 w-40 flex items-center justify-between'
-          >
-            {labels.find((option) => option.value === selectedLabel)?.label || 'All Labels'}
-            <svg
-              className='w-4 h-4'
-              fill='none'
-              stroke='currentColor'
-              viewBox='0 0 24 24'
-            >
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                strokeWidth='2'
-                d='M19 9l-7 7-7-7'
-              />
-            </svg>
-          </button>
-          {isLabelDropdownOpen && (
-            <div className='absolute z-10 mt-1 w-46 bg-white border border-gray-300 rounded-md shadow-lg'>
-              {labels.map((option) => (
-                <div
-                  key={option.value || 'all-labels'}
-                  onClick={() => {
-                    setSelectedLabel(option.value);
-                    setIsLabelDropdownOpen(false);
-                  }}
-                  className='flex items-center gap-2 px-2 py-1 hover:bg-gray-100 cursor-pointer'
-                >
-                  <span>{option.label}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={clearFilters}
-          className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
-        >
-          Clear Filters
-        </button>
-
-        <button
-          onClick={onExportExcel}
-          className='bg-green-500 text-white px-3 py-1 rounded-md text-sm hover:bg-green-600'
-        >
-          Export to Excel
-        </button>
-
-        <button
-          onClick={onExportPDF}
-          className='bg-red-500 text-white px-3 py-1 rounded-md text-sm hover:bg-red-600'
-        >
-          Export to PDF
-        </button>
+        <ExportDropdown
+          onExportExcel={onExportExcel}
+          onExportPDF={onExportPDF}
+        />
       </div>
 
       <div className='flex items-center gap-1.5'>
@@ -638,7 +544,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
             <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
                 onClick={() => {
-                  //onCreateTask();
+                  onCreate();
                   setIsMenuDropdownOpen(false);
                 }}
                 className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
@@ -673,6 +579,9 @@ const ProjectTaskList: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedLabel, setSelectedLabel] = useState<string>('');
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+    const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
+  const [selectedDueDate, setSelectedDueDate] = useState<string>(''); 
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -888,9 +797,10 @@ const ProjectTaskList: React.FC = () => {
           description: item.description || '',
           plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
-          reporterId: item.reporterId || 0, // Already correct
+          reporterId: item.reporterId || 0,
           assignedBy: item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
+          sprintId: item.sprint || 0,
           startDate: item.created || new Date().toISOString(),
           endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           createdBy: accountId,
@@ -965,6 +875,7 @@ const ProjectTaskList: React.FC = () => {
           description: item.description || '',
           plannedEndDate: item.dueDate || '',
           status: item.status,
+          sprintId: item.sprint || 0,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || 0, // Already correct
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
           priority: 'MEDIUM',
@@ -1039,6 +950,7 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || 0, // Already correct
           assignedBy: 0,
+          sprintId: item.sprint || 0,
           priority: 'MEDIUM',
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
@@ -1280,7 +1192,13 @@ const ProjectTaskList: React.FC = () => {
       !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
     const matchesLabel =
       !selectedLabel || task.labels?.includes(selectedLabel);
-    return matchesSearch && matchesStatus && matchesType && matchesLabel;
+    const matchesMember =
+      !selectedMemberId || task.assignees.some((assignee) => assignee.id === selectedMemberId);
+    const matchesCreated =
+      !selectedCreatedDate || new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
+    const matchesDue =
+      !selectedDueDate || (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
+      return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
   });
 
   const handleCreate = () => {
@@ -1307,6 +1225,12 @@ const ProjectTaskList: React.FC = () => {
         setSelectedLabel={setSelectedLabel}
         onExportExcel={exportToExcel}
         onExportPDF={exportToPDF}
+        selectedMemberId={selectedMemberId}
+        setSelectedMemberId={setSelectedMemberId}
+        selectedDueDate={selectedDueDate}
+        setSelectedDueDate={setSelectedDueDate}
+        setSelectedCreatedDate={setSelectedCreatedDate}
+        selectedCreatedDate={selectedCreatedDate}
         onCreate={handleCreate}
         onViewAsChart={handleViewAsChart}
       />

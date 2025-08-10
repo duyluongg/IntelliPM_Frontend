@@ -1,12 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// Centralized route constants (recommended to move to a separate file)
+const ROUTES = {
+  PROJECT_CREATE_FORM: '/project/createform',
+  HOME: '/',
+};
+
+// Image imports with type safety
 import logo from '../../../assets/logo.png';
 import backlogImg from '../../../assets/CreateProject/PlanUpcomingWorkInABacklog.svg';
 import sprintImg from '../../../assets/CreateProject/OrganizeCyclesOfWorkIntoSprints.png';
 import velocityImg from '../../../assets/CreateProject/UnderstandYourTeamVelocity.png';
 import aiImg from '../../../assets/CreateProject/AiIntro.png';
-
 import typeEpic from '../../../assets/icon/type_epic.svg';
 import typeStory from '../../../assets/icon/type_story.svg';
 import typeBug from '../../../assets/icon/type_bug.svg';
@@ -21,33 +27,32 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
   const navigate = useNavigate();
 
   const handleNext = () => {
-    // Clear localStorage items
-    localStorage.removeItem('projectFormData');
-    localStorage.removeItem('projectCreationStep');
-    localStorage.removeItem('projectCreationId'); // Clear projectCreationId if used
+    try {
+      // Clear localStorage items safely
+      localStorage.removeItem('projectFormData');
+      localStorage.removeItem('projectCreationStep');
+      localStorage.removeItem('projectCreationId');
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
 
     if (onNext) {
       onNext();
     } else {
-      navigate('/project/createform');
+      navigate(ROUTES.PROJECT_CREATE_FORM);
     }
   };
 
   return (
-    <div className="bg-white mx-auto rounded-lg shadow min-h-screen pb-32 relative">
+    <div className="bg-white mx-auto rounded-lg shadow min-h-screen pb-32 relative max-w-7xl">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0052CC] to-[#2684FF] p-4 flex justify-between items-center rounded-t-lg text-white">
         <h1 className="text-xl font-semibold">Project Introduction</h1>
         <div className="flex gap-2 items-center">
           <button
-            onClick={handleNext}
-            className="bg-white text-[#0052CC] font-medium px-4 py-1.5 rounded hover:bg-gray-100 transition"
-          >
-            Create project
-          </button>
-          <button
-            onClick={() => navigate('/')}
-            className="text-white text-xl font-bold px-3 rounded hover:bg-[#0045b1]"
+            onClick={() => navigate(ROUTES.HOME)}
+            className="text-white text-xl font-bold px-3 rounded hover:bg-[#0045b1] transition"
+            aria-label="Cancel project creation"
           >
             ✕
           </button>
@@ -60,7 +65,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
         <div className="md:col-span-2 space-y-10">
           {/* AI Section */}
           <div className="flex items-start gap-6">
-            <img src={aiImg} alt="AI" className="w-41 h-40 object-contain" />
+            <img src={aiImg} alt="AI integration illustration" className="w-41 h-40 object-contain" />
             <div>
               <h2 className="text-xl font-semibold text-[#172B4D] mb-2">Empower your workflow with AI</h2>
               <p className="text-sm text-gray-700 mb-2">
@@ -85,20 +90,20 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
               <p className="text-sm text-gray-600 mt-1">
                 Prioritize and plan your team’s work in the backlog. Break tasks into actionable items along your project timeline to ensure clarity and alignment.
               </p>
-              <a href="#" className="text-blue-600 text-sm mt-2 inline-block">Learn more about the backlog</a>
+              <a href="#" className="text-blue-600 text-sm mt-2 inline-block hover:underline" aria-label="Learn more about the backlog">Learn more about the backlog</a>
             </div>
-            <img src={backlogImg} alt="Backlog" className="w-41 h-40 object-contain mx-auto" />
+            <img src={backlogImg} alt="Backlog planning illustration" className="w-41 h-40 object-contain mx-auto" />
           </div>
 
           {/* Sprints Section */}
           <div className="grid grid-cols-2 gap-6 items-center">
-            <img src={sprintImg} alt="Sprints" className="w-45 h-44 object-contain mx-auto" />
+            <img src={sprintImg} alt="Sprints organization illustration" className="w-45 h-44 object-contain mx-auto" />
             <div>
               <h3 className="text-lg font-semibold text-[#172B4D]">Organize cycles of work into sprints</h3>
               <p className="text-sm text-gray-600 mt-1">
                 Sprints are short, focused work periods that help teams deliver incremental value. Use them to drive continuous delivery, ensure high-quality output, and accelerate feedback loops.
               </p>
-              <a href="#" className="text-blue-600 text-sm mt-2 inline-block">Learn more about sprints</a>
+              <a href="#" className="text-blue-600 text-sm mt-2 inline-block hover:underline" aria-label="Learn more about sprints">Learn more about sprints</a>
             </div>
           </div>
 
@@ -109,9 +114,9 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
               <p className="text-sm text-gray-600 mt-1">
                 Boost predictability with visual reports like velocity charts and sprint summaries. Understand team capacity and continuously improve planning accuracy.
               </p>
-              <a href="#" className="text-blue-600 text-sm mt-2 inline-block">Learn more about agile metrics</a>
+              <a href="#" className="text-blue-600 text-sm mt-2 inline-block hover:underline" aria-label="Learn more about agile metrics">Learn more about agile metrics</a>
             </div>
-            <img src={velocityImg} alt="Velocity" className="w-45 h-44 object-contain mx-auto" />
+            <img src={velocityImg} alt="Team velocity illustration" className="w-45 h-44 object-contain mx-auto" />
           </div>
         </div>
 
@@ -119,7 +124,7 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
         <div className="space-y-6">
           <div>
             <p className="font-medium text-sm text-gray-500">Product</p>
-            <img src={logo} alt="Product Logo" className="w-20 h-20 mt-1" />
+            <img src={logo} alt="IntelliPM product logo" className="w-20 h-20 mt-1" />
           </div>
           <div>
             <p className="font-medium text-sm text-gray-500">Recommended for</p>
@@ -131,11 +136,11 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
           <div>
             <p className="font-medium text-sm text-gray-500">Work types</p>
             <div className="flex flex-col gap-3 mt-1 text-sm text-gray-700">
-              <div className="flex items-center gap-2"><img src={typeEpic} className="w-4 h-4" alt="Epic" /> Epic</div>
-              <div className="flex items-center gap-2"><img src={typeStory} className="w-4 h-4" alt="Story" /> Story</div>
-              <div className="flex items-center gap-2"><img src={typeBug} className="w-4 h-4" alt="Bug" /> Bug</div>
-              <div className="flex items-center gap-2 text-black"><img src={typeTask} className="w-4 h-4" alt="Task" /> Task</div>
-              <div className="flex items-center gap-2"><img src={typeSubTask} className="w-4 h-4" alt="Sub-task" /> Sub-task</div>
+              <div className="flex items-center gap-2"><img src={typeEpic} className="w-4 h-4" alt="Epic icon" /> Epic</div>
+              <div className="flex items-center gap-2"><img src={typeStory} className="w-4 h-4" alt="Story icon" /> Story</div>
+              <div className="flex items-center gap-2"><img src={typeBug} className="w-4 h-4" alt="Bug icon" /> Bug</div>
+              <div className="flex items-center gap-2 text-black"><img src={typeTask} className="w-4 h-4" alt="Task icon" /> Task</div>
+              <div className="flex items-center gap-2"><img src={typeSubTask} className="w-4 h-4" alt="Sub-task icon" /> Sub-task</div>
             </div>
           </div>
           <div>
@@ -154,7 +159,8 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
         <span>Next: Select a project type</span>
         <button
           onClick={handleNext}
-          className="bg-[#0052CC] text-white px-4 py-1.5 rounded hover:bg-[#003087] text-sm"
+          className="bg-[#0052CC] text-white px-4 py-1.5 rounded hover:bg-[#003087] text-sm transition"
+          aria-label="Proceed to create project"
         >
           Create project
         </button>

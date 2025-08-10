@@ -1,4 +1,4 @@
-.suggested-modal-overlay {
+/* .suggested-modal-overlay {
   position: fixed;
   inset: 0;
   background-color: rgba(31, 41, 55, 0.5);
@@ -165,9 +165,97 @@ select {
 .approve-btn:disabled {
   cursor: not-allowed;
   opacity: 0.6;
-  pointer-events: none; /* đảm bảo không thể click */
-  /* background-color: #ccc; */
-  /* color: #666; */
-  background-color: #f9fafb; /* màu xám cho rõ hơn */
+  pointer-events: none; 
+  background-color: #f9fafb; 
   color: #059669;
+} */
+
+/* .suggested-modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
 }
+
+.suggested-modal {
+  @apply bg-white rounded-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto;
+}
+
+.modal-header {
+  @apply flex justify-between items-center mb-6;
+}
+
+.modal-title {
+  @apply text-xl font-bold text-gray-800;
+}
+
+.suggested-risk-list {
+  @apply space-y-4;
+}
+
+.suggested-risk-card {
+  @apply border border-gray-200 rounded-md p-4 bg-gray-50;
+}
+
+.modal-input,
+.modal-textarea,
+.modal-select {
+  @apply w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.grid-2 {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.approve-btn-wrapper {
+  @apply flex justify-end;
+}
+
+.loading-container {
+  @apply flex items-center justify-center;
+} */
+
+/* .suggested-modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+}
+
+.suggested-modal {
+  @apply bg-white rounded-lg p-6 w-full max-w-3xl max-h-[80vh] overflow-y-auto;
+}
+
+.modal-header {
+  @apply flex justify-between items-center mb-6;
+}
+
+.modal-title {
+  @apply text-xl font-bold text-gray-800;
+}
+
+.suggested-risk-list {
+  @apply space-y-4;
+}
+
+.suggested-risk-card {
+  @apply border border-gray-200 rounded-md p-4 bg-gray-50;
+}
+
+.modal-input,
+.modal-textarea,
+.modal-select {
+  @apply w-full p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.modal-input.border,
+.modal-textarea.border,
+.modal-select.border {
+  @apply border-gray-300;
+}
+
+.grid-2 {
+  @apply grid grid-cols-2 gap-4;
+}
+
+.approve-btn-wrapper {
+  @apply flex justify-end;
+}
+
+.loading-container {
+  @apply flex items-center justify-center;
+} */

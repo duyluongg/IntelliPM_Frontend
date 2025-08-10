@@ -157,6 +157,29 @@ export interface TaskAssignmentResponseDTO {
   accountPicture?: string | null;
 }
 
+export interface CreateTaskRequest {
+  reporterId: number | null;
+  projectId: number;
+  epicId: string | null;
+  sprintId: number | null;
+  type: string;
+  title: string;
+  description: string;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  status: string;
+  createdBy: number;
+  dependencies: TaskDependency[];
+  priority?: string;
+  plannedHours?: number;
+  manualInput: boolean;
+  generationAiInput: boolean;
+}
+
+export interface CreateTasksRequest {
+  tasks: CreateTaskRequest[];
+}
+
 export const taskApi = createApi({
   reducerPath: 'taskApi',
   baseQuery: fetchBaseQuery({
@@ -368,14 +391,14 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null }>({
-      query: ({ id, sprintId }) => ({
+    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null; createdBy: number }>({
+      query: ({ id, sprintId, createdBy }) => ({
         url: `task/${id}/sprint`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: sprintId,
+        body: JSON.stringify({sprintId, createdBy}),
       }),
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
@@ -409,16 +432,29 @@ export const taskApi = createApi({
 
     updatePlannedHours: builder.mutation<
       void,
-      { id: string; plannedHours: number }
+      { id: string; plannedHours: number; createdBy: number }
     >({
-      query: ({ id, plannedHours }) => ({
-        url: `task/${id}/planned-hours`,
+      query: ({ id, plannedHours, createdBy }) => ({
+        url: `task/${id}/planned-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(plannedHours),
       }),
+      invalidatesTags: ['Task'],
+    }),
+        createTasks: builder.mutation<TaskListResponse, CreateTasksRequest>({
+      query: ({ tasks }) => ({
+        url: 'task/bulk',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: tasks,
+      }),
+      transformResponse: (response: TaskListResponse) => response,
       invalidatesTags: ['Task'],
     }),
 
@@ -447,4 +483,6 @@ export const {
   useGetTasksBySprintIdQuery,
   useGetTasksBySprintIdAndStatusQuery,
   useUpdatePlannedHoursMutation,
+  useCreateTasksMutation,
+  
 } = taskApi;

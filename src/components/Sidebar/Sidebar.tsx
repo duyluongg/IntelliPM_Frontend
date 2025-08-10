@@ -61,17 +61,23 @@ export default function Sidebar() {
     error,
   } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
-  const recentProjects: RecentProject[] = projectsData?.isSuccess
-    ? projectsData.data.map((proj) => ({
+ const recentProjects: RecentProject[] = projectsData?.isSuccess
+  ? projectsData.data
+      .filter(
+        (proj) =>
+         // proj.projectStatus === 'ACTIVE' &&
+          proj.status === 'ACTIVE'
+      )
+      .map((proj) => ({
         name: proj.projectName,
         key: proj.projectKey,
         icon: proj.iconUrl || projectIcon,
       }))
-    : [];
+  : [];
 
-  useEffect(() => {
-    // Không tự động mở dropdown khi chọn project, chỉ dựa vào hành động người dùng
-  }, [selectedProjectKey, recentProjects]);
+useEffect(() => {
+}, [selectedProjectKey, recentProjects]);
+
 
   const handleLogout = () => {
     logout();
@@ -102,10 +108,19 @@ export default function Sidebar() {
     navigate(`/project/${projectKey}/team-members`);
   };
 
+    // 👇 Chỉ cho CLIENT thấy các mục này
+const allowedLabelsForClient = ['Meeting', 'For you'];
+
+const visibleMenuItems = user?.role === 'CLIENT'
+  ? menuItems.filter((item) =>
+      allowedLabelsForClient.includes(item.label)
+    )
+  : menuItems;
+
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
       <div className='pt-4'>
-        {menuItems.map((item, index) => {
+       {visibleMenuItems.map((item, index) =>  {
           if (item.label === 'Projects' && item.isDropdown) {
             return (
               <div

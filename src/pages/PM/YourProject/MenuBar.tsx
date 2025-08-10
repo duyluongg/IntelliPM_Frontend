@@ -237,8 +237,8 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
 
   return (
     <Fragment>
-      <div className='flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2'>
-        {/* Nút Undo/Redo */}
+      {/* Nút Undo/Redo */}
+      <div className='sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2'>
         <div className='flex items-center'>
           <button
             title='Undo'

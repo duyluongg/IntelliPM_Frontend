@@ -1,4 +1,4 @@
-.risk-page-wrapper {
+/* .risk-page-wrapper {
   padding: 12px;
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, sans-serif;
   background-color: #ffffff;
@@ -127,19 +127,11 @@
   overflow-x: auto;
   background-color: #ffffff;
   margin: 0;
-  /* width: 100%; */
   max-width: 100%;
   display: block;
 }
 
 .risk-table {
-  /* width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  min-width: 800px;
-  margin: 0;
-  table-layout: fixed; */
-
   width: 100%;
   min-width: 900px;
   border-collapse: collapse;
@@ -515,4 +507,4 @@
 .due-warning {
   font-weight: bold;
   color: #dc2626;
-}
+} */

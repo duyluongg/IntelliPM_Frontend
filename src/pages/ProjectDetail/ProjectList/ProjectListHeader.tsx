@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type User } from '../../../services/AuthContext';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 
 interface ProjectListHeaderProps {
   searchQuery: string;
@@ -67,13 +67,15 @@ const ProjectListHeader: React.FC<ProjectListHeaderProps> = ({ searchQuery, setS
       </div>
 
       {(user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER') && (
-        <button
-          onClick={() => navigate('/project/introduction')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm transition-all duration-300"
-          aria-label="Save Project"
-        >
-          Save Project
-        </button>
+<button
+  onClick={() => navigate('/project/introduction')}
+  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm transition-all duration-300"
+  aria-label="Save Project"
+>
+  <Plus className="w-4 h-4" />
+  Create Project
+</button>
+
       )}
     </motion.div>
   );

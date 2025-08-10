@@ -5,6 +5,7 @@ import type { DynamicCategoryResponse } from '../../../services/dynamicCategoryA
 
 interface LocalRequirement extends RequirementRequest {
   uiId: string;
+  id?: number;
   expanded?: boolean;
   titleError?: string;
 }
@@ -18,6 +19,7 @@ interface RequirementInputProps {
   updateRequirement: (id: string, field: keyof RequirementRequest, value: string) => void;
   toggleExpand: (id: string) => void;
   removeRequirement: (id: string) => void;
+  onSave: () => Promise<boolean>;
 }
 
 const RequirementInput: React.FC<RequirementInputProps> = ({
@@ -29,8 +31,16 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   updateRequirement,
   toggleExpand,
   removeRequirement,
+  onSave,
 }) => {
   const selectedPriority = prioritiesResponse?.data?.find((p) => p.name === req.priority);
+
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await onSave();
+    }
+  };
 
   return (
     <div className="bg-white border-2 border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition space-y-4">
@@ -40,6 +50,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
             type="text"
             value={req.title}
             onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Requirement title"
             className={`flex-1 border-2 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10 ${
               req.titleError ? 'border-red-400' : 'border-gray-200'
@@ -97,6 +108,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
                 onClick={() =>
                   setDropdownOpen((prev) => ({ ...prev, [req.uiId]: !prev[req.uiId] }))
                 }
+                onKeyDown={handleKeyDown}
                 className="w-[180px] mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] flex items-center justify-between"
               >
                 <span className="flex items-center">
@@ -119,6 +131,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
                       onClick={() => {
                         updateRequirement(req.uiId, 'priority', p.name);
                         setDropdownOpen((prev) => ({ ...prev, [req.uiId]: false }));
+                        onSave();
                       }}
                       className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                     >
@@ -143,6 +156,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
             <textarea
               value={req.description}
               onChange={(e) => updateRequirement(req.uiId, 'description', e.target.value)}
+              onKeyDown={handleKeyDown}
               rows={5}
               className="w-full mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd]"
               required

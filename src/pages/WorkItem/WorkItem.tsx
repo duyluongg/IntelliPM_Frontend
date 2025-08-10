@@ -26,6 +26,7 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
+  useUpdateTaskSprintMutation
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -60,6 +61,8 @@ import {
 } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -81,7 +84,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [epicId, setEpicId] = React.useState('');
-  const [sprintId, setSprintId] = React.useState('');
+  const [sprintId, setSprintId] = useState<number | null>(null);
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -114,21 +117,21 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
-    Record<string, TaskAssignmentDTO[]>
-  >({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
-  const { data: assignees = [], isLoading: isAssigneeLoading } =
-    useGetTaskAssignmentsByTaskIdQuery(taskId);
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(taskId);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
+  const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+  const [newSprintId, setNewSprintId] = useState<number>();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
@@ -148,6 +151,31 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   } = useGetTaskFilesByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ id: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (id: number, createdBy: number) => {
+    setDeleteInfo({ id, createdBy });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
+    try {
+      await deleteTaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
+      // // có thể thay alert = toast đẹp hơn
+      // alert("✅ Delete file successfully!");
+      await refetchAttachments();
+      await refetchActivityLogs();
+    } catch (error) {
+      console.error("❌ Error delete file:", error);
+      alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
+    }
+  };
 
   const handleDeleteFile = async (id: number, createdBy: number) => {
     if (!window.confirm('Are you sure you want to delete this file?')) return;
@@ -240,6 +268,26 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
+  const handleSprintTaskChange = async (newSprintId: number | null) => {
+    console.log('Calling handleSprintTaskChange with sprintId:', newSprintId);
+    if (newSprintId === taskData?.sprintId) return;
+
+    try {
+      await updateTaskSprint({
+        id: taskId,
+        sprintId: newSprintId,
+        createdBy: accountId
+      }).unwrap();
+      setSprintId(newSprintId);
+      await Promise.all([refetchActivityLogs(), refetchTask()]);
+      console.log('Update sprint task successfully!');
+      alert('✅ Sprint updated successfully');
+    } catch (err: any) {
+      console.error('Error update sprint:', err);
+      alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
+    }
+  };
+
   const {
     data: subtaskData = [],
     isLoading,
@@ -300,6 +348,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -384,7 +437,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setReporterName(taskData.reporterName ?? '');
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
-      setSprintId(String(taskData.sprintId));
+      setSprintId(taskData.sprintId ?? null);
       setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
@@ -404,6 +457,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     endDate: item.endDate,
     reporterId: item.reporterId,
     reporterName: item.reporterName,
+    sprintId: item.sprintId ?? null,
   }));
 
   const handleSubtaskStatusChange = async (id: string, newStatus: string) => {
@@ -416,6 +470,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
       refetch();
       await refetchActivityLogs();
+      await refetchTask();
     } catch (err) {
       console.error('Failed to update subtask status', err);
     }
@@ -617,38 +672,47 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               />
 
               {attachments.length > 0 && (
-                <div className='attachments-section'>
-                  <label>
+                <div className="attachments-section">
+                  <label className="block font-semibold mb-2">
                     Attachments <span>({attachments.length})</span>
                   </label>
-                  <div className='attachments-grid'>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                     {attachments.map((file) => (
                       <div
-                        className='attachment-card'
+                        className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
                         key={file.id}
                         onMouseEnter={() => setHoveredFileId(file.id)}
                         onMouseLeave={() => setHoveredFileId(null)}
                       >
                         <a
                           href={file.urlFile}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          style={{ textDecoration: 'none', color: 'inherit' }}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-gray-800 no-underline"
                         >
-                          <div className='thumbnail'>
+                          <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
                             {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                              <img src={file.urlFile} alt={file.title} />
+                              <img
+                                src={file.urlFile}
+                                alt={file.title}
+                                className="w-[100%] h-[100%] object-cover rounded-lg"
+                              />
                             ) : (
-                              <div className='doc-thumbnail'>
-                                <span className='doc-text'>{file.title.slice(0, 15)}...</span>
+                              <div className="flex items-center justify-center h-full w-full bg-gray-200">
+                                <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                                  {file.title.slice(0, 15)}...
+                                </span>
                               </div>
                             )}
                           </div>
-                          <div className='file-meta'>
-                            <div className='file-name' title={file.title}>
+                          <div className="p-1">
+                            <div
+                              className="truncate text-sm font-medium"
+                              title={file.title}
+                            >
                               {file.title}
                             </div>
-                            <div className='file-date'>
+                            <div className="text-xs text-gray-500">
                               {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                             </div>
                           </div>
@@ -656,14 +720,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
-                            className='delete-file-btn'
-                            title='Delete file'
+                            onClick={() => openDeleteModal(file.id, file.createdBy)}
+                            className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
+                            title="Delete file"
                           >
                             <img
                               src={deleteIcon}
-                              alt='Delete'
-                              style={{ width: '25px', height: '25px' }}
+                              alt="Delete"
+                              className="w-5 h-5"
                             />
                           </button>
                         )}
@@ -1004,6 +1068,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           ),
                                           title: newTitle,
                                           description: item.description ?? '',
+                                          sprintId: item.sprintId ?? null,
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
@@ -1045,6 +1110,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
+                                      sprintId: item.sprintId ?? null,
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1059,7 +1125,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     alert('❌ Failed to update priority');
                                   }
                                 }}
-                                style={{ padding: '4px 8px' }}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: 'white',
+                                }}
                               >
                                 {isPriorityLoading ? (
                                   <option>Loading...</option>
@@ -1093,6 +1164,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
+                                        sprintId: item.sprintId ?? null,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
@@ -1107,7 +1179,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       alert('❌ Failed to update subtask');
                                     }
                                   }}
-                                  style={{ padding: '4px 8px' }}
+                                  style={{
+                                    width: '170px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: 'white',
+                                  }}
                                 >
                                   <option value='0'>Unassigned</option>
                                   {projectMembers.map((member) => (
@@ -1445,7 +1523,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Assignee</label>
                 {canEdit ? (
                   <div className='multi-select-dropdown'>
-                    {/* Hiển thị danh sách đã chọn */}
+
                     <div
                       className='selected-list'
                       style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1481,6 +1559,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
                     <div className='dropdown-select-wrapper'>
                       <select
+                        style={{ width: '150px' }}
+                        value={selectedAssigneeId} // <-- điều khiển bằng state
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
                           if (!selectedId) return;
@@ -1489,11 +1569,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             await createTaskAssignment({ taskId, accountId: selectedId }).unwrap();
                             const data = await getTaskAssignments(taskId).unwrap();
                             setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
+
+                            // Reset dropdown về trạng thái ban đầu
+                            setSelectedAssigneeId('');
                           } catch (err) {
                             console.error('Error assigning task', err);
                           }
                         }}
-                        defaultValue=''
                       >
                         <option value='' disabled>
                           + Add assignee
@@ -1519,8 +1601,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1595,11 +1677,41 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
+
+              <div className='detail-item'>
+                <label>Sprint</label>
+                {isProjectSprintsLoading ? (
+                  <span>Loading sprints...</span>
+                ) : isProjectSprintsError ? (
+                  <span>Error loading sprints</span>
+                ) : projectSprints.length === 0 ? (
+                  <span>No sprints available</span>
+                ) : (
+                  <select
+                    style={{ width: '150px' }}
+                    value={sprintId ?? 'none'}
+                    onChange={(e) => {
+                      const val = e.target.value === 'none' ? null : Number(e.target.value);
+                      setSprintId(val);
+                      if (val !== null) {
+                        handleSprintTaskChange(val);
+                      }
+                    }}
+                  >
+                    <option value="none">No Sprint</option>
+                    {projectSprints.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
               <div className='detail-item'>
                 <label>Priority</label>
@@ -1632,7 +1744,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       </option>
                     ))}
                   </select>
-
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
                 )}
@@ -1756,6 +1867,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
           taskId={taskId}
         />
       )}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title="Delete this attachment?"
+        message="Once you delete, it's gone for good."
+      />
     </div>
   );
 };

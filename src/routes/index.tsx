@@ -188,7 +188,7 @@ export const router = createBrowserRouter([
         element: <ProjectListTable />,
       },
       {
-        path: `:projectKey/details`,
+        path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
       },
       {

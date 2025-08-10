@@ -64,6 +64,7 @@ export interface CreateRiskResponse {
 export interface UpdateRiskStatusRequest {
   id: number;
   status: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskTypeRequest {
@@ -84,6 +85,7 @@ export interface UpdateRiskDueDateRequest {
 export interface UpdateRiskTitleRequest {
   id: number;
   title: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskDescriptionRequest {
@@ -155,8 +157,8 @@ export const riskApi = createApi({
     }),
 
     updateRiskStatus: builder.mutation<UpdateRiskResponse, UpdateRiskStatusRequest>({
-      query: ({ id, status }) => ({
-        url: `risk/${id}/status`,
+      query: ({ id, status, createdBy }) => ({
+        url: `risk/${id}/status?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(status),
       }),
@@ -187,8 +189,8 @@ export const riskApi = createApi({
     }),
 
     updateRiskTitle: builder.mutation<UpdateRiskResponse, UpdateRiskTitleRequest>({
-      query: ({ id, title }) => ({
-        url: `risk/${id}/title`,
+      query: ({ id, title, createdBy }) => ({
+        url: `risk/${id}/title?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(title),
       }),

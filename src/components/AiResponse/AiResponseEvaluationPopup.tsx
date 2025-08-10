@@ -28,15 +28,7 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
   const [createAiResponseHistory] = useCreateAiResponseHistoryMutation();
   const [createAiResponseEvaluation] = useCreateAiResponseEvaluationMutation();
 
-  const handleSubmit = async () => {
-    if (rating < 1 || rating > 5) {
-      setErrorMessage('Please select a rating between 1 and 5.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
+  const saveAiResponseHistory = async () => {
     try {
       const historyRequest: AiResponseHistoryRequestDTO = {
         aiFeature,
@@ -49,8 +41,38 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
       if (!historyResponse.isSuccess) {
         throw new Error(historyResponse.message || 'Failed to save AI response history.');
       }
+      return historyResponse.data.id;
+    } catch (error: any) {
+      console.error('Error saving AI response history:', error);
+      setErrorMessage(error.message || 'An unexpected error occurred while saving AI response history.');
+      return null;
+    }
+  };
 
-      const aiResponseId = historyResponse.data.id;
+  const handleClose = async () => {
+    setIsSubmitting(true);
+    const aiResponseId = await saveAiResponseHistory();
+    setIsSubmitting(false);
+    if (aiResponseId) {
+      onSubmitSuccess(aiResponseId);
+    }
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (rating < 1 || rating > 5) {
+      setErrorMessage('Please select a rating between 1 and 5.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const aiResponseId = await saveAiResponseHistory();
+      if (!aiResponseId) {
+        throw new Error('Failed to save AI response history.');
+      }
 
       const evaluationRequest: AiResponseEvaluationRequestDTO = {
         aiResponseId,
@@ -105,7 +127,7 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
             <h3 className="text-xl font-bold gradient-text">Rate AI-Generated Plan</h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200"
             disabled={isSubmitting}
           >
@@ -147,7 +169,7 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200"
             disabled={isSubmitting}
           >
@@ -155,7 +177,7 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
           </button>
           <button
             onClick={handleSubmit}
-            className={`px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200 flex items-center gap-2 ${
+            className={`px-4 py-2 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-lg hover:from-[#155ac7] hover:to-[#3e7ed1] transition-all duration-200Ints flex items-center gap-2 ${
               isSubmitting ? 'opacity-70 cursor-not-allowed' : 'animate-scale-pulse'
             }`}
             disabled={isSubmitting}

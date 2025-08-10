@@ -31,7 +31,8 @@ import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
-
+import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 
 interface SubtaskDetail {
   id: string;
@@ -45,6 +46,8 @@ interface SubtaskDetail {
   startDate: string;
   endDate: string;
   reporterId: number;
+  sprintId: number;
+  sprintName: string;
 }
 
 const ChildWorkItem: React.FC = () => {
@@ -70,11 +73,14 @@ const ChildWorkItem: React.FC = () => {
   const [startDate, setStartDate] = React.useState('');
   const [endDate, setEndDate] = React.useState('');
   const [reporterId, setReporterId] = React.useState('');
+  const [sprintName, setSprintName] = React.useState('');
+  const [sprinId, setSprintId] = React.useState('');
   const [newTitle, setNewTitle] = useState<string>();
   const [newDescription, setNewDescription] = useState<string>();
   const [newPriority, setNewPriority] = useState<string>();
   const [newStartDate, setNewStartDate] = useState<string>();
   const [newEndDate, setNewEndDate] = useState<string>();
+  const [newSprintId, setNewSprintId] = useState<number>();
   const [newReporterId, setNewReporterId] = useState<number>();
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
@@ -109,6 +115,8 @@ const ChildWorkItem: React.FC = () => {
       setPriority(subtaskDetail.priority || '');
       setStartDate(subtaskDetail.startDate || '');
       setEndDate(subtaskDetail.endDate || '');
+      setSprintName(subtaskDetail.sprintName || '');
+      setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
     }
   }, [subtaskDetail]);
@@ -170,6 +178,11 @@ const ChildWorkItem: React.FC = () => {
   } = useGetLabelsByProjectIdQuery(projectId!, {
     skip: !projectId,
   });
+
+  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(projectId!, {
+      skip: !projectId,
+    });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -246,6 +259,7 @@ const ChildWorkItem: React.FC = () => {
       newTitle === undefined &&
       newDescription === undefined &&
       newPriority === undefined &&
+      newSprintId === undefined &&
       newStartDate === undefined &&
       newEndDate === undefined &&
       newReporterId === undefined &&
@@ -259,6 +273,7 @@ const ChildWorkItem: React.FC = () => {
         id: subtaskDetail.id,
         title: newTitle ?? subtaskDetail.title,
         description: newDescription ?? subtaskDetail.description,
+        sprintId: newSprintId ?? subtaskDetail.sprintId,
         priority: newPriority ?? subtaskDetail.priority,
         startDate: newStartDate ? toISO(newStartDate) : subtaskDetail.startDate,
         endDate: newEndDate ? toISO(newEndDate) : subtaskDetail.endDate,
@@ -296,6 +311,31 @@ const ChildWorkItem: React.FC = () => {
       alert('❌ Upload failed!');
     } finally {
       setIsAddDropdownOpen(false);
+    }
+  };
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ id: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (id: number, createdBy: number) => {
+    setDeleteInfo({ id, createdBy });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
+    try {
+      await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
+
+      // alert("✅ Delete file successfully!");
+      await refetchAttachments();
+      await refetchActivityLogs();
+    } catch (error) {
+      console.error("❌ Error delete file:", error);
+      alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
     }
   };
 
@@ -396,42 +436,47 @@ const ChildWorkItem: React.FC = () => {
             </div>
 
             {attachments.length > 0 && (
-              <div className='attachments-section'>
-                <label>
+              <div className="attachments-section">
+                <label className="block font-semibold mb-2">
                   Attachments <span>({attachments.length})</span>
                 </label>
-                <div className='attachments-grid'>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                   {attachments.map((file) => (
                     <div
-                      className='attachment-card'
+                      className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
                     >
                       <a
                         href={file.urlFile}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-gray-800 no-underline"
                       >
-                        <div className='thumbnail'>
+                        <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
+                            <img
+                              src={file.urlFile}
+                              alt={file.title}
+                              className="w-[100%] h-[100%] object-cover rounded-lg"
+                            />
                           ) : (
-                            <div className='doc-thumbnail'>
-                              <span className='doc-text'>
-                                {file.title.length > 15
-                                  ? file.title.slice(0, 15) + '...'
-                                  : file.title}
+                            <div className="flex items-center justify-center h-full w-full bg-gray-200">
+                              <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                                {file.title.slice(0, 15)}...
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className='file-meta'>
-                          <div className='file-name' title={file.title}>
+                        <div className="p-1">
+                          <div
+                            className="truncate text-sm font-medium"
+                            title={file.title}
+                          >
                             {file.title}
                           </div>
-                          <div className='file-date'>
+                          <div className="text-xs text-gray-500">
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -439,14 +484,14 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
-                          className='delete-file-btn'
-                          title='Delete file'
+                          onClick={() => openDeleteModal(file.id, file.createdBy)}
+                          className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
+                          title="Delete file"
                         >
                           <img
                             src={deleteIcon}
-                            alt='Delete'
-                            style={{ width: '25px', height: '25px' }}
+                            alt="Delete"
+                            className="w-5 h-5"
                           />
                         </button>
                       )}
@@ -686,6 +731,7 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
+                          sprintId: subtaskDetail.sprintId ?? null,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
@@ -780,8 +826,8 @@ const ChildWorkItem: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -789,6 +835,28 @@ const ChildWorkItem: React.FC = () => {
               <div className='detail-item'>
                 <label>Parent</label>
                 <span>{subtaskDetail.taskId}</span>
+              </div>
+
+              <div className='detail-item'>
+                <label>Sprint</label>
+                <select
+                  style={{ width: '150px' }}
+                  value={newSprintId ?? subtaskDetail?.sprintId}
+                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
+                  onBlur={handleUpdateSubtask}
+                >
+                  {isProjectSprintsLoading ? (
+                    <option>Loading...</option>
+                  ) : isProjectSprintsError ? (
+                    <option>Error loading Sprint</option>
+                  ) : (
+                    projectSprints?.map((sprint) => (
+                      <option key={sprint.id} value={sprint.id}>
+                        {sprint.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
               <div className='detail-item'>
@@ -850,6 +918,7 @@ const ChildWorkItem: React.FC = () => {
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
                           description: subtaskDetail.description ?? '',
+                          sprintId: subtaskDetail.sprintId ?? null,
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,
@@ -911,6 +980,13 @@ const ChildWorkItem: React.FC = () => {
           </div>
         </div>
       </div>
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title="Delete this attachment?"
+        message="Once you delete, it's gone for good."
+      />
     </div>
   );
 };

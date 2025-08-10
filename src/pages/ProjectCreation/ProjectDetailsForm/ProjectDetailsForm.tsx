@@ -1,68 +1,70 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   useCreateProjectMutation,
+  useUpdateProjectMutation,
   useCheckProjectKeyQuery,
   useLazyCheckProjectKeyQuery,
   useCheckProjectNameQuery,
 } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
-import type { CreateProjectRequest, CreateProjectResponse } from '../../../services/projectApi';
+import type { ProjectFormData } from '../ProjectCreation';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { DynamicCategory } from '../../../services/dynamicCategoryApi';
 import { useDispatch } from 'react-redux';
 import { setProjectId } from '../../../components/slices/Project/projectCreationSlice';
 
-interface ProjectFormData {
-  name: string;
-  projectKey: string;
-  description: string;
-  budget: number;
-  projectType: string;
-  startDate: string;
-  endDate: string;
+interface ProjectDetailsFormProps {
+  initialData: ProjectFormData;
+  serverData?: ProjectFormData;
+  onNext: (data: Partial<ProjectFormData>) => Promise<void>;
 }
 
-interface Props {
-  initialData: Partial<ProjectFormData>;
-  onNext: (data: Partial<ProjectFormData>) => void;
-}
-
-const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
+const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, serverData, onNext }) => {
   const today = new Date();
-  const defaultStartDate = initialData.startDate || today.toISOString().split('T')[0];
-  const defaultEndDate =
-    initialData.endDate ||
-    new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const defaultStartDate = today.toISOString().split('T')[0];
+  const defaultEndDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  const [form, setForm] = useState<Partial<ProjectFormData>>({
+  // Utility function to normalize date to YYYY-MM-DD format
+  const normalizeDateString = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } =
+    useGetCategoriesByGroupQuery('project_type');
+
+  const [formData, setFormData] = useState({
     name: initialData.name || '',
     projectKey: initialData.projectKey || '',
     description: initialData.description || '',
     budget: initialData.budget || 0,
-    projectType: initialData.projectType || 'WEB_APPLICATION',
-    startDate: defaultStartDate,
-    endDate: defaultEndDate,
+    projectType: initialData.projectType || (categoryData?.data?.[0]?.name || ''),
+    startDate: normalizeDateString(initialData.startDate) || defaultStartDate,
+    endDate: normalizeDateString(initialData.endDate) || defaultEndDate,
   });
   const [touched, setTouched] = useState({
     name: false,
     projectKey: false,
     budget: false,
+    projectType: false,
+    startDate: false,
     endDate: false,
   });
-  const [debouncedProjectKey, setDebouncedProjectKey] = useState<string>(form.projectKey || '');
-  const [debouncedProjectName, setDebouncedProjectName] = useState<string>(form.name || '');
+  const [debouncedProjectKey, setDebouncedProjectKey] = useState<string>(formData.projectKey || '');
+  const [debouncedProjectName, setDebouncedProjectName] = useState<string>(formData.name || '');
   const [isKeyFormatValid, setIsKeyFormatValid] = useState<boolean | null>(null);
   const [isKeyUnique, setIsKeyUnique] = useState<boolean | null>(null);
   const [isNameUnique, setIsNameUnique] = useState<boolean | null>(null);
   const [isBudgetValid, setIsBudgetValid] = useState<boolean | null>(null);
   const [isDateValid, setIsDateValid] = useState<boolean | null>(null);
-  const [createProject, { isLoading, isError, error, isSuccess }] = useCreateProjectMutation();
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [createProject, { isLoading: isCreating }] = useCreateProjectMutation();
+  const [updateProject, { isLoading: isUpdating }] = useUpdateProjectMutation();
   const [checkProjectKey] = useLazyCheckProjectKeyQuery();
   const dispatch = useDispatch();
   const nameInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } =
-    useGetCategoriesByGroupQuery('project_type');
 
   const projectKeyRegex = /^[A-Z][A-Z]{0,9}$/;
 
@@ -76,10 +78,17 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
       skip: !debouncedProjectName || debouncedProjectName.length < 3,
     });
 
+  // Convert date to UTC ISO string for API (e.g., "2025-08-10T00:00:00.000Z")
+  const toUTCDateString = (dateString: string): string => {
+    if (!dateString) return new Date().toISOString();
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return new Date().toISOString();
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString();
+  };
+
   // Generate projectKey from projectName
   const generateProjectKey = (name: string): string => {
     if (!name.trim()) return '';
-    // Loại bỏ ký tự đặc biệt, chỉ giữ chữ cái và số
     const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, '');
     const words = cleanName.trim().split(/\s+/);
     let key = words
@@ -91,10 +100,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
 
   // Handle projectKey suggestion and uniqueness
   useEffect(() => {
-    if (!form.name || touched.projectKey) return;
+    if (!formData.name || touched.projectKey) return;
 
     const checkAndGenerateUniqueKey = async () => {
-      let generatedKey = generateProjectKey(form.name as string);
+      let generatedKey = generateProjectKey(formData.name as string);
       let attempts = 0;
       const maxAttempts = 8;
 
@@ -103,7 +112,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           try {
             const response = await checkProjectKey(generatedKey).unwrap();
             if (!response?.data?.exists) {
-              setForm((prev) => ({ ...prev, projectKey: generatedKey }));
+              setFormData((prev) => ({ ...prev, projectKey: generatedKey }));
               setDebouncedProjectKey(generatedKey);
               setIsKeyUnique(true);
               setIsKeyFormatValid(true);
@@ -122,7 +131,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
         attempts++;
       }
       if (attempts >= maxAttempts || !projectKeyRegex.test(generatedKey)) {
-        setForm((prev) => ({ ...prev, projectKey: '' }));
+        setFormData((prev) => ({ ...prev, projectKey: '' }));
         setDebouncedProjectKey('');
         setIsKeyUnique(null);
         setIsKeyFormatValid(null);
@@ -130,31 +139,31 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     };
 
     checkAndGenerateUniqueKey();
-  }, [form.name, checkProjectKey]);
+  }, [formData.name, checkProjectKey]);
 
   // Debounce projectKey and projectName inputs
   useEffect(() => {
     const keyHandler = setTimeout(() => {
-      setDebouncedProjectKey(form.projectKey || '');
+      setDebouncedProjectKey(formData.projectKey || '');
     }, 500);
     const nameHandler = setTimeout(() => {
-      setDebouncedProjectName(form.name || '');
+      setDebouncedProjectName(formData.name || '');
     }, 500);
     return () => {
       clearTimeout(keyHandler);
       clearTimeout(nameHandler);
     };
-  }, [form.projectKey, form.name]);
+  }, [formData.projectKey, formData.name]);
 
   // Validate project key format and uniqueness
   useEffect(() => {
-    if (!form.projectKey) {
+    if (!formData.projectKey) {
       setIsKeyFormatValid(null);
       setIsKeyUnique(null);
       return;
     }
 
-    const isFormatValid = projectKeyRegex.test(form.projectKey);
+    const isFormatValid = projectKeyRegex.test(formData.projectKey);
     setIsKeyFormatValid(isFormatValid);
 
     if (isFormatValid) {
@@ -168,11 +177,11 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     } else {
       setIsKeyUnique(null);
     }
-  }, [form.projectKey, keyCheckData, keyCheckError]);
+  }, [formData.projectKey, keyCheckData, keyCheckError]);
 
   // Validate project name uniqueness
   useEffect(() => {
-    if (!form.name) {
+    if (!formData.name) {
       setIsNameUnique(null);
       return;
     }
@@ -188,31 +197,64 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
 
   // Validate budget
   useEffect(() => {
-    if (form.budget === undefined || form.budget <= 0) {
+    if (formData.budget === undefined || formData.budget <= 0) {
       setIsBudgetValid(false);
     } else {
       setIsBudgetValid(true);
     }
-  }, [form.budget]);
+  }, [formData.budget]);
 
-  // Validate dates and reset endDate if invalid
+  // Validate dates
   useEffect(() => {
-    if (form.startDate && form.endDate) {
-      const start = new Date(form.startDate);
-      const end = new Date(form.endDate);
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
       if (end <= start) {
         setIsDateValid(false);
-        setForm((prev) => ({
-          ...prev,
-          endDate: form.startDate || new Date().toISOString().split('T')[0],
-        }));
       } else {
         setIsDateValid(true);
       }
     } else {
       setIsDateValid(null);
     }
-  }, [form.startDate, form.endDate]);
+  }, [formData.startDate, formData.endDate]);
+
+  // Load serverData
+  useEffect(() => {
+    if (serverData) {
+      setFormData({
+        name: serverData.name || '',
+        projectKey: serverData.projectKey || '',
+        description: serverData.description || '',
+        budget: serverData.budget || 0,
+        projectType: serverData.projectType || (categoryData?.data?.[0]?.name || ''),
+        startDate: normalizeDateString(serverData.startDate) || defaultStartDate,
+        endDate: normalizeDateString(serverData.endDate) || defaultEndDate,
+      });
+      setTouched({
+        name: !!serverData.name,
+        projectKey: !!serverData.projectKey,
+        budget: !!serverData.budget,
+        projectType: !!serverData.projectType,
+        startDate: !!serverData.startDate,
+        endDate: !!serverData.endDate,
+      });
+    }
+  }, [serverData, categoryData, defaultStartDate, defaultEndDate]);
+
+  // Set default projectType when categoryData loads
+  useEffect(() => {
+    if (!formData.projectType && categoryData?.data?.[0]?.name) {
+      setFormData((prev) => ({
+        ...prev,
+        projectType: categoryData.data[0].name,
+      }));
+      setTouched((prev) => ({
+        ...prev,
+        projectType: true,
+      }));
+    }
+  }, [categoryData, formData.projectType]);
 
   // Focus on name input on mount
   useEffect(() => {
@@ -225,7 +267,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setForm((prev) => ({
+    setFormData((prev) => ({
       ...prev,
       [name]:
         name === 'projectKey'
@@ -237,7 +279,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     setTouched((prev) => ({
       ...prev,
       [name]: true,
-      ...(name === 'name' && { projectKey: false }), // Reset touched.projectKey khi tên thay đổi
+      ...(name === 'name' && { projectKey: false }),
     }));
     if (name === 'projectKey') {
       setIsKeyFormatValid(null);
@@ -246,6 +288,7 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     if (name === 'name') {
       setIsNameUnique(null);
     }
+    setErrorMessage('');
   };
 
   const handleBlur = (
@@ -255,55 +298,90 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
-  const getErrorMessage = (): string => {
-    if (isError && error && 'data' in error) {
-      const baseError = error as FetchBaseQueryError;
-      const errorData = baseError.data as { message?: string };
-      return errorData?.message || 'Failed to create project';
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await handleSave();
     }
-    return 'Failed to create project';
+  };
+
+  const handleSave = async () => {
+    if (
+      !formData.name.trim() ||
+      !formData.projectKey.trim() ||
+      !formData.description.trim() ||
+      formData.budget <= 0 ||
+      !formData.projectType ||
+      !formData.startDate ||
+      !formData.endDate
+    ) {
+      setErrorMessage('All fields are required, and budget must be greater than 0.');
+      return false;
+    }
+
+    if (!isKeyFormatValid || !isKeyUnique) {
+      setErrorMessage('Project key must be valid and unique.');
+      return false;
+    }
+
+    if (!isNameUnique) {
+      setErrorMessage('Project name must be unique.');
+      return false;
+    }
+
+    if (!isBudgetValid) {
+      setErrorMessage('Budget must be greater than 0.');
+      return false;
+    }
+
+    if (!isDateValid) {
+      setErrorMessage('End date must be after start date.');
+      return false;
+    }
+
+    try {
+      let projectId: number;
+      const projectData = {
+        name: formData.name,
+        projectKey: formData.projectKey,
+        description: formData.description,
+        budget: formData.budget,
+        projectType: formData.projectType,
+        startDate: toUTCDateString(formData.startDate),
+        endDate: toUTCDateString(formData.endDate),
+      };
+
+      if (serverData?.id) {
+        await updateProject({
+          id: serverData.id,
+          body: projectData,
+        }).unwrap();
+        projectId = serverData.id;
+      } else {
+        const response = await createProject(projectData).unwrap();
+        projectId = response.data.id;
+        dispatch(setProjectId(projectId));
+        localStorage.setItem('projectCreationId', projectId.toString());
+      }
+
+      await onNext({ ...formData, id: projectId });
+      setErrorMessage('');
+      return true;
+    } catch (err: any) {
+      console.error('Failed to save project details:', err);
+      const errorMsg =
+        err.data?.message?.includes('timestamp with time zone')
+          ? 'Invalid date format. Please ensure dates are valid and try again.'
+          : err.data?.message || 'Failed to save project details. Please try again.';
+      setErrorMessage(errorMsg);
+      return false;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!form.name || !form.projectKey) {
-      return;
-    }
-
-    if (!isKeyFormatValid || !isKeyUnique) {
-      return;
-    }
-
-    if (!isNameUnique) {
-      return;
-    }
-
-    if (!isBudgetValid) {
-      return;
-    }
-
-    if (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) {
-      return;
-    }
-
-    const requestData: CreateProjectRequest = {
-      name: form.name || '',
-      projectKey: form.projectKey || '',
-      description: form.description || '',
-      budget: form.budget || 0,
-      projectType: form.projectType || 'WEB_APPLICATION',
-      startDate: form.startDate ? new Date(form.startDate).toISOString() : new Date().toISOString(),
-      endDate: form.endDate ? new Date(form.endDate).toISOString() : new Date().toISOString(),
-    };
-
-    try {
-      const response = (await createProject(requestData).unwrap()) as CreateProjectResponse;
-      dispatch(setProjectId(response.data.id));
-      localStorage.setItem('projectCreationId', response.data.id.toString());
-      onNext(form);
-    } catch (err) {
-      console.error('Failed to create project:', err);
+    if (await handleSave()) {
+      await onNext(formData);
     }
   };
 
@@ -319,8 +397,14 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           Project Details
         </h2>
         <p className="text-gray-600 mb-8 text-base leading-relaxed">
-          Define the core details of your project to get started.
+          Provide the basic details for your project.
         </p>
+
+        {errorMessage && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl">
+            {errorMessage}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700">Project Name *</label>
@@ -328,9 +412,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             ref={nameInputRef}
             name="name"
             type="text"
-            value={form.name}
+            value={formData.name}
             onChange={handleChange}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             required
             placeholder="Enter project name"
             className={`mt-2 block w-full border-2 ${
@@ -341,16 +426,16 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
                 : 'border-gray-200'
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
-          {touched.name && form.name && isNameChecking && (
+          {touched.name && formData.name && isNameChecking && (
             <p className="mt-1 text-sm text-gray-500">Checking project name...</p>
           )}
-          {touched.name && form.name && isNameUnique === true && (
+          {touched.name && formData.name && isNameUnique === true && (
             <p className="mt-1 text-sm text-green-500">Project name is available.</p>
           )}
-          {touched.name && form.name && isNameUnique === false && (
+          {touched.name && formData.name && isNameUnique === false && (
             <p className="mt-1 text-sm text-red-500">Project name is already taken.</p>
           )}
-          {touched.name && !form.name && (
+          {touched.name && !formData.name && (
             <p className="mt-1 text-sm text-red-500">Project name is required.</p>
           )}
         </div>
@@ -360,9 +445,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           <input
             name="projectKey"
             type="text"
-            value={form.projectKey}
+            value={formData.projectKey}
             onChange={handleChange}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             required
             maxLength={10}
             placeholder="E.g., TD"
@@ -374,22 +460,22 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
                 : 'border-gray-200'
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
-          {touched.projectKey && form.projectKey && isKeyChecking && (
+          {touched.projectKey && formData.projectKey && isKeyChecking && (
             <p className="mt-1 text-sm text-gray-500">Checking project key...</p>
           )}
-          {touched.projectKey && form.projectKey && isKeyFormatValid === false && (
+          {touched.projectKey && formData.projectKey && isKeyFormatValid === false && (
             <p className="mt-1 text-sm text-red-500">
               Project key must start with an uppercase letter, followed by uppercase letters only,
               max 10 characters.
             </p>
           )}
-          {touched.projectKey && form.projectKey && isKeyFormatValid && isKeyUnique === true && (
+          {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === true && (
             <p className="mt-1 text-sm text-green-500">Project key is available.</p>
           )}
-          {touched.projectKey && form.projectKey && isKeyFormatValid && isKeyUnique === false && (
+          {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === false && (
             <p className="mt-1 text-sm text-red-500">Project key is already taken.</p>
           )}
-          {touched.projectKey && !form.projectKey && (
+          {touched.projectKey && !formData.projectKey && (
             <p className="mt-1 text-sm text-red-500">Project key is required.</p>
           )}
         </div>
@@ -398,9 +484,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
           <label className="block text-sm font-medium text-gray-700">Description</label>
           <textarea
             name="description"
-            value={form.description}
+            value={formData.description}
             onChange={handleChange}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             rows={4}
             placeholder="Enter project description"
             className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400"
@@ -419,10 +506,14 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             ) : (
               <select
                 name="projectType"
-                value={form.projectType}
+                value={formData.projectType}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all"
+                onKeyDown={handleKeyDown}
+                required
+                className={`mt-2 block w-full border-2 ${
+                  touched.projectType && !formData.projectType ? 'border-red-500' : 'border-gray-200'
+                } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all`}
               >
                 {categoryData?.data?.map((category: DynamicCategory) => (
                   <option key={category.id} value={category.name}>
@@ -431,6 +522,9 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
                 ))}
               </select>
             )}
+            {touched.projectType && !formData.projectType && (
+              <p className="mt-1 text-sm text-red-500">Project type is required.</p>
+            )}
           </div>
 
           <div>
@@ -438,9 +532,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             <input
               name="budget"
               type="number"
-              value={form.budget === 0 ? '' : form.budget}
+              value={formData.budget === 0 ? '' : formData.budget}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
               required
               min={1}
               placeholder="Enter budget in VND"
@@ -452,10 +547,10 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
                   : 'border-gray-200'
               } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
             />
-            {touched.budget && form.budget !== undefined && form.budget > 0 && (
-              <p className="mt-1 text-sm text-gray-500">{formatBudget(form.budget)}</p>
+            {touched.budget && formData.budget !== undefined && formData.budget > 0 && (
+              <p className="mt-1 text-sm text-gray-500">{formatBudget(formData.budget)}</p>
             )}
-            {touched.budget && form.budget !== undefined && form.budget <= 0 && (
+            {touched.budget && formData.budget !== undefined && formData.budget <= 0 && (
               <p className="mt-1 text-sm text-red-500">Budget must be greater than 0 VND.</p>
             )}
           </div>
@@ -467,11 +562,16 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             <input
               name="startDate"
               type="date"
-              value={form.startDate}
+              value={formData.startDate}
               onChange={handleChange}
               onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              required
               className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all"
             />
+            {touched.startDate && !formData.startDate && (
+              <p className="mt-1 text-sm text-red-500">Start date is required.</p>
+            )}
           </div>
 
           <div>
@@ -479,41 +579,52 @@ const ProjectDetailsForm: React.FC<Props> = ({ initialData, onNext }) => {
             <input
               name="endDate"
               type="date"
-              value={form.endDate}
+              value={formData.endDate}
               onChange={handleChange}
               onBlur={handleBlur}
-              min={form.startDate}
+              onKeyDown={handleKeyDown}
+              min={formData.startDate}
+              required
               className={`mt-2 block w-full border-2 ${
                 touched.endDate && isDateValid === false ? 'border-red-500' : 'border-gray-200'
               } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all`}
             />
-            {touched.endDate && form.startDate && form.endDate && isDateValid === false && (
+            {touched.endDate && !formData.endDate && (
+              <p className="mt-1 text-sm text-red-500">End date is required.</p>
+            )}
+            {touched.endDate && formData.startDate && formData.endDate && isDateValid === false && (
               <p className="mt-1 text-sm text-red-500">End date must be after start date.</p>
             )}
           </div>
         </div>
 
-        {isError && <div className="text-red-500 text-sm">{getErrorMessage()}</div>}
-        {isLoading && <div className="text-gray-600 text-sm">Creating project...</div>}
+        {(isCreating || isUpdating) && (
+          <div className="text-gray-600 text-sm">Saving project...</div>
+        )}
 
         <div className="pt-6 flex justify-end">
           <button
             type="submit"
             disabled={
-              isLoading ||
+              isCreating ||
+              isUpdating ||
               isKeyFormatValid === false ||
               isKeyUnique === false ||
               isNameUnique === false ||
               isBudgetValid === false ||
               isDateValid === false ||
-              !form.projectKey ||
-              !form.name ||
+              !formData.projectKey ||
+              !formData.name ||
+              !formData.description ||
+              !formData.projectType ||
+              !formData.startDate ||
+              !formData.endDate ||
               isCategoryLoading ||
               !!categoryError
             }
             className={`px-16 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl disabled:bg-gray-300 disabled:opacity-50 text-sm`}
           >
-            {isLoading ? 'Creating...' : 'Next'}
+            {isCreating || isUpdating ? 'Saving...' : 'Next'}
           </button>
         </div>
       </form>

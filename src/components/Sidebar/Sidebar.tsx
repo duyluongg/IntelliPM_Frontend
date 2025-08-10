@@ -61,17 +61,23 @@ export default function Sidebar() {
     error,
   } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
-  const recentProjects: RecentProject[] = projectsData?.isSuccess
-    ? projectsData.data.map((proj) => ({
+ const recentProjects: RecentProject[] = projectsData?.isSuccess
+  ? projectsData.data
+      .filter(
+        (proj) =>
+         // proj.projectStatus === 'ACTIVE' &&
+          proj.status === 'ACTIVE'
+      )
+      .map((proj) => ({
         name: proj.projectName,
         key: proj.projectKey,
         icon: proj.iconUrl || projectIcon,
       }))
-    : [];
+  : [];
 
-  useEffect(() => {
-    // Không tự động mở dropdown khi chọn project, chỉ dựa vào hành động người dùng
-  }, [selectedProjectKey, recentProjects]);
+useEffect(() => {
+}, [selectedProjectKey, recentProjects]);
+
 
   const handleLogout = () => {
     logout();

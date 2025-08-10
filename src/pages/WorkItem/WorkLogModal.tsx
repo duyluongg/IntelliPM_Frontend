@@ -349,6 +349,7 @@ import { useGetTaskWithSubtasksQuery, useUpdatePlannedHoursMutation } from '../.
 import {
   useGetSubtaskFullDetailedByIdQuery,
   useUpdateSubtaskPlannedHoursMutation,
+  useUpdateSubtaskActualHoursMutation,
 } from '../../services/subtaskApi';
 import {
   useGetTaskAssignmentHoursByTaskIdQuery,
@@ -363,18 +364,22 @@ type Props = {
 };
 
 export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
+  const userJson = localStorage.getItem('user');
+  const userId = userJson ? JSON.parse(userJson).id : null;
   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
-    { id: number; hours: number }[]
+    { id: string; hours: number }[]
   >([]);
   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
     { accountId: number; hours: number }[]
   >([]);
   const [plannedSubtaskHours, setPlannedSubtaskHours] = useState<number>(0);
+  const [actualSubtaskHours, setActualSubtaskHours] = useState<number>(0);
   const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
 
   const [changeWorklogHours, { isLoading: isChanging }] = useChangeMultipleWorklogHoursMutation();
   const [updateWorkLogByAccounts, { isLoading: isUpdating }] = useUpdateWorkLogByAccountsMutation();
   const [changeSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation();
+  const [changeSubtaskActualHours] = useUpdateSubtaskActualHoursMutation();
   const [changeTaskPlannedHours] = useUpdatePlannedHoursMutation();
   const [updateActualHours, { isLoading: isUpdatingActual }] =
     useUpdateActualHoursByTaskIdMutation();
@@ -389,7 +394,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
     workItemId,
     {
-      skip: type !== 'task',
+      // skip: type !== 'task',
     }
   );
 
@@ -406,13 +411,36 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
   const hasSubtasks = (taskWithSubtasks?.subtasks?.length ?? 0) > 0;
 
   useEffect(() => {
+    if (open) {
+      if (type === 'subtask') {
+        refetchSubtask();
+        refetchSubtaskDetail();
+      }
+      refetchTaskSubTask();
+      if (type === 'task' && !hasSubtasks) {
+        refetchAssignments();
+      }
+    }
+  }, [
+    open,
+    type,
+    hasSubtasks,
+    refetchSubtask,
+    refetchSubtaskDetail,
+    refetchTaskSubTask,
+    refetchAssignments,
+  ]);
+
+  useEffect(() => {
     if (!open) return;
 
-    if (type === 'subtask' && subtaskData?.data) {
-      const mapped = subtaskData.data.map((item) => ({
-        id: item.id,
-        hours: item.hours ?? 0,
-      }));
+    if (type === 'subtask' && subtaskDetailData) {
+      const mapped = [
+        {
+          id: subtaskDetailData.id,
+          hours: subtaskDetailData.actualHours ?? 0,
+        },
+      ];
       setEditableSubtaskEntries(mapped);
       const totalPlanned = subtaskDetailData?.plannedHours ?? 0;
       setPlannedSubtaskHours(totalPlanned);
@@ -423,10 +451,12 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
       }));
       setEditableTaskAssignments(mapped);
       setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
+    } else if (type === 'task' && !hasSubtasks) {
+      setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
     }
   }, [open, subtaskData, taskAssignments, taskWithSubtasks, type, hasSubtasks]);
 
-  const handleHourChangeSubtask = (id: number, hours: number) => {
+  const handleHourChangeSubtask = (id: string, hours: number) => {
     setEditableSubtaskEntries((prev) => prev.map((e) => (e.id === id ? { ...e, hours } : e)));
   };
 
@@ -452,31 +482,65 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
       }
 
       if (type === 'task' && !hasSubtasks) {
-        await changeTaskPlannedHours({ id: workItemId, plannedHours: plannedTaskHours }).unwrap();
-        const actualPayload = editableTaskAssignments.map((item) => ({
-          id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
-          actualHours: item.hours,
-        }));
-
-        await updateActualHours({
-          taskId: workItemId,
-          data: actualPayload,
+        await changeTaskPlannedHours({
+          id: workItemId,
+          plannedHours: plannedTaskHours,
+          createdBy: userId,
         }).unwrap();
+
+        // const actualPayload = editableTaskAssignments.map((item) => ({
+        //   id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
+        //   actualHours: item.hours,
+        // }));
+        // await updateActualHours({
+        //   taskId: workItemId,
+        //   data: actualPayload,
+        //   createdBy: userId
+        // }).unwrap();
+        if (editableTaskAssignments.length > 0 && taskAssignments) {
+          const actualPayload = editableTaskAssignments
+            .map((item) => ({
+              id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
+              actualHours: item.hours,
+            }))
+            .filter((item) => item.id);
+
+          if (actualPayload.length > 0) {
+            await updateActualHours({
+              taskId: workItemId,
+              data: actualPayload,
+              createdBy: userId,
+            }).unwrap();
+          }
+        }
+
         await refetchAssignments();
         await refetchTaskSubTask();
         onClose();
         return;
       }
-
+      console.log('change subtask plannedHours: ', userId);
       // subtask case
-      await changeSubtaskPlannedHours({ id: workItemId, hours: plannedSubtaskHours }).unwrap();
-      const payload: Record<number, number> = {};
-      editableSubtaskEntries.forEach((e) => {
-        payload[e.id] = e.hours;
-      });
-      await changeWorklogHours(payload).unwrap();
+      await changeSubtaskPlannedHours({
+        id: workItemId,
+        hours: plannedSubtaskHours,
+        createdBy: userId,
+      }).unwrap();
+      if (editableSubtaskEntries.length > 0) {
+        const hours = editableSubtaskEntries[0].hours;
+
+        await changeSubtaskActualHours({ id: workItemId, hours, createdBy: userId }).unwrap();
+      }
+      // await changeSubtaskActualHours({ id: workItemId, hours: actualSubtaskHours }).unwrap();
+      // const payload: Record<string, number> = {};
+      // //const payload = new Map<string, number>();
+      // editableSubtaskEntries.forEach((e) => {
+      //   payload[e.id] = e.hours;
+      // });
+      // await changeWorklogHours(payload).unwrap();
       await refetchSubtask();
       await refetchSubtaskDetail();
+      await refetchTaskSubTask();
       onClose();
     } catch (err) {
       console.error('❌ Failed to update hours:', err);
@@ -538,7 +602,9 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
                     const account = taskAssignments?.find((a) => a.accountId === item.accountId);
                     return (
                       <tr key={item.accountId}>
-                        <td>{account?.accountFullname || account?.accountUsername || 'N/A'}</td>
+                        <td>
+                          {account?.accountFullname || account?.accountUsername || 'No Assignee'}
+                        </td>
                         <td>
                           <input
                             type='number'
@@ -558,17 +624,18 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
             </div>
           )
         ) : type === 'subtask' ? (
+          // type === 'subtask' ? (
           <div className='max-h-[300px] overflow-y-auto mb-4'>
             <table className='w-full text-sm mb-4'>
               <thead>
                 <tr className='text-left font-semibold'>
                   <th>Person</th>
-                  <th>Date</th>
+                  {/* <th>Date</th> */}
                   <th>Hours</th>
                 </tr>
               </thead>
               <tbody>
-                {subtaskData?.data?.map((entry) => {
+                {/* {subtaskData?.data?.map((entry) => {
                   const editable = editableSubtaskEntries.find((e) => e.id === entry.id);
                   return (
                     <tr key={entry.id}>
@@ -589,7 +656,33 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
                       </td>
                     </tr>
                   );
-                })}
+                })} */}
+                {subtaskDetailData &&
+                  (() => {
+                    const editable = editableSubtaskEntries.find(
+                      (e) => e.id === subtaskDetailData.id
+                    );
+                    return (
+                      <tr key={subtaskDetailData.id}>
+                        <td>
+                          {subtaskDetailData.assignedFullName ||
+                            subtaskDetailData.assignedUsername ||
+                            'No Assignee'}
+                        </td>
+                        <td>
+                          <input
+                            type='number'
+                            className='border px-1 py-0.5 rounded w-[60px]'
+                            value={editable?.hours ?? 0}
+                            min={0}
+                            onChange={(e) =>
+                              handleHourChangeSubtask(subtaskDetailData.id, Number(e.target.value))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })()}
               </tbody>
             </table>
           </div>

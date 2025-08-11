@@ -398,6 +398,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignedBy || null,
+          createdBy: accountId,
         };
 
         await updateEpic({
@@ -463,6 +464,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           status: item.status,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignedBy || null,
+          createdBy: accountId,
         };
         const response = await updateEpic({
           id: item.id,
@@ -568,6 +570,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
             status: normalizedEpics[epicIndex].status,
             reporterId: normalizedEpics[epicIndex].reporterId,
             assignedBy: null,
+            createdBy: accountId, //hello
           };
           await updateEpic({
             id: itemId,

@@ -10,11 +10,30 @@ interface ActionButtonsProps {
 const ActionButtons: React.FC<ActionButtonsProps> = ({ projectKey, isFormValid }) => {
   const navigate = useNavigate();
 
+  const clearLocalStorage = () => {
+    try {
+      localStorage.removeItem('persist:root');
+      localStorage.removeItem('projectCreationId');
+      localStorage.removeItem('projectCreationStep');
+      localStorage.removeItem('projectCreationMaxStep');
+      localStorage.removeItem('projectCreationShowTable');
+      localStorage.removeItem('projectFormData');
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
+  };
+
   const handleSaveAndExit = () => {
     const confirmExit = window.confirm('Are you sure you want to exit?');
     if (confirmExit) {
+      clearLocalStorage();
       window.history.back();
     }
+  };
+
+  const handleCreateTask = () => {
+    clearLocalStorage();
+    navigate(`/project/${projectKey}/task-setup`);
   };
 
   return (
@@ -32,7 +51,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ projectKey, isFormValid }
 
       {/* Create Task - Nút chính (màu xanh dương) */}
       <button
-        onClick={() => navigate(`/project/${projectKey}/task-setup`)}
+        onClick={handleCreateTask}
         className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] 
         text-white text-sm font-medium rounded-xl shadow-lg hover:from-[#1a68e0] hover:to-[#3e7ed1] 
         hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 ease-in-out"

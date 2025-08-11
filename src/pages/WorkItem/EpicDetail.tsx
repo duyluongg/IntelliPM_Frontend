@@ -20,7 +20,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByProjectIdQuery, useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
@@ -140,22 +140,22 @@ const EpicDetail: React.FC = () => {
     skip: !epic?.projectId,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
-    skip: !epic?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
+    skip: !epic?.id,
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteInfo, setDeleteInfo] = useState<{ fileId: number } | null>(null);
+  const [deleteInfo, setDeleteInfo] = useState<{ fileId: number; createdBy: number } | null>(null);
 
   const openDeleteModal = (fileId: number) => {
-    setDeleteInfo({ fileId });
+    setDeleteInfo({ fileId, createdBy: accountId });
     setIsDeleteModalOpen(true);
   };
 
   const confirmDeleteFile = async () => {
     if (!deleteInfo) return;
     try {
-      await deleteEpicFile(deleteInfo.fileId).unwrap();
+      await deleteEpicFile({ id: deleteInfo.fileId, createdBy: accountId }).unwrap();
       //alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
@@ -168,9 +168,9 @@ const EpicDetail: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (fileId: number) => {
+  const handleDeleteFile = async (fileId: number, createdBy: number) => {
     try {
-      await deleteEpicFile(fileId).unwrap();
+      await deleteEpicFile({ id: fileId, createdBy: accountId }).unwrap();
       alert('✅ Delete file successfully!');
       await refetchAttachments();
     } catch (error) {
@@ -232,11 +232,14 @@ const EpicDetail: React.FC = () => {
           startDate: newStartDate ?? epic.startDate,
           endDate: newEndDate ?? epic.endDate,
           status: epic.status,
+          createdBy: accountId,
         },
       }).unwrap();
 
       alert("✅ Epic updated");
       console.error("✅ Epic updated");
+      await refetchActivityLogs();
+      await refetch();
     } catch (err) {
       console.error("❌ Failed to update epic", err);
       alert("❌ Update failed");
@@ -258,7 +261,8 @@ const EpicDetail: React.FC = () => {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      await updateEpicStatus({ id: epicIdFromUrl!, status: newStatus }).unwrap();
+      await updateEpicStatus({ id: epicIdFromUrl!, status: newStatus, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       setStatus(newStatus);
     } catch (err) {
       console.error('❌ Error updating epic status:', err);
@@ -331,6 +335,7 @@ const EpicDetail: React.FC = () => {
       await Promise.all([
         refetchWorkItemLabels?.(),
         refetchProjectLabels?.(),
+
       ]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
@@ -437,9 +442,11 @@ const EpicDetail: React.FC = () => {
                         epicId: epicIdFromUrl!,
                         title: file.name,
                         file,
+                        createdBy: accountId,
                       }).unwrap();
                       alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       alert('❌ Upload failed.');
@@ -1277,9 +1284,11 @@ const EpicDetail: React.FC = () => {
                                             epicId: epicIdFromUrl!,
                                             accountId,
                                             content: newContent,
+                                            createdBy: accountId,
                                           }).unwrap();
                                           alert("✅ Comment updated");
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to update comment", err);
                                           alert("❌ Update failed");
@@ -1294,9 +1303,13 @@ const EpicDetail: React.FC = () => {
                                     onClick={async () => {
                                       if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
                                         try {
-                                          await deleteEpicComment(comment.id).unwrap();
+                                          await deleteEpicComment({
+                                            id: comment.id,
+                                            createdBy: accountId,
+                                          }).unwrap();
                                           alert("🗑️ Deleted successfully");
                                           await refetchComments();
+                                          await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to delete comment", err);
                                           alert("❌ Delete failed");
@@ -1333,10 +1346,12 @@ const EpicDetail: React.FC = () => {
                             epicId: epicIdFromUrl!,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
                           alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
                           alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

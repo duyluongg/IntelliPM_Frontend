@@ -51,7 +51,8 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
               });
 
               popup = tippy(view.dom, {
-                getReferenceClientRect: () => view.coordsAtPos(from),
+                getReferenceClientRect: () => view.coordsAtPos(from) as unknown as DOMRect,
+
                 content: dom,
                 showOnCreate: true,
                 interactive: true,
@@ -72,4 +73,3 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
     ];
   },
 });
-

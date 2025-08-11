@@ -1,10 +1,10 @@
 // src/components/DocumentOptionCard.tsx
 import React from 'react';
 import { Check } from 'lucide-react';
+import type { DocumentVisibility } from '../../../types/DocumentType';
 
-// Định nghĩa kiểu dữ liệu cho props
 interface DocumentOption {
-  id: string;
+  id: DocumentVisibility;
   name: string;
   icon: React.ReactNode;
   description: string;
@@ -14,7 +14,7 @@ interface DocumentOption {
 
 interface DocumentOptionCardProps {
   option: DocumentOption;
-  onSelect: (id: string) => void;
+  onSelect: (id: DocumentVisibility) => void;
 }
 
 export const DocumentOptionCard: React.FC<DocumentOptionCardProps> = ({ option, onSelect }) => {

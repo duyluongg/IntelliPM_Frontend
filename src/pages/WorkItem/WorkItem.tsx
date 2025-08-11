@@ -1188,9 +1188,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   }}
                                 >
                                   <option value='0'>Unassigned</option>
-                                  {projectMembers.map((member) => (
-                                    <option key={member.accountId} value={member.accountId}>
-                                      {member.accountName}
+                                  {assignees.map((assignees) => (
+                                    <option key={assignees.accountId} value={assignees.accountId}>
+                                      {assignees.accountFullname}
                                     </option>
                                   ))}
                                 </select>

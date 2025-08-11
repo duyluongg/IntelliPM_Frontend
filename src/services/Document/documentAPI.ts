@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
-import type { DocumentType } from '../../types/DocumentType';
+import type { CreateDocumentRequest, DocumentType } from '../../types/DocumentType';
 import type {
   ShareDocumentByEmailRequest,
   ShareDocumentByEmailResult,
@@ -69,13 +69,15 @@ export const documentApi = createApi({
         body,
       }),
     }),
-    createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
+    createDocument: builder.mutation<DocumentType, CreateDocumentRequest>({
       query: (body) => ({
         url: 'documents/create',
         method: 'POST',
         body,
       }),
+      transformResponse: (resp: ApiResponse<DocumentType>) => resp.data, 
     }),
+
     updateDocument: builder.mutation<DocumentType, { id: number; data: Partial<DocumentType> }>({
       query: ({ id, data }) => ({
         url: `documents/${id}`,

@@ -21,6 +21,7 @@ export interface EpicResponseDTO {
   sprintId: number | null;
   sprintName: string | null;
   sprintGoal: string | null;
+  createdBy: number;
 }
 
 export interface UpdateEpicRequestDTO {
@@ -32,6 +33,7 @@ export interface UpdateEpicRequestDTO {
   status: string;
   reporterId?: number | null;
   assignedBy?: number | null;
+  createdBy: number;
 }
 
 interface EpicListResponse {
@@ -149,14 +151,14 @@ export const epicApi = createApi({
       providesTags: ['Epic'],
     }),
 
-    updateEpicStatus: builder.mutation<void, { id: string; status: string }>({
-      query: ({ id, status }) => ({
+    updateEpicStatus: builder.mutation<void, { id: string; status: string; createdBy: number}>({
+      query: ({ id, status, createdBy }) => ({
         url: `epic/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(status),
+        body: JSON.stringify({status, createdBy}),
       }),
       invalidatesTags: ['Epic'],
     }),

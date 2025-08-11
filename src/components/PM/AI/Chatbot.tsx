@@ -6,7 +6,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Pencil,
-  Loader2,
   Send, // Giữ lại Send nếu bạn muốn dùng, nhưng code mới không cần
   MessageSquare, // Icon mới cho header
   FileSignature, // Icon cho gợi ý
@@ -14,9 +13,13 @@ import {
 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 
-import { useAskAIMutation } from '../../../services/Document/documentAPI';
+import {
+  useAskAIMutation,
+  useGenerateFromTasksMutation,
+} from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { DOMParser as ProseMirrorDOMParser } from 'prosemirror-model';
+import { useParams } from 'react-router-dom';
 
 interface Message {
   id: number;
@@ -26,10 +29,9 @@ interface Message {
 
 interface ChatbotProps {
   onClose: () => void;
-  editor: Editor | null; // Thêm editor để có thể chèn nội dung AI vào
+  editor: Editor | null;
 }
 
-// Danh sách các gợi ý cho màn hình chào mừng
 const suggestions = [
   {
     icon: FileSignature,
@@ -46,21 +48,111 @@ const suggestions = [
     text: 'Extract action items from this doc',
     color: 'text-blue-600 dark:text-blue-400',
   },
+  {
+    icon: CheckCircle,
+    text: 'Project summary',
+    color: 'text-blue-600 dark:text-blue-400',
+  },
 ];
 
 const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
-  // Thay đổi: Bắt đầu với mảng tin nhắn rỗng để hiển thị màn hình chào mừng
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [generateFromTasks, { isLoading: isGenLoading }] = useGenerateFromTasksMutation();
 
   const [askAI, { isLoading }] = useAskAIMutation();
+  const { documentId } = useParams<{ documentId: string }>();
+  const docId = Number(documentId);
+  const busy = isLoading || isGenLoading;
 
+  console.log(documentId, 'documentId in Chatbot');
+
+  // const handleSendMessage = async (messageText?: string) => {
+  //   let textToSend = messageText || inputText;
+
+  //   if (textToSend === 'Summarize this doc') {
+  //     const docText = editor?.getText().trim();
+  //     if (!docText) {
+  //       setMessages((prev) => [
+  //         ...prev,
+  //         {
+  //           id: Date.now(),
+  //           text: '⚠️ Không có nội dung nào trong tài liệu để tóm tắt.',
+  //           sender: 'ai',
+  //         },
+  //       ]);
+  //       return;
+  //     }
+  //     textToSend = `Tóm tắt nội dung sau thành 3-5 gạch đầu dòng dễ hiểu:\n\n${docText}`;
+  //   }
+
+  //   if (textToSend === 'Make this doc more clear and concise') {
+  //     const docText = editor?.getText().trim();
+  //     if (!docText) {
+  //       setMessages((prev) => [
+  //         ...prev,
+  //         {
+  //           id: Date.now(),
+  //           text: '⚠️ Không có nội dung nào trong tài liệu để cải thiện.',
+  //           sender: 'ai',
+  //         },
+  //       ]);
+  //       return;
+  //     }
+  //     textToSend = `Hãy cải thiện độ rõ ràng và súc tích cho nội dung sau đây:\n\n${docText}`;
+  //   }
+
+  //   if (textToSend === 'Extract action items from this doc') {
+  //     const docText = editor?.getText().trim();
+  //     if (!docText) {
+  //       setMessages((prev) => [
+  //         ...prev,
+  //         {
+  //           id: Date.now(),
+  //           text: '⚠️ Không có nội dung nào trong tài liệu để trích xuất.',
+  //           sender: 'ai',
+  //         },
+  //       ]);
+  //       return;
+  //     }
+  //     textToSend = `Hãy trích xuất các công việc hành động (action items) cụ thể từ nội dung sau:\n\n${docText}`;
+  //   }
+
+  //   if (textToSend.trim() === '') return;
+
+  //   const userMessage: Message = {
+  //     id: Date.now(),
+  //     text: messageText || inputText,
+  //     sender: 'user',
+  //   };
+  //   setMessages((prev) => [...prev, userMessage]);
+  //   setInputText('');
+
+  //   try {
+  //     const result = await askAI(textToSend).unwrap();
+  //     const aiMessage: Message = {
+  //       id: Date.now() + 1,
+  //       text: result.content,
+  //       sender: 'ai',
+  //     };
+  //     setMessages((prev) => [...prev, aiMessage]);
+  //   } catch (err) {
+  //     console.error('AI request failed:', err);
+  //     setMessages((prev) => [
+  //       ...prev,
+  //       {
+  //         id: Date.now() + 1,
+  //         text: '❌ Đã xảy ra lỗi khi gọi AI. Vui lòng thử lại.',
+  //         sender: 'ai',
+  //       },
+  //     ]);
+  //   }
+  // };
   const handleSendMessage = async (messageText?: string) => {
     let textToSend = messageText || inputText;
 
-    // Nếu là lệnh đặc biệt → tóm tắt nội dung trong editor
     if (textToSend === 'Summarize this doc') {
       const docText = editor?.getText().trim();
       if (!docText) {
@@ -111,6 +203,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
 
     if (textToSend.trim() === '') return;
 
+    // đẩy message user lên UI
     const userMessage: Message = {
       id: Date.now(),
       text: messageText || inputText,
@@ -120,13 +213,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
     setInputText('');
 
     try {
+      if (messageText === 'Project summary') {
+        const result = await generateFromTasks(docId).unwrap();
+        setMessages((prev) => [...prev, { id: Date.now() + 1, text: result, sender: 'ai' }]);
+        return;
+      }
+
       const result = await askAI(textToSend).unwrap();
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        text: result.content,
-        sender: 'ai',
-      };
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, text: result.content, sender: 'ai' }]);
     } catch (err) {
       console.error('AI request failed:', err);
       setMessages((prev) => [
@@ -139,7 +233,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
       ]);
     }
   };
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -193,7 +286,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
                   <button
                     key={index}
                     onClick={() => handleSendMessage(suggestion.text)}
-                    disabled={isLoading}
+                    disabled={busy}
                     className='w-full flex items-center gap-3 p-3 text-left bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <suggestion.icon className={`w-5 h-5 flex-shrink-0 ${suggestion.color}`} />
@@ -211,7 +304,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
             {messages.map((msg) => (
               <ChatMessage key={msg.id} message={msg} editor={editor} />
             ))}
-            {isLoading && (
+            {busy && (
               <div className='flex justify-start gap-3 items-start'>
                 <div className='w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0'>
                   <Sparkles className='w-5 h-5 text-blue-600 animate-pulse' />

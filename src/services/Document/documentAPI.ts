@@ -75,7 +75,7 @@ export const documentApi = createApi({
         method: 'POST',
         body,
       }),
-      transformResponse: (resp: ApiResponse<DocumentType>) => resp.data, 
+      transformResponse: (resp: ApiResponse<DocumentType>) => resp.data,
     }),
 
     updateDocument: builder.mutation<DocumentType, { id: number; data: Partial<DocumentType> }>({

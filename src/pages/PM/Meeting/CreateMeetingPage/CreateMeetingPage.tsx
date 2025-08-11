@@ -29,8 +29,7 @@ const CreateMeetingPage: React.FC = () => {
   const [participantIds, setParticipantIds] = useState<number[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [customMessage, setCustomMessage] = useState('');
-  const [shareDocumentViaEmail] = useShareDocumentViaEmailMutation();
-  
+const [shareDocumentViaEmail, { isLoading: isSharing }] = useShareDocumentViaEmailMutation();  
 
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
 useEffect(() => {
@@ -445,7 +444,7 @@ const handleSelectAll = () => {
 )}
 
 
-            <button
+            {/* <button
   onClick={handleCreateMeeting}
   disabled={isCreating || isCreatingInternal}
   className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
@@ -455,6 +454,19 @@ const handleSelectAll = () => {
   }`}
 >
   {(isCreating || isCreatingInternal) ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
+</button> */}
+<button
+  onClick={handleCreateMeeting}
+  disabled={isCreating || isCreatingInternal || isSharing}
+  className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
+  ${(isCreating || isCreatingInternal || isSharing)
+    ? 'bg-blue-400 cursor-not-allowed opacity-50'
+    : 'bg-blue-600 hover:bg-blue-700 text-white'
+  }`}
+>
+  {(isCreating || isCreatingInternal || isSharing)
+    ? <div className='loadermeeting scale-75' />
+    : 'Create Meeting'}
 </button>
 
           </>

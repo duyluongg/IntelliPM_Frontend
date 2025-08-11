@@ -494,7 +494,7 @@ const handleFileUpload = async (meetingId: number) => {
               )}
 
               {/* Phần đồng ý và từ chối feedback */}
-              {user?.role === 'CLIENT' && feedback.summaryText !== 'Wait for update' && (
+              {/* {user?.role === 'CLIENT' && feedback.summaryText !== 'Wait for update' && (
                 <div className="flex flex-col gap-3 mb-4">
                   <div className="flex gap-3">
                     <button
@@ -525,7 +525,7 @@ const handleFileUpload = async (meetingId: number) => {
                     </button>
                   </div>
 
-                  {/* Hiển thị phần nhập lý do từ chối */}
+                 
                   {activeRejectId === feedback.meetingTranscriptId && !feedback.isApproved && (
                     <div className="flex flex-col gap-2">
                       <textarea
@@ -543,7 +543,68 @@ const handleFileUpload = async (meetingId: number) => {
                     </div>
                   )}
                 </div>
+              )} */}
+              {user?.role === 'CLIENT' && feedback.summaryText !== 'Wait for update' && (
+  <div className="flex flex-col gap-3 mb-4">
+    {rejectedFeedbacks.length > 0 ? (
+      // Nếu đã có reject feedback thì chỉ hiển thị status 
+      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-600">
+        ❌ Reject
+      </span>
+    ) : (
+      // Nếu chưa có reject thì hiển thị 2 nút Approve / Reject
+      <div className="flex gap-3">
+        <button
+          onClick={() => handleApprove(feedback.meetingTranscriptId)}
+          disabled={feedback.isApproved}
+          className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+            feedback.isApproved
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
+        >
+          ✅ Approve
+        </button>
+        <button
+          onClick={() => {
+            setActiveRejectId(feedback.meetingTranscriptId);
+            setSelectedMeetingId(feedback.meetingTranscriptId);
+            refetchRejected();
+          }}
+          disabled={feedback.isApproved}
+          className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
+            feedback.isApproved
+              ? 'bg-gray-300 cursor-not-allowed'
+              : 'bg-red-500 hover:bg-red-600'
+          }`}
+        >
+          ❌ Reject
+        </button>
+      </div>
+    )}
+
+    {/* Nếu đang mở form nhập lý do từ chối */}
+    {activeRejectId === feedback.meetingTranscriptId &&
+      !feedback.isApproved &&
+      rejectedFeedbacks.length === 0 && (
+        <div className="flex flex-col gap-2">
+          <textarea
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-400"
+            placeholder="Enter reason for rejection..."
+          />
+          <button
+            onClick={() => handleRejectSubmit(feedback.meetingTranscriptId)}
+            className="self-start rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          >
+            Send Feedback
+          </button>
+        </div>
+      )}
+  </div>
               )}
+
 
               {/* Hiển thị feedback bị từ chối của cuộc họp */}
               {selectedMeetingId === feedback.meetingTranscriptId && (

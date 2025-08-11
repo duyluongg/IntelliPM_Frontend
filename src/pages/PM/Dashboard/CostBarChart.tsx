@@ -58,8 +58,8 @@ const CostBarChart = ({
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray='3 3' />
           <XAxis dataKey='name' />
-          <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-          <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K VND`} />
+          <Tooltip formatter={(v: number) => `${v.toLocaleString()} VND`} />
           <Legend />
           <Bar dataKey='Actual' fill='#00C49F' barSize={20} />
           <Bar dataKey='Planned' fill='#00E0FF' barSize={20} />

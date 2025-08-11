@@ -214,6 +214,10 @@ export const projectMetricApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getMetricHistoryByProjectKey: builder.query({
+      query: (projectKey) => `projectmetrichistory/history/${projectKey}`,
+    }),
   }),
 });
 
@@ -228,4 +232,5 @@ export const {
   useGetProjectMetricByProjectKeyQuery,
   useCalculateMetricsBySystemMutation,
   useGetProjectMetricAIByProjectKeyQuery,
+  useGetMetricHistoryByProjectKeyQuery,
 } = projectMetricApi;

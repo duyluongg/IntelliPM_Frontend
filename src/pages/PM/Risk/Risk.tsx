@@ -51,7 +51,10 @@ const Risk = () => {
   const { data: categoryData, isLoading: isCategoryLoading } =
     useGetCategoriesByGroupQuery('risk_type');
 
-  if (isLoading || isProjectLoading || isCategoryLoading) {
+  const { data: severityCategoriesData, isLoading: isSeverityLoading } =
+    useGetCategoriesByGroupQuery('risk_severity_level');
+
+  if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading) {
     return (
       <div className='flex items-center justify-center h-full text-gray-500 text-sm'>
         Loading risks...
@@ -91,38 +94,18 @@ const Risk = () => {
   };
 
   const Severity: React.FC<{ status: string }> = ({ status }) => {
-    const formatStatusForDisplay = (status: string) => {
-      switch (status.toLowerCase()) {
-        case 'high':
-          return 'HIGH';
-        case 'medium':
-          return 'MEDIUM';
-        case 'low':
-          return 'LOW';
-        default:
-          return status;
-      }
-    };
-
     const getStatusStyle = () => {
-      switch (status.toLowerCase()) {
-        case 'high':
-          return { backgroundColor: '#FEE2E2', color: '#B91C1C' };
-        case 'medium':
-          return { backgroundColor: '#FEF3C7', color: '#D97706' };
-        case 'low':
-          return { backgroundColor: '#D1FAE5', color: '#047857' };
-        default:
-          return { backgroundColor: '#E5E7EB', color: '#6B7280' };
-      }
+      const category = severityCategoriesData?.data?.find((cat) => cat.name.toLowerCase() === status.toLowerCase());
+      if (!category?.color) return 'bg-gray-100 text-gray-700';
+      const [bgColor, textColor] = category.color.split(',');
+      return `bg-${bgColor} text-${textColor}`;
     };
 
     return (
       <span
-        className='inline-block px-3 py-1 text-xs font-semibold rounded-full'
-        style={getStatusStyle()}
+        className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusStyle()}`}
       >
-        {formatStatusForDisplay(status)}
+        {status.toUpperCase()}
       </span>
     );
   };
@@ -233,8 +216,6 @@ const Risk = () => {
         isApproved: true,
         dueDate: newRisk.dueDate ? newRisk.dueDate + 'T00:00:00Z' : undefined,
       };
-      // newRisk.likelihood
-      // || newRisk.impact
       await createRisk(request).unwrap();
       refetch();
     } catch (error) {

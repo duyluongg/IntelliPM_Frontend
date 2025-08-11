@@ -35,6 +35,9 @@ export type ApiResponse<T> = {
   message: string;
 };
 
+type GenerateAIContentReq = { id: number; prompt: string };
+type GenerateAIContentResp = { content: string };
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
   tagTypes: ['Documents'],
@@ -84,14 +87,16 @@ export const documentApi = createApi({
       query: () => 'documents/created-by-me',
     }),
 
-    generateAIContent: builder.mutation<string, { id: number; prompt: string }>({
+    generateAIContent: builder.mutation<GenerateAIContentResp, GenerateAIContentReq>({
       query: ({ id, prompt }) => ({
         url: `/documents/${id}/generate-ai-content`,
         method: 'POST',
+        // Nếu backend đang nhận raw string JSON (ví dụ [FromBody] string), giữ nguyên dòng dưới:
         body: JSON.stringify(prompt),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+
+        // Nếu backend nhận DTO { prompt: string } thì đổi thành:
+        // body: { prompt },
       }),
     }),
 

@@ -17,7 +17,6 @@ import ListItem from '@tiptap/extension-list-item';
 
 import debounce from 'lodash.debounce';
 
-
 import MenuBar from './MenuBar';
 import {
   useGetDocumentByIdQuery,
@@ -45,6 +44,7 @@ import {
 import { CommentMark } from './CommentMark';
 import CommentSidebar from './CommentSidebar';
 import SideMenu from './SideMenu';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 interface CommentItem {
   id: number | string;
@@ -55,6 +55,12 @@ interface CommentItem {
   comment: string;
 }
 
+interface MentionItem {
+  id: number;
+  label: string;
+  name: string;
+}
+
 export const Document: React.FC = () => {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
@@ -63,12 +69,16 @@ export const Document: React.FC = () => {
   const [deleteComment] = useDeleteCommentMutation();
   const navigate = useNavigate();
   const { documentId } = useParams();
+
+  const docId = documentId ? Number(documentId) : skipToken;
+
   const {
     data: documentData,
     isLoading,
     isError,
     refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(documentId);
+  } = useGetDocumentByIdQuery(docId);
+
   const {
     content: initialContent,
     visibility,
@@ -80,19 +90,23 @@ export const Document: React.FC = () => {
   const { user } = useAuth();
   console.log(user);
 
-  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
-  const { data, isSuccess } = useGetProjectByIdQuery(projectId!, {
+  // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+  const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);
+  const projectId = projectIdRaw != null ? Number(projectIdRaw) : undefined;
+  const { data, isSuccess } = useGetProjectByIdQuery(projectId as number, {
     skip: !projectId,
   });
+
   const projectKey = data?.data?.projectKey;
 
-  const projectKeyRef = useRef<string | undefined>();
+  const projectKeyRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     projectKeyRef.current = projectKey;
   }, [projectKey]);
 
   console.log('Document data:', projectId);
-  const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId!, {
+  const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId as number, {
     skip: !projectId,
   });
   const filterAccount = projectMembers?.filter((m) => m.id !== user?.id);
@@ -110,12 +124,12 @@ export const Document: React.FC = () => {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
-  const [currentTitle, setCurrentTitle] = useState(title);
+  const [currentTitle, setCurrentTitle] = useState<string>(title ?? '');
   const [updateDocument] = useUpdateDocumentMutation();
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
   const { data: commentList = [], refetch: refetchComments } = useGetCommentsByDocumentIdQuery(
-    documentId!,
+    Number(documentId),
     {
       skip: !documentId,
     }
@@ -129,7 +143,7 @@ export const Document: React.FC = () => {
   const debouncedSave = useCallback(
     debounce((html: string) => {
       if (documentId) {
-        updateDocument({ id: documentId, data: { content: html, visibility } });
+        updateDocument({ id: Number(documentId), data: { content: html, visibility } });
       }
     }, 500),
     [documentId, visibility]
@@ -139,7 +153,7 @@ export const Document: React.FC = () => {
     if (currentTitle.trim() && currentTitle !== title) {
       try {
         await updateDocument({
-          id: documentId,
+          id: Number(documentId),
           data: { title: currentTitle, visibility },
         });
       } catch (err) {
@@ -499,7 +513,7 @@ export const Document: React.FC = () => {
             onCommentClick={handleSidebarCommentClick}
             onUpdateComment={handleUpdateComment}
             onDeleteComment={handleDeleteComment}
-            currentUserId={user?.id}
+            currentUserId={user?.id ?? 0}
           />
         )}
       </div>

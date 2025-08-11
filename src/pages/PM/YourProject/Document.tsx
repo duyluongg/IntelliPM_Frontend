@@ -414,9 +414,7 @@ export const Document: React.FC = () => {
       alert('Đã xảy ra lỗi khi xóa bình luận.');
     }
   };
-
-  
-
+  const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>
       {editor && !isReadOnly && (
@@ -424,6 +422,7 @@ export const Document: React.FC = () => {
           editor={editor}
           onToggleChatbot={handleToggleChatbot}
           onAddComment={handleAddComment}
+          exportTargetRef={contentRef}
         />
       )}
 
@@ -478,7 +477,9 @@ export const Document: React.FC = () => {
             </div>
           </div>
 
-          <EditorContent editor={editor} />
+          <div ref={contentRef}>
+            <EditorContent editor={editor} />
+          </div>
           {!hasContent && (
             <SideMenu
               onSelectTemplate={(html) => {
@@ -506,7 +507,7 @@ export const Document: React.FC = () => {
             />
           )}
 
-          {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor} />}
+          {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor}  />}
         </div>
         {commentList.length > 0 && (
           <CommentSidebar

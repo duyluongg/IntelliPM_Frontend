@@ -31,7 +31,7 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import Doc from '../../PM/YourProject/Doc';
+// import Doc from '../../PM/YourProject/Doc';
 import { useCreateDocumentMutation, useGetDocumentMappingQuery, } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
@@ -68,7 +68,6 @@ interface UpdateEpicRequestDTO {
   status: string;
   reporterId: number | null;
   assignedBy: number | null;
-  createdBy: number; 
 }
 
 interface UpdateSubtaskRequestDTO {
@@ -788,7 +787,6 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || null,
-          createdBy: accountId
         };
         await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
@@ -867,7 +865,6 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
-          createdBy: accountId
         };
         await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
@@ -939,7 +936,6 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: null,
-          createdBy: accountId
         };
         await updateEpic({ id: itemId, data: epicData }).unwrap();
       } else if (itemType === 'subtask') {

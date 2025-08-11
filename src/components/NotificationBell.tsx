@@ -8,7 +8,6 @@ import { useGetAllNotificationsQuery } from '../services/notificationApi';
 import { connection } from '../services/SignalR/signalRConnection';
 import { useNavigate } from 'react-router-dom';
 
-
 interface NotificationBellProps {
   accountId: number;
 }
@@ -19,7 +18,6 @@ type NotiExtra = {
 };
 
 const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
-
   // const { projectKey: paramProjectKey } = useParams();
   // const queryProjectKey = searchParams.get('projectKey');
   // const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
@@ -78,6 +76,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
 
     if (extra?.relatedEntityType?.toUpperCase() === 'DOCUMENT' && extra?.relatedEntityId) {
       navigate(`/project/projects/form/document/${extra.relatedEntityId}`);
+      return;
+    }
+
+    if (extra?.relatedEntityType?.toUpperCase() === 'MEETING' ) {
+      navigate(`/meeting-room}`);
       return;
     }
 

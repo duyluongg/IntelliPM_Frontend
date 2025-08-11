@@ -177,4 +177,17 @@
   [data-comment-id].ring {
     transition: all 0.15s ease-in-out;
   }
+
+  .page-break {
+    page-break-before: always; /* hoặc page-break-after: always */
+  }
+
+  table,
+  img,
+  h1,
+  h2,
+  h3,
+  p {
+    page-break-inside: avoid;
+  }
 }

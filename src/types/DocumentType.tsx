@@ -1,5 +1,4 @@
-// Wrapper chung cho mọi API
-
+// src/types/document.ts (hoặc file hiện tại của bạn)
 
 export type DocumentVisibility = 'MAIN' | 'PRIVATE';
 
@@ -17,4 +16,14 @@ export type DocumentType = {
   createdAt: string;
   updatedAt: string;
   visibility: DocumentVisibility;
+};
+
+export type CreateDocumentRequest = {
+  projectId: number;
+  title: string;
+  visibility: DocumentVisibility;
+  content?: string; 
+  taskId?: string | null;
+  epicId?: string | null;
+  subtaskId?: string | null;
 };

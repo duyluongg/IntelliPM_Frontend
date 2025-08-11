@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, MessageSquareOff, Pencil, Trash2, X } from 'lucide-react';
+import type { DocumentComment } from '../../../types/DocumentCommentType';
 
 // ✨ 1. CẬP NHẬT: Thêm thông tin người dùng vào comment
 interface CommentItem {
@@ -8,19 +9,18 @@ interface CommentItem {
   toPos: number;
   content: string; // Đoạn text được highlight
   comment: string; // Nội dung comment
-  userId: string; // ID của người tạo comment
+  // userId: number; // ID của người tạo comment
   authorName: string; // Tên người tạo comment
-  authorAvatar: string; // URL avatar người tạo comment
+  authorAvatar?: string; // URL avatar người tạo comment
   authorId: number; // ID của người tạo comment
 }
 
-// ✨ 2. CẬP NHẬT: Thêm prop `currentUserId` để xác định người dùng hiện tại
 interface Props {
-  comments: CommentItem[];
+  comments: DocumentComment[]; 
   activeCommentId: string | null;
-  currentUserId: number; // ID của người dùng đang đăng nhập
-  onCommentClick: (comment: CommentItem) => void;
-  onUpdateComment: (comment: CommentItem, newContent: string) => void;
+  currentUserId: number;
+  onCommentClick: (comment: DocumentComment) => void;
+  onUpdateComment: (comment: DocumentComment, newContent: string) => void;
   onDeleteComment: (id: number | string) => void;
 }
 
@@ -81,8 +81,6 @@ export default function CommentSidebar({
                   : 'border border-transparent hover:border-gray-200 dark:hover:border-gray-700'
               }`}
             >
-          
-
               <div className='flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700'>
                 <img src={c.authorAvatar} alt={c.authorName} className='w-8 h-8 rounded-full' />
                 <span className='font-semibold text-sm text-gray-800 dark:text-gray-200'>

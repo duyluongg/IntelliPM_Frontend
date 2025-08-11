@@ -1,26 +1,40 @@
 // src/components/DocumentTypeSelector.tsx
 
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, type JSX } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Lock, Globe } from 'lucide-react';
 import { DocumentOptionCard } from './DocumentOptionCard';
 import { Dialog, DialogPanel, DialogTitle, Transition } from '@headlessui/react';
 import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
+import type { RootState } from '../../../app/store';
+import type {
+  CreateDocumentRequest,
+  DocumentType,
+  DocumentVisibility,
+} from '../../../types/DocumentType';
 
 const DocumentTypeSelector: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<DocumentVisibility | null>(null);
+
   const [title, setTitle] = useState('');
 
   const [createDocument, { isLoading }] = useCreateDocumentMutation();
 
-  const documentOptions = [
+  const documentOptions: {
+    id: DocumentVisibility;
+    name: string;
+    icon: JSX.Element;
+    description: string;
+    features: string[];
+    recommended?: boolean;
+  }[] = [
     {
       id: 'MAIN',
       name: 'Main Document',
@@ -38,7 +52,7 @@ const DocumentTypeSelector: React.FC = () => {
     },
   ];
 
-  const handleSelectType = (typeId: string) => {
+  const handleSelectType = (typeId: DocumentVisibility) => {
     if (!projectId) {
       toast.error('Project not found. Please select a project first.');
       return;
@@ -54,25 +68,25 @@ const DocumentTypeSelector: React.FC = () => {
     }
     if (!projectId || !selectedType) return;
 
-    const payload = {
-      projectId: projectId,
-      title: title,
-      content: '', // Start with empty content
-      visibility: selectedType,
+    const payload: CreateDocumentRequest = {
+      projectId: Number(projectId),
+      title,
+      content: '',
+      visibility: selectedType, // ✅ đúng kiểu DocumentVisibility
     };
 
     const promise = createDocument(payload).unwrap();
 
     toast.promise(promise, {
       loading: 'Creating document...',
-      success: (res) => {
-        navigate(`/project/projects/form/document/${res.data.id}`);
+      // unwrap() trả DocumentType => dùng res.id
+      success: (res: DocumentType) => {
+        navigate(`/project/projects/form/document/${res.id}`);
         return 'Document created successfully! 🎉';
       },
       error: 'Failed to create document. Please try again.',
     });
 
-    // Close modal after initiating
     setIsModalOpen(false);
     setTitle('');
   };

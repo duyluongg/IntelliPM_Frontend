@@ -415,6 +415,8 @@ export const Document: React.FC = () => {
     }
   };
 
+  
+
   return (
     <div className=''>
       {editor && !isReadOnly && (

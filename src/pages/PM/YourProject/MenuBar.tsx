@@ -39,6 +39,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../../app/store';
 import { useGetProjectByIdQuery } from '../../../services/projectApi';
 import toast from 'react-hot-toast';
+import type { SharePermission } from '../../../types/ShareDocumentType';
 
 interface Props {
   editor: Editor | null;
@@ -68,7 +69,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
   const [isPublicLink, setIsPublicLink] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emails, setEmails] = useState<string[]>([]);
-  const [permissionType, setPermissionType] = useState<'VIEW' | 'EDIT'>('VIEW');
+  const [permissionType, setPermissionType] = useState<SharePermission>('VIEW');
 
   const [exportDocument] = useExportDocumentMutation();
   const documentId = useParams().documentId;
@@ -214,12 +215,18 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
       return;
     }
 
+    if (!projectKey) {
+      // ⬅️ check trước
+      toast.error('Missing project key!');
+      return;
+    }
+
     try {
       const result = await shareDocument({
         documentId: Number(params.documentId),
         permissionType,
         emails,
-        projectKey: projectKey || undefined,
+        projectKey,
       }).unwrap();
 
       if (result.success) {
@@ -638,7 +645,10 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
                         </div>
                       </div>
                       <div className='flex items-center gap-3'>
-                        <Crown className='w-5 h-5 text-yellow-500' title='Owner' />
+                        <span title='Owner'>
+                          <Crown className='w-5 h-5 text-yellow-500' />
+                        </span>
+
                         <button className='p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700'>
                           <X className='w-5 h-5 text-gray-500 dark:text-gray-400' />
                         </button>

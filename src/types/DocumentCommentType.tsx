@@ -1,4 +1,4 @@
-export type DocumentComment = {
+export interface DocumentComment {
   id: number;
   documentId: number;
   authorId: number;
@@ -9,8 +9,8 @@ export type DocumentComment = {
   content: string;
   comment: string;
   createdAt: string;
-  updatedAt: string | null;
-};
+  updatedAt?: string | null;
+}
 
 export interface CreateCommentRequest {
   documentId: number;
@@ -19,4 +19,3 @@ export interface CreateCommentRequest {
   content: string;
   comment: string;
 }
-

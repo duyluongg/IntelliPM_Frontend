@@ -6,6 +6,7 @@ export interface ActivityLogResponseDTO {
   projectId: number;
   taskId: string;
   subtask: string;
+  epicId: string;
   riskKey: string;
   createdBy: number;
   createdByName: string;
@@ -44,6 +45,11 @@ export const activityLogApi = createApi({
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
     }),
 
+    getActivityLogsByEpicId: builder.query<ActivityLogResponseDTO[], string>({
+      query: (epicId) => `activitylog/epic/${epicId}`,
+      transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+    }),
+
     getActivityLogsBySubtaskId: builder.query<ActivityLogResponseDTO[], string>({
       query: (subtaskId) => `activitylog/subtask/${subtaskId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
@@ -61,4 +67,5 @@ export const {
   useGetActivityLogsBySubtaskIdQuery,
   useGetActivityLogsByTaskIdQuery,
   useGetActivityLogsByRiskKeyQuery,
+  useGetActivityLogsByEpicIdQuery
 } = activityLogApi;

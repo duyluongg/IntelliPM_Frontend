@@ -19,7 +19,7 @@ import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByProjectIdQuery, useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
@@ -104,8 +104,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         skip: !epic?.projectId,
     });
 
-    const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
-        skip: !epic?.projectId,
+    const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
+        skip: !epic?.id,
     });
 
     React.useEffect(() => {
@@ -143,17 +143,17 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     });
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deleteInfo, setDeleteInfo] = useState<{ fileId: number } | null>(null);
+    const [deleteInfo, setDeleteInfo] = useState<{ fileId: number, createdBy: number } | null>(null);
 
-    const openDeleteModal = (fileId: number) => {
-        setDeleteInfo({ fileId });
+    const openDeleteModal = (fileId: number, createdBy: number) => {
+        setDeleteInfo({ fileId, createdBy: accountId });
         setIsDeleteModalOpen(true);
     };
 
     const confirmDeleteFile = async () => {
         if (!deleteInfo) return;
         try {
-            await deleteEpicFile(deleteInfo.fileId).unwrap();
+            await deleteEpicFile({ id: deleteInfo.fileId, createdBy: accountId }).unwrap();
             //alert("✅ Delete file successfully!");
             await refetchAttachments();
             await refetchActivityLogs();
@@ -166,9 +166,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         }
     };
 
-    const handleDeleteFile = async (fileId: number) => {
+    const handleDeleteFile = async (id: number, createdBy: number) => {
         try {
-            await deleteEpicFile(fileId).unwrap();
+            await deleteEpicFile({ id, createdBy: accountId }).unwrap();
             alert('✅ Delete file successfully!');
             await refetchAttachments();
             await refetchActivityLogs();
@@ -180,7 +180,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
 
     const handleStatusChange = async (newStatus: string) => {
         try {
-            await updateEpicStatus({ id, status: newStatus }).unwrap();
+            await updateEpicStatus({ id, status: newStatus, createdBy: accountId }).unwrap();
+            await refetchActivityLogs();
+            await refetch();
             setStatus(newStatus);
         } catch (error) {
             console.error('❌ Error update epic status', error);
@@ -249,11 +251,14 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     startDate: newStartDate ?? epic.startDate,
                     endDate: newEndDate ?? epic.endDate,
                     status: epic.status,
+                    createdBy: accountId,
                 },
             }).unwrap();
 
             alert("✅ Epic updated");
             console.error("✅ Epic updated");
+            await refetchActivityLogs();
+            await refetch();
         } catch (err) {
             console.error("❌ Failed to update epic", err);
             alert("❌ Update failed");
@@ -423,7 +428,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         try {
-                                            await uploadEpicFile({ epicId: id, title: file.name, file }).unwrap();
+                                            await uploadEpicFile({ epicId: id, title: file.name, file, createdBy: accountId }).unwrap();
                                             alert(`✅ Uploaded: ${file.name}`);
                                             await refetchAttachments();
                                         } catch (err) {
@@ -496,7 +501,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
 
                                             {hoveredFileId === file.id && (
                                                 <button
-                                                    onClick={() => openDeleteModal(file.id)}
+                                                    onClick={() => openDeleteModal(file.id, file.createdBy)}
                                                     className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
                                                     title="Delete file"
                                                 >
@@ -1261,9 +1266,11 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                                         epicId,
                                                                                         accountId,
                                                                                         content: newContent,
+                                                                                        createdBy: accountId,
                                                                                     }).unwrap();
                                                                                     alert("✅ Comment updated");
                                                                                     await refetchComments();
+                                                                                    await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error("❌ Failed to update comment", err);
                                                                                     alert("❌ Update failed");
@@ -1278,9 +1285,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                         onClick={async () => {
                                                                             if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
                                                                                 try {
-                                                                                    await deleteEpicComment(comment.id).unwrap();
+                                                                                    await deleteEpicComment({
+                                                                                        id: comment.id,
+                                                                                        createdBy: accountId,
+                                                                                    }).unwrap();
                                                                                     alert("🗑️ Deleted successfully");
                                                                                     await refetchComments();
+                                                                                    await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error("❌ Failed to delete comment", err);
                                                                                     alert("❌ Delete failed");
@@ -1318,10 +1329,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         epicId,
                                                         accountId,
                                                         content: commentContent.trim(),
+                                                        createdBy: accountId,
                                                     }).unwrap();
                                                     alert("✅ Comment posted");
                                                     setCommentContent('');
                                                     await refetchComments();
+                                                    await refetchActivityLogs();
                                                 } catch (err: any) {
                                                     console.error('❌ Failed to post comment:', err);
                                                     alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));

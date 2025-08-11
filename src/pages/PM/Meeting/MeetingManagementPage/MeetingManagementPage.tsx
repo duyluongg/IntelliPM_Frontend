@@ -12,6 +12,8 @@ import {
   useUpdateParticipantStatusMutation,
   useCompleteMeetingMutation, 
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
+import { useGetCategoriesByGroupQuery } from '../../../../services/dynamicCategoryApi';
+
 
 const MeetingManagementPage: React.FC = () => {
   const { user } = useAuth();
@@ -21,12 +23,19 @@ const MeetingManagementPage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [currentTab, setCurrentTab] = useState<'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
+  // const [currentTab, setCurrentTab] = useState<'ACTIVE' | 'COMPLETED' | 'CANCELLED'>('ACTIVE');
+  const [currentTab, setCurrentTab] = useState<string>('ACTIVE');
   const [formData, setFormData]   = useState<any>({});
   const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
   const toastIds = useRef<{ [key: string]: boolean }>({});
+
+  const { data: statusResp, isLoading: statusLoading } =
+  useGetCategoriesByGroupQuery('meeting_status');
+const statusOptions = (statusResp?.data ?? []).map(c => ({
+  value: c.name, label: c.label, color: c.color, iconLink: c.iconLink
+}));
   
 
 
@@ -229,7 +238,7 @@ useEffect(() => {
       <h1 className="mb-6 text-2xl font-bold text-gray-800">
         🛠 Manage the meetings you create
       </h1>
-<div className="mb-6 flex gap-4">
+{/* <div className="mb-6 flex gap-4">
   <button
     onClick={() => setCurrentTab('ACTIVE')}
     className={`rounded px-4 py-2 font-semibold ${
@@ -254,7 +263,24 @@ useEffect(() => {
   >
     ❌ Cancelled
   </button>
+</div> */}
+<div className="mb-6 flex gap-2 flex-wrap">
+  {statusOptions.map(s => (
+    <button
+      key={s.value}
+      onClick={() => setCurrentTab(s.value)}
+      className={`rounded px-3 py-2 text-sm font-semibold ${
+        currentTab === s.value
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+      }`}
+      title={s.label}
+    >
+      {s.label}
+    </button>
+  ))}
 </div>
+
 <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
   <input
     type="text"
@@ -366,7 +392,8 @@ useEffect(() => {
               ...m,
               meetingDate: m.meetingDate.split('T')[0], // YYYY-MM-DD
               startTime: new Date(m.startTime).toISOString().substring(11, 16), // HH:mm
-              endTime: new Date(m.endTime).toISOString().substring(11, 16),     // HH:mm
+              endTime: new Date(m.endTime).toISOString().substring(11, 16),  
+              status: m.status,   // HH:mm
             };
             setSelectedMeeting(m);
             setFormData(formattedFormData);
@@ -459,6 +486,7 @@ useEffect(() => {
                 endTime: endISO,
                 attendees: m.attendees || 0,
                 participantIds: m.participantIds || [],
+                 status: formData.status || m.status,
               },
             });
 

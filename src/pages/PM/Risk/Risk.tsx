@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
 import {
   useGetRisksByProjectKeyQuery,
   useCreateRiskMutation,
@@ -6,6 +7,7 @@ import {
   useUpdateRiskTypeMutation,
   useUpdateRiskResponsibleMutation,
   useUpdateRiskDueDateMutation,
+  useCheckOverdueTasksMutation,
 } from '../../../services/riskApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
@@ -20,12 +22,14 @@ import './Risk.css';
 import { useGetProjectsByAccountIdQuery } from '../../../services/accountApi';
 
 const Risk = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  //const [searchParams] = useSearchParams();
   const { projectKey: paramProjectKey } = useParams();
   const queryProjectKey = searchParams.get('projectKey');
   const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
+  const [scopeFilter, setScopeFilter] = useState('ALL');
 
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
@@ -37,8 +41,12 @@ const Risk = () => {
     skip: skipMembers,
   });
 
+  const { data: scopeCategoriesData, isLoading: isScopeCategoriesLoading } =
+    useGetCategoriesByGroupQuery('risk_scope');
+
   const { data, isLoading, error, refetch } = useGetRisksByProjectKeyQuery(projectKey);
   const [createRisk] = useCreateRiskMutation();
+  const [checkOverdueTasks] = useCheckOverdueTasksMutation();
   const [selectedRisk, setSelectedRisk] = useState<any | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSuggestedModal, setShowSuggestedModal] = useState(false);
@@ -53,6 +61,15 @@ const Risk = () => {
 
   const { data: severityCategoriesData, isLoading: isSeverityLoading } =
     useGetCategoriesByGroupQuery('risk_severity_level');
+
+  useEffect(() => {
+    if (projectKey && projectKey !== 'NotFound') {
+      checkOverdueTasks(projectKey)
+        .unwrap()
+        .then(() => refetch())
+        .catch((err) => console.error('Failed to check overdue tasks:', err));
+    }
+  }, [projectKey, checkOverdueTasks, refetch]);
 
   if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading) {
     return (
@@ -71,6 +88,7 @@ const Risk = () => {
 
   const risks = data.data;
   const riskTypes = categoryData?.data || [];
+  const scopeTypes = scopeCategoriesData?.data || [];
   const assignees =
     membersData?.data?.map((m) => ({
       id: m.accountId,
@@ -95,7 +113,9 @@ const Risk = () => {
 
   const Severity: React.FC<{ status: string }> = ({ status }) => {
     const getStatusStyle = () => {
-      const category = severityCategoriesData?.data?.find((cat) => cat.name.toLowerCase() === status.toLowerCase());
+      const category = severityCategoriesData?.data?.find(
+        (cat) => cat.name.toLowerCase() === status.toLowerCase()
+      );
       if (!category?.color) return 'bg-gray-100 text-gray-700';
       const [bgColor, textColor] = category.color.split(',');
       return `bg-${bgColor} text-${textColor}`;
@@ -271,6 +291,35 @@ const Risk = () => {
     <div className='p-6 min-h-screen'>
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-bold text-gray-800'>Risk Management</h1>
+        {/* <div className='flex items-center space-x-4'>
+          <select
+            className='p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+            value={scopeFilter}
+            onChange={(e) => {
+              setScopeFilter(e.target.value);
+              setSearchParams({ projectKey, scope: e.target.value !== 'ALL' ? e.target.value : '' });
+            }}
+          >
+            <option value='ALL'>All Scopes</option>
+            {scopeTypes.map((scope) => (
+              <option key={scope.name} value={scope.name}>
+                {scope.label}
+              </option>
+            ))}
+          </select>
+          <button
+            className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
+            onClick={openCreateRiskModal}
+          >
+            + Add Risk
+          </button>
+          <button
+            className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition'
+            onClick={openSuggestedRisks}
+          >
+            🤖 Suggest by AI
+          </button>
+        </div> */}
         <div className='space-x-4'>
           <button
             className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'

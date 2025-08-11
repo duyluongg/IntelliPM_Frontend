@@ -216,7 +216,7 @@ const HealthOverview: React.FC<{
     <div className="p-4">
       <div className="space-y-2 text-sm text-gray-700">
         <Row label="Project Status" value={projectStatus || 'No data'} />
-        // <Row label="Time" value={timeStatus || 'No data'} />
+        {/* <Row label="Time" value={timeStatus || 'No data'} /> */}
         <Row label="Tasks" value={`${Math.max(0, tasksToBeCompleted)} tasks to be completed`} />
         <Row label="Workload" value={`${overdueTasks} tasks overdue`} />
         <Row label="Progress" value={`${progressPercent}% complete`} />

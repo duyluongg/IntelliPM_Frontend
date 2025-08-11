@@ -1,2 +1,2 @@
 // export const API_BASE_URL = 'https://localhost:7128/api/';
-export const API_BASE_URL = 'https://intellipm-fpt-g6drgmbga8fcbubw.southeastasia-01.azurewebsites.net/swagger/index.html?fbclid=IwY2xjawMGo89leHRuA2FlbQIxMQABHm5M0QgT-ahLYt4DejoUajJNBFA_Y6lq-D65R7ER9cgf1ePsV87R18jpt6Kl_aem_DtEUCF12-xhnXLwS-tsdLw';
+export const API_BASE_URL = 'https://intellipm-fpt-g6drgmbga8fcbubw.southeastasia-01.azurewebsites.net/api/';

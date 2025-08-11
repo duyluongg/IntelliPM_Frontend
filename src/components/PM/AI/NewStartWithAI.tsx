@@ -49,24 +49,45 @@ const NewStartWithAI: React.FC<NewStartWithAIProps> = ({ documentId, editor, onA
   const [generateAIContent, { isLoading }] = useGenerateAIContentMutation();
   const [error, setError] = useState('');
 
+  // const handleGenerate = async () => {
+  //   if (!description.trim() || !editor) return;
+
+  //   try {
+  //     const response = await generateAIContent({
+  //       id: documentId,
+  //       prompt: description.trim(),
+  //     }).unwrap();
+  //     const aiRawContent = response?.content || response;
+  //     const aiContent = stripMarkdownCodeBlock(aiRawContent);
+  //     console.log(aiContent);
+
+  //     editor.chain().focus().setContent(aiContent).run();
+
+  //     if (onAfterInsertAI) {
+  //       onAfterInsertAI(editor.getHTML());
+  //     }
+
+  //     setDescription('');
+  //     setError('');
+  //   } catch (err) {
+  //     console.error('AI generate failed:', err);
+  //     setError('⚠️ Failed to generate content.');
+  //   }
+  // };
+
   const handleGenerate = async () => {
     if (!description.trim() || !editor) return;
 
     try {
-      const response = await generateAIContent({
+      const res = await generateAIContent({
         id: documentId,
         prompt: description.trim(),
-      }).unwrap();
-      const aiRawContent = response?.content || response;
-      const aiContent = stripMarkdownCodeBlock(aiRawContent);
-      console.log(aiContent);
+      }).unwrap(); // res: { content: string }
 
+      const aiContent = stripMarkdownCodeBlock(res.content);
       editor.chain().focus().setContent(aiContent).run();
 
-      if (onAfterInsertAI) {
-        onAfterInsertAI(editor.getHTML());
-      }
-
+      onAfterInsertAI?.(editor.getHTML());
       setDescription('');
       setError('');
     } catch (err) {

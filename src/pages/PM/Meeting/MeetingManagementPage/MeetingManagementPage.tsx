@@ -198,10 +198,6 @@ useEffect(() => {
 
     await refetch();
   };
-
-
-
-
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-800">
@@ -242,8 +238,6 @@ useEffect(() => {
     <option value="TODAY">📅 Today</option>
   </select>
 </div>
-
-
       {/* --- Danh sách cuộc họp --- */}
 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
   {meetings
@@ -532,7 +526,6 @@ useEffect(() => {
       );
     })}
 </div>
-
     </div>
   );
 };

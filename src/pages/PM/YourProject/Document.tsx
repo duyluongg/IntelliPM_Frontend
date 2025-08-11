@@ -17,7 +17,6 @@ import ListItem from '@tiptap/extension-list-item';
 
 import debounce from 'lodash.debounce';
 
-
 import MenuBar from './MenuBar';
 import {
   useGetDocumentByIdQuery,
@@ -45,6 +44,7 @@ import {
 import { CommentMark } from './CommentMark';
 import CommentSidebar from './CommentSidebar';
 import SideMenu from './SideMenu';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 interface CommentItem {
   id: number | string;
@@ -63,12 +63,16 @@ export const Document: React.FC = () => {
   const [deleteComment] = useDeleteCommentMutation();
   const navigate = useNavigate();
   const { documentId } = useParams();
+
+  const docId = documentId ? Number(documentId) : skipToken;
+
   const {
     data: documentData,
     isLoading,
     isError,
     refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(documentId);
+  } = useGetDocumentByIdQuery(docId);
+  
   const {
     content: initialContent,
     visibility,

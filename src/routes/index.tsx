@@ -57,6 +57,7 @@ import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTabl
 import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
 import ProfilePage from '../pages/Account/ProfilePage';
 import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
+import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete';
 
 export const router = createBrowserRouter([
   {
@@ -199,6 +200,10 @@ export const router = createBrowserRouter([
       {
         path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
+      },
+            {
+        path: `:projectKey/complete`,
+        element: <ProjectComplete />,
       },
       {
         path: `:projectKey/task-setup`,

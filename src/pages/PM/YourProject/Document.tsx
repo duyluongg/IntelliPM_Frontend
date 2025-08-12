@@ -87,8 +87,9 @@ export const Document: React.FC = () => {
     createdBy,
     title,
   } = documentData || {};
+
   const { user } = useAuth();
-  console.log(user);
+  console.log(createdBy);
 
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);

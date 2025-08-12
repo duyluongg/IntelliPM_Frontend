@@ -76,7 +76,12 @@ useEffect(() => {
   { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
   { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
 ];
-
+const isToday = (yyyyMmDd?: string) => {
+  if (!yyyyMmDd) return false;
+  const now = new Date();
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  return now.getFullYear() === y && (now.getMonth() + 1) === m && now.getDate() === d;
+};
 
 const {
   data: participants = [],
@@ -357,7 +362,7 @@ useEffect(() => {
                         ))}
                       </select> */}
 
-                      <label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
+                      {/* <label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
                       <select
                         className="w-full rounded border px-3 py-2"
                         value={`${formData.startTime}|${formData.endTime}`}
@@ -374,7 +379,49 @@ useEffect(() => {
                             </option>
                           );
                         })}
-                      </select>
+                      </select> */}
+                     
+
+
+<label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
+<select
+  className="w-full rounded border px-3 py-2"
+  value={`${formData.startTime}|${formData.endTime}`}
+  onChange={(e) => {
+    const [start, end] = e.target.value.split('|');
+    setFormData({ ...formData, startTime: start, endTime: end });
+  }}
+>
+  {(() => {
+    const editingToday = isToday(formData.meetingDate);
+    const now = new Date();
+
+    // chỉ giữ slot chưa qua giờ (dựa trên end time) khi là hôm nay
+    const visibleSlots = editingToday
+      ? timeSlots.filter(s => new Date(`${formData.meetingDate}T${s.end}`) > now)
+      : timeSlots;
+
+    // nếu slot hiện tại đã qua giờ và biến mất khỏi list, giữ lại nó ở đầu (disabled) để không lỗi UI
+    const currentKey = `${formData.startTime}|${formData.endTime}`;
+    const currentIsVisible = visibleSlots.some(s => `${s.start}|${s.end}` === currentKey);
+
+    return (
+      <>
+        {!currentIsVisible && (
+          <option value={currentKey} disabled>
+            {`${formData.startTime} - ${formData.endTime}`} (Current, past)
+          </option>
+        )}
+        {visibleSlots.map(slot => (
+          <option key={slot.label} value={`${slot.start}|${slot.end}`}>
+            {slot.label}
+          </option>
+        ))}
+      </>
+    );
+  })()}
+</select>
+
 
                       <button
                         className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -397,7 +444,7 @@ useEffect(() => {
                             },
                           });
 
-                          toast.success('✅ Cập nhật cuộc họp thành công!');
+                          toast.success('✅ Meeting update successful!');
                           await refetch();
                           setEditOpen(false);
                         }}

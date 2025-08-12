@@ -9,6 +9,7 @@ import {
 import { useDeleteMeetingMutation } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 import toast from 'react-hot-toast';
 import { useGetMyMeetingsQuery } from '../../../../services/ProjectManagement/MeetingServices/MeetingFeedbackServices';
+import { Link } from 'react-router-dom';
 
 const StatusBadge = ({ status }: { status: string }) => {
   let color = '';
@@ -36,6 +37,35 @@ const MeetingRescheduleRequestSend = () => {
   const { user } = useAuth();
   const accountId = user?.id;
   const role = user?.role;
+
+    // 🔹 Check quyền truy cập
+  const allowedRoles = ["CLIENT", "PROJECT_MANAGER", "TEAM_LEADER"];
+  if (!allowedRoles.includes(role || "")) {
+  return (
+    <div className="flex flex-col items-center justify-center mt-10 text-center">
+      {/* Icon cảnh báo lớn */}
+      <img
+        src="https://img.lovepik.com/element/40067/3013.png_860.png"
+        alt="No Access"
+        className="w-32 h-32 mb-4"
+      />
+      
+      {/* Thông báo */}
+      <p className="text-xl font-semibold text-red-600 mb-4">
+        ⚠️ You do not have permission to access this page.
+      </p>
+
+      {/* Nút điều hướng */}
+      <Link
+        to ="/meeting"
+        className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition"
+      >
+        ⬅ Back To Meeting
+      </Link>
+    </div>
+  );
+}
+
 
   const { data: allData, isLoading: loadingAll, refetch: refetchAll } = useGetAllRescheduleRequestsQuery(undefined, {
     skip: !(role === 'PROJECT_MANAGER' || role === 'TEAM_LEADER'),
@@ -106,7 +136,7 @@ const MeetingRescheduleRequestSend = () => {
 
 
   const handleDeleteRescheduleRequest = async (rescheduleId: number) => {
-    if (!confirm('Xác nhận huỷ yêu cầu dời lịch?')) return;
+    if (!confirm('Confirm cancellation of reschedule request?')) return;
     try {
       await deleteRescheduleRequest(rescheduleId).unwrap();
       toast.success('🗑️ Request cancelled successfully!');

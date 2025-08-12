@@ -114,7 +114,7 @@ const WorkItemDetail: React.FC = () => {
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
-  const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
+  const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
     Record<string, TaskAssignmentDTO[]>
   >({});
@@ -128,6 +128,8 @@ const WorkItemDetail: React.FC = () => {
   const [newLabelName, setNewLabelName] = useState('');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingSuggest, setLoadingSuggest] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
   const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
@@ -753,18 +755,20 @@ const WorkItemDetail: React.FC = () => {
                     }}
                   >
                     <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
-                    Create suggested work items
+                    Create suggested subtasks
                   </div>
                   <button
                     onClick={async () => {
+                      setLoadingSuggest(true); // Start loading
                       try {
                         const result = await generateSubtasksByAI(taskId).unwrap();
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
                       } catch (err) {
-                        //alert('❌ Failed to get suggestions');
                         console.error(err);
+                      } finally {
+                        setLoadingSuggest(false); // Stop loading
                       }
                     }}
                     style={{
@@ -784,9 +788,9 @@ const WorkItemDetail: React.FC = () => {
                           🧠
                         </span>
                         <div className='dot-loader'>
-                          <span>.</span>
-                          <span>.</span>
-                          <span>.</span>
+                          <span style={{ '--i': 1 } as React.CSSProperties}>.</span>
+                          <span style={{ '--i': 2 } as React.CSSProperties}>.</span>
+                          <span style={{ '--i': 3 } as React.CSSProperties}>.</span>
                         </div>
                       </div>
                     ) : (
@@ -816,8 +820,8 @@ const WorkItemDetail: React.FC = () => {
                       style={{
                         backgroundColor: '#fff',
                         borderRadius: '8px',
-                        width: '480px',
-                        maxHeight: '80vh',
+                        width: '640px', // Increased width
+                        maxHeight: '60vh', // Reduced height
                         overflowY: 'auto',
                         padding: '20px',
                         boxShadow: '0 0 10px rgba(0,0,0,0.3)',
@@ -872,7 +876,7 @@ const WorkItemDetail: React.FC = () => {
                           <label
                             key={idx}
                             style={{
-                              display: 'flex ',
+                              display: 'flex',
                               alignItems: 'flex-start',
                               gap: '2px',
                               lineHeight: '1.4',
@@ -903,34 +907,52 @@ const WorkItemDetail: React.FC = () => {
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                         <button
                           onClick={async () => {
-                            for (const title of selectedSuggestions) {
-                              try {
+                            setLoadingCreate(true); // Start loading
+                            try {
+                              for (const title of selectedSuggestions) {
                                 await createSubtask({
                                   taskId,
                                   title,
                                   createdBy: accountId,
                                 }).unwrap();
-                              } catch (err) {
-                                console.error(`❌ Failed to create: ${title}`, err);
                               }
+                              setShowSuggestionList(false);
+                              setSelectedSuggestions([]);
+                              await refetchSubtask();
+                              await refetchActivityLogs();
+                            } catch (err) {
+                              console.error('❌ Failed to create subtasks', err);
+                            } finally {
+                              setLoadingCreate(false); // Stop loading
                             }
-                            //alert('✅ Created selected subtasks');
-                            setShowSuggestionList(false);
-                            setSelectedSuggestions([]);
-                            await refetchSubtask();
                           }}
-                          disabled={selectedSuggestions.length === 0}
+                          disabled={selectedSuggestions.length === 0 || loadingCreate}
                           style={{
                             padding: '8px 16px',
-                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                            backgroundColor: selectedSuggestions.length > 0 && !loadingCreate ? '#0052cc' : '#ccc',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
                             fontWeight: 500,
-                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                            cursor: selectedSuggestions.length > 0 && !loadingCreate ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
                           }}
                         >
-                          Create Selected
+                          {loadingCreate ? (
+                            <>
+                              <span
+                                role='img'
+                                style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
+                              >
+                                ⏳
+                              </span>
+                              Creating...
+                            </>
+                          ) : (
+                            'Create Selected'
+                          )}
                         </button>
                         <button
                           onClick={() => setShowSuggestionList(false)}

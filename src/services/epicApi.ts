@@ -12,7 +12,7 @@ export interface EpicResponseDTO {
   createdAt: string;
   updatedAt: string;
   status: string;
-  reporterId: number  | null;
+  reporterId: number | null;
   assignedBy: number | null;
   assignedByFullname: string | null;
   assignedByPicture: string | null;
@@ -134,7 +134,7 @@ export const epicApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Epic'],
+  tagTypes: ['Epic', 'WorkItem'],
   endpoints: (builder) => ({
     getEpicsByProjectId: builder.query<EpicResponseDTO[], number>({
       query: (projectId) => ({
@@ -151,14 +151,14 @@ export const epicApi = createApi({
       providesTags: ['Epic'],
     }),
 
-    updateEpicStatus: builder.mutation<void, { id: string; status: string; createdBy: number}>({
+    updateEpicStatus: builder.mutation<void, { id: string; status: string; createdBy: number }>({
       query: ({ id, status, createdBy }) => ({
         url: `epic/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({status, createdBy}),
+        body: JSON.stringify({ status, createdBy }),
       }),
       invalidatesTags: ['Epic'],
     }),
@@ -179,7 +179,7 @@ export const epicApi = createApi({
       invalidatesTags: ['Epic'],
     }),
 
-        createEpicsWithTasks: builder.mutation<
+    createEpicsWithTasks: builder.mutation<
       CreateEpicsResponse,
       { projectId: number; data: EpicWithTaskRequestDTO[] }
     >({
@@ -212,6 +212,33 @@ export const epicApi = createApi({
       providesTags: ['Epic'],
     }),
 
+    createEpic: builder.mutation<
+      CreateEpicResponse,
+      {
+        projectId: number;
+        name: string;
+        description: string;
+        startDate: string;
+        endDate: string;
+        status: string;
+        reporterId?: number | null;
+        assignedBy?: number | null;
+        createdBy: number;
+      }
+    >({
+      query: (data) => ({
+        url: `epic`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data,
+      }),
+      transformResponse: (response: CreateEpicResponse) => response,
+      invalidatesTags: ['Epic'],
+    }),
+
+
   }),
 });
 
@@ -223,4 +250,5 @@ export const {
   useCreateEpicsWithTasksMutation,
   useUpdateEpicMutation,
   useGetEpicsWithTasksByProjectKeyQuery,
+  useCreateEpicMutation,
 } = epicApi;

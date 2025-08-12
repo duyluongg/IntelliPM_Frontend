@@ -36,7 +36,7 @@
 .modal-container {
   position: relative;
   /* 👈 Quan trọng để định vị */
-  left: 520px;
+  left: 400px;
   bottom: 25px;
 }
 

@@ -26,7 +26,7 @@ import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';
 import GenerateTasksPopup from './GenerateTasksPopup';
-
+import PlanTasksPopup from './PlanTasksPopup';
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
   backlogTasks: TaskBacklogResponseDTO[];
@@ -155,7 +155,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const [titleOverflow, setTitleOverflow] = useState(false);
-
+ 
   type TaskType = 'story' | 'bug' | 'epic' | 'task';
   const getTaskIcon = (type: string | null | undefined): string => {
     const iconMap: Record<TaskType, string> = {
@@ -385,7 +385,8 @@ const Section: React.FC<SectionProps> = ({
   const [isGenerateTasksPopupOpen, setIsGenerateTasksPopupOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
-
+ const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
+ 
   const ref = useRef<HTMLDivElement>(null);
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'TASK',
@@ -432,7 +433,10 @@ const Section: React.FC<SectionProps> = ({
       alert(`Unable to create task: ${err?.data?.message || 'Unknown error'}`);
     }
   };
-
+  const handleOpenPlanTasksPopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPlanTasksPopupOpen(true);
+  };
   const handleCreateSprint = async () => {
     try {
       await createSprint({ projectKey }).unwrap();
@@ -469,8 +473,12 @@ const Section: React.FC<SectionProps> = ({
   };
 
   const handleOpenGenerateTasksPopup = (e: React.MouseEvent) => {
+ 
+    
     e.stopPropagation();
+       console.log('sprintIddddd:', sprintId);
     if (sprintId) {
+         console.log('sprintId d:', sprintId);
       setIsGenerateTasksPopupOpen(true);
     }
   };
@@ -515,7 +523,7 @@ const Section: React.FC<SectionProps> = ({
           <div className='flex items-center space-x-2'>
             <div className='p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]'>
               <button
-                onClick={handleOpenGenerateTasksPopup}
+                onClick={handleOpenPlanTasksPopup}
                 className='w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300'
               >
                 <PlusCircle className='w-4 h-4 mr-1 text-indigo-500' />
@@ -760,6 +768,14 @@ const Section: React.FC<SectionProps> = ({
         projectId={projectId}
         onTaskUpdated={onTaskUpdated}
       />
+      <PlanTasksPopup
+        isOpen={isPlanTasksPopupOpen}
+        onClose={() => setIsPlanTasksPopupOpen(false)}
+        projectId={projectId}
+        projectKey={projectKey}
+        onTaskUpdated={onTaskUpdated}
+      />
+
     </div>
   );
 };

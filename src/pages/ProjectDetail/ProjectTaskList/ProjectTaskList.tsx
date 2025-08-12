@@ -31,7 +31,7 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-import Doc from '../../PM/YourProject/Doc';
+// import Doc from '../../PM/YourProject/Doc';
 import { useCreateDocumentMutation, useGetDocumentMappingQuery, } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
@@ -676,41 +676,41 @@ const ProjectTaskList: React.FC = () => {
     }
   }, [docMapping]);
 
-  const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
-    if (!user?.id || !projectId) return;
+  // const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
+  //   if (!user?.id || !projectId) return;
 
-    if (createdDocIds[taskKey]) {
-      setDocTaskId(taskKey);
-      setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
-      setDocMode('view');
-      setIsDocModalOpen(true);
-    } else {
-      try {
-        const payload = {
-          projectId,
-          taskId: taskType === 'task' ? taskKey : undefined,
-          epicId: taskType === 'epic' ? taskKey : undefined,
-          subTaskId: taskType === 'subtask' ? taskKey : undefined,
-          type: taskType,
-          title: 'Untitled Document',
-          template: 'blank',
-          content: '',
-          createdBy: accountId,
-        };
+  //   if (createdDocIds[taskKey]) {
+  //     setDocTaskId(taskKey);
+  //     setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+  //     setDocMode('view');
+  //     setIsDocModalOpen(true);
+  //   } else {
+  //     try {
+  //       const payload = {
+  //         projectId,
+  //         taskId: taskType === 'task' ? taskKey : undefined,
+  //         epicId: taskType === 'epic' ? taskKey : undefined,
+  //         subTaskId: taskType === 'subtask' ? taskKey : undefined,
+  //         type: taskType,
+  //         title: 'Untitled Document',
+  //         template: 'blank',
+  //         content: '',
+  //         createdBy: accountId,
+  //       };
 
-        const res = await createDocument(payload).unwrap();
-        setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
+  //       const res = await createDocument(payload).unwrap();
+  //       setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
 
-        setDocTaskId(taskKey);
-        setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
-        setDocMode('view');
-        setIsDocModalOpen(true);
-      } catch (error) {
-        console.error('Error creating document:', error);
-        alert('Failed to create document.');
-      }
-    }
-  };
+  //       setDocTaskId(taskKey);
+  //       setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
+  //       setDocMode('view');
+  //       setIsDocModalOpen(true);
+  //     } catch (error) {
+  //       console.error('Error creating document:', error);
+  //       alert('Failed to create document.');
+  //     }
+  //   }
+  // };
 
   const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
@@ -1735,7 +1735,7 @@ const ProjectTaskList: React.FC = () => {
                       </div>
                     )}
                   </td>
-                  <td
+                  {/* <td
                     style={{ width: `${columnWidths.document}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
@@ -1754,7 +1754,7 @@ const ProjectTaskList: React.FC = () => {
                         <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
                       </button>
                     )}
-                  </td>
+                  </td> */}
                 </tr>
               ))
             ) : (
@@ -1779,13 +1779,13 @@ const ProjectTaskList: React.FC = () => {
                 ✕
               </button>
             </div>
-            <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
+            {/* <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
               <Doc
                 docId={createdDocIds[docTaskId]}
                 onClose={() => setIsDocModalOpen(false)}
                 updatedBy={accountId}
               />
-            </div>
+            </div> */}
           </div>
         </div>
       )}

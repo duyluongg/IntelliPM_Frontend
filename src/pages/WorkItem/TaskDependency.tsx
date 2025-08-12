@@ -249,6 +249,7 @@ import {
   useCreateTaskDependenciesMutation,
   useDeleteTaskDependencyByIdMutation,
 } from '../../services/taskDependencyApi';
+import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { Trash2, Loader2 } from 'lucide-react';
 
 interface Dependency {
@@ -277,6 +278,8 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
     skip: !open || !workItemId,
   });
 
+  const { data: categoryData, isLoading: isCategoryLoading } = useGetCategoriesByGroupQuery('task_dependency_type');
+
   const [nextId, setNextId] = useState(1);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [dependencies, setDependencies] = useState<Dependency[]>([]);
@@ -288,12 +291,17 @@ const TaskDependency: React.FC<TaskDependencyProps> = ({ open, onClose, workItem
   const [deleteTaskDependency] = useDeleteTaskDependencyByIdMutation();
 
   // Mock data cho task_dependency_type từ dynamic_category (thay bằng API call thực tế)
-  const dependencyTypes = [
-    { name: 'FINISH_START', label: 'Finish-to-Start' },
-    { name: 'START_START', label: 'Start-to-Start' },
-    { name: 'FINISH_FINISH', label: 'Finish-to-Finish' },
-    { name: 'START_FINISH', label: 'Start-to-Finish' },
-  ];
+  // const dependencyTypes = [
+  //   { name: 'FINISH_START', label: 'Finish-to-Start' },
+  //   { name: 'START_START', label: 'Start-to-Start' },
+  //   { name: 'FINISH_FINISH', label: 'Finish-to-Finish' },
+  //   { name: 'START_FINISH', label: 'Start-to-Finish' },
+  // ];
+
+  const dependencyTypes = categoryData?.data.map((item) => ({
+    name: item.name,
+    label: item.label || item.name, // Use label if available, fallback to name
+  })) || [];
 
   useEffect(() => {
     if (open && taskDepsData) {

@@ -77,6 +77,40 @@ interface GetAccountResponse {
   message: string;
 }
 
+
+export interface TeamMember {
+  id: number;
+  accountId: number;
+  accountName: string;
+  accountEmail: string;
+  accountPicture: string;
+  projectId: number;
+  joinedAt: string;
+  invitedAt: string;
+  status: string;
+}
+
+export interface Team {
+  projectId: number;
+  projectName: string;
+  projectKey: string;
+  totalMembers: number;
+  members: TeamMember[];
+}
+
+export interface TeamsData {
+  totalTeams: number;
+  teams: Team[];
+}
+
+export interface GetTeamsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: TeamsData;
+  message: string;
+}
+
+
 export const accountApi = createApi({
   reducerPath: 'accountApi',
   baseQuery: fetchBaseQuery({
@@ -114,7 +148,14 @@ export const accountApi = createApi({
         method: 'GET',
       }),
     }),
+   getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
+      query: (accountId) => ({
+        url: `account/${accountId}/teams`,
+        method: 'GET',
+      }),
+    }),
+
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery, } = accountApi;
+export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery,useGetTeamsByAccountIdQuery, } = accountApi;

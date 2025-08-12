@@ -55,7 +55,8 @@ import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 import Document from '../pages/PM/YourProject/Document';
 import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTable';
 import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
-
+import ProfilePage from '../pages/Account/ProfilePage';
+import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
 
 export const router = createBrowserRouter([
   {
@@ -107,6 +108,14 @@ export const router = createBrowserRouter([
       {
         path: 'intro',
         element: <GuestIntroPage />,
+      },
+      {
+        path: 'account/profile',
+        element: <ProfilePage />,
+      },
+      {
+        path: 'account/teams-history',
+        element: <TeamsHistoryPage />,
       },
     ],
   },

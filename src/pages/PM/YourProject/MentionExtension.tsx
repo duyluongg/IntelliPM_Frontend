@@ -5,6 +5,7 @@ import 'tippy.js/dist/tippy.css';
 import { ReactRenderer } from '@tiptap/react';
 import SuggestionList from './SuggestionList';
 import type { SuggestionProps } from '@tiptap/suggestion';
+import type { MentionItem } from '../../../types/MentionType';
 
 export const MentionExtension = (itemsRef: React.RefObject<MentionItem[]>) =>
   Mention.configure({

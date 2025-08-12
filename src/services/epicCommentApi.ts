@@ -9,6 +9,7 @@ export interface EpicCommentDTO {
     createdAt: string;
     accountName: string;
     accountPicture: string;
+    createdBy: number;
 }
 
 interface EpicCommentListResponse {
@@ -45,7 +46,7 @@ export const epicCommentApi = createApi({
             transformResponse: (response: EpicCommentListResponse) => response.data,
         }),
 
-        createEpicComment: builder.mutation<void, { epicId: string; accountId: number; content: string }>({
+        createEpicComment: builder.mutation<void, { epicId: string; accountId: number; content: string; createdBy: number }>({
             query: (payload) => ({
                 url: 'epiccomment',
                 method: 'POST',
@@ -53,7 +54,7 @@ export const epicCommentApi = createApi({
             }),
         }),
 
-        updateEpicComment: builder.mutation<void, { id: number; epicId: string; accountId: number; content: string }>({
+        updateEpicComment: builder.mutation<void, { id: number; epicId: string; accountId: number; content: string, createdBy: number }>({
             query: ({ id, ...body }) => ({
                 url: `epiccomment/${id}`,
                 method: 'PUT',
@@ -61,10 +62,11 @@ export const epicCommentApi = createApi({
             }),
         }),
 
-        deleteEpicComment: builder.mutation<void, number>({
-            query: (id) => ({
+        deleteEpicComment: builder.mutation<void, { id: number; createdBy: number }>({
+            query: ({id, createdBy}) => ({
                 url: `epiccomment/${id}`,
                 method: 'DELETE',
+                body: { createdBy },
             }),
         }),
     }),

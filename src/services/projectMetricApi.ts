@@ -54,12 +54,14 @@ interface HealthDashboardResponse {
   code: number;
   message: string;
   data: {
+    projectStatus: string;
     timeStatus: string;
     tasksToBeCompleted: number;
     overdueTasks: number;
     progressPercent: number;
     costStatus: number;
     cost: ProjectMetric;
+    showAlert: boolean;
   };
 }
 
@@ -214,6 +216,10 @@ export const projectMetricApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getMetricHistoryByProjectKey: builder.query({
+      query: (projectKey) => `projectmetrichistory/history/${projectKey}`,
+    }),
   }),
 });
 
@@ -228,4 +234,5 @@ export const {
   useGetProjectMetricByProjectKeyQuery,
   useCalculateMetricsBySystemMutation,
   useGetProjectMetricAIByProjectKeyQuery,
+  useGetMetricHistoryByProjectKeyQuery,
 } = projectMetricApi;

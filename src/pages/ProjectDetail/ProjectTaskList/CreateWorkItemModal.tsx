@@ -126,7 +126,7 @@ const CreateWorkItemModal: React.FC<CreateWorkItemModalProps> = ({
       alert('End date cannot be earlier than start date');
       return;
     }
-    if (!assignedBy) {
+    if (type === 'EPIC' && !assignedBy) {
       alert('Please select an assignee');
       return;
     }
@@ -166,7 +166,7 @@ const CreateWorkItemModal: React.FC<CreateWorkItemModalProps> = ({
           dependencies: [],
         };
         await createTask(payload).unwrap();
-        alert(`${type} created successfully!`);
+        alert(`Task with type ${type} created successfully!`);
       }
       refetchWorkItems();
       onClose();
@@ -349,7 +349,7 @@ const CreateWorkItemModal: React.FC<CreateWorkItemModalProps> = ({
             <button
               type="submit"
               disabled={isCreatingEpic || isCreatingTask || isMembersLoading || isStatusLoading || (type !== 'EPIC' && isEpicsLoading)}
-              className="px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed text-sm font-medium"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-sm font-medium"
             >
               {isCreatingEpic || isCreatingTask ? 'Creating...' : 'Create'}
             </button>

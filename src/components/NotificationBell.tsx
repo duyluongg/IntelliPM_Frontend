@@ -175,7 +175,7 @@ if ((extra?.relatedEntityType ?? '').toUpperCase() === 'MEETING') {
           </div>
 
           {recipientNotis?.length === 0 ? (
-            <div className='p-4 text-gray-500 text-sm'>Không có thông báo nào.</div>
+            <div className='p-4 text-gray-500 text-sm'>No notification.</div>
           ) : (
             recipientNotis?.map((recipient) => {
               const notification = allNotis?.find((n) => n.id === recipient.notificationId);

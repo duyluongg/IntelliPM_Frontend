@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import "./CustomerHome.css";
 
 const navLinks = [
-  { title: "About Us", path: "/about" },
+  // { title: "Intro", path: "/intro" },
   { title: "Feature", path: "/feature" },
-  { title: "Sponsors", path: "/sponsors" },
-  { title: "Contact", path: "/contact" },
+  // { title: "Sponsors", path: "/sponsors" },
+  // { title: "Contact", path: "/contact" },
 ];
 
 const images = [
@@ -212,6 +212,7 @@ export default function CustomerHome() {
     </div>
   </div>
 </main>
+
 
 
 

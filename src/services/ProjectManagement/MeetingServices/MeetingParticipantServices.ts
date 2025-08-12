@@ -27,6 +27,15 @@ export interface MeetingParticipant {
   fullName:string;
 }
 
+// NEW — DTO cho update status, match BE DynamicCategoryValidation(string)
+export interface UpdateParticipantStatusDTO {
+  meetingId: number;
+  accountId: number;
+  role?: string | null;
+  status?: string | null; // ✅ dynamic
+}
+
+
 /* ========== Phản hồi trả về ========= */
 
 interface BaseResponse<T = unknown> {
@@ -87,16 +96,26 @@ completeMeeting: builder.mutation<void, number>({
 
 
     /** PUT /api/meeting-participants/:id – Điểm danh (Present / Absent) */
+    // updateParticipantStatus: builder.mutation<
+    //   MeetingParticipant,
+    //   { participantId: number; data: Pick<MeetingParticipant, 'meetingId' | 'accountId' | 'role' | 'status'> }
+    // >({
+    //   query: ({ participantId, data }) => ({
+    //     url: `meeting-participants/${participantId}`,
+    //     method: 'PUT',
+    //     body: data,
+    //   }),
+    // }),
     updateParticipantStatus: builder.mutation<
-      MeetingParticipant,
-      { participantId: number; data: Pick<MeetingParticipant, 'meetingId' | 'accountId' | 'role' | 'status'> }
-    >({
-      query: ({ participantId, data }) => ({
-        url: `meeting-participants/${participantId}`,
-        method: 'PUT',
-        body: data,
-      }),
-    }),
+  MeetingParticipant,
+  { participantId: number; data: UpdateParticipantStatusDTO }
+>({
+  query: ({ participantId, data }) => ({
+    url: `meeting-participants/${participantId}`,
+    method: 'PUT',
+    body: data,
+  }),
+}),
   }),
 });
 

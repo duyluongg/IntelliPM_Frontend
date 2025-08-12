@@ -10,21 +10,25 @@ import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi'
 interface BacklogBodyProps {
   onCreateEpic: () => void;
   sprints: SprintWithTaskListResponseDTO[];
-  epics: EpicWithStatsResponseDTO[];
+  epics: EpicWithStatsResponseDTO[] | undefined; // Allow undefined from parent
   backlogTasks: TaskBacklogResponseDTO[];
   projectId: number;
 }
 
-const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics, backlogTasks, projectId }) => {
+const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics = [], backlogTasks, projectId }) => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
-  const { refetch: refetchSprints } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
-  const { refetch: refetchBacklog } = useGetTasksFromBacklogQuery(projectKey);
+  const { refetch: refetchSprints, isLoading: sprintsLoading } = useGetSprintsByProjectKeyWithTasksQuery(projectKey);
+  const { refetch: refetchBacklog, isLoading: backlogLoading } = useGetTasksFromBacklogQuery(projectKey);
 
   const handleTaskUpdated = () => {
     refetchSprints();
     refetchBacklog();
   };
+
+  if (sprintsLoading || backlogLoading) {
+    return <div className="p-4 text-gray-600">Loading sprints and tasks...</div>;
+  }
 
   return (
     <div className="bg-white min-h-screen p-4 overflow-x-auto">
@@ -35,6 +39,7 @@ const BacklogBody: React.FC<BacklogBodyProps> = ({ onCreateEpic, sprints, epics,
         <div className="flex-1 pl-2">
           <SprintColumn
             sprints={sprints}
+            epics={epics} // epics is now guaranteed to be an array
             backlogTasks={backlogTasks}
             projectId={projectId}
             projectKey={projectKey}

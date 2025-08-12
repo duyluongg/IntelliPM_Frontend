@@ -71,7 +71,10 @@ export const router = createBrowserRouter([
     path: '/feature',
     element: <FeatureGuidePage />,
   },
-
+      {
+        path: 'intro',
+        element: <GuestIntroPage />,
+      },
   {
     path: '/',
     element: <RootLayout />,
@@ -105,10 +108,7 @@ export const router = createBrowserRouter([
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
-      {
-        path: 'intro',
-        element: <GuestIntroPage />,
-      },
+
       {
         path: 'account/profile',
         element: <ProfilePage />,

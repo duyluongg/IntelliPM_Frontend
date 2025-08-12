@@ -79,10 +79,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
       return;
     }
 
-    if (extra?.relatedEntityType?.toUpperCase() === 'MEETING' ) {
-      navigate(`/meeting-room}`);
-      return;
-    }
+if ((extra?.relatedEntityType ?? '').toUpperCase() === 'MEETING') {
+  navigate('/meeting-room');
+  return;
+}
 
     console.log('Notification message:', message);
 

@@ -40,18 +40,20 @@ import type { RootState } from '../../../app/store';
 import { useGetProjectByIdQuery } from '../../../services/projectApi';
 import toast from 'react-hot-toast';
 import type { SharePermission } from '../../../types/ShareDocumentType';
+import jsPDF from 'jspdf';
 
 interface Props {
   editor: Editor | null;
   onToggleChatbot?: () => void;
   onAddComment?: () => void;
+  exportTargetRef?: React.RefObject<HTMLElement | null>;
 }
 
 // Lớp CSS dùng chung cho các item trong dropdown
 const dropdownItemClass =
   'flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50';
 
-const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => {
+const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, exportTargetRef }) => {
   if (!editor) {
     return null;
   }
@@ -89,113 +91,167 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment }) => 
     return 'Normal text';
   };
 
+  // const handleExportPDF = async () => {
+  //   if (!editor) return;
+
+  //   // 1. Lấy HTML gốc từ editor
+  //   const html = editor.getHTML();
+
+  //   // 2. Tạo DOM ảo để xử lý
+  //   const dom = document.createElement('div');
+  //   dom.innerHTML = html;
+
+  //   // 3. Thay thế các GanttNode bằng ảnh chất lượng cao
+  //   const ganttNodes = dom.querySelectorAll('gantt-view');
+  //   for (const node of ganttNodes) {
+  //     const projectKey = node.getAttribute('projectkey');
+  //     if (!projectKey) continue;
+
+  //     const ganttElement = document.getElementById(`gantt-${projectKey}`);
+  //     if (!ganttElement) continue;
+
+  //     // Chụp ảnh Gantt với scale cao hơn để ảnh nét
+  //     const canvas = await html2canvas(ganttElement, {
+  //       useCORS: true,
+  //       allowTaint: true,
+  //       backgroundColor: '#ffffff',
+  //       scale: 2,
+  //     });
+
+  //     const img = document.createElement('img');
+  //     img.src = canvas.toDataURL('image/png');
+  //     img.style.maxWidth = '100%';
+  //     img.style.border = '1px solid #ddd';
+  //     img.style.margin = '16px 0';
+
+  //     node.replaceWith(img);
+  //   }
+
+  //   // 4. Tạo thẻ HTML đầy đủ để export
+  //   const content = document.createElement('html');
+  //   content.innerHTML = `
+  //   <head>
+  //     <meta charset="UTF-8">
+  //     <link rel="preconnect" href="https://fonts.googleapis.com">
+  //     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  //     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
+  //     <style>
+
+  //       body {
+  //         font-family: 'Lora', serif;
+  //         font-size: 11pt;
+  //         line-height: 1.5;
+  //         background: white;
+  //       }
+  //       h1, h2, h3, h4, h5, h6 {
+  //         font-family: 'Inter', sans-serif;
+  //       }
+  //       img {
+  //         max-width: 100%;
+  //         page-break-inside: avoid;
+  //       }
+  //     </style>
+  //   </head>
+  //   <body>${dom.innerHTML}</body>
+  // `;
+
+  //   // 5. Spacer để tránh bị cắt chân (giữ nguyên)
+  //   const spacer = document.createElement('div');
+  //   spacer.style.height = '1in';
+  //   content.querySelector('body')?.appendChild(spacer);
+
+  //   // 6. Export PDF với options đã được sửa
+  //   const options = {
+  //     margin: [0.5, 0.5, 0.7, 0.5],
+  //     filename: 'document.pdf',
+  //     image: { type: 'png', quality: 0.98 }, // Giữ quality cao
+  //     html2canvas: {
+  //       scale: 2, // ✨ THAY ĐỔI: Quan trọng nhất, render toàn bộ PDF ở độ phân giải 2x
+  //       useCORS: true,
+  //       logging: false,
+  //     },
+  //     jsPDF: {
+  //       unit: 'in',
+  //       format: 'a4',
+  //       orientation: 'portrait',
+  //     },
+  //     pagebreak: {
+  //       mode: ['avoid-all', 'css', 'legacy'],
+  //     },
+  //   };
+
+  //   try {
+  //     const pdfBlob = await html2pdf().from(content).set(options).outputPdf('blob');
+
+  //     const file = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
+  //     if (documentId && exportDocument) {
+  //       await exportDocument({ documentId: Number(documentId), file });
+  //     }
+
+  //     const pdfUrl = URL.createObjectURL(pdfBlob);
+  //     const a = document.createElement('a');
+  //     a.href = pdfUrl;
+  //     a.download = 'document.pdf';
+  //     a.click();
+  //     URL.revokeObjectURL(pdfUrl);
+  //   } catch (err) {
+  //     console.error('Export and upload failed:', err);
+  //   }
+  // };
+
   const handleExportPDF = async () => {
-    if (!editor) return;
+    const el = exportTargetRef?.current ?? document.querySelector<HTMLElement>('.tiptap-content');
 
-    // 1. Lấy HTML gốc từ editor
-    const html = editor.getHTML();
+    if (!el) return;
+    if (!(el instanceof HTMLElement)) return;
+    
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#fff',
+      windowWidth: el.scrollWidth,
+    });
 
-    // 2. Tạo DOM ảo để xử lý
-    const dom = document.createElement('div');
-    dom.innerHTML = html;
+    const imgData = canvas.toDataURL('image/png');
 
-    // 3. Thay thế các GanttNode bằng ảnh chất lượng cao
-    const ganttNodes = dom.querySelectorAll('gantt-view');
-    for (const node of ganttNodes) {
-      const projectKey = node.getAttribute('projectkey');
-      if (!projectKey) continue;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
 
-      const ganttElement = document.getElementById(`gantt-${projectKey}`);
-      if (!ganttElement) continue;
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
 
-      // Chụp ảnh Gantt với scale cao hơn để ảnh nét
-      const canvas = await html2canvas(ganttElement, {
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        scale: 2,
-      });
+    let heightLeft = imgH;
+    let position = 0;
 
-      const img = document.createElement('img');
-      img.src = canvas.toDataURL('image/png');
-      img.style.maxWidth = '100%';
-      img.style.border = '1px solid #ddd';
-      img.style.margin = '16px 0';
+    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+    heightLeft -= pageH;
 
-      node.replaceWith(img);
+    while (heightLeft > 0) {
+      position = heightLeft - imgH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+      heightLeft -= pageH;
     }
 
-    // 4. Tạo thẻ HTML đầy đủ để export
-    const content = document.createElement('html');
-    content.innerHTML = `
-    <head>
-      <meta charset="UTF-8">
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
-      <style>
-       
-        body {
-          font-family: 'Lora', serif;
-          font-size: 11pt;
-          line-height: 1.5;
-          background: white;
-        }
-        h1, h2, h3, h4, h5, h6 {
-          font-family: 'Inter', sans-serif;
-        }
-        img {
-          max-width: 100%;
-          page-break-inside: avoid;
-        }
-      </style>
-    </head>
-    <body>${dom.innerHTML}</body>
-  `;
-
-    // 5. Spacer để tránh bị cắt chân (giữ nguyên)
-    const spacer = document.createElement('div');
-    spacer.style.height = '1in';
-    content.querySelector('body')?.appendChild(spacer);
-
-    // 6. Export PDF với options đã được sửa
-    const options = {
-      margin: [0.5, 0.5, 0.7, 0.5],
-      filename: 'document.pdf',
-      image: { type: 'png', quality: 0.98 }, // Giữ quality cao
-      html2canvas: {
-        scale: 2, // ✨ THAY ĐỔI: Quan trọng nhất, render toàn bộ PDF ở độ phân giải 2x
-        useCORS: true,
-        logging: false,
-      },
-      jsPDF: {
-        unit: 'in',
-        format: 'a4',
-        orientation: 'portrait',
-      },
-      pagebreak: {
-        mode: ['avoid-all', 'css', 'legacy'],
-      },
-    };
-
-    try {
-      const pdfBlob = await html2pdf().from(content).set(options).outputPdf('blob');
-
-      const file = new File([pdfBlob], 'document.pdf', { type: 'application/pdf' });
-      if (documentId && exportDocument) {
-        await exportDocument({ documentId: Number(documentId), file });
-      }
-
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const a = document.createElement('a');
-      a.href = pdfUrl;
-      a.download = 'document.pdf';
-      a.click();
-      URL.revokeObjectURL(pdfUrl);
-    } catch (err) {
-      console.error('Export and upload failed:', err);
-    }
+    pdf.save('document.pdf');
   };
+
+  // const handleExportPDF = () => {
+  //   const element = exportTargetRef?.current || document.querySelector('.tiptap-content');
+  //   if (!element) return;
+
+  //   const opt = {
+  //     margin: [10, 10, 10, 10], // trên, trái, dưới, phải (mm)
+  //     filename: 'document.pdf',
+  //     image: { type: 'jpeg', quality: 0.98 },
+  //     html2canvas: { scale: 2, useCORS: true },
+  //     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  //     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }, // 👈 ngắt trang chuẩn
+  //   };
+
+  //   html2pdf().from(element).set(opt).save();
+  // };
 
   const handleExportExcel = () => {
     if (!editor) return;

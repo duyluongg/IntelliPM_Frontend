@@ -410,7 +410,7 @@ const ProjectMember: React.FC = () => {
                 <h2 className='text-lg font-semibold'>{selectedMember.fullName}</h2>
                 <p className='text-sm text-gray-500'>@{selectedMember.username}</p>
                 <p className='text-sm text-gray-500'>
-                  Hourly Rate: $
+                  Hourly Rate: VND
                   <input
                     type='number'
                     step='0.01'

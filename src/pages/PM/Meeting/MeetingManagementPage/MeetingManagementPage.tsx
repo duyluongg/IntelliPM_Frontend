@@ -13,7 +13,7 @@ import {
   useCompleteMeetingMutation, 
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 import { useGetCategoriesByGroupQuery } from '../../../../services/dynamicCategoryApi';
-
+import AttendanceModal from '../MeetingManagementPage/AttendanceModal';
 
 const MeetingManagementPage: React.FC = () => {
   const { user } = useAuth();
@@ -25,7 +25,7 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState<string>('ACTIVE');
   const [formData, setFormData]   = useState<any>({});
-  const [attendanceDraft, setAttendanceDraft] = useState<Record<number, 'Present' | 'Absent'>>({});
+const [attendanceDraft, setAttendanceDraft] = useState<Record<number, string>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
   const toastIds = useRef<{ [key: string]: boolean }>({});
@@ -92,17 +92,15 @@ useEffect(() => {
   }
 }, [accountId]);
 
-useEffect(() => {
-  if (attendanceOpen && participants.length > 0) {
-    const initialDraft: Record<number, 'Present' | 'Absent'> = {};
-    participants.forEach((p) => {
-      if (p.status === 'Present' || p.status === 'Absent') {
-        initialDraft[p.id] = p.status;
-      }
-    });
-    setAttendanceDraft(initialDraft);
-  }
-}, [attendanceOpen, participants]);
+  useEffect(() => {
+    if (attendanceOpen && participants.length > 0) {
+      const initialDraft: Record<number, string> = {};
+      participants.forEach((p) => {
+        if (p.status) initialDraft[p.id] = p.status; // không hardcode
+      });
+      setAttendanceDraft(initialDraft);
+    }
+  }, [attendanceOpen, participants]);
 
 useEffect(() => {
   if (!meetings || meetings.length === 0) return;
@@ -143,7 +141,7 @@ useEffect(() => {
 
 
 // Điểm danh và cập nhật trạng thái cuộc họp
-  const handleAttendance = async (participantId: number, newStatus: 'Present' | 'Absent' | 'Active') => {
+ const handleAttendance = async (participantId: number, newStatus: string) => {
     const participant = participants.find((p) => Number(p.id) === participantId);
     if (!participant) return;
 
@@ -151,13 +149,16 @@ useEffect(() => {
     const meetingTime = new Date(selectedMeeting?.meetingDate);
 
     const meetingStartTime = new Date(meetingTime);
-    meetingStartTime.setHours(new Date(selectedMeeting?.startTime).getHours(), new Date(selectedMeeting?.startTime).getMinutes(), 0, 0);
+    meetingStartTime.setHours(
+      new Date(selectedMeeting?.startTime).getHours(),
+      new Date(selectedMeeting?.startTime).getMinutes(),
+      0, 0
+    );
 
-    // Kiểm tra nếu thời gian hiện tại chưa đến thời gian cuộc họp
     if (currentTime < meetingStartTime) {
       if (!toastIds.current['attendance-time-not-reached']) {
         toast.error('Cannot change attendance because meeting time is not yet!');
-        toastIds.current['attendance-time-not-reached'] = true; // Đánh dấu đã hiển thị thông báo này
+        toastIds.current['attendance-time-not-reached'] = true;
       }
       return;
     }
@@ -165,39 +166,36 @@ useEffect(() => {
     const meetingDayEnd = new Date(meetingTime);
     meetingDayEnd.setHours(23, 59, 59, 999);
 
-    // Kiểm tra nếu thời gian hiện tại đã qua ngày diễn ra cuộc họp
     if (currentTime > meetingDayEnd) {
       if (!toastIds.current['attendance-date-passed']) {
         toast.error('Cannot change attendance because meeting date has passed!');
-        toastIds.current['attendance-date-passed'] = true; // Đánh dấu đã hiển thị thông báo này
+        toastIds.current['attendance-date-passed'] = true;
       }
       return;
     }
 
-    // Tiến hành cập nhật điểm danh
     await updateParticipantStatus({
       participantId,
       data: {
         meetingId: participant.meetingId,
         accountId: participant.accountId,
         role: participant.role,
-        status: newStatus,
+        status: newStatus, // 👈 lấy từ dynamic category
       },
     });
 
     await refetchParticipants();
-    
-    // Hiển thị thông báo thành công chỉ một lần
+
     if (!toastIds.current['attendance-success']) {
       toast.success('Check Attendance success');
-      toastIds.current['attendance-success'] = true; // Đánh dấu đã hiển thị thông báo này
+      toastIds.current['attendance-success'] = true;
     }
 
-    // Chỉ hoàn tất cuộc họp khi tất cả người tham gia đã điểm danh
     await completeMeeting(selectedMeeting.id);
-
     await refetch();
   };
+
+
   return (
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold text-gray-800">
@@ -346,7 +344,7 @@ useEffect(() => {
                       />
 
                       {/* Status động từ Dynamic Category */}
-                      <label className="mb-2 mt-4 block text-sm font-medium">Status</label>
+                      {/* <label className="mb-2 mt-4 block text-sm font-medium">Status</label>
                       <select
                         className="w-full rounded border px-3 py-2"
                         value={formData.status || ''}
@@ -357,7 +355,7 @@ useEffect(() => {
                             {opt.label}
                           </option>
                         ))}
-                      </select>
+                      </select> */}
 
                       <label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
                       <select
@@ -448,78 +446,37 @@ useEffect(() => {
             {/* Điểm danh */}
             <Dialog
               open={attendanceOpen && selectedMeeting?.id === m.id}
-              onOpenChange={(open) => {
-                setAttendanceOpen(open);
-                if (open) setSelectedMeeting(m);
-                else setAttendanceDraft({});
-              }}
+    onOpenChange={(open) => {
+      setAttendanceOpen(open);
+      if (open) setSelectedMeeting(m);
+      else setAttendanceDraft({});
+    }}
             >
-              <DialogTrigger asChild>
-                <button
-                  className="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
-                  onClick={() => {
-                    setSelectedMeeting(m);
-                    setAttendanceOpen(true);
-                  }}
-                >
-                  📋 Check Attendance:
-                </button>
-              </DialogTrigger>
-
-              <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-lg">
-                <h3 className="mb-4 text-lg font-semibold">
-                  📋 Attendance: {selectedMeeting?.meetingTopic}
-                </h3>
-
-                {participants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="mb-3 flex flex-col rounded border p-4 shadow-sm md:flex-row md:items-start md:justify-between"
-                  >
-                    <div className="mb-2 md:mb-0">
-                      <p className="font-semibold text-gray-800">👤 Name: {p.fullName}</p>
-                      <p className="text-sm text-gray-600">Role: {p.role}</p>
-                    </div>
-
-                    <div className="flex w-full flex-col gap-2 md:w-28">
-                      <button
-                        className={`w-full rounded px-4 py-2 text-sm font-medium ${
-                          attendanceDraft[p.id] === 'Present'
-                            ? 'bg-blue-600 text-white'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
-                        }`}
-                        onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Present' }))}
-                      >
-                        Present
-                      </button>
-                      <button
-                        className={`w-full rounded px-4 py-2 text-sm font-medium ${
-                          attendanceDraft[p.id] === 'Absent'
-                            ? 'bg-red-600 text-white'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
-                        }`}
-                        onClick={() => setAttendanceDraft((prev) => ({ ...prev, [p.id]: 'Absent' }))}
-                      >
-                        Absent
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                <button
-                  className="mt-6 w-full rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-                  onClick={async () => {
-                    for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
-                      const participantId = Number(participantIdStr);
-                      await handleAttendance(participantId, newStatus);
-                    }
-                    setAttendanceDraft({});
-                    setAttendanceOpen(false);
-                  }}
-                >
-                  💾 Save Attendance
-                </button>
-              </DialogContent>
+               <DialogTrigger asChild>
+      <button
+        className="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
+        onClick={() => {
+          setSelectedMeeting(m);
+          setAttendanceOpen(true);
+        }}
+      >
+        📋 Check Attendance
+      </button>
+    </DialogTrigger>
+    <AttendanceModal
+      meetingTopic={selectedMeeting?.meetingTopic}
+      participants={participants}
+      draft={attendanceDraft}
+      setDraft={setAttendanceDraft}
+      onSave={async () => {
+        for (const [participantIdStr, newStatus] of Object.entries(attendanceDraft)) {
+          const participantId = Number(participantIdStr);
+          await handleAttendance(participantId, newStatus);
+        }
+        setAttendanceDraft({});
+        setAttendanceOpen(false);
+      }}
+    />
             </Dialog>
           </div>
         </div>

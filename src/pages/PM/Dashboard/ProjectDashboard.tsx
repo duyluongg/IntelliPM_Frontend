@@ -1264,6 +1264,7 @@
 
 // export default ProjectDashboard;
 
+//******* */
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import {
@@ -1297,6 +1298,7 @@ import ImpactChart from './ImpactChart';
 import DashboardCard from './DashboardCard';
 import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
 interface AIRecommendation {
   id?: number;
@@ -1398,6 +1400,7 @@ const ProjectDashboard: React.FC = () => {
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>(recData?.data ?? []);
   const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
   const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const { data: recommendationTypeCategoriesData, isLoading: isRecommendationTypeLoading } = useGetCategoriesByGroupQuery('recommendation_type');
 
   useEffect(() => {
     const doCalculateThenRefetch = async () => {
@@ -1421,7 +1424,7 @@ const ProjectDashboard: React.FC = () => {
     refetchRec();
     refetchHistory();
     if (showRecommendations) {
-      triggerGetRecommendations(projectKey);
+      triggerGetRecommendations(projectKey, false);
     }
   }, [location.key, refetchHealth, refetchProgress, refetchTaskStatus, refetchTime, refetchCost, refetchWorkload, refetchRec, refetchHistory, projectKey, triggerGetRecommendations, showRecommendations]);
 
@@ -1459,8 +1462,8 @@ const ProjectDashboard: React.FC = () => {
     const metrics = JSON.parse(item.value);
     return {
       date: new Date(item.recordedAt).toLocaleDateString(),
-      SPI: metrics.SPI,
-      CPI: metrics.CPI,
+      SPI: metrics.SPI.toFixed(2),
+      CPI: metrics.CPI.toFixed(2),
       EV: metrics.EV,
       AC: metrics.AC,
     };
@@ -1532,7 +1535,10 @@ const ProjectDashboard: React.FC = () => {
     );
   };
 
-  const validTypes = ['Schedule', 'Cost', 'Scope', 'Resource', 'Performance', 'Design', 'Testing'];
+  // const validTypes = ['Schedule', 'Cost'];
+  const validTypes = recommendationTypeCategoriesData?.data
+    ?.filter((category: any) => ['SCHEDULE', 'COST'].includes(category.name.toUpperCase()))
+    ?.map((category: any) => category.name.toUpperCase()) ?? ['SCHEDULE', 'COST'];
 
   const RecommendationCard: React.FC<{
     rec: AIRecommendation;
@@ -1774,6 +1780,10 @@ const ProjectDashboard: React.FC = () => {
     await refetchRec();
     await refetchAIData();
     await refetchHistory();
+  };
+
+  const handleRefreshSuggestions = () => {
+    triggerGetRecommendations(projectKey, false);
   };
 
   return (

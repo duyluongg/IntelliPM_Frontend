@@ -410,7 +410,7 @@ const handleSelectAll = () => {
                 onChange={(e) => setCustomMessage(e.target.value)}
                 rows={3}
                 className='w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring focus:ring-blue-400'
-                placeholder='Nội dung ghi chú gửi kèm email'
+                placeholder='Content of note sent with email'
               />
             </div>
 

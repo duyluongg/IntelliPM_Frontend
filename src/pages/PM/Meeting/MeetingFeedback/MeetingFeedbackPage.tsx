@@ -168,7 +168,7 @@ const handleFileUpload = async (meetingId: number) => {
       }));
     } else if (uploadMethod === 'url') {
       if (!videoUrl.trim()) {
-        alert('Vui lòng nhập video URL!');
+        alert('Please enter video URL!');
         return;
       }
 
@@ -416,7 +416,7 @@ const handleFileUpload = async (meetingId: number) => {
 {uploadMethod === 'url' ? (
   <input
     type="text"
-    placeholder="Nhập Dropbox URL..."
+    placeholder="Enter Dropbox URL..."
     value={videoUrl}
     onChange={(e) => setVideoUrl(e.target.value)}
     className="w-full mb-4 rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-400"

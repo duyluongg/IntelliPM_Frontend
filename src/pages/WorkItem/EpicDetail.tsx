@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useRef } from 'react';
 import './EpicDetail.css';
+import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
@@ -161,22 +162,22 @@ const EpicDetail: React.FC = () => {
       await refetchActivityLogs();
     } catch (error) {
       console.error("❌ Error delete file:", error);
-      alert("❌ Delete file failed");
+      //alert("❌ Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
 
-  const handleDeleteFile = async (fileId: number, createdBy: number) => {
-    try {
-      await deleteEpicFile({ id: fileId, createdBy: accountId }).unwrap();
-      alert('✅ Delete file successfully!');
-      await refetchAttachments();
-    } catch (error) {
-      console.error('❌ Failed to delete file:', error);
-    }
-  };
+  // const handleDeleteFile = async (fileId: number, createdBy: number) => {
+  //   try {
+  //     await deleteEpicFile({ id: fileId, createdBy: accountId }).unwrap();
+  //     alert('✅ Delete file successfully!');
+  //     await refetchAttachments();
+  //   } catch (error) {
+  //     console.error('❌ Failed to delete file:', error);
+  //   }
+  // };
 
   React.useEffect(() => {
     if (epic && epic.assignedBy !== undefined) {
@@ -236,13 +237,13 @@ const EpicDetail: React.FC = () => {
         },
       }).unwrap();
 
-      alert("✅ Epic updated");
+      //alert("✅ Epic updated");
       console.error("✅ Epic updated");
       await refetchActivityLogs();
       await refetch();
     } catch (err) {
       console.error("❌ Failed to update epic", err);
-      alert("❌ Update failed");
+      //alert("❌ Update failed");
     }
   };
 
@@ -250,14 +251,14 @@ const EpicDetail: React.FC = () => {
     if (epic) setStatus(epic.status);
   }, [epic]);
 
-  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-    try {
-      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
-      refetch();
-    } catch (err) {
-      console.error('❌ Error updating task status:', err);
-    }
-  };
+  // const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+  //   try {
+  //     await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
+  //     refetch();
+  //   } catch (err) {
+  //     console.error('❌ Error updating task status:', err);
+  //   }
+  // };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -329,7 +330,7 @@ const EpicDetail: React.FC = () => {
         subtaskId: null,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([
@@ -339,7 +340,7 @@ const EpicDetail: React.FC = () => {
       ]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -395,7 +396,13 @@ const EpicDetail: React.FC = () => {
               className="issue-summary"
               placeholder="Enter epic name"
               defaultValue={epic.name}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 65) {
+                  setNewName(e.target.value);
+                } else {
+                  alert('Max 65 characters!');
+                }
+              }}
               onBlur={handleUpdateEpic}
               disabled={!canEdit}
               style={{ width: 500 }}
@@ -444,12 +451,12 @@ const EpicDetail: React.FC = () => {
                         file,
                         createdBy: accountId,
                       }).unwrap();
-                      alert(`✅ Uploaded: ${file.name}`);
+                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      alert('❌ Upload failed.');
+                      //alert('❌ Upload failed.');
                     }
                   }
                   setIsAddDropdownOpen(false);
@@ -461,6 +468,7 @@ const EpicDetail: React.FC = () => {
               <label>Description</label>
               <textarea
                 value={newDescription ?? epic?.description ?? ''}
+                placeholder='Enter epic description'
                 onChange={(e) => setNewDescription(e.target.value)}
                 onBlur={handleUpdateEpic}
                 disabled={!canEdit}
@@ -576,7 +584,7 @@ const EpicDetail: React.FC = () => {
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
                       } catch (err) {
-                        alert('❌ Failed to get suggestions');
+                        //alert('❌ Failed to get suggestions');
                         console.error(err);
                       }
                     }}
@@ -738,7 +746,7 @@ const EpicDetail: React.FC = () => {
                               }
                             }
 
-                            alert('✅ Created selected tasks');
+                            //alert('✅ Created selected tasks');
                             setShowSuggestionList(false);
                             setSelectedSuggestions([]);
                             await refetch();
@@ -992,7 +1000,7 @@ const EpicDetail: React.FC = () => {
                                               }));
                                             } catch (err) {
                                               console.error('❌ Failed to create assignee:', err);
-                                              alert('❌ Error adding assignee');
+                                              //alert('❌ Error adding assignee');
                                             }
                                           }
                                         }}
@@ -1170,7 +1178,7 @@ const EpicDetail: React.FC = () => {
                           await refetchActivityLogs();
                         } catch (err) {
                           console.error('❌ Failed to create task:', err);
-                          alert('❌ Failed to create task');
+                          //alert('❌ Failed to create task');
                         }
                       }}
 
@@ -1286,12 +1294,12 @@ const EpicDetail: React.FC = () => {
                                             content: newContent,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert("✅ Comment updated");
+                                          //alert("✅ Comment updated");
                                           await refetchComments();
                                           await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to update comment", err);
-                                          alert("❌ Update failed");
+                                          //alert("❌ Update failed");
                                         }
                                       }
                                     }}
@@ -1307,12 +1315,12 @@ const EpicDetail: React.FC = () => {
                                             id: comment.id,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert("🗑️ Deleted successfully");
+                                          //alert("🗑️ Deleted successfully");
                                           await refetchComments();
                                           await refetchActivityLogs();
                                         } catch (err) {
                                           console.error("❌ Failed to delete comment", err);
-                                          alert("❌ Delete failed");
+                                          //alert("❌ Delete failed");
                                         }
                                       }
                                     }}
@@ -1339,7 +1347,7 @@ const EpicDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            //alert('❌ User not identified. Please log in again.');
                             return;
                           }
                           createEpicComment({
@@ -1348,13 +1356,13 @@ const EpicDetail: React.FC = () => {
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          alert("✅ Comment posted");
+                          //alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -1493,16 +1501,62 @@ const EpicDetail: React.FC = () => {
                 </div>
               )}
 
-              <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
+              {/* <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div> */}
               <div className="detail-item">
                 <label>Start date</label>
                 {canEdit ? (
                   <input
                     type="date"
                     value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data.startDate?.slice(0, 10)}
+                    max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data.endDate?.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      const currentEndDate = newEndDate ?? epic?.endDate;
+                      if (currentEndDate && new Date(fullDate) >= new Date(currentEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be smaller than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+
+                        if (new Date(fullDate) < projectStart || new Date(fullDate) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Start Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                                                                   is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                                                                   <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+
+                          return;
+                        }
+                      }
+
                       setNewStartDate(fullDate);
                     }}
                     onBlur={handleUpdateEpic}
@@ -1519,9 +1573,55 @@ const EpicDetail: React.FC = () => {
                   <input
                     type="date"
                     value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
+                    min={newStartDate ? newStartDate.slice(0, 10) : projectData?.data.startDate?.slice(0, 10)}
+                    max={projectData?.data.endDate?.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      const currentStartDate = newStartDate ?? epic?.startDate;
+                      if (currentStartDate && new Date(fullDate) <= new Date(currentStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be greater than Start Date!',
+                          width: '500px', // nhỏ lại
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+
+                        if (new Date(fullDate) < projectStart || new Date(fullDate) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Due Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                                                                   is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                                                                   <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px', // nhỏ lại
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+
+                          return;
+                        }
+                      }
+
                       setNewEndDate(fullDate);
                     }}
                     onBlur={handleUpdateEpic}

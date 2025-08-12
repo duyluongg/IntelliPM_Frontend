@@ -2592,6 +2592,7 @@ const [searchParams] = useSearchParams();
                 onClose={() => setIsWorklogOpen(false)}
                 workItemId={subtaskDetail.id}
                 type='subtask'
+                onRefetchActivityLogs={refetchActivityLogs}
               />
               <div className='detail-item'>
                 <label>Connections</label>

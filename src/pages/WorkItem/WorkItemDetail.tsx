@@ -1870,6 +1870,7 @@ const WorkItemDetail: React.FC = () => {
                 onClose={() => setIsWorklogOpen(false)}
                 workItemId={taskId}
                 type='task'
+                onRefetchActivityLogs={refetchActivityLogs}
               />
 
               <div className='detail-item'>

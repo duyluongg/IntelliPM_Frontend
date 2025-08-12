@@ -88,6 +88,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     const [isEditingLabel, setIsEditingLabel] = useState(false);
     const [newLabelName, setNewLabelName] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [loadingCreate, setLoadingCreate] = useState(false);
     const labelRef = useRef<HTMLDivElement>(null);
     const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
     const [generateTasksByEpicByAI, { isLoading: loadingSuggest }] = useGenerateTasksByEpicByAIMutation();
@@ -576,7 +577,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                 setShowSuggestionList(true);
                                                 setSelectedSuggestions([]);
                                             } catch (err) {
-                                                //alert('❌ Failed to get suggestions');
                                                 console.error(err);
                                             }
                                         }}
@@ -629,8 +629,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             style={{
                                                 backgroundColor: '#fff',
                                                 borderRadius: '8px',
-                                                width: '480px',
-                                                maxHeight: '80vh',
+                                                width: '640px', // Increased width
+                                                maxHeight: '60vh', // Reduced height
                                                 overflowY: 'auto',
                                                 padding: '20px',
                                                 boxShadow: '0 0 10px rgba(0,0,0,0.3)',
@@ -722,8 +722,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                                                 <button
                                                     onClick={async () => {
-                                                        for (const suggestion of selectedSuggestions) {
-                                                            try {
+                                                        setLoadingCreate(true); // Start loading
+                                                        try {
+                                                            for (const suggestion of selectedSuggestions) {
                                                                 await createTask({
                                                                     reporterId: accountId,
                                                                     projectId: parseInt(projectId),
@@ -733,29 +734,44 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                     type: suggestion.type,
                                                                     createdBy: accountId,
                                                                 }).unwrap();
-                                                            } catch (err) {
-                                                                console.error(`❌ Failed to create: ${suggestion.title}`, err);
                                                             }
+                                                            setShowSuggestionList(false);
+                                                            setSelectedSuggestions([]);
+                                                            await refetch();
+                                                            await refetchActivityLogs();
+                                                        } catch (err) {
+                                                            console.error('❌ Failed to create tasks', err);
+                                                        } finally {
+                                                            setLoadingCreate(false); // Stop loading
                                                         }
-
-                                                        //alert('✅ Created selected tasks');
-                                                        setShowSuggestionList(false);
-                                                        setSelectedSuggestions([]);
-                                                        await refetch();
-                                                        await refetchActivityLogs();
                                                     }}
-                                                    disabled={selectedSuggestions.length === 0}
+                                                    disabled={selectedSuggestions.length === 0 || loadingCreate}
                                                     style={{
                                                         padding: '8px 16px',
-                                                        backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
+                                                        backgroundColor: selectedSuggestions.length > 0 && !loadingCreate ? '#0052cc' : '#ccc',
                                                         color: 'white',
                                                         border: 'none',
                                                         borderRadius: '4px',
                                                         fontWeight: 500,
-                                                        cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
+                                                        cursor: selectedSuggestions.length > 0 && !loadingCreate ? 'pointer' : 'not-allowed',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
                                                     }}
                                                 >
-                                                    Create Selected
+                                                    {loadingCreate ? (
+                                                        <>
+                                                            <span
+                                                                role='img'
+                                                                style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
+                                                            >
+                                                                ⏳
+                                                            </span>
+                                                            Creating...
+                                                        </>
+                                                    ) : (
+                                                        'Create Selected'
+                                                    )}
                                                 </button>
                                                 <button
                                                     onClick={() => setShowSuggestionList(false)}

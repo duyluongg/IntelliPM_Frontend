@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useRef } from 'react';
 import './EpicPopup.css';
+import Swal from 'sweetalert2';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
@@ -24,6 +25,7 @@ import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '.
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import { useGetProjectByIdQuery } from '../../services/projectApi';
 
 interface EpicPopupProps {
     id: string;
@@ -104,6 +106,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         skip: !epic?.projectId,
     });
 
+    const { data: projectData,
+        isLoading: isProjectDataLoading,
+        refetch: refetchProjectData, } = useGetProjectByIdQuery(epic?.projectId!, {
+            skip: !epic?.projectId,
+        });
+
     const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
         skip: !epic?.id,
     });
@@ -159,24 +167,24 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             await refetchActivityLogs();
         } catch (error) {
             console.error("❌ Error delete file:", error);
-            alert("❌ Delete file failed");
+            //alert("❌ Delete file failed");
         } finally {
             setIsDeleteModalOpen(false);
             setDeleteInfo(null);
         }
     };
 
-    const handleDeleteFile = async (id: number, createdBy: number) => {
-        try {
-            await deleteEpicFile({ id, createdBy: accountId }).unwrap();
-            alert('✅ Delete file successfully!');
-            await refetchAttachments();
-            await refetchActivityLogs();
-        } catch (error) {
-            console.error('❌ Failed to delete file:', error);
-            alert('❌ Delete file failed');
-        }
-    };
+    // const handleDeleteFile = async (id: number, createdBy: number) => {
+    //     try {
+    //         await deleteEpicFile({ id, createdBy: accountId }).unwrap();
+    //         alert('✅ Delete file successfully!');
+    //         await refetchAttachments();
+    //         await refetchActivityLogs();
+    //     } catch (error) {
+    //         console.error('❌ Failed to delete file:', error);
+    //         alert('❌ Delete file failed');
+    //     }
+    // };
 
     const handleStatusChange = async (newStatus: string) => {
         try {
@@ -255,13 +263,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                 },
             }).unwrap();
 
-            alert("✅ Epic updated");
+            //alert("✅ Epic updated");
             console.error("✅ Epic updated");
             await refetchActivityLogs();
             await refetch();
         } catch (err) {
             console.error("❌ Failed to update epic", err);
-            alert("❌ Update failed");
+            //alert("❌ Update failed");
         }
     };
 
@@ -306,7 +314,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                 subtaskId: null,
             }).unwrap();
 
-            alert('✅ Label assigned successfully!');
+            //alert('✅ Label assigned successfully!');
             setNewLabelName('');
             setIsEditingLabel(false);
             await Promise.all([
@@ -315,7 +323,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
             ]);
         } catch (error) {
             console.error('❌ Failed to create and assign label:', error);
-            alert('❌ Failed to assign label');
+            //alert('❌ Failed to assign label');
         }
     };
 
@@ -379,10 +387,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             className="issue-summary"
                             placeholder="Enter epic name"
                             defaultValue={epic.name}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onChange={(e) => {
+                                if (e.target.value.length <= 65) {
+                                    setNewName(e.target.value);
+                                } else {
+                                    alert('Max 65 characters!');
+                                }
+                            }}
                             onBlur={handleUpdateEpic}
                             disabled={!canEdit}
-                            style={{ width: 300 }}
+                            style={{ width: 440 }}
                         />
                         <div className="modal-container">
                             <button className="close-btn" onClick={onClose}>✖</button>
@@ -429,11 +443,11 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     if (file) {
                                         try {
                                             await uploadEpicFile({ epicId: id, title: file.name, file, createdBy: accountId }).unwrap();
-                                            alert(`✅ Uploaded: ${file.name}`);
+                                            //alert(`✅ Uploaded: ${file.name}`);
                                             await refetchAttachments();
                                         } catch (err) {
                                             console.error('❌ Upload failed:', err);
-                                            alert('❌ Upload failed.');
+                                            //alert('❌ Upload failed.');
                                         }
                                     }
                                     setIsAddDropdownOpen(false);
@@ -445,6 +459,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <label>Description</label>
                             <textarea
                                 value={newDescription ?? epic?.description ?? ''}
+                                placeholder='Enter epic description'
                                 onChange={(e) => setNewDescription(e.target.value)}
                                 onBlur={handleUpdateEpic}
                                 disabled={!canEdit}
@@ -561,7 +576,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                 setShowSuggestionList(true);
                                                 setSelectedSuggestions([]);
                                             } catch (err) {
-                                                alert('❌ Failed to get suggestions');
+                                                //alert('❌ Failed to get suggestions');
                                                 console.error(err);
                                             }
                                         }}
@@ -723,7 +738,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                             }
                                                         }
 
-                                                        alert('✅ Created selected tasks');
+                                                        //alert('✅ Created selected tasks');
                                                         setShowSuggestionList(false);
                                                         setSelectedSuggestions([]);
                                                         await refetch();
@@ -975,7 +990,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                                         }));
                                                                                     } catch (err) {
                                                                                         console.error('❌ Failed to create assignee:', err);
-                                                                                        alert('❌ Error adding assignee');
+                                                                                        //alert('❌ Error adding assignee');
                                                                                     }
                                                                                 }
                                                                             }}
@@ -1151,7 +1166,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                     await refetchActivityLogs();
                                                 } catch (err) {
                                                     console.error('❌ Failed to create task:', err);
-                                                    alert('❌ Failed to create task');
+                                                    //alert('❌ Failed to create task');
                                                 }
                                             }}
 
@@ -1268,12 +1283,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                                         content: newContent,
                                                                                         createdBy: accountId,
                                                                                     }).unwrap();
-                                                                                    alert("✅ Comment updated");
+                                                                                    //alert("✅ Comment updated");
                                                                                     await refetchComments();
                                                                                     await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error("❌ Failed to update comment", err);
-                                                                                    alert("❌ Update failed");
+                                                                                    //alert("❌ Update failed");
                                                                                 }
                                                                             }
                                                                         }}
@@ -1289,12 +1304,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                                                         id: comment.id,
                                                                                         createdBy: accountId,
                                                                                     }).unwrap();
-                                                                                    alert("🗑️ Deleted successfully");
+                                                                                    //alert("🗑️ Deleted successfully");
                                                                                     await refetchComments();
                                                                                     await refetchActivityLogs();
                                                                                 } catch (err) {
                                                                                     console.error("❌ Failed to delete comment", err);
-                                                                                    alert("❌ Delete failed");
+                                                                                    //alert("❌ Delete failed");
                                                                                 }
                                                                             }
                                                                         }}
@@ -1331,7 +1346,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                         content: commentContent.trim(),
                                                         createdBy: accountId,
                                                     }).unwrap();
-                                                    alert("✅ Comment posted");
+                                                    //alert("✅ Comment posted");
                                                     setCommentContent('');
                                                     await refetchComments();
                                                     await refetchActivityLogs();
@@ -1474,20 +1489,41 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 </div>
                             )}
 
-                            <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
+                            {/* <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div> */}
                             <div className="detail-item">
                                 <label>Start date</label>
                                 {canEdit ? (
                                     <input
                                         type="date"
+                                        min={projectData?.data.startDate?.slice(0, 10)}
+                                        max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data.endDate?.slice(0, 10)}
                                         value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
                                         onChange={(e) => {
                                             const selectedDate = e.target.value;
                                             const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                                            const currentEndDate = newEndDate ?? epic?.endDate;
+                                            if (currentEndDate && new Date(fullDate) >= new Date(currentEndDate)) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Invalid Start Date',
+                                                    html: 'Start Date must be smaller than Due Date!',
+                                                    width: 350,
+                                                    confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                                    customClass: {
+                                                        title: 'small-title',
+                                                        popup: 'small-popup',
+                                                        icon: 'small-icon',
+                                                        htmlContainer: 'small-html'
+                                                    }
+                                                });
+                                                return;
+                                            }
+
                                             setNewStartDate(fullDate);
                                         }}
                                         onBlur={handleUpdateEpic}
-                                        style={{ width: '150px' }}
+                                        style={{ width: '150px', height: '32px' }}
                                     />
                                 ) : (
                                     <span>{epic?.startDate?.slice(0, 10) ?? 'None'}</span>
@@ -1499,19 +1535,41 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 {canEdit ? (
                                     <input
                                         type="date"
+                                        min={newStartDate ? newStartDate.slice(0, 10) : projectData?.data.startDate?.slice(0, 10)}
+                                        max={projectData?.data.endDate?.slice(0, 10)}
                                         value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
                                         onChange={(e) => {
                                             const selectedDate = e.target.value;
                                             const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                                            const currentStartDate = newStartDate ?? epic?.startDate;
+                                            if (currentStartDate && new Date(fullDate) <= new Date(currentStartDate)) {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Invalid Due Date',
+                                                    html: 'Due Date must be greater than Start Date!',
+                                                    width: 350,
+                                                    confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                                    customClass: {
+                                                        title: 'small-title',
+                                                        popup: 'small-popup',
+                                                        icon: 'small-icon',
+                                                        htmlContainer: 'small-html'
+                                                    }
+                                                });
+                                                return;
+                                            }
+
                                             setNewEndDate(fullDate);
                                         }}
                                         onBlur={handleUpdateEpic}
-                                        style={{ width: '150px' }}
+                                        style={{ width: '150px', height: '32px' }}
                                     />
                                 ) : (
                                     <span>{epic?.endDate?.slice(0, 10) ?? 'None'}</span>
                                 )}
                             </div>
+
 
                             <div className="detail-item">
                                 <label>Reporter</label>

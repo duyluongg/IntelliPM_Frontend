@@ -39,6 +39,7 @@ import { setCurrentProjectId } from '../../../components/slices/Project/projectC
 import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
 import UnifiedFilter from '../ProjectTaskList/UnifiedFilter'
 import ExportDropdown from '../ProjectTaskList/ExportDropdownProps'
+import CreateWorkItemModal from './CreateWorkItemModal'
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -153,6 +154,7 @@ interface HeaderBarProps {
   onExportPDF: () => void;
   onCreate: () => void;
   onViewAsChart: () => void;
+  refetchWorkItems: () =>void;
 }
 
 const Status: React.FC<{ status: string }> = ({ status }) => {
@@ -356,9 +358,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   onExportPDF,
   onCreate,
   onViewAsChart,
+  refetchWorkItems,
 }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const {
     data: membersData,
@@ -541,11 +545,13 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           >
             <FaEllipsisV />
           </button>
+          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}>
+          </button>
           {isMenuDropdownOpen && (
             <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
                 onClick={() => {
-                  onCreate();
+                  setIsCreateModalOpen(true); // ✅ mở modal
                   setIsMenuDropdownOpen(false);
                 }}
                 className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
@@ -565,8 +571,15 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
         </div>
       </div>
+      <CreateWorkItemModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={projectId || 0} 
+        refetchWorkItems={refetchWorkItems}
+      />
     </div>
   );
+
 };
 
 // ProjectTaskList Component
@@ -581,8 +594,8 @@ const ProjectTaskList: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedLabel, setSelectedLabel] = useState<string>('');
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-    const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
-  const [selectedDueDate, setSelectedDueDate] = useState<string>(''); 
+  const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
+  const [selectedDueDate, setSelectedDueDate] = useState<string>('');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -1202,7 +1215,7 @@ const ProjectTaskList: React.FC = () => {
       !selectedCreatedDate || new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
     const matchesDue =
       !selectedDueDate || (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
-      return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
+    return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
   });
 
   const handleCreate = () => {
@@ -1237,6 +1250,7 @@ const ProjectTaskList: React.FC = () => {
         selectedCreatedDate={selectedCreatedDate}
         onCreate={handleCreate}
         onViewAsChart={handleViewAsChart}
+        refetchWorkItems={refetchWorkItems}
       />
       {(isUpdatingTask ||
         isUpdatingEpic ||

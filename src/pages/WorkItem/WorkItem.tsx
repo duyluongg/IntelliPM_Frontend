@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useRef } from 'react';
 import { useEffect } from 'react';
 import './WorkItem.css';
+import Swal from 'sweetalert2';
 import { useAuth, type Role } from '../../services/AuthContext';
 import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
@@ -62,6 +63,7 @@ import {
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import { useGetProjectByIdQuery } from '../../services/projectApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 
 interface WorkItemProps {
@@ -164,31 +166,30 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (!deleteInfo) return;
     try {
       await deleteTaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
-      // // có thể thay alert = toast đẹp hơn
       // alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
       console.error("❌ Error delete file:", error);
-      alert("❌ Delete file failed");
+      //alert("❌ Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
 
-  const handleDeleteFile = async (id: number, createdBy: number) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
-    try {
-      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
-      alert('✅ Delete file successfully!');
-      await refetchAttachments();
-      await refetchActivityLogs();
-    } catch (error) {
-      console.error('❌ Error delete file:', error);
-      alert('❌ Delete file failed');
-    }
-  };
+  // const handleDeleteFile = async (id: number, createdBy: number) => {
+  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
+  //   try {
+  //     await deleteTaskFile({ id, createdBy: accountId }).unwrap();
+  //     alert('✅ Delete file successfully!');
+  //     await refetchAttachments();
+  //     await refetchActivityLogs();
+  //   } catch (error) {
+  //     console.error('❌ Error delete file:', error);
+  //     alert('❌ Delete file failed');
+  //   }
+  // };
 
   const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
     const startX = e.clientX;
@@ -247,11 +248,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
-      alert('✅ Update title task successfully!');
+      //alert('✅ Update title task successfully!');
       await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
-      alert('✅ Error update task title!');
+      //alert('✅ Error update task title!');
       console.error('Error update task title:', err);
     }
   };
@@ -281,10 +282,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setSprintId(newSprintId);
       await Promise.all([refetchActivityLogs(), refetchTask()]);
       console.log('Update sprint task successfully!');
-      alert('✅ Sprint updated successfully');
+      //alert('✅ Sprint updated successfully');
     } catch (err: any) {
       console.error('Error update sprint:', err);
-      alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
+      //alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
     }
   };
 
@@ -318,6 +319,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
+
+  const { data: projectData,
+    isLoading: isProjectDataLoading,
+    refetch: refetchProjectData, } = useGetProjectByIdQuery(taskData?.projectId!, {
+      skip: !taskData?.projectId,
+    });
 
   React.useEffect(() => {
     if (assignees && taskId) {
@@ -370,7 +377,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     const nameToAssign = labelName?.trim() || newLabelName.trim();
 
     if (!taskData?.projectId || !taskId || !nameToAssign) {
-      alert('Missing projectId, taskId or label name!');
+      //alert('Missing projectId, taskId or label name!');
       return;
     }
 
@@ -383,13 +390,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         subtaskId: null,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -584,13 +591,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             <input
               type='text'
               className='issue-summary'
-              placeholder='Enter summary'
+              placeholder='Enter task title'
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 65) {
+                  setTitle(e.target.value);
+                } else {
+                  alert('Max 65 characters!');
+                }
+              }}
               onBlur={handleTitleTaskChange}
               style={{ width: '500px' }}
               disabled={!canEdit}
             />
+
             <div className='modal-cont'>
               <button className='close-btn' onClick={onClose}>
                 ✖
@@ -649,12 +663,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         file: file,
                         createdBy: accountId,
                       }).unwrap();
-                      alert(`✅ Uploaded: ${file.name}`);
+                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      alert('❌ Upload failed.');
+                      //alert('❌ Upload failed.');
                     }
                   }
                   setIsAddDropdownOpen(false);
@@ -778,7 +792,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
                       } catch (err) {
-                        alert('❌ Failed to get suggestions');
+                        //alert('❌ Failed to get suggestions');
                         console.error(err);
                       }
                     }}
@@ -929,7 +943,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 console.error(`❌ Failed to create: ${title}`, err);
                               }
                             }
-                            alert('✅ Created selected subtasks');
+                            //alert('✅ Created selected subtasks');
                             setShowSuggestionList(false);
                             setSelectedSuggestions([]);
                             await refetch();
@@ -1075,13 +1089,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           reporterId: item.reporterId,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        alert('✅ Updated summary');
+                                        //alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetch();
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
-                                        alert('❌ Failed to update summary');
+                                        //alert('❌ Failed to update summary');
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1122,7 +1136,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                     await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
-                                    alert('❌ Failed to update priority');
+                                    //alert('❌ Failed to update priority');
                                   }
                                 }}
                                 style={{
@@ -1170,13 +1184,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      alert('✅ Updated subtask assignee');
+                                      //alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
                                       await refetch();
                                       await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('❌ Failed to update subtask:', err);
-                                      alert('❌ Failed to update subtask');
+                                      //alert('❌ Failed to update subtask');
                                     }
                                   }}
                                   style={{
@@ -1391,12 +1405,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             content: newContent,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert('✅ Comment updated');
+                                          //alert('✅ Comment updated');
                                           await refetchComments();
                                           await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
-                                          alert('❌ Update failed');
+                                          //alert('❌ Update failed');
                                         }
                                       }
                                     }}
@@ -1416,12 +1430,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                             id: comment.id,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert('🗑️ Deleted successfully');
+                                          //alert('🗑️ Deleted successfully');
                                           await refetchComments();
                                           await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to delete comment', err);
-                                          alert('❌ Delete failed');
+                                          //alert('❌ Delete failed');
                                         }
                                       }
                                     }}
@@ -1448,7 +1462,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            //alert('❌ User not identified. Please log in again.');
                             return;
                           }
                           createTaskComment({
@@ -1457,13 +1471,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          alert('✅ Comment posted');
+                          //alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -1753,16 +1767,38 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Start date</label>
                 {canEdit ? (
                   <input
-                    type='date'
+                    type="date"
                     value={plannedStartDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data?.startDate?.slice(0, 10)} // Giới hạn ngày nhỏ nhất
+                    max={plannedEndDate ? plannedEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}   // Giới hạn ngày lớn nhất
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      // Compare với Due date
+                      if (plannedEndDate && new Date(fullDate) >= new Date(plannedEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be smaller than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
                       setPlannedStartDate(fullDate);
                     }}
-                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
                   />
+
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
                 )}
@@ -1772,16 +1808,37 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Due date</label>
                 {canEdit ? (
                   <input
-                    type='date'
+                    type="date"
                     value={plannedEndDate?.slice(0, 10) ?? ''}
+                    min={plannedStartDate ? plannedStartDate.slice(0, 10) : projectData?.data.startDate.slice(0, 10)}
+                    max={projectData?.data.endDate.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      if (plannedStartDate && new Date(fullDate) <= new Date(plannedStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be greater than Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
                       setPlannedEndDate(fullDate);
                     }}
-                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
                   />
+
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
                 )}
@@ -1802,11 +1859,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Cập nhật Reporter thành công');
+                        //alert('✅ Updated successfully');
                         await refetchTask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Cập nhật Reporter thất bại');
+                        //alert('❌ Update failed');
                         console.error(err);
                       }
                     }}

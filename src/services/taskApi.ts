@@ -457,7 +457,19 @@ export const taskApi = createApi({
       transformResponse: (response: TaskListResponse) => response,
       invalidatesTags: ['Task'],
     }),
-
+updateTaskEpic: builder.mutation<TaskResponseDTO, { id: string; epicId: string | null; createdBy: number }>({
+      query: ({ id, epicId, createdBy }) => ({
+        url: `task/${id}/epic`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: JSON.stringify({ epicId, createdBy }),
+      }),
+      transformResponse: (response: TaskDetailResponse) => response.data,
+      invalidatesTags: ['Task'],
+    }),
   }),
 });
 
@@ -484,5 +496,5 @@ export const {
   useGetTasksBySprintIdAndStatusQuery,
   useUpdatePlannedHoursMutation,
   useCreateTasksMutation,
-  
+  useUpdateTaskEpicMutation,
 } = taskApi;

@@ -52,13 +52,13 @@ const ProjectIntroduction: React.FC<ProjectIntroductionProps> = ({ onNext }) => 
       <div className="bg-gradient-to-r from-[#0052CC] to-[#2684FF] p-4 flex justify-between items-center rounded-t-lg text-white">
         <h1 className="text-xl font-semibold">Project Introduction</h1>
         <div className="flex gap-2 items-center">
-          <button
-            onClick={handleNext}
-            className="bg-[#0052CC] text-white px-4 py-1.5 rounded hover:bg-[#003087] text-sm transition"
-            aria-label="Proceed to create project"
-          >
-            Create Project
-          </button>
+<button
+  onClick={handleNext}
+  className="bg-white text-[#0052CC] font-semibold px-4 py-1.5 rounded shadow hover:bg-gray-100 text-sm transition"
+  aria-label="Proceed to create project"
+>
+  Create Project
+</button>
           <button
             onClick={() => navigate(ROUTES.HOME)}
             className="text-white text-xl font-bold px-3 rounded hover:bg-[#0045b1] transition"

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useGetProjectDetailsByKeyQuery,
   useGetWorkItemsByProjectIdQuery,
@@ -31,17 +31,23 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
-// import Doc from '../../PM/YourProject/Doc';
-import { useCreateDocumentMutation, useGetDocumentMappingQuery, } from '../../../services/Document/documentAPI';
+import {
+  useCreateDocumentMutation,
+  useGetDocumentMappingQuery,
+} from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
 import UnifiedFilter from '../ProjectTaskList/UnifiedFilter'
 import ExportDropdown from '../ProjectTaskList/ExportDropdownProps'
+import CreateWorkItemModal from './CreateWorkItemModal'
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import type { RootState } from '../../../app/store';
+import { useSelector } from 'react-redux';
+import type { CreateDocumentRequest } from '../../../types/DocumentType';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -68,6 +74,7 @@ interface UpdateEpicRequestDTO {
   status: string;
   reporterId: number | null;
   assignedBy: number | null;
+  createdBy: number;
 }
 
 interface UpdateSubtaskRequestDTO {
@@ -152,6 +159,7 @@ interface HeaderBarProps {
   onExportPDF: () => void;
   onCreate: () => void;
   onViewAsChart: () => void;
+  refetchWorkItems: () =>void;
 }
 
 const Status: React.FC<{ status: string }> = ({ status }) => {
@@ -355,9 +363,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   onExportPDF,
   onCreate,
   onViewAsChart,
+  refetchWorkItems,
 }) => {
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const {
     data: membersData,
@@ -437,7 +447,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   if (error || labelsError) {
     return (
       <div className='p-4 text-center text-red-500'>
-        Error loading members: {(error || labelsError as any)?.data?.message || 'Unknown error'}
+        Error loading members: {(error || (labelsError as any))?.data?.message || 'Unknown error'}
       </div>
     );
   }
@@ -470,8 +480,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === member.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
-                        }`}
+                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
+                        selectedMemberId === member.id
+                          ? 'border-blue-500 ring-2 ring-blue-200'
+                          : 'border-gray-300'
+                      }`}
                       onClick={() => handleMemberClick(member.id)}
                     />
                     <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
@@ -485,8 +498,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === members[0].id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-300'
-                    }`}
+                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
+                    selectedMemberId === members[0].id
+                      ? 'border-blue-500 ring-2 ring-blue-200'
+                      : 'border-gray-300'
+                  }`}
                   onClick={() => handleMemberClick(members[0].id)}
                 />
                 <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
@@ -522,10 +538,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           labels={labels}
         />
 
-        <ExportDropdown
-          onExportExcel={onExportExcel}
-          onExportPDF={onExportPDF}
-        />
+        <ExportDropdown onExportExcel={onExportExcel} onExportPDF={onExportPDF} />
       </div>
 
       <div className='flex items-center gap-1.5'>
@@ -540,11 +553,13 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           >
             <FaEllipsisV />
           </button>
+          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}>
+          </button>
           {isMenuDropdownOpen && (
             <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
                 onClick={() => {
-                  onCreate();
+                  setIsCreateModalOpen(true); // ✅ mở modal
                   setIsMenuDropdownOpen(false);
                 }}
                 className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
@@ -564,8 +579,15 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
         </div>
       </div>
+      <CreateWorkItemModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        projectId={projectId || 0} 
+        refetchWorkItems={refetchWorkItems}
+      />
     </div>
   );
+
 };
 
 // ProjectTaskList Component
@@ -580,8 +602,8 @@ const ProjectTaskList: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedLabel, setSelectedLabel] = useState<string>('');
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-    const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
-  const [selectedDueDate, setSelectedDueDate] = useState<string>(''); 
+  const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
+  const [selectedDueDate, setSelectedDueDate] = useState<string>('');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -639,10 +661,46 @@ const ProjectTaskList: React.FC = () => {
   const { user } = useAuth();
   const [createdDocIds, setCreatedDocIds] = useState<Record<string, number>>({});
   const shouldFetchMapping = !!projectId && !!user?.id;
-  const { data: docMapping, isLoading: isLoadingMapping } = useGetDocumentMappingQuery(
+  const {
+    data: docMapping,
+    isLoading: isLoadingMapping,
+    refetch: refetchDocMapping,
+  } = useGetDocumentMappingQuery(
     { projectId: projectId!, userId: user!.id },
     { skip: !shouldFetchMapping }
   );
+  const navigate = useNavigate();
+
+  const handleCreateDocument = async (task: TaskItem) => {
+    if (!user?.id || !projectId) return;
+    console.log(task);
+
+    try {
+      const payload: CreateDocumentRequest = {
+        projectId,
+        title: `Document for ${task.key}: ${task.summary}`,
+        content: '',
+        visibility: 'MAIN',
+        taskId: task.type === 'task' ? task.id : null,
+        epicId: task.type === 'epic' ? task.id : null,
+        subtaskId: task.type === 'subtask' ? task.id : null,
+      };
+
+      const res = await createDocument(payload).unwrap();
+      if (res?.id) {
+        setCreatedDocIds((prev) => ({ ...prev, [task.key]: res.id }));
+        await refetchDocMapping();
+        navigate(`/project/projects/form/document/${res.id}`);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tạo document:', error);
+      alert('Không thể tạo tài liệu.');
+    }
+  };
+
+  const handleViewDocument = (docId: number) => {
+    navigate(`/project/projects/form/document/${docId}`);
+  };
 
   const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
     (member: ProjectMemberWithPositionsResponse) => ({
@@ -655,7 +713,6 @@ const ProjectTaskList: React.FC = () => {
   );
 
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
-
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -675,42 +732,6 @@ const ProjectTaskList: React.FC = () => {
       setCreatedDocIds((prev) => ({ ...prev, ...docMapping }));
     }
   }, [docMapping]);
-
-  // const handleAddOrViewDocument = async (taskKey: string, taskType: string) => {
-  //   if (!user?.id || !projectId) return;
-
-  //   if (createdDocIds[taskKey]) {
-  //     setDocTaskId(taskKey);
-  //     setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
-  //     setDocMode('view');
-  //     setIsDocModalOpen(true);
-  //   } else {
-  //     try {
-  //       const payload = {
-  //         projectId,
-  //         taskId: taskType === 'task' ? taskKey : undefined,
-  //         epicId: taskType === 'epic' ? taskKey : undefined,
-  //         subTaskId: taskType === 'subtask' ? taskKey : undefined,
-  //         type: taskType,
-  //         title: 'Untitled Document',
-  //         template: 'blank',
-  //         content: '',
-  //         createdBy: accountId,
-  //       };
-
-  //       const res = await createDocument(payload).unwrap();
-  //       setCreatedDocIds((prev) => ({ ...prev, [taskKey]: res.id }));
-
-  //       setDocTaskId(taskKey);
-  //       setDocTaskType(taskType as 'epic' | 'task' | 'subtask');
-  //       setDocMode('view');
-  //       setIsDocModalOpen(true);
-  //     } catch (error) {
-  //       console.error('Error creating document:', error);
-  //       alert('Failed to create document.');
-  //     }
-  //   }
-  // };
 
   const handleOpenPopup = (taskId: string, taskType: TaskItem['type']) => {
     setSelectedTaskId(taskId);
@@ -787,6 +808,7 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || null,
+          createdBy: accountId,
         };
         await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
@@ -865,6 +887,7 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
+          createdBy: accountId,
         };
         await updateEpic({ id: item.key, data: epicData }).unwrap();
       } else if (item.type === 'subtask') {
@@ -936,6 +959,7 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: null,
+          createdBy: accountId,
         };
         await updateEpic({ id: itemId, data: epicData }).unwrap();
       } else if (itemType === 'subtask') {
@@ -1041,61 +1065,61 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
-        const uniqueAssignees = Array.from(
-          new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
-        );
+          const uniqueAssignees = Array.from(
+            new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
+          );
 
-        const assignments: TaskAssignee[] = uniqueAssignees
-          .filter(
-            (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
-          )
-          .map((assignee: ApiAssignee) => ({
-            id: assignee.accountId,
-            fullName: assignee.fullname || 'Unknown',
-            initials:
-              assignee.fullname
-                ?.split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: assignee.picture || undefined,
-          }));
+          const assignments: TaskAssignee[] = uniqueAssignees
+            .filter(
+              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+            )
+            .map((assignee: ApiAssignee) => ({
+              id: assignee.accountId,
+              fullName: assignee.fullname || 'Unknown',
+              initials:
+                assignee.fullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: assignee.picture || undefined,
+            }));
 
-        return {
-          id: item.key || '',
-          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-          key: item.key || '',
-          taskId: item.taskId || null,
-          summary: item.summary || '',
+          return {
+            id: item.key || '',
+            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+            key: item.key || '',
+            taskId: item.taskId || null,
+            summary: item.summary || '',
 
-          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-          comments: item.commentCount || 0,
-          sprint: item.sprintId || null,
-          sprintName: item.sprintName || null,
-          assignees: assignments,
-          dueDate: item.dueDate || null,
-          labels: item.labels || [],
-          created: item.createdAt || '',
-          updated: item.updatedAt || '',
-          reporter: {
-            id: item.reporterId || null,
-            fullName: item.reporterFullname || 'Unknown',
-            initials:
-              item.reporterFullname
-                ?.split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: item.reporterPicture || undefined,
-          },
-          reporterId: item.reporterId || null,
-          projectId: item.projectId || projectId,
-          epicId: item.taskId || null,
-          description: '',
-        };
-      });
+            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+            comments: item.commentCount || 0,
+            sprint: item.sprintId || null,
+            sprintName: item.sprintName || null,
+            assignees: assignments,
+            dueDate: item.dueDate || null,
+            labels: item.labels || [],
+            created: item.createdAt || '',
+            updated: item.updatedAt || '',
+            reporter: {
+              id: item.reporterId || null,
+              fullName: item.reporterFullname || 'Unknown',
+              initials:
+                item.reporterFullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: item.reporterPicture || undefined,
+            },
+            reporterId: item.reporterId || null,
+            projectId: item.projectId || projectId,
+            epicId: item.taskId || null,
+            description: '',
+          };
+        });
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -1188,17 +1212,16 @@ const ProjectTaskList: React.FC = () => {
     const matchesSearch = task.summary.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       !selectedStatus || task.status.toLowerCase() === selectedStatus.toLowerCase();
-    const matchesType =
-      !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
-    const matchesLabel =
-      !selectedLabel || task.labels?.includes(selectedLabel);
+    const matchesType = !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
+    const matchesLabel = !selectedLabel || task.labels?.includes(selectedLabel);
     const matchesMember =
       !selectedMemberId || task.assignees.some((assignee) => assignee.id === selectedMemberId);
     const matchesCreated =
-      !selectedCreatedDate || new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
+      !selectedCreatedDate ||
+      new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
     const matchesDue =
       !selectedDueDate || (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
-      return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
+    return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
   });
 
   const handleCreate = () => {
@@ -1233,14 +1256,15 @@ const ProjectTaskList: React.FC = () => {
         selectedCreatedDate={selectedCreatedDate}
         onCreate={handleCreate}
         onViewAsChart={handleViewAsChart}
+        refetchWorkItems={refetchWorkItems}
       />
       {(isUpdatingTask ||
         isUpdatingEpic ||
         isUpdatingSubtask ||
         isCreatingAssignment ||
         isDeletingAssignment) && (
-          <div className='text-center py-4 text-blue-500'>Processing...</div>
-        )}
+        <div className='text-center py-4 text-blue-500'>Processing...</div>
+      )}
       <div className='overflow-x-auto bg-white w-full block'>
         <table
           className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
@@ -1493,7 +1517,12 @@ const ProjectTaskList: React.FC = () => {
                   >
                     {task.comments > 0 ? (
                       <div className='flex items-center gap-1 text-xs text-gray-700'>
-                        <svg fill='none' viewBox='0 0 16 16' role='presentation' className='w-4 h-4'>
+                        <svg
+                          fill='none'
+                          viewBox='0 0 16 16'
+                          role='presentation'
+                          className='w-4 h-4'
+                        >
                           <path
                             fill='currentColor'
                             fillRule='evenodd'
@@ -1539,7 +1568,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                      showMemberDropdown?.field === 'assignees' ? (
+                    showMemberDropdown?.field === 'assignees' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1552,10 +1581,11 @@ const ProjectTaskList: React.FC = () => {
                             return (
                               <div
                                 key={member.accountId}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                  }`}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                  isDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                }`}
                                 onClick={() =>
                                   !isDisabled && handleMemberSelect(task, 'assignees', member)
                                 }
@@ -1603,11 +1633,11 @@ const ProjectTaskList: React.FC = () => {
                               onDelete={
                                 assignee.id != null && assignee.id !== 0
                                   ? () =>
-                                    handleDeleteAssignment(
-                                      task.key,
-                                      assignee.id as number,
-                                      task.type
-                                    )
+                                      handleDeleteAssignment(
+                                        task.key,
+                                        assignee.id as number,
+                                        task.type
+                                      )
                                   : undefined
                               }
                             />
@@ -1647,13 +1677,13 @@ const ProjectTaskList: React.FC = () => {
                   >
                     {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                       ? task.labels.map((label, index) => (
-                        <span
-                          key={index}
-                          className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
-                        >
-                          {label}
-                        </span>
-                      ))
+                          <span
+                            key={index}
+                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                          >
+                            {label}
+                          </span>
+                        ))
                       : ''}
                   </td>
                   <td
@@ -1681,7 +1711,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                      showMemberDropdown?.field === 'reporter' ? (
+                    showMemberDropdown?.field === 'reporter' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1691,10 +1721,11 @@ const ProjectTaskList: React.FC = () => {
                           return (
                             <div
                               key={member.accountId}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                }`}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                              }`}
                               onClick={() =>
                                 !isDisabled && handleMemberSelect(task, 'reporter', member)
                               }
@@ -1735,26 +1766,34 @@ const ProjectTaskList: React.FC = () => {
                       </div>
                     )}
                   </td>
-                  {/* <td
+
+                  <td
+                    className='p-2.5 border-b border-l border-r border-gray-200 text-sm'
                     style={{ width: `${columnWidths.document}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
                     {createdDocIds[task.key] ? (
                       <button
-                        className='flex justify-center items-center mx-auto text-blue-600 hover:text-blue-800 transition duration-150 group'
-                        onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                        onClick={() => handleViewDocument(createdDocIds[task.key])}
+                        className='flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200'
+                        data-tooltip-id={`doc-tooltip-${task.id}`}
+                        data-tooltip-content='View document'
                       >
-                        <FcDocument className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
+                        <FcDocument className='w-5 h-5' />
+                        <span className='text-xs font-medium'>View Document</span>
                       </button>
                     ) : (
                       <button
-                        className='flex justify-center items-center mx-auto text-gray-600 hover:text-gray-800 transition duration-150 group'
-                        onClick={() => handleAddOrViewDocument(task.key, task.type)}
+                        onClick={() => handleCreateDocument(task)}
+                        className='flex items-center gap-2 text-gray-500 border border-gray-300 rounded-md px-3 py-1 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200'
+                        data-tooltip-id={`doc-tooltip-${task.id}`}
+                        data-tooltip-content='Create a document for this task'
                       >
-                        <HiDocumentAdd className='w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 transition-transform duration-200 group-hover:-translate-y-1 group-hover:scale-110' />
+                        <HiDocumentAdd className='w-5 h-5' />
+                        <span className='text-xs font-medium'>Add Document</span>
                       </button>
                     )}
-                  </td> */}
+                    <Tooltip id={`doc-tooltip-${task.id}`} />
+                  </td>
                 </tr>
               ))
             ) : (
@@ -1767,28 +1806,7 @@ const ProjectTaskList: React.FC = () => {
           </tbody>
         </table>
       </div>
-      {isDocModalOpen && docTaskId && user?.id && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center'>
-          <div className='bg-white rounded-xl relative w-full h-full sm:w-[95vw] sm:h-[90vh] md:w-[90vw] md:h-[90vh] lg:w-[90vw] lg:h-[90vh] xl:w-[98vw] xl:h-[95vh] 2xl:w-[85vw] 2xl:h-[90vh] shadow-2xl flex flex-col'>
-            <div className='flex-shrink-0 relative p-4 sm:p-6 border-b border-gray-100'>
-              <button
-                onClick={() => setIsDocModalOpen(false)}
-                className='absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded-full transition-colors duration-200 text-lg sm:text-xl md:text-2xl shadow-sm hover:shadow-md'
-                aria-label='Close modal'
-              >
-                ✕
-              </button>
-            </div>
-            {/* <div className='flex-1 overflow-y-auto p-4 sm:p-6'>
-              <Doc
-                docId={createdDocIds[docTaskId]}
-                onClose={() => setIsDocModalOpen(false)}
-                updatedBy={accountId}
-              />
-            </div> */}
-          </div>
-        </div>
-      )}
+
       {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (
         <EpicPopup id={selectedTaskId} onClose={handleClosePopup} />
       )}

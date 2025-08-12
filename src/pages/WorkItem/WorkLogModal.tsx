@@ -361,9 +361,10 @@ type Props = {
   onClose: () => void;
   workItemId: string;
   type: 'task' | 'subtask';
+  onRefetchActivityLogs?: () => void;
 };
 
-export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
+export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivityLogs }: Props) => {
   const userJson = localStorage.getItem('user');
   const userId = userJson ? JSON.parse(userJson).id : null;
   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
@@ -376,10 +377,10 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
   const [actualSubtaskHours, setActualSubtaskHours] = useState<number>(0);
   const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
 
-  const [changeWorklogHours, { isLoading: isChanging }] = useChangeMultipleWorklogHoursMutation();
-  const [updateWorkLogByAccounts, { isLoading: isUpdating }] = useUpdateWorkLogByAccountsMutation();
-  const [changeSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation();
-  const [changeSubtaskActualHours] = useUpdateSubtaskActualHoursMutation();
+  // const [changeWorklogHours, { isLoading: isChanging }] = useChangeMultipleWorklogHoursMutation();
+  // const [updateWorkLogByAccounts, { isLoading: isUpdating }] = useUpdateWorkLogByAccountsMutation();
+  const [changeSubtaskPlannedHours, { isLoading: isUpdating }] = useUpdateSubtaskPlannedHoursMutation();
+  const [changeSubtaskActualHours, { isLoading: isChanging }] = useUpdateSubtaskActualHoursMutation();
   const [changeTaskPlannedHours] = useUpdatePlannedHoursMutation();
   const [updateActualHours, { isLoading: isUpdatingActual }] =
     useUpdateActualHoursByTaskIdMutation();
@@ -516,6 +517,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
 
         await refetchAssignments();
         await refetchTaskSubTask();
+        onRefetchActivityLogs?.();
         onClose();
         return;
       }
@@ -541,6 +543,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type }: Props) => {
       await refetchSubtask();
       await refetchSubtaskDetail();
       await refetchTaskSubTask();
+      onRefetchActivityLogs?.();
       onClose();
     } catch (err) {
       console.error('❌ Failed to update hours:', err);

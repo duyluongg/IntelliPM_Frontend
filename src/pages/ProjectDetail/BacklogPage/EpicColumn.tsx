@@ -92,7 +92,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                   }
                 >
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-git -700" />
+                    <ChevronDown className="w-4 h-4 text-gray-700" />
                   ) : (
                     <ChevronRight className="w-4 h-4 text-gray-700" />
                   )}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Project } from '../../../services/accountApi';
+import { type User } from '../../../services/AuthContext';
 
 interface ProjectActionsDropdownProps {
   project: Project;
@@ -11,6 +12,9 @@ interface ProjectActionsDropdownProps {
 const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+
+  const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+  const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
 
   const handleSettings = () => {
     navigate(`/project/${project.projectKey}/settings`);
@@ -24,6 +28,11 @@ const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project
 
   const handleSendEmailPM = () => {
     console.log(`Sending email for project ${project.projectKey} (PM)`);
+    setIsOpen(false);
+  };
+
+  const handleComplete = () => {
+    navigate(`/project/${project.projectKey}/complete`);
     setIsOpen(false);
   };
 
@@ -66,6 +75,15 @@ const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project
                 aria-label="Send email to PM"
               >
                 Send Email PM
+              </button>
+            )}
+            {project.projectStatus === 'IN_PROGRESS' && isLeaderOrManager && (
+              <button
+                onClick={handleComplete}
+                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                aria-label="Complete project"
+              >
+                Complete Project
               </button>
             )}
           </motion.div>

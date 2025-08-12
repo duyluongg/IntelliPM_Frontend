@@ -15,38 +15,65 @@
 }
 
 .slash-command-menu {
-  background: red;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: #ffffff; /* Nền trắng tinh */
+  border: 1px solid #e5e7eb; /* Viền xám nhẹ */
+  border-radius: 0.75rem; /* Bo góc mềm hơn */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); /* Đổ bóng nhẹ */
   padding: 8px;
-  max-width: 250px;
+  max-width: 280px;
+  font-family: 'Inter', sans-serif;
+  animation: fadeIn 0.15s ease-in-out;
 }
 
 .slash-item {
-  padding: 6px 12px;
-  border-radius: 4px;
+  display: flex; /* Để icon + text cùng hàng */
+  align-items: center;
+  gap: 8px; /* Khoảng cách icon - text */
+  padding: 8px 12px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+  color: #374151; /* Xám đậm */
+  transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .slash-item:hover {
-  background-color: #f3f4f6;
+  background-color: #f3f4f6; /* Màu hover xám nhẹ */
+  transform: translateX(2px); /* Nhích sang phải khi hover */
+}
+
+.slash-item-icon {
+  width: 18px;
+  height: 18px;
+  color: #6b7280; /* Icon xám */
+  flex-shrink: 0;
+}
+
+/* Hiệu ứng mở menu */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .comment-highlight {
-    background-color: rgba(250, 204, 21, 0.3); // Màu vàng nhạt, hơi trong suốt
-    border-radius: 3px;
-    padding: 1px 3px;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out;
+  background-color: rgba(250, 204, 21, 0.3); // Màu vàng nhạt, hơi trong suốt
+  border-radius: 3px;
+  padding: 1px 3px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
 
-    &:hover {
-      background-color: rgba(250, 204, 21, 0.5); // Đậm hơn khi hover
-    }
-
-    // Class này sẽ được thêm bằng JS khi comment được chọn ở sidebar
-    &.is-active {
-      background-color: rgba(250, 204, 21, 0.7); // Rất nổi bật khi active
-    }
+  &:hover {
+    background-color: rgba(250, 204, 21, 0.5); // Đậm hơn khi hover
   }
+
+  // Class này sẽ được thêm bằng JS khi comment được chọn ở sidebar
+  &.is-active {
+    background-color: rgba(250, 204, 21, 0.7); // Rất nổi bật khi active
+  }
+}

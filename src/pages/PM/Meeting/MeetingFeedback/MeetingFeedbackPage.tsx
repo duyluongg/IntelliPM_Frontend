@@ -105,42 +105,6 @@ myMeetings.forEach((meeting) => {
     alert('Đã duyệt thành công.');
   };
 
-  // const handleFileUpload = async (meetingId: number) => {
-  //   if (!file || !accountId) return;
-
-  //   setIsUploading((prev) => ({ ...prev, [meetingId]: true }));
-
-  //   const formData = new FormData();
-  //   formData.append('meetingId', meetingId.toString());
-  //   formData.append('audioFile', file);
-
-  //   try {
-  //     const response = await fetch(`${API_BASE_URL}meeting-transcripts`, {
-
-  //       method: 'POST',
-  //       headers: {
-  //         accept: '*/*',
-  //       },
-  //       body: formData,
-  //     });
-
-  //     const data = await response.json();
-  //     alert('Đã tải lên thành công!');
-      
-  //     // Store the transcript text in the uploadedTranscript state for the specific meeting
-  //     setUploadedTranscript((prev) => ({
-  //       ...prev,
-  //       [meetingId]: data.transcriptText,
-  //     }));
-
-  //     refetch(); // Re-fetch data to update the meeting feedback list
-  //   } catch (error) {
-  //     console.error('Upload failed', error);
-  //     alert('Tải lên thất bại.');
-  //   } finally {
-  //     setIsUploading((prev) => ({ ...prev, [meetingId]: false }));
-  //   }
-  // };
 const handleFileUpload = async (meetingId: number) => {
   if (!accountId) return;
 
@@ -235,11 +199,6 @@ const handleFileUpload = async (meetingId: number) => {
       </div>
     );
   }
-
-  // const filteredFeedbacks = [...feedbacks].sort(
-  //   (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  // );
-
   const filteredFeedbacks = feedbacks
   .filter((f) => {
     if (filterOption === 'Today') {
@@ -445,11 +404,6 @@ const handleFileUpload = async (meetingId: number) => {
       : 'bg-blue-500 hover:bg-blue-600'
   }`}
 >
-  {/* {isUploading[feedback.meetingTranscriptId]
-    ? 'Uploading...'
-    : uploadMethod === 'file'
-    ? 'Upload video/audio'
-    : 'Upload from URL'} */}
     {isUploading[feedback.meetingTranscriptId] ? (
   <div className="flex items-center gap-2">
     <span className="loader-videoupload" />
@@ -494,56 +448,6 @@ const handleFileUpload = async (meetingId: number) => {
               )}
 
               {/* Phần đồng ý và từ chối feedback */}
-              {/* {user?.role === 'CLIENT' && feedback.summaryText !== 'Wait for update' && (
-                <div className="flex flex-col gap-3 mb-4">
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleApprove(feedback.meetingTranscriptId)}
-                      disabled={feedback.isApproved}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
-                        feedback.isApproved
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-green-500 hover:bg-green-600'
-                      }`}
-                    >
-                      ✅ Approve
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveRejectId(feedback.meetingTranscriptId);
-                        setSelectedMeetingId(feedback.meetingTranscriptId);
-                        refetchRejected();
-                      }}
-                      disabled={feedback.isApproved}
-                      className={`rounded-lg px-4 py-2 text-sm font-medium text-white ${
-                        feedback.isApproved
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : 'bg-red-500 hover:bg-red-600'
-                      }`}
-                    >
-                      ❌ Reject
-                    </button>
-                  </div>
-
-                 
-                  {activeRejectId === feedback.meetingTranscriptId && !feedback.isApproved && (
-                    <div className="flex flex-col gap-2">
-                      <textarea
-                        value={feedbackText}
-                        onChange={(e) => setFeedbackText(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-400"
-                        placeholder="Enter reason for rejection..."
-                      />
-                      <button
-                        onClick={() => handleRejectSubmit(feedback.meetingTranscriptId)}
-                        className="self-start rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
-                      >
-                        Send Feedback
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )} */}
               {user?.role === 'CLIENT' && feedback.summaryText !== 'Wait for update' && (
   <div className="flex flex-col gap-3 mb-4">
     {rejectedFeedbacks.length > 0 ? (

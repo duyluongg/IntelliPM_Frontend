@@ -622,23 +622,44 @@ const ChildWorkItem: React.FC = () => {
                                   <button
                                     className='delete-btn'
                                     onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          '🗑️ Are you sure you want to delete this comment?'
-                                        )
-                                      ) {
+                                      const confirmed = await Swal.fire({
+                                        title: 'Delete Comment',
+                                        text: 'Are you sure you want to delete this comment?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Delete',
+                                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                        customClass: {
+                                          title: 'small-title',
+                                          popup: 'small-popup',
+                                          icon: 'small-icon',
+                                          htmlContainer: 'small-html'
+                                        }
+                                      });
+                                      if (confirmed.isConfirmed) {
                                         try {
+                                          console.log('Deleting comment:', comment.id, 'for subtask:', subtaskDetail?.id);
                                           await deleteSubtaskComment({
                                             id: comment.id,
+                                            subtaskId: subtaskDetail?.id,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          //alert('🗑️ Deleted successfully');
-                                          console.log('Deleted successfully');
-                                          await refetchComments();
+
                                           await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error('❌ Failed to delete comment', err);
-                                          //alert('❌ Delete failed');
+                                          console.error('❌ Failed to delete comment:', err);
+                                          Swal.fire({
+                                            icon: 'error',
+                                            title: 'Delete Failed',
+                                            text: 'Failed to delete comment.',
+                                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                            customClass: {
+                                              title: 'small-title',
+                                              popup: 'small-popup',
+                                              icon: 'small-icon',
+                                              htmlContainer: 'small-html'
+                                            }
+                                          });
                                         }
                                       }
                                     }}
@@ -1107,7 +1128,7 @@ const ChildWorkItem: React.FC = () => {
                           html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
                                            is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                                            <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                          width: '500px', 
+                          width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',

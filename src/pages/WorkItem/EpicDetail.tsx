@@ -101,6 +101,8 @@ const EpicDetail: React.FC = () => {
   const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
   const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
   const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
+  const [editCommentId, setEditCommentId] = useState<number | null>(null);
+  const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
 
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
@@ -311,6 +313,50 @@ const EpicDetail: React.FC = () => {
       notAlreadyAdded
     );
   });
+
+  const handleSave = async (id: number, originalContent: string) => {
+    const newContent = editedContent[id];
+    if (newContent && newContent !== originalContent) {
+      try {
+        await updateEpicComment({
+          id,
+          epicId: epicIdFromUrl!,
+          accountId,
+          content: newContent,
+          createdBy: accountId,
+        }).unwrap();
+        await Promise.all([refetchComments(), refetchActivityLogs()]);
+        setEditCommentId(null);
+      } catch (err) {
+        console.error('❌ Failed to update comment', err);
+      }
+    } else {
+      setEditCommentId(null);
+    }
+  };
+
+  // Trong render comment
+  {
+    comments.map((comment) => (
+      <div key={comment.id}>
+        {editCommentId === comment.id ? (
+          <>
+            <textarea
+              value={editedContent[comment.id] || comment.content}
+              onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+            />
+            <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
+            <button onClick={() => setEditCommentId(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <span>{comment.content}</span>
+            <button onClick={() => setEditCommentId(comment.id)}>✏ Edit</button>
+          </>
+        )}
+      </div>
+    ))
+  }
 
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
 
@@ -1273,109 +1319,107 @@ const EpicDetail: React.FC = () => {
 
               {activeTab === 'COMMENTS' ? (
                 <>
-                  <div className="comment-list">
-                    {isCommentsLoading ? (
-                      <p>Loading comments...</p>
-                    ) : comments.length === 0 ? (
-                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
-                    ) : (
-                      comments
-                        .slice()
-                        .reverse()
-                        .map((comment: any) => (
-                          <div key={comment.id} className="simple-comment">
-                            <div className="avatar-circle">
-                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="simple-comment">
+                      <div className="avatar-circle">
+                        <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                      </div>
+                      <div className="comment-content">
+                        <div className="comment-header">
+                          <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
+                          <span className="comment-time">
+                            {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                        {editCommentId === comment.id ? (
+                          <>
+                            <textarea
+                              value={editedContent[comment.id] || comment.content}
+                              onChange={(e) =>
+                                setEditedContent({ ...editedContent, [comment.id]: e.target.value })
+                              }
+                              className="border rounded p-2 w-full"
+                              autoFocus
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => handleSave(comment.id, comment.content)}
+                                className="px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditCommentId(null)}
+                                className="px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6"
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            <div className="comment-content">
-                              <div className="comment-header">
-                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
-                                <span className="comment-time">
-                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
-                                </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="comment-text">{comment.content}</div>
+                            {comment.accountId === accountId && (
+                              <div className="comment-actions">
+                                <button
+                                  className="edit-btn"
+                                  onClick={() => setEditCommentId(comment.id)}
+                                >
+                                  ✏ Edit
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={async () => {
+                                    const confirmed = await Swal.fire({
+                                      title: 'Delete Comment',
+                                      text: 'Are you sure you want to delete this comment?',
+                                      icon: 'warning',
+                                      showCancelButton: true,
+                                      confirmButtonText: 'Delete',
+                                      confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                      customClass: {
+                                        title: 'small-title',
+                                        popup: 'small-popup',
+                                        icon: 'small-icon',
+                                        htmlContainer: 'small-html'
+                                      }
+                                    });
+                                    if (confirmed.isConfirmed) {
+                                      try {
+                                        console.log('Deleting comment:', comment.id, 'for epic:', epicIdFromUrl);
+                                        await deleteEpicComment({
+                                          id: comment.id,
+                                          epicId: epicIdFromUrl!,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('❌ Failed to delete comment:', err);
+                                        Swal.fire({
+                                          icon: 'error',
+                                          title: 'Delete Failed',
+                                          text: 'Failed to delete comment.',
+                                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                          customClass: {
+                                            title: 'small-title',
+                                            popup: 'small-popup',
+                                            icon: 'small-icon',
+                                            htmlContainer: 'small-html'
+                                          }
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  🗑 Delete
+                                </button>
                               </div>
-                              <div className="comment-text">{comment.content}</div>
-                              {comment.accountId === accountId && (
-                                <div className="comment-actions">
-                                  <button
-                                    className="edit-btn"
-                                    onClick={async () => {
-                                      const newContent = prompt("✏ Edit your comment:", comment.content);
-                                      if (newContent && newContent !== comment.content) {
-                                        try {
-                                          await updateEpicComment({
-                                            id: comment.id,
-                                            epicId: epicIdFromUrl!,
-                                            accountId,
-                                            content: newContent,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          //alert("✅ Comment updated");
-                                          await refetchComments();
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error("❌ Failed to update comment", err);
-                                          //alert("❌ Update failed");
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    ✏ Edit
-                                  </button>
-                                  <button
-                                    className='delete-btn'
-                                    onClick={async () => {
-                                      const confirmed = await Swal.fire({
-                                        title: 'Delete Comment',
-                                        text: 'Are you sure you want to delete this comment?',
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        confirmButtonText: 'Delete',
-                                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                                        customClass: {
-                                          title: 'small-title',
-                                          popup: 'small-popup',
-                                          icon: 'small-icon',
-                                          htmlContainer: 'small-html'
-                                        }
-                                      });
-                                      if (confirmed.isConfirmed) {
-                                        try {
-                                          console.log('Deleting comment:', comment.id, 'for epic:', epicIdFromUrl);
-                                          await deleteEpicComment({
-                                            id: comment.id,
-                                            epicId: epicIdFromUrl!,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          // No need for refetchComments since invalidatesTags handles it
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error('❌ Failed to delete comment:', err);
-                                          Swal.fire({
-                                            icon: 'error',
-                                            title: 'Delete Failed',
-                                            text: 'Failed to delete comment.',
-                                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                                            customClass: {
-                                              title: 'small-title',
-                                              popup: 'small-popup',
-                                              icon: 'small-icon',
-                                              htmlContainer: 'small-html'
-                                            }
-                                          });
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    🗑 Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Comment Input */}
                   <div className="simple-comment-input">

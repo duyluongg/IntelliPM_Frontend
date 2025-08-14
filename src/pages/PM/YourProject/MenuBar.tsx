@@ -26,6 +26,8 @@ import {
   Lock,
   Crown,
   X,
+  LinkIcon,
+  UserPlus,
 } from 'lucide-react';
 
 import * as XLSX from 'xlsx';
@@ -41,6 +43,11 @@ import { useGetProjectByIdQuery } from '../../../services/projectApi';
 import toast from 'react-hot-toast';
 import type { SharePermission } from '../../../types/ShareDocumentType';
 import jsPDF from 'jspdf';
+import {
+  useGetSharedUsersByDocumentQuery,
+  useUpdatePermissionTypeMutation,
+  type PermissionType,
+} from '../../../services/Document/documentPermissionAPI';
 
 interface Props {
   editor: Editor | null;
@@ -57,24 +64,32 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
   if (!editor) {
     return null;
   }
-  const params = useParams();
+  const { documentId: documentIdParam } = useParams<{ documentId: string }>();
+  const documentId = Number(documentIdParam);
+  const hasValidDocId = Number.isFinite(documentId) && documentId > 0;
+
   const isTextSelected = editor.state.selection.from !== editor.state.selection.to;
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   const { data, isSuccess } = useGetProjectByIdQuery(projectId!, {
     skip: !projectId,
   });
   const projectKey = data?.data?.projectKey;
-
   const [shareDocument, { isLoading }] = useShareDocumentByEmailsMutation();
 
   const [isShareModalOpen, setShareModalOpen] = useState(false);
-  const [isPublicLink, setIsPublicLink] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emails, setEmails] = useState<string[]>([]);
-  const [permissionType, setPermissionType] = useState<SharePermission>('VIEW');
+  const [permission, setPermission] = useState<'VIEW' | 'EDIT'>('VIEW');
+  const [updatePermissionType, { isLoading: isUpdating }] = useUpdatePermissionTypeMutation();
+  const { data: sharedData, refetch: refetchSharedUsers } = useGetSharedUsersByDocumentQuery(
+    documentId,
+    { skip: !hasValidDocId }
+  );
 
+  
+
+  const sharedUsers = sharedData?.data || [];
   const [exportDocument] = useExportDocumentMutation();
-  const documentId = useParams().documentId;
 
   function closeShareModal() {
     setShareModalOpen(false);
@@ -204,7 +219,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
 
     if (!el) return;
     if (!(el instanceof HTMLElement)) return;
-    
+
     const canvas = await html2canvas(el, {
       scale: 2,
       useCORS: true,
@@ -272,25 +287,27 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
     }
 
     if (!projectKey) {
-      // ⬅️ check trước
       toast.error('Missing project key!');
       return;
     }
 
     try {
       const result = await shareDocument({
-        documentId: Number(params.documentId),
-        permissionType,
+        documentId,
+        permissionType: permission,
         emails,
         projectKey,
       }).unwrap();
 
-      if (result.success) {
+      if (result.isSuccess) {
         toast.success('🎉 Document shared successfully!');
-        closeShareModal();
         setEmails([]);
+        setEmailInput('');
+        closeShareModal();
+
+        refetchSharedUsers();
       } else {
-        toast.error(`Some emails failed: ${result.failedEmails.join(', ')}`);
+        toast.error(`Some emails failed: ${result.message}`);
       }
     } catch (error) {
       console.error('Error sharing document:', error);
@@ -605,11 +622,11 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
         </div>
       </div>
 
-      <Transition appear show={isShareModalOpen} as='div'>
+      <Transition appear show={isShareModalOpen} as={Fragment}>
         <Dialog as='div' className='relative z-50' onClose={closeShareModal}>
           {/* Lớp phủ nền */}
           <Transition.Child
-            as='div'
+            as={Fragment}
             enter='ease-out duration-300'
             enterFrom='opacity-0'
             enterTo='opacity-100'
@@ -617,13 +634,13 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             leaveFrom='opacity-100'
             leaveTo='opacity-0'
           >
-            <div className='fixed inset-0 bg-black/30' />
+            <div className='fixed inset-0 bg-black/50 backdrop-blur-sm' />
           </Transition.Child>
 
           <div className='fixed inset-0 overflow-y-auto'>
-            <div className='flex min-h-full items-center justify-center p-4 text-center'>
+            <div className='flex min-h-full items-center justify-center p-4'>
               <Transition.Child
-                as='div'
+                as={Fragment}
                 enter='ease-out duration-300'
                 enterFrom='opacity-0 scale-95'
                 enterTo='opacity-100 scale-100'
@@ -631,68 +648,88 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
                 leaveFrom='opacity-100 scale-100'
                 leaveTo='opacity-0 scale-95'
               >
-                <Dialog.Panel className='w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-left align-middle shadow-xl transition-all'>
-                  <div className='flex items-center justify-between'>
-                    <Dialog.Title
-                      as='h3'
-                      className='text-lg font-medium leading-6 text-gray-900 dark:text-gray-100'
-                    >
-                      Invite to this doc
-                    </Dialog.Title>
-                    <button
-                      onClick={closeShareModal}
-                      className='p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700'
-                    >
-                      <X className='w-5 h-5 text-gray-500 dark:text-gray-400' />
-                    </button>
-                  </div>
-
-                  <div className='mt-4'>
-                    <input
-                      type='email'
-                      value={emailInput}
-                      onChange={(e) => setEmailInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && emailInput.trim()) {
-                          e.preventDefault();
-                          setEmails((prev) => [...prev, emailInput.trim()]);
-                          setEmailInput('');
-                        }
-                      }}
-                      placeholder='Enter email and press Enter'
-                      className='w-full mt-2 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400'
-                    />
-
-                    <div className='mt-2 flex flex-wrap gap-2'>
-                      {emails.map((email, index) => (
-                        <span
-                          key={index}
-                          className='px-2 py-1 text-sm bg-gray-200 dark:bg-gray-600 rounded-full flex items-center gap-1'
-                        >
-                          {email}
-                          <button
-                            onClick={() => setEmails(emails.filter((_, i) => i !== index))}
-                            className='text-gray-500 hover:text-red-500'
-                          >
-                            <X className='w-3 h-3' />
-                          </button>
-                        </span>
-                      ))}
+                <Dialog.Panel className='w-full max-w-lg transform divide-y divide-gray-200 dark:divide-gray-700 overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-left align-middle shadow-2xl transition-all'>
+                  {/* PHẦN 1: Header và thanh mời */}
+                  <div className='p-6'>
+                    <div className='flex items-center justify-between'>
+                      <Dialog.Title
+                        as='h3'
+                        className='text-xl font-semibold leading-6 text-gray-900 dark:text-gray-100'
+                      >
+                        Share Document
+                      </Dialog.Title>
+                      <button
+                        onClick={closeShareModal}
+                        className='p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors'
+                      >
+                        <X className='w-5 h-5' />
+                      </button>
                     </div>
+                    <p className='mt-1 text-sm text-gray-500 dark:text-gray-400'>
+                      Invite people to collaborate on this document.
+                    </p>
+
+                    <div className='mt-4 flex flex-col sm:flex-row items-center gap-2'>
+                      <div className='relative flex-grow w-full'>
+                        <UserPlus className='w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400' />
+                        <input
+                          type='email'
+                          value={emailInput}
+                          onChange={(e) => setEmailInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && emailInput.trim()) {
+                              e.preventDefault();
+                              // Thêm logic kiểm tra email hợp lệ ở đây nếu cần
+                              setEmails((prev) => [...new Set([...prev, emailInput.trim()])]); // Tránh trùng lặp
+                              setEmailInput('');
+                            }
+                          }}
+                          placeholder='Enter one or more emails...'
+                          className='w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:placeholder-gray-400 transition-colors'
+                        />
+                      </div>
+                      <button
+                        onClick={handleShareDocument}
+                        disabled={isLoading || emails.length === 0}
+                        className='w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all'
+                      >
+                        {isLoading ? 'Sending...' : 'Send Invite'}
+                      </button>
+                    </div>
+
+                    {emails.length > 0 && (
+                      <div className='mt-3 flex flex-wrap gap-2'>
+                        {emails.map((email, index) => (
+                          <span
+                            key={index}
+                            className='px-2.5 py-1 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full flex items-center gap-1.5 animate-in fade-in-0'
+                          >
+                            {email}
+                            <button
+                              onClick={() => setEmails(emails.filter((_, i) => i !== index))}
+                              className='text-blue-500 hover:text-blue-700 dark:hover:text-blue-300'
+                            >
+                              <X className='w-3 h-3' />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className='mt-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400'>
-                    <Lock className='w-4 h-4' />
-                    <span>Only invited people can find this doc</span>
-                  </div>
+                  <div className='p-6 space-y-4'>
+                    <h4 className='font-medium text-gray-700 dark:text-gray-300'>
+                      People with access
+                    </h4>
 
-                  <div className='mt-4 space-y-3'>
-                    {/* Danh sách người dùng được mời */}
+                    {/* User - Owner */}
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center gap-3'>
-                        <span className='flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 font-bold'>
-                          T
-                        </span>
+                        <img
+                          className='h-10 w-10 rounded-full'
+                          src='https://i.pravatar.cc/40?u=tony'
+                          alt='Tony Luong'
+                        />
                         <div>
                           <p className='font-medium text-gray-900 dark:text-gray-100'>Tony Luong</p>
                           <p className='text-sm text-gray-500 dark:text-gray-400'>
@@ -700,60 +737,79 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
                           </p>
                         </div>
                       </div>
-                      <div className='flex items-center gap-3'>
-                        <span title='Owner'>
-                          <Crown className='w-5 h-5 text-yellow-500' />
-                        </span>
+                      <div className='flex items-center gap-3 text-sm text-yellow-600 dark:text-yellow-400'>
+                        <Crown className='w-5 h-5' />
+                        <span>Owner</span>
+                      </div>
+                    </div>
 
-                        <button className='p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700'>
-                          <X className='w-5 h-5 text-gray-500 dark:text-gray-400' />
-                        </button>
+                    {/* User - Editor (Ví dụ thêm) */}
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-3'>
+                        <img
+                          className='h-10 w-10 rounded-full'
+                          src='https://i.pravatar.cc/40?u=jane'
+                          alt='Jane Doe'
+                        />
+                        <div>
+                          <p className='font-medium text-gray-900 dark:text-gray-100'>Jane Doe</p>
+                          <p className='text-sm text-gray-500 dark:text-gray-400'>
+                            jane.doe@example.com
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className='mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-4'>
+                  <div className='p-6 bg-gray-50 dark:bg-gray-800/50'>
                     <div className='flex items-center justify-between'>
-                      <p className='text-sm text-gray-800 dark:text-gray-200'>
-                        Choose who can edit this doc
-                      </p>
+                      <div className='flex items-center gap-3'>
+                        <div className='p-2 bg-gray-200 dark:bg-gray-700 rounded-lg'>
+                          <LinkIcon className='w-5 h-5 text-gray-600 dark:text-gray-300' />
+                        </div>
+                        <div>
+                          <p className='font-medium text-gray-900 dark:text-gray-100'>
+                            Anyone with the link
+                          </p>
+                          <p className='text-sm text-gray-500 dark:text-gray-400'>
+                            {permission === 'EDIT' ? 'Can edit' : 'Can view'} this document.
+                          </p>
+                        </div>
+                      </div>
 
-                      <div className='text-sm font-medium px-3 py-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 rounded-md'>
-                        View only
-                      </div>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <div>
-                        <p className='text-sm font-medium text-gray-800 dark:text-gray-200'>
-                          Share public link
-                        </p>
-                        <p className='text-xs text-gray-500 dark:text-gray-400'>
-                          Create a public link for view-only access.
-                        </p>
-                      </div>
-                      <Switch
-                        checked={isPublicLink}
-                        onChange={setIsPublicLink}
-                        className={`${isPublicLink ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'}
-                            relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-white/75`}
+                      <select
+                        value={permission}
+                        onChange={async (e) => {
+                          const newPermission = e.target.value as 'VIEW' | 'EDIT';
+                          setPermission(newPermission);
+
+                          if (sharedUsers.length === 0) return;
+
+                          try {
+                            const res = await updatePermissionType({
+                              documentId,
+                              permissionType: newPermission,
+                            }).unwrap();
+
+                            if (!res.isSuccess) {
+                              toast.error('Cập nhật quyền thất bại: ' + res.message);
+                            } else {
+                              // toast.success('🎉 Quyền đã được cập nhật');
+                              refetchSharedUsers();
+                            }
+                          } catch (err) {
+                            console.error('Update failed', err);
+                            toast.error('Lỗi khi cập nhật quyền!');
+                          }
+                        }}
+                        className='text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500'
                       >
-                        <span className='sr-only'>Share public link</span>
-                        <span
-                          aria-hidden='true'
-                          className={`${isPublicLink ? 'translate-x-5' : 'translate-x-0'}
-                                pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out`}
-                        />
-                      </Switch>
+                        <option value='VIEW'>Can view</option>
+                        <option value='EDIT'>Can edit</option>
+                      </select>
                     </div>
                   </div>
                 </Dialog.Panel>
-                <button
-                  onClick={handleShareDocument}
-                  disabled={isLoading}
-                  className='mt-6 w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-50'
-                >
-                  {isLoading ? 'Sending...' : 'Send Invite'}
-                </button>
               </Transition.Child>
             </div>
           </div>

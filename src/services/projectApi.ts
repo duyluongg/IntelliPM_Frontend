@@ -105,7 +105,7 @@ export interface WorkItemList {
   reporterPicture: string | null;
 }
 
-interface TaskItem {
+export interface TaskItem {
   id: string;
   reporterId: number;
   reporterName: string | null;
@@ -152,10 +152,12 @@ interface TaskDependency {
   type: string;
 }
 
-interface SubtaskItem {
+export interface SubtaskItem {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedFullName: string;
+  assignedUsername: string;
   title: string;
   description: string;
   reporterId: number | null;

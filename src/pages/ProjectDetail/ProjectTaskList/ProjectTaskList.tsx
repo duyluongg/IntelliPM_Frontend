@@ -31,6 +31,7 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import {
   useCreateDocumentMutation,
   useGetDocumentMappingQuery,
@@ -61,7 +62,7 @@ interface UpdateTaskRequestDTO {
   plannedEndDate: string;
   status: string;
   assignedBy: number | null;
-  priority: string;
+  priority: string| null;
   createdBy: number;
 }
 
@@ -72,6 +73,7 @@ interface UpdateEpicRequestDTO {
   startDate: string;
   endDate: string;
   status: string;
+  priority: string| null;
   reporterId: number | null;
   assignedBy: number | null;
   createdBy: number;
@@ -88,7 +90,7 @@ interface UpdateSubtaskRequestDTO {
   status: string;
   reporterId: number;
   assignedBy: number;
-  priority: string;
+  priority: string| null;
   createdBy: number;
   sprintId: number;
 }
@@ -127,6 +129,7 @@ interface TaskItem {
   comments: number;
   sprint?: number | null;
   sprintName?: string | null;
+  priority: string| null;
   assignees: TaskAssignee[];
   dueDate?: string | null;
   labels?: string[];
@@ -806,6 +809,7 @@ const ProjectTaskList: React.FC = () => {
           startDate: item.created || new Date().toISOString(),
           endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
+          priority: item.priority || 'MEDIUM',
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || null,
           createdBy: accountId,
@@ -821,13 +825,14 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || 0,
           assignedBy: item.assignees[0]?.id || 0,
-          priority: 'MEDIUM',
+          priority: (item.priority ?? 'MEDIUM') || 'MEDIUM', // ensure string, never null
           sprintId: item.sprint || 0,
           startDate: item.created || new Date().toISOString(),
           endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        // Ensure priority is always a string (never null)
+        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
       } else {
         const taskData: UpdateTaskRequestDTO = {
           reporterId: item.reporterId || null,
@@ -841,7 +846,7 @@ const ProjectTaskList: React.FC = () => {
           plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
           assignedBy: item.assignees[0]?.id || null,
-          priority: 'MEDIUM',
+          priority: item.priority || 'MEDIUM',
           createdBy: accountId,
         };
         await updateTask({ id: item.key, body: taskData }).unwrap();
@@ -885,6 +890,7 @@ const ProjectTaskList: React.FC = () => {
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           status: item.status,
+          priority: item.priority || 'MEDIUM',
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
           createdBy: accountId,
@@ -901,12 +907,12 @@ const ProjectTaskList: React.FC = () => {
           sprintId: item.sprint || 0,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || 0, // Already correct
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
-          priority: 'MEDIUM',
+          priority: item.priority || 'MEDIUM',
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
       } else {
         if (field === 'reporter') {
           const taskData: UpdateTaskRequestDTO = {
@@ -921,7 +927,7 @@ const ProjectTaskList: React.FC = () => {
             plannedEndDate: item.dueDate || '',
             status: item.status,
             assignedBy: item.assignees[0]?.id || null,
-            priority: 'MEDIUM',
+            priority: item.priority || 'MEDIUM',
             createdBy: accountId,
           };
           await updateTask({ id: item.key, body: taskData }).unwrap();
@@ -958,6 +964,7 @@ const ProjectTaskList: React.FC = () => {
           endDate: item.dueDate || '',
           status: item.status,
           reporterId: item.reporterId || null,
+          priority: item.priority || 'MEDIUM',
           assignedBy: null,
           createdBy: accountId,
         };
@@ -975,12 +982,12 @@ const ProjectTaskList: React.FC = () => {
           reporterId: item.reporterId || 0, // Already correct
           assignedBy: 0,
           sprintId: item.sprint || 0,
-          priority: 'MEDIUM',
+          priority: item.priority || 'MEDIUM',
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
       } else {
         await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
       }
@@ -1006,6 +1013,7 @@ const ProjectTaskList: React.FC = () => {
     status: 110,
     comments: 120,
     sprint: 100,
+    priority: 100,
     assignee: 250,
     dueDate: 130,
     labels: 120,
@@ -1096,6 +1104,7 @@ const ProjectTaskList: React.FC = () => {
             status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
             comments: item.commentCount || 0,
             sprint: item.sprintId || null,
+            priority: item.priority || 'MEDIUM',
             sprintName: item.sprintName || null,
             assignees: assignments,
             dueDate: item.dueDate || null,
@@ -1333,6 +1342,16 @@ const ProjectTaskList: React.FC = () => {
                 />
               </th>
               <th
+                style={{ width: `${columnWidths.priority}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
+                Priority
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                />
+              </th>
+              <th
                 style={{ width: `${columnWidths.assignee}px` }}
                 className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
@@ -1558,6 +1577,18 @@ const ProjectTaskList: React.FC = () => {
                     {task.sprint && task.sprint !== 0 ? (
                       <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
                         {task.sprintName}
+                      </span>
+                    ) : (
+                      ''
+                    )}
+                  </td>
+                   <td
+                    style={{ width: `${columnWidths.priority}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.priority ? (
+                      <span className='px-2 py-0.5  text-xs text-gray-800'>
+                        {task.priority}
                       </span>
                     ) : (
                       ''

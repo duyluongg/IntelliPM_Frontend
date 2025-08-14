@@ -500,7 +500,7 @@ import { useShareDocumentViaEmailMutation } from '../../../../services/Document/
 import axios from 'axios';
 import { API_BASE_URL } from '../../../../constants/api';
 
-const MAX_FILE_MB = 10;
+const MAX_FILE_MB = 30;
 const ACCEPT_EXTS = ['pdf', 'doc', 'docx'];
 
 const timeSlots = [

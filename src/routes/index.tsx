@@ -59,6 +59,7 @@ import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjec
 import ProfilePage from '../pages/Account/ProfilePage';
 import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
 import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete';
+import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/MilestoneFeedbackPanel';
 
 export const router = createBrowserRouter([
   {
@@ -110,6 +111,10 @@ export const router = createBrowserRouter([
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
+          {
+      path: 'meeting-feedback/:transcriptId',
+      element: <MilestoneFeedbackPanel />,
+    },
 
       {
         path: 'account/profile',

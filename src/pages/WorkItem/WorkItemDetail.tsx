@@ -1416,22 +1416,44 @@ const WorkItemDetail: React.FC = () => {
                                   <button
                                     className='delete-btn'
                                     onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          '🗑️ Are you sure you want to delete this comment?'
-                                        )
-                                      ) {
+                                      const confirmed = await Swal.fire({
+                                        title: 'Delete Comment',
+                                        text: 'Are you sure you want to delete this comment?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Delete',
+                                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                        customClass: {
+                                          title: 'small-title',
+                                          popup: 'small-popup',
+                                          icon: 'small-icon',
+                                          htmlContainer: 'small-html'
+                                        }
+                                      });
+                                      if (confirmed.isConfirmed) {
                                         try {
+                                          console.log('Deleting comment:', comment.id, 'for task:', taskId);
                                           await deleteTaskComment({
                                             id: comment.id,
+                                            taskId, // Pass taskId
                                             createdBy: accountId,
                                           }).unwrap();
-                                          //alert('🗑️ Deleted successfully');
-                                          await refetchComments();
+                                          // No need for refetchComments since invalidatesTags handles it
                                           await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error('❌ Failed to delete comment', err);
-                                          //alert('❌ Delete failed');
+                                          console.error('❌ Failed to delete comment:', err);
+                                          Swal.fire({
+                                            icon: 'error',
+                                            title: 'Delete Failed',
+                                            text: 'Failed to delete comment.',
+                                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                            customClass: {
+                                              title: 'small-title',
+                                              popup: 'small-popup',
+                                              icon: 'small-icon',
+                                              htmlContainer: 'small-html'
+                                            }
+                                          });
                                         }
                                       }
                                     }}
@@ -1921,6 +1943,13 @@ const WorkItemDetail: React.FC = () => {
         title="Delete this attachment?"
         message="Once you delete, it's gone for good."
       />
+      {/* <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteComment}
+        title="Delete this comment?"
+        message="Once you delete, it's gone for good."
+      /> */}
     </div>
   );
 };

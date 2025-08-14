@@ -52,7 +52,7 @@ import {
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   useCreateLabelAndAssignMutation,
   useGetLabelsByProjectIdQuery,
@@ -100,6 +100,7 @@ const WorkItemDetail: React.FC = () => {
   const [projectName, setProjectName] = React.useState('');
   const [projectId, setProjectId] = React.useState('');
   const [sprintId, setSprintId] = useState<number | null>(null);
+  const [epicId, setEpicId] = React.useState('');
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
@@ -332,6 +333,7 @@ const WorkItemDetail: React.FC = () => {
       setProjectName(taskData.projectName ?? '');
       setSprintId(taskData.sprintId ?? null);
       setProjectId(String(taskData.projectId));
+      setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
@@ -641,28 +643,30 @@ const WorkItemDetail: React.FC = () => {
                   <div className='add-item' onClick={() => fileInputRef.current?.click()}>
                     📁 Attachment
                   </div>
-                  <div
-                    className='add-item'
-                    onClick={() => {
-                      setShowSubtaskInput(true);
-                      setIsAddDropdownOpen(false);
+                  {(isUserAssignee(taskId) || canEdit) && (
+                    <div
+                      className='add-item'
+                      onClick={() => {
+                        setShowSubtaskInput(true);
+                        setIsAddDropdownOpen(false);
 
-                      setTimeout(() => {
-                        subtaskInputRef.current?.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'center',
-                        });
-                      }, 100);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    <img
-                      src={subtaskIcon}
-                      alt='Subtask'
-                      style={{ width: '16px', marginRight: '6px' }}
-                    />
-                    Subtask
-                  </div>
+                        setTimeout(() => {
+                          subtaskInputRef.current?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                          });
+                        }, 100);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      <img
+                        src={subtaskIcon}
+                        alt='Subtask'
+                        style={{ width: '16px', marginRight: '6px' }}
+                      />
+                      Subtask
+                    </div>
+                  )}
                 </div>
               )}
               <input
@@ -1750,42 +1754,59 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Parent</label>
-                <span>{subtaskData[0]?.taskId ?? 'None'}</span>
+                {taskData?.epicId ? (
+                  <Link
+                    to={`/project/epic/${taskData.epicId}`}
+                    className="text no-underline hover:underline cursor-pointer"
+                  >
+                    Epic [{taskData.epicId}]
+                  </Link>
+                ) : (
+                  <span>Epic [None]</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Sprint</label>
-                {isProjectSprintsLoading ? (
-                  <span>Loading sprints...</span>
-                ) : isProjectSprintsError ? (
-                  <span>Error loading sprints</span>
-                ) : projectSprints.length === 0 ? (
-                  <span>No sprints available</span>
+
+                {(isUserAssignee(taskId) || canEdit) ? (
+                  isProjectSprintsLoading ? (
+                    <span>Loading sprints...</span>
+                  ) : isProjectSprintsError ? (
+                    <span>Error loading sprints</span>
+                  ) : projectSprints.length === 0 ? (
+                    <span>No sprints available</span>
+                  ) : (
+                    <select
+                      style={{ width: '150px' }}
+                      value={sprintId ?? 'none'}
+                      onChange={(e) => {
+                        const val = e.target.value === 'none' ? null : Number(e.target.value);
+                        setSprintId(val);
+                        if (val !== null) {
+                          handleSprintTaskChange(val);
+                        }
+                      }}
+                    >
+                      <option value="none">No Sprint</option>
+                      {projectSprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </select>
+                  )
                 ) : (
-                  <select
-                    style={{ width: '150px' }}
-                    value={sprintId ?? 'none'}
-                    onChange={(e) => {
-                      const val = e.target.value === 'none' ? null : Number(e.target.value);
-                      setSprintId(val);
-                      if (val !== null) {
-                        handleSprintTaskChange(val);
-                      }
-                    }}
-                  >
-                    <option value="none">No Sprint</option>
-                    {projectSprints.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))}
-                  </select>
+                  <span>
+                    {projectSprints.find(s => s.id === sprintId)?.name || 'No Sprint'}
+                  </span>
                 )}
               </div>
 
               <div className='detail-item'>
                 <label>Priority</label>
-                {canEdit ? (
+
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <select
                     value={taskData?.priority}
                     onChange={async (e) => {
@@ -1814,7 +1835,6 @@ const WorkItemDetail: React.FC = () => {
                       </option>
                     ))}
                   </select>
-
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
                 )}
@@ -1822,7 +1842,7 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Start date</label>
-                {canEdit ? (
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <input
                     type="date"
                     value={plannedStartDate?.slice(0, 10) ?? ''}
@@ -1863,7 +1883,7 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Due date</label>
-                {canEdit ? (
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <input
                     type="date"
                     value={plannedEndDate?.slice(0, 10) ?? ''}

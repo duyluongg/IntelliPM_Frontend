@@ -29,7 +29,7 @@ import {
   useUpdateTaskReporterMutation,
   useUpdateTaskSprintMutation
 } from '../../services/taskApi';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -85,7 +85,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const [description, setDescription] = React.useState('');
   const [title, setTitle] = React.useState('');
-  const [epicId, setEpicId] = React.useState('');
   const [sprintId, setSprintId] = useState<number | null>(null);
   const [selectedChild, setSelectedChild] = React.useState<any>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = React.useState(false);
@@ -106,6 +105,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [deleteTaskComment] = useDeleteTaskCommentMutation();
   const [projectName, setProjectName] = React.useState('');
   const [projectId, setProjectId] = React.useState('');
+  const [epicId, setEpicId] = React.useState('');
   const [reporterName, setReporterName] = React.useState('');
   const [selectedAssignees, setSelectedAssignees] = React.useState<{ [key: string]: string }>({});
   const [updateSubtask] = useUpdateSubtaskMutation();
@@ -449,6 +449,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setProjectId(String(taskData.projectId));
       setEpicId(String(taskData.epicId));
       setSprintId(taskData.sprintId ?? null);
+      setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
     }
   }, [taskData]);
@@ -673,28 +674,30 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   <div className='add-item' onClick={() => fileInputRef.current?.click()}>
                     📁 Attachment
                   </div>
-                  <div
-                    className='add-item'
-                    onClick={() => {
-                      setShowSubtaskInput(true);
-                      setIsAddDropdownOpen(false);
+                  {(isUserAssignee(taskId) || canEdit) && (
+                    <div
+                      className='add-item'
+                      onClick={() => {
+                        setShowSubtaskInput(true);
+                        setIsAddDropdownOpen(false);
 
-                      setTimeout(() => {
-                        subtaskInputRef.current?.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'center',
-                        });
-                      }, 100);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    <img
-                      src={subtaskIcon}
-                      alt='Subtask'
-                      style={{ width: '16px', marginRight: '6px' }}
-                    />
-                    Subtask
-                  </div>
+                        setTimeout(() => {
+                          subtaskInputRef.current?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                          });
+                        }, 100);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      <img
+                        src={subtaskIcon}
+                        alt='Subtask'
+                        style={{ width: '16px', marginRight: '6px' }}
+                      />
+                      Subtask
+                    </div>
+                  )}
                 </div>
               )}
               <input
@@ -1780,38 +1783,60 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               )}
 
               <div className='detail-item'>
-                <label>Sprint</label>
-                {isProjectSprintsLoading ? (
-                  <span>Loading sprints...</span>
-                ) : isProjectSprintsError ? (
-                  <span>Error loading sprints</span>
-                ) : projectSprints.length === 0 ? (
-                  <span>No sprints available</span>
-                ) : (
-                  <select
-                    style={{ width: '150px' }}
-                    value={sprintId ?? 'none'}
-                    onChange={(e) => {
-                      const val = e.target.value === 'none' ? null : Number(e.target.value);
-                      setSprintId(val);
-                      if (val !== null) {
-                        handleSprintTaskChange(val);
-                      }
-                    }}
+                <label>Parent</label>
+                {taskData?.epicId ? (
+                  <Link
+                    to={`/project/epic/${taskData.epicId}`}
+                    className="text no-underline hover:underline cursor-pointer"
                   >
-                    <option value="none">No Sprint</option>
-                    {projectSprints.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))}
-                  </select>
+                    Epic [{taskData.epicId}]
+                  </Link>
+                ) : (
+                  <span>Epic [None]</span>
                 )}
               </div>
 
               <div className='detail-item'>
+                <label>Sprint</label>
+                {(isUserAssignee(taskId) || canEdit) ? (
+                  isProjectSprintsLoading ? (
+                    <span>Loading sprints...</span>
+                  ) : isProjectSprintsError ? (
+                    <span>Error loading sprints</span>
+                  ) : projectSprints.length === 0 ? (
+                    <span>No sprints available</span>
+                  ) : (
+                    <select
+                      style={{ width: '150px' }}
+                      value={sprintId ?? 'none'}
+                      onChange={(e) => {
+                        const val = e.target.value === 'none' ? null : Number(e.target.value);
+                        setSprintId(val);
+                        if (val !== null) {
+                          handleSprintTaskChange(val);
+                        }
+                      }}
+                    >
+                      <option value="none">No Sprint</option>
+                      {projectSprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </select>
+                  )
+                ) : (
+                  <span>
+                    {projectSprints.find(s => s.id === sprintId)?.name || 'No Sprint'}
+                  </span>
+                )}
+              </div>
+
+
+              <div className='detail-item'>
                 <label>Priority</label>
-                {canEdit ? (
+
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <select
                     value={taskData?.priority}
                     onChange={async (e) => {
@@ -1847,7 +1872,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
               <div className='detail-item'>
                 <label>Start date</label>
-                {canEdit ? (
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <input
                     type="date"
                     value={plannedStartDate?.slice(0, 10) ?? ''}
@@ -1888,7 +1913,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
               <div className='detail-item'>
                 <label>Due date</label>
-                {canEdit ? (
+                {(isUserAssignee(taskId) || canEdit) ? (
                   <input
                     type="date"
                     value={plannedEndDate?.slice(0, 10) ?? ''}

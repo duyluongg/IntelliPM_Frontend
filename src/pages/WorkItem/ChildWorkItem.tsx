@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './ChildWorkItem.css';
 import Swal from 'sweetalert2';
 import { useAuth, type Role } from '../../services/AuthContext';
@@ -55,6 +55,8 @@ interface SubtaskDetail {
 const ChildWorkItem: React.FC = () => {
   const { key: subtaskId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams()
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
@@ -431,7 +433,7 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.taskId,
   });
 
-  if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
+  if (!subtaskDetail) return <div style={{ padding: '24px' }}>Loading subtask data...</div>;
 
   return (
     <div className='child-work-item-page'>
@@ -800,7 +802,8 @@ const ChildWorkItem: React.FC = () => {
               <h4>Details</h4>
               <div className='detail-item'>
                 <label>Assignee</label>
-                <div className='detail-item'>
+
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
                   <select
                     value={selectedAssignee ?? subtaskDetail?.assignedBy}
                     onChange={async (e) => {
@@ -811,8 +814,8 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
-                          sprintId: subtaskDetail.sprintId ?? null,
                           title: subtaskDetail.title,
+                          sprintId: subtaskDetail.sprintId ?? null,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
@@ -820,11 +823,10 @@ const ChildWorkItem: React.FC = () => {
                           reporterId: subtaskDetail.reporterId,
                           createdBy: accountId,
                         }).unwrap();
-                        //alert('✅ Updated subtask assignee');
+
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        //alert('❌ Failed to update subtask');
                         console.error(err);
                       }
                     }}
@@ -837,28 +839,33 @@ const ChildWorkItem: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                ) : (
+                  <span>
+                    {projectMembers?.find(m => m.accountId === (selectedAssignee ?? subtaskDetail?.assignedBy))?.accountName
+                      || 'Unassigned'}
+                  </span>
+                )}
               </div>
 
               {isEditingLabel ? (
-                <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
-                  <div className='flex flex-col gap-2 w-full relative'>
-                    <label className='font-semibold'>Labels</label>
+                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
+                  <div className="flex flex-col gap-2 w-full relative">
+                    <label className="font-semibold">Labels</label>
 
                     {/* Tag list + input */}
                     <div
-                      className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
+                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
                       onClick={() => setDropdownOpen(true)}
                     >
                       {workItemLabels.map((label) => (
                         <span
                           key={label.id}
-                          className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1'
+                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
                         >
                           {label.labelName}
                           <button
                             onClick={() => handleDeleteWorkItemLabel(label.id)}
-                            className='text-red-500 hover:text-red-700 font-bold text-sm'
+                            className="text-red-500 hover:text-red-700 font-bold text-sm"
                           >
                             ×
                           </button>
@@ -874,23 +881,21 @@ const ChildWorkItem: React.FC = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleCreateLabelAndAssign();
                         }}
-                        placeholder='Type to search or add'
-                        className='flex-1 min-w-[100px] border-none outline-none py-1'
+                        placeholder="Type to search or add"
+                        className="flex-1 min-w-[100px] border-none outline-none py-1"
                         autoFocus
                       />
                     </div>
 
                     {/* Dropdown suggestion */}
                     {dropdownOpen && filteredLabels.length > 0 && (
-                      <ul className='absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto'>
-                        <li className='px-3 py-1 font-semibold text-gray-600 border-b'>
-                          All labels
-                        </li>
+                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
+                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
                         {filteredLabels.map((label) => (
                           <li
                             key={label.id}
                             onClick={() => handleCreateLabelAndAssign(label.name)}
-                            className='px-3 py-1 hover:bg-blue-100 cursor-pointer'
+                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
                           >
                             {label.name}
                           </li>
@@ -900,8 +905,8 @@ const ChildWorkItem: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className='detail-item' onClick={() => setIsEditingLabel(true)}>
-                  <label className='font-semibold'>Labels</label>
+                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
+                  <label className="font-semibold">Labels</label>
                   <span>
                     {isLabelLoading
                       ? 'Loading...'
@@ -912,90 +917,112 @@ const ChildWorkItem: React.FC = () => {
                 </div>
               )}
 
+              {/* <div className='detail-item'>
+                <label>Parent</label>
+                {subtaskDetail.taskId ? (
+                  <Link
+                    to={`/project/${projectKey}/work-item-detail?taskId=${subtaskDetail.taskId}`}
+                    className="text no-underline hover:underline cursor-pointer"
+                  >
+                    Task [{subtaskDetail.taskId}]
+                  </Link>
+                ) : (
+                  <span>Task [None]</span>
+                )}
+              </div> */}
+
               <div className='detail-item'>
                 <label>Parent</label>
-                <span>{subtaskDetail.taskId}</span>
+                  <span>Task [{subtaskDetail.taskId ?? 'None'}]</span>
               </div>
 
               <div className='detail-item'>
                 <label>Sprint</label>
-                <select
-                  style={{ width: '150px' }}
-                  value={newSprintId ?? subtaskDetail?.sprintId}
-                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
-                  onBlur={handleUpdateSubtask}
-                >
-                  {isProjectSprintsLoading ? (
-                    <option>Loading...</option>
-                  ) : isProjectSprintsError ? (
-                    <option>Error loading Sprint</option>
-                  ) : (
-                    projectSprints?.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))
-                  )}
-                </select>
+
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                  <select
+                    style={{ width: '150px' }}
+                    value={newSprintId ?? subtaskDetail?.sprintId}
+                    onChange={(e) => setNewSprintId(parseInt(e.target.value, 10))}
+                    onBlur={handleUpdateSubtask}
+                  >
+                    {isProjectSprintsLoading ? (
+                      <option>Loading...</option>
+                    ) : isProjectSprintsError ? (
+                      <option>Error loading Sprint</option>
+                    ) : (
+                      <>
+                        <option value={0}>No Sprint</option>
+                        {projectSprints?.map((sprint) => (
+                          <option key={sprint.id} value={sprint.id}>
+                            {sprint.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                ) : (
+                  <span>
+                    {isProjectSprintsLoading
+                      ? 'Loading...'
+                      : isProjectSprintsError
+                        ? 'Error loading Sprint'
+                        : projectSprints?.find(s => s.id === (newSprintId ?? subtaskDetail?.sprintId))?.name || 'No Sprint'
+                    }
+                  </span>
+                )}
               </div>
+
 
               <div className='detail-item'>
                 <label>Priority</label>
-                <select
-                  style={{ width: '150px' }}
-                  value={newPriority ?? subtaskDetail?.priority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  onBlur={handleUpdateSubtask}
-                >
-                  {isPriorityLoading ? (
-                    <option>Loading...</option>
-                  ) : isPriorityError ? (
-                    <option>Error loading priorities</option>
-                  ) : (
-                    priorityOptions?.data.map((priority) => (
-                      <option key={priority.id} value={priority.name}>
-                        {priority.label}
-                      </option>
-                    ))
-                  )}
-                </select>
+
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                  <select
+                    style={{ width: '150px' }}
+                    value={newPriority ?? subtaskDetail?.priority}
+                    onChange={(e) => setNewPriority(e.target.value)}
+                    onBlur={handleUpdateSubtask}
+                  >
+                    {isPriorityLoading ? (
+                      <option>Loading...</option>
+                    ) : isPriorityError ? (
+                      <option>Error loading priorities</option>
+                    ) : (
+                      priorityOptions?.data.map((priority) => (
+                        <option key={priority.id} value={priority.name}>
+                          {priority.label}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                ) : (
+                  <span>
+                    {isPriorityLoading
+                      ? 'Loading...'
+                      : isPriorityError
+                        ? 'Error loading priorities'
+                        : priorityOptions?.data.find(p => p.name === (newPriority ?? subtaskDetail?.priority))?.label || 'NONE'
+                    }
+                  </span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Start Date</label>
-                <input
-                  type='date'
-                  value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (newEndDate && new Date(value) >= new Date(newEndDate)) {
-                      Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Start Date',
-                        html: 'Start Date must be smaller than Due Date!',
-                        width: '500px',
-                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                        customClass: {
-                          title: 'small-title',
-                          popup: 'small-popup',
-                          icon: 'small-icon',
-                          htmlContainer: 'small-html'
-                        }
-                      });
-                      return;
-                    }
-
-                    if (projectData?.data.startDate && projectData?.data.endDate) {
-                      const projectStart = new Date(projectData.data.startDate);
-                      const projectEnd = new Date(projectData.data.endDate);
-
-                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                  <input
+                    type='date'
+                    value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data?.startDate?.slice(0, 10)}
+                    max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (newEndDate && new Date(value) >= new Date(newEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
-                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
-                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                          html: 'Start Date must be smaller than Due Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -1005,53 +1032,57 @@ const ChildWorkItem: React.FC = () => {
                             htmlContainer: 'small-html'
                           }
                         });
-
                         return;
                       }
-                    }
 
-                    setNewStartDate(value);
-                  }}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Start Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+                          return;
+                        }
+                      }
+
+                      setNewStartDate(value);
+                    }}
+                    onBlur={handleUpdateSubtask}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{subtaskDetail?.startDate?.slice(0, 10) || 'None'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Due Date</label>
-                <input
-                  type='date'
-                  value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (newStartDate && new Date(value) <= new Date(newStartDate)) {
-                      Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Due Date',
-                        html: 'Due Date must be greater than Start Date!',
-                        width: '500px', // nhỏ lại
-                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                        customClass: {
-                          title: 'small-title',
-                          popup: 'small-popup',
-                          icon: 'small-icon',
-                          htmlContainer: 'small-html'
-                        }
-                      });
-                      return;
-                    }
-
-                    if (projectData?.data.startDate && projectData?.data.endDate) {
-                      const projectStart = new Date(projectData.data.startDate);
-                      const projectEnd = new Date(projectData.data.endDate);
-
-                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                  <input
+                    type='date'
+                    value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data?.startDate?.slice(0, 10)}
+                    max={newStartDate ? newStartDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (newStartDate && new Date(value) <= new Date(newStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',
-                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
-                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                          html: 'Due Date must be greater than Start Date!',
                           width: '500px', // nhỏ lại
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -1061,135 +1092,46 @@ const ChildWorkItem: React.FC = () => {
                             htmlContainer: 'small-html'
                           }
                         });
-
                         return;
                       }
-                    }
 
-                    setNewEndDate(value);
-                  }}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
-              </div><div className='detail-item'>
-                <label>Start Date</label>
-                <input
-                  type='date'
-                  value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                  min={projectData?.data?.startDate?.slice(0, 10)}
-                  max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (newEndDate && new Date(value) >= new Date(newEndDate)) {
-                      Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Start Date',
-                        html: 'Start Date must be smaller than Due Date!',
-                        width: '500px',
-                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                        customClass: {
-                          title: 'small-title',
-                          popup: 'small-popup',
-                          icon: 'small-icon',
-                          htmlContainer: 'small-html'
-                        }
-                      });
-                      return;
-                    }
-
-                    if (projectData?.data.startDate && projectData?.data.endDate) {
-                      const projectStart = new Date(projectData.data.startDate);
-                      const projectEnd = new Date(projectData.data.endDate);
-
-                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Start Date',
-                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Due Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
                                            is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                                            <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
-                        });
-
-                        return;
-                      }
-                    }
-
-                    setNewStartDate(value);
-                  }}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
-              </div>
-
-              <div className='detail-item'>
-                <label>Due Date</label>
-                <input
-                  type='date'
-                  value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                  min={projectData?.data?.startDate?.slice(0, 10)}
-                  max={newStartDate ? newStartDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (newStartDate && new Date(value) <= new Date(newStartDate)) {
-                      Swal.fire({
-                        icon: 'error',
-                        title: 'Invalid Due Date',
-                        html: 'Due Date must be greater than Start Date!',
-                        width: '500px', // nhỏ lại
-                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                        customClass: {
-                          title: 'small-title',
-                          popup: 'small-popup',
-                          icon: 'small-icon',
-                          htmlContainer: 'small-html'
+                            width: '500px', // nhỏ lại
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+                          return;
                         }
-                      });
-                      return;
-                    }
-
-                    if (projectData?.data.startDate && projectData?.data.endDate) {
-                      const projectStart = new Date(projectData.data.startDate);
-                      const projectEnd = new Date(projectData.data.endDate);
-
-                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Due Date',
-                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
-                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
-                        });
-
-                        return;
                       }
-                    }
 
-                    setNewEndDate(value);
-                  }}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
+                      setNewEndDate(value);
+                    }}
+                    onBlur={handleUpdateSubtask}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{subtaskDetail?.endDate?.slice(0, 10) || 'None'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Reporter</label>
-                <div className='detail-item'>
+
+                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}
                     onChange={async (e) => {
@@ -1201,19 +1143,18 @@ const ChildWorkItem: React.FC = () => {
                           id: subtaskDetail.id,
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
-                          description: subtaskDetail.description ?? '',
                           sprintId: subtaskDetail.sprintId ?? null,
+                          description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        //alert('✅ Updated subtask reporter');
+
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        //alert('❌ Failed to update reporter');
                         console.error(err);
                       }
                     }}
@@ -1226,7 +1167,12 @@ const ChildWorkItem: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                ) : (
+                  <span>
+                    {projectMembers?.find(m => m.accountId === (selectedReporter ?? subtaskDetail?.reporterId))?.accountName
+                      || 'Unassigned'}
+                  </span>
+                )}
               </div>
 
               <div className='detail-item'>

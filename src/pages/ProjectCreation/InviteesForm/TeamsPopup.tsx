@@ -37,6 +37,9 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
   // Track which project each accountId was selected from to avoid duplicates
   const [selectedMemberProjects, setSelectedMemberProjects] = useState<{ [accountId: number]: number }>({});
 
+  // Get current user's email from existingEmails (usually the last one or can be identified)
+  const currentUserEmail = localStorage.getItem('email') || '';
+
   // Toggle expand/collapse for a team
   const handleExpandToggle = (projectId: number) => {
     setExpandedTeams((prev) =>
@@ -44,11 +47,57 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
     );
   };
 
-  // Check if a team can be selected (no members selected elsewhere or already in invitees)
+  // Check if a team can be selected
   const canSelectTeam = (team: Team) => {
-    return team.members.every(
+    // Filter out current user and already invited members
+    const availableMembers = team.members.filter(
       (member) =>
-        (!selectedAccountIds.includes(member.accountId) || selectedMemberProjects[member.accountId] === team.projectId) &&
+        member.accountEmail.toLowerCase() !== currentUserEmail.toLowerCase() &&
+        !existingEmails.includes(member.accountEmail)
+    );
+
+    // If no available members, team cannot be selected
+    if (availableMembers.length === 0) {
+      return false;
+    }
+
+    // Check if any available member is selected elsewhere
+    return availableMembers.every(
+      (member) =>
+        !selectedAccountIds.includes(member.accountId) || 
+        selectedMemberProjects[member.accountId] === team.projectId
+    );
+  };
+
+  // Check if team should be dimmed (has some conflicts but not completely unusable)
+  const shouldDimTeam = (team: Team) => {
+    // Filter out current user and already invited members
+    const availableMembers = team.members.filter(
+      (member) =>
+        member.accountEmail.toLowerCase() !== currentUserEmail.toLowerCase() &&
+        !existingEmails.includes(member.accountEmail)
+    );
+
+    // If no available members, dim the team
+    if (availableMembers.length === 0) {
+      return true;
+    }
+
+    // If some members are selected elsewhere, dim but don't disable
+    const hasConflicts = availableMembers.some(
+      (member) =>
+        selectedAccountIds.includes(member.accountId) &&
+        selectedMemberProjects[member.accountId] !== team.projectId
+    );
+
+    return hasConflicts;
+  };
+
+  // Get available members for a team (excluding current user and already invited)
+  const getAvailableMembers = (team: Team) => {
+    return team.members.filter(
+      (member) =>
+        member.accountEmail.toLowerCase() !== currentUserEmail.toLowerCase() &&
         !existingEmails.includes(member.accountEmail)
     );
   };
@@ -58,7 +107,8 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
     const team = teamsData?.data.teams.find((t) => t.projectId === projectId);
     if (!team) return;
 
-    const teamAccountIds = team.members.map((m) => m.accountId);
+    const availableMembers = getAvailableMembers(team);
+    const teamAccountIds = availableMembers.map((m) => m.accountId);
 
     if (selectedTeams.includes(projectId)) {
       // Unselect team
@@ -70,18 +120,19 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
         return updated;
       });
     } else {
-      // Select team (only select members not already selected or in invitees)
-      const availableAccountIds = teamAccountIds.filter(
+      // Select team (only select available members not already selected elsewhere)
+      const selectableAccountIds = teamAccountIds.filter(
         (id) =>
-          (!selectedAccountIds.includes(id) || selectedMemberProjects[id] === team.projectId) &&
-          !existingEmails.includes(team.members.find((m) => m.accountId === id)?.accountEmail || '')
+          !selectedAccountIds.includes(id) || 
+          selectedMemberProjects[id] === team.projectId
       );
-      if (availableAccountIds.length > 0) {
+      
+      if (selectableAccountIds.length > 0) {
         setSelectedTeams((prev) => [...prev, projectId]);
-        setSelectedAccountIds((prev) => [...prev, ...availableAccountIds]);
+        setSelectedAccountIds((prev) => [...prev, ...selectableAccountIds]);
         setSelectedMemberProjects((prev) => {
           const updated = { ...prev };
-          availableAccountIds.forEach((id) => {
+          selectableAccountIds.forEach((id) => {
             updated[id] = team.projectId;
           });
           return updated;
@@ -92,21 +143,30 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
 
   // Toggle single member select
   const handleMemberToggle = (member: TeamMember, projectId: number) => {
+    // Skip current user and already invited members
+    if (
+      member.accountEmail.toLowerCase() === currentUserEmail.toLowerCase() ||
+      existingEmails.includes(member.accountEmail)
+    ) {
+      return;
+    }
+
     const isChosenElsewhere =
       selectedAccountIds.includes(member.accountId) &&
       selectedMemberProjects[member.accountId] !== projectId;
-    const isAlreadyInvited = existingEmails.includes(member.accountEmail);
 
-    if (isChosenElsewhere || isAlreadyInvited) return;
+    if (isChosenElsewhere) return;
 
     if (selectedAccountIds.includes(member.accountId)) {
       // Unselect member
       setSelectedAccountIds((prev) => {
         const updated = prev.filter((id) => id !== member.accountId);
 
-        // If no members of the team are selected, uncheck the team
-        const teamMembers = teamsData?.data.teams.find((t) => t.projectId === projectId)?.members || [];
-        const stillSelected = teamMembers.some((m) => updated.includes(m.accountId));
+        // If no available members of the team are selected, uncheck the team
+        const availableMembers = getAvailableMembers(
+          teamsData?.data.teams.find((t) => t.projectId === projectId)!
+        );
+        const stillSelected = availableMembers.some((m) => updated.includes(m.accountId));
         if (!stillSelected) {
           setSelectedTeams((prev) => prev.filter((id) => id !== projectId));
         }
@@ -126,12 +186,46 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
         [member.accountId]: projectId,
       }));
 
-      // If all members of the team are selected, check the team
+      // If all available members of the team are selected, check the team
       const team = teamsData?.data.teams.find((t) => t.projectId === projectId);
-      if (team && team.members.every((m) => [...selectedAccountIds, member.accountId].includes(m.accountId))) {
-        setSelectedTeams((prev) => [...prev, projectId]);
+      if (team) {
+        const availableMembers = getAvailableMembers(team);
+        const allSelected = availableMembers.every((m) => 
+          [...selectedAccountIds, member.accountId].includes(m.accountId)
+        );
+        if (allSelected) {
+          setSelectedTeams((prev) => [...prev, projectId]);
+        }
       }
     }
+  };
+
+  // Check if member should be disabled
+  const isMemberDisabled = (member: TeamMember, projectId: number) => {
+    const isCurrentUser = member.accountEmail.toLowerCase() === currentUserEmail.toLowerCase();
+    const isAlreadyInvited = existingEmails.includes(member.accountEmail);
+    const isChosenElsewhere =
+      selectedAccountIds.includes(member.accountId) &&
+      selectedMemberProjects[member.accountId] !== projectId;
+
+    return isCurrentUser || isAlreadyInvited || isChosenElsewhere;
+  };
+
+  // Get disable reason for member
+  const getMemberDisableReason = (member: TeamMember, projectId: number) => {
+    if (member.accountEmail.toLowerCase() === currentUserEmail.toLowerCase()) {
+      return 'This is your account';
+    }
+    if (existingEmails.includes(member.accountEmail)) {
+      return 'Already added to project';
+    }
+    if (
+      selectedAccountIds.includes(member.accountId) &&
+      selectedMemberProjects[member.accountId] !== projectId
+    ) {
+      return 'Already selected in another project';
+    }
+    return '';
   };
 
   // Submit selected members
@@ -142,6 +236,7 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
           (member) =>
             selectedAccountIds.includes(member.accountId) &&
             selectedMemberProjects[member.accountId] === team.projectId &&
+            member.accountEmail.toLowerCase() !== currentUserEmail.toLowerCase() &&
             !existingEmails.includes(member.accountEmail)
         )
       )
@@ -176,13 +271,17 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
           <div className="space-y-4">
             {teamsData.data.teams.map((team) => {
               const isExpanded = expandedTeams.includes(team.projectId);
-              const isTeamDisabled = !canSelectTeam(team);
+              const isTeamDimmed = shouldDimTeam(team);
+              const availableMembers = getAvailableMembers(team);
+              const canSelect = canSelectTeam(team);
 
               return (
                 <div key={team.projectId} className="bg-gray-50 rounded-lg shadow-sm border border-gray-100">
                   {/* Team Header */}
                   <div
-                    className={`flex items-center gap-3 p-4 cursor-pointer ${isTeamDisabled ? 'opacity-50' : ''}`}
+                    className={`flex items-center gap-3 p-4 cursor-pointer transition-opacity ${
+                      isTeamDimmed ? 'opacity-50' : 'opacity-100'
+                    }`}
                     onClick={() => handleExpandToggle(team.projectId)}
                   >
                     {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -191,18 +290,26 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
                       checked={selectedTeams.includes(team.projectId)}
                       onChange={(e) => {
                         e.stopPropagation();
-                        if (!isTeamDisabled) handleTeamToggle(team.projectId);
+                        if (canSelect) handleTeamToggle(team.projectId);
                       }}
                       className="h-4 w-4 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded"
-                      disabled={isTeamDisabled}
+                      disabled={!canSelect}
                       onClick={(e) => e.stopPropagation()}
-                      title={isTeamDisabled ? 'Some members are already added or selected in another project' : ''}
+                      title={
+                        !canSelect
+                          ? availableMembers.length === 0
+                            ? 'No available members to add'
+                            : 'Some members are already selected in another project'
+                          : ''
+                      }
                     />
                     <div className="flex-1">
                       <h5 className="text-md font-semibold text-gray-800">
                         {team.projectName} <span className="text-gray-500">({team.projectKey})</span>
                       </h5>
-                      <p className="text-xs text-gray-500">{team.members.length} members</p>
+                      <p className="text-xs text-gray-500">
+                        {team.members.length} total members, {availableMembers.length} available
+                      </p>
                     </div>
                   </div>
 
@@ -211,18 +318,18 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
                     <div className="px-6 pb-4 space-y-2">
                       {team.members.map((member) => {
                         const isSelected = selectedAccountIds.includes(member.accountId);
-                        const isChosenElsewhere =
-                          selectedAccountIds.includes(member.accountId) &&
-                          selectedMemberProjects[member.accountId] !== team.projectId;
-                        const isAlreadyInvited = existingEmails.includes(member.accountEmail);
-                        const isDisabled = isChosenElsewhere || isAlreadyInvited;
+                        const isDisabled = isMemberDisabled(member, team.projectId);
+                        const disableReason = getMemberDisableReason(member, team.projectId);
 
                         return (
                           <div
                             key={member.id}
-                            className={`flex items-center gap-3 p-2 rounded-md transition relative ${
-                              isDisabled ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-100'
+                            className={`flex items-center gap-3 p-2 rounded-md transition ${
+                              isDisabled 
+                                ? 'opacity-30 cursor-not-allowed' 
+                                : 'hover:bg-gray-100 cursor-pointer'
                             }`}
+                            onClick={() => !isDisabled && handleMemberToggle(member, team.projectId)}
                           >
                             <input
                               type="checkbox"
@@ -230,29 +337,19 @@ const TeamsPopup: React.FC<TeamsPopupProps> = ({ accountId, onClose, onAddSelect
                               disabled={isDisabled}
                               onChange={() => handleMemberToggle(member, team.projectId)}
                               className="h-4 w-4 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded"
-                              title={
-                                isAlreadyInvited
-                                  ? 'This member is already added to the project'
-                                  : isChosenElsewhere
-                                  ? 'This member is already selected in another project'
-                                  : ''
-                              }
+                              title={disableReason}
                             />
                             <img
                               src={member.accountPicture}
                               alt={`${member.accountName} avatar`}
                               className="w-8 h-8 rounded-full border border-gray-200"
                             />
-                            <div>
+                            <div className="flex-1">
                               <p className="text-sm font-medium text-gray-800">{member.accountName}</p>
                               <p className="text-xs text-gray-500">{member.accountEmail}</p>
                               <p className="text-xs text-gray-400">Status: {member.status}</p>
-                              {isDisabled && (
-                                <p className="text-xs text-red-500 italic">
-                                  {isAlreadyInvited
-                                    ? 'Already added to project'
-                                    : 'Already selected in another project'}
-                                </p>
+                              {disableReason && (
+                                <p className="text-xs text-red-500 italic">{disableReason}</p>
                               )}
                             </div>
                           </div>

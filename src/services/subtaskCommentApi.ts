@@ -28,6 +28,7 @@ interface SubtaskCommentResponse {
 
 export const subtaskCommentApi = createApi({
     reducerPath: 'subtaskCommentApi',
+    tagTypes: ['CommentSubtasks', 'ActivityLogs'],
     baseQuery: fetchBaseQuery({
         baseUrl: API_BASE_URL,
         prepareHeaders: (headers) => {
@@ -43,6 +44,7 @@ export const subtaskCommentApi = createApi({
         getSubtaskCommentsBySubtaskId: builder.query<SubtaskComment[], string>({
             query: (subtaskId) => `subtaskcomment/by-subtask/${subtaskId}`,
             transformResponse: (response: SubtaskCommentListResponse) => response.data,
+            providesTags: ['CommentSubtasks'],
         }),
 
         // PUT
@@ -53,18 +55,37 @@ export const subtaskCommentApi = createApi({
                 body,
             }),
             transformResponse: (response: SubtaskCommentResponse) => response.data,
+            invalidatesTags: ['CommentSubtasks', 'ActivityLogs'],
         }),
 
         // DELETE
-        deleteSubtaskComment: builder.mutation<void, { id: number; createdBy: number }>({
-            query: ({id, createdBy}) => ({
+        deleteSubtaskComment: builder.mutation<void, { id: number; createdBy: number; subtaskId: string }>({
+            query: ({ id, createdBy }) => ({
                 url: `subtaskcomment/${id}`,
                 method: 'DELETE',
                 body: { createdBy },
             }),
+            invalidatesTags: ['CommentSubtasks', 'ActivityLogs'],
+            async onQueryStarted({ id, subtaskId }, { dispatch, queryFulfilled }) {
+                const patchResult = dispatch(
+                    subtaskCommentApi.util.updateQueryData('getSubtaskCommentsBySubtaskId', subtaskId, (draft) => {
+                        const index = draft.findIndex((comment) => comment.id === id);
+                        if (index !== -1) {
+                            draft.splice(index, 1);
+                        }
+                    })
+                );
+                try {
+                    await queryFulfilled;
+                    console.log('Comment deleted successfully, ID:', id, 'Subtask ID:', subtaskId);
+                } catch (err) {
+                    patchResult.undo();
+                    dispatch(subtaskCommentApi.util.invalidateTags(['CommentSubtasks']));
+                    console.error('Failed to delete comment:', err);
+                }
+            },
         }),
 
-        // POST - Create subtask comment
         createSubtaskComment: builder.mutation<SubtaskComment, { subtaskId: string; accountId: number; content: string; createdBy: number }>({
             query: (body) => ({
                 url: `subtaskcomment`,
@@ -72,6 +93,7 @@ export const subtaskCommentApi = createApi({
                 body,
             }),
             transformResponse: (response: SubtaskCommentResponse) => response.data,
+            invalidatesTags: ['CommentSubtasks', 'ActivityLogs'],
         }),
     }),
 });

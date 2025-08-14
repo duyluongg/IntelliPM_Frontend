@@ -56,6 +56,7 @@ import { documentRequestMeetingApi } from '../services/ProjectManagement/Meeting
 import { adminApi } from '../services/adminApi';
 import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
 import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
+import { documentPermissionApi } from '../services/Document/documentPermissionAPI';
 
 const persistConfig = {
   key: 'root',
@@ -112,6 +113,7 @@ const rootReducer = combineReducers({
   [milestoneCommentApi.reducerPath]: milestoneCommentApi.reducer,
   [documentCommentApi.reducerPath]: documentCommentApi.reducer,
   [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
+  [documentPermissionApi.reducerPath]: documentPermissionApi.reducer,
 
   [adminApi.reducerPath]: adminApi.reducer,
   [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
@@ -181,6 +183,7 @@ export const store = configureStore({
       aiResponseHistoryApi.middleware,
       aiResponseEvaluationApi.middleware,
       taskAiApi.middleware,
+      documentPermissionApi.middleware,
     ),
 });
 

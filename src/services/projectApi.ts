@@ -94,6 +94,7 @@ export interface WorkItemList {
   commentCount: number;
   sprintId: number | null;
   sprintName: string | null;
+  priority: string| null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
@@ -133,7 +134,7 @@ interface TaskItem {
   plannedResourceCost: number | null;
   actualCost: number | null;
   actualResourceCost: number | null;
-  priority: string;
+  priority: string| null;
   status: string;
   evaluate: string | null;
   createdAt: string;

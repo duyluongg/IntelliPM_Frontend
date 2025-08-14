@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import EpicPopup from '../../WorkItem/EpicPopup'; // Import WorkItem component
 
 interface Epic {
   id: string;
@@ -46,6 +47,7 @@ const calculateProgress = (
 
 const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
   const [expandedEpicId, setExpandedEpicId] = useState<string | null>(null);
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null); // State for WorkItem popup
 
   const mappedEpics: Epic[] = epics.map((epic) => {
     const progress = calculateProgress(
@@ -65,6 +67,14 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
       dueDate: formatDate(epic.endDate || epic.updatedAt),
     };
   });
+
+  const handleOpenWorkItem = (epicId: string) => {
+    setSelectedEpicId(epicId); // Open WorkItem with the selected epic's ID
+  };
+
+  const handleCloseWorkItem = () => {
+    setSelectedEpicId(null); // Close WorkItem
+  };
 
   return (
     <div className="w-full min-w-[250px] sm:w-1/3 md:w-1/4 p-4 bg-white border rounded shadow-sm flex flex-col">
@@ -100,11 +110,17 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
                     className="w-3 h-3 rounded-sm"
                     style={{ backgroundColor: epic.color || '#c97cf4' }}
                   />
-                  <span className="capitalize font-medium truncate max-w-[120px]">
+                  <span
+                    className="capitalize font-medium truncate max-w-[120px] hover:text-blue-600 hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent expanding/collapsing when clicking title
+                      handleOpenWorkItem(epic.id);
+                    }}
+                  >
                     {epic.name}
                   </span>
                 </div>
-                <MoreHorizontal className="w-4 h-4 text-gray-600" />
+               
               </div>
 
               <div className="flex h-2 overflow-hidden rounded-full bg-gray-200">
@@ -160,6 +176,13 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
         <Plus className="w-4 h-4" />
         Create epic
       </button>
+
+      {selectedEpicId && (
+        <EpicPopup
+          onClose={handleCloseWorkItem}
+          id={selectedEpicId}
+        />
+      )}
     </div>
   );
 };

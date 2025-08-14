@@ -63,15 +63,16 @@ interface ActionButtonsProps {
   isFormValid: boolean;
   onBack: () => Promise<void>;
   onNotifyMembers: () => Promise<void>;
+  onSave: () => Promise<void>; // Added onSave prop
 }
 
 interface ProjectOverviewProps {
-  formData: ProjectFormData;
   onBack: () => Promise<void>;
   onNotifyMembers: () => Promise<void>;
+  onSave: () => Promise<void>; // Added onSave prop
 }
 
-const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ formData, onBack, onNotifyMembers }) => {
+const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ onBack, onNotifyMembers, onSave }) => {
   const { projectKey: urlProjectKey } = useParams<{ projectKey: string }>();
 
   // Retrieve projectFormData from localStorage and parse it
@@ -86,25 +87,16 @@ const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ formData, onBack, o
     console.error('Error parsing projectFormData from localStorage:', e);
   }
 
-  // Use URL projectKey, then localStorage, then formData as fallback
-  const projectKey = urlProjectKey || storedProjectKey || formData.projectKey || '';
-
-  // Save projectKey to localStorage
-  useEffect(() => {
-    if (projectKey) {
-      // Update projectFormData in localStorage with the current projectKey
-      const updatedFormData = { ...formData, projectKey };
-      localStorage.setItem('projectFormData', JSON.stringify(updatedFormData));
-    }
-  }, [projectKey, formData]);
+  // Use URL projectKey or localStorage as fallback
+  const projectKey = urlProjectKey || storedProjectKey;
 
   // Fetch projectId using projectKey
   const { data: keyData, isLoading: isKeyLoading, error: keyError } = useGetProjectDetailsByKeyQuery(projectKey, {
     skip: !projectKey,
   });
 
-  // Extract projectId from keyData or formData
-  const projectId = keyData?.isSuccess && keyData.data ? keyData.data.id : formData.id || 0;
+  // Extract projectId from keyData or stored data
+  const projectId = keyData?.isSuccess && keyData.data ? keyData.data.id : storedProjectKey ? JSON.parse(localStorage.getItem('projectFormData') || '{}').id || 0 : 0;
 
   // Fetch full project details using projectId
   const { data, isLoading: isDetailsLoading, error: detailsError, refetch } = useGetProjectDetailsByIdQuery(projectId, {
@@ -114,6 +106,17 @@ const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ formData, onBack, o
   const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } = useGetCategoriesByGroupQuery('project_type', {
     skip: !projectId,
   });
+
+  // Load stored data for fallback values
+  let storedData: ProjectFormData | null = null;
+  try {
+    const rawData = localStorage.getItem('projectFormData');
+    if (rawData) {
+      storedData = JSON.parse(rawData);
+    }
+  } catch (e) {
+    console.error('Error parsing stored project data:', e);
+  }
 
   if (isKeyLoading || isDetailsLoading || isCategoryLoading) {
     return <div className="text-center py-10 text-gray-600">Loading...</div>;
@@ -147,18 +150,18 @@ const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ formData, onBack, o
 
       <ProjectInfoForm
         initialData={{
-          name: name || formData.name || 'Unnamed Project',
-          projectKey: key || formData.projectKey || 'N/A',
-          description: description || formData.description || 'No description',
-          budget: budget || formData.budget || 0,
-          projectType: projectType || formData.projectType || 'N/A',
-          startDate: startDate || formData.startDate || '2025-08-13',
-          endDate: endDate || formData.endDate || '2025-08-13',
+          name: name || storedData?.name || 'Unnamed Project',
+          projectKey: key || storedData?.projectKey || 'N/A',
+          description: description || storedData?.description || 'No description',
+          budget: budget || storedData?.budget || 0,
+          projectType: projectType || storedData?.projectType || 'N/A',
+          startDate: startDate || storedData?.startDate || '2025-08-13',
+          endDate: endDate || storedData?.endDate || '2025-08-13',
           status: status || 'DRAFT',
         }}
         projectId={projectId}
-        projectKeyOriginal={key || formData.projectKey}
-        projectNameOriginal={name || formData.name}
+        projectKeyOriginal={key || storedData?.projectKey || 'N/A'}
+        projectNameOriginal={name || storedData?.name || 'Unnamed Project'}
         onUpdate={refetch}
       />
 
@@ -177,11 +180,12 @@ const ProjectOverviewPM: React.FC<ProjectOverviewProps> = ({ formData, onBack, o
       <TasksAndEpicsTable projectId={projectId} />
 
       <ActionButtonsPMSend
-        projectKey={key || formData.projectKey}
+        projectKey={key || storedData?.projectKey || 'N/A'}
         projectId={projectId}
         isFormValid={!!projectId && !!name && !!key}
         onBack={onBack}
         onNotifyMembers={onNotifyMembers}
+        onSave={onSave} // Pass onSave prop
       />
     </div>
   );

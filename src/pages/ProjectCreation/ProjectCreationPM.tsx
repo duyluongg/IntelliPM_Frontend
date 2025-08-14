@@ -11,17 +11,11 @@ import RequirementsForm from './RequirementsForm/RequirementsForm';
 import InviteesForm from './InviteesForm/InviteesForm';
 import TaskSetupPM from './TaskSetup/PM/TaskSetupPM';
 import ProjectOverviewPM from './ProjectOverview/ProjectOverviewPM';
-import {
-  useGetProjectDetailsByIdQuery,
-  useCreateProjectMutation,
-  useSendInvitationsMutation,
-} from '../../services/projectApi';
+import { useGetProjectDetailsByIdQuery } from '../../services/projectApi';
 import { useGetEpicsByProjectIdQuery } from '../../services/epicApi';
 import type { ProjectDetailsById } from '../../services/projectApi';
 import type { EpicResponseDTO } from '../../services/epicApi';
-import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 
-// Extend EpicResponseDTO to include tasks
 interface ExtendedEpicResponseDTO extends EpicResponseDTO {
   tasks?: Array<{
     id?: number | string;
@@ -39,7 +33,7 @@ interface ExtendedEpicResponseDTO extends EpicResponseDTO {
   }>;
 }
 
-interface ProjectFormData {
+export interface ProjectFormData {
   id?: number;
   name: string;
   projectKey: string;
@@ -60,28 +54,6 @@ interface ProjectFormData {
     role: string;
     positions: string[];
     accountId?: number;
-  }>;
-  epics: Array<{
-    epicId: string;
-    title: string;
-    description: string;
-    startDate: string;
-    endDate: string;
-    backendEpicId?: string;
-    tasks?: Array<{
-      id: string;
-      taskId?: string;
-      title: string;
-      description: string;
-      startDate: string;
-      endDate: string;
-      suggestedRole: string;
-      assignedMembers: Array<{
-        accountId: number;
-        fullName: string;
-        picture: string;
-      }>;
-    }>;
   }>;
 }
 
@@ -110,13 +82,13 @@ interface InviteesFormProps {
 interface TaskSetupProps {
   projectId: number | undefined;
   projectKey: string;
-  handleNext: (data?: Partial<ProjectFormData>) => Promise<void>; // Updated signature
+  handleNext: (data?: Partial<ProjectFormData>) => Promise<void>;
 }
 
 interface ProjectOverviewProps {
-  formData: ProjectFormData;
   onBack: () => Promise<void>;
   onNotifyMembers: () => Promise<void>;
+  onSave: () => Promise<void>;
 }
 
 const steps = [
@@ -142,8 +114,6 @@ const ProjectCreationPM: React.FC = () => {
     return savedMaxStep ? parseInt(savedMaxStep, 10) : 0;
   });
 
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
   const [localFormData, setLocalFormData] = useState<ProjectFormData>(() => {
     const savedData = localStorage.getItem('projectFormData');
     if (savedData) {
@@ -156,9 +126,20 @@ const ProjectCreationPM: React.FC = () => {
           description: parsed.description || '',
           budget: parsed.budget || 0,
           projectType: parsed.projectType || '',
-          startDate: parsed.startDate || '2025-08-13',
-          endDate: parsed.endDate || '2025-08-13',
-          requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [],
+          startDate: parsed.startDate || '',
+          endDate: parsed.endDate || '',
+          requirements: Array.isArray(parsed.requirements)
+            ? parsed.requirements.map((req: any) => ({
+                id: req.id,
+                projectId: req.projectId ?? parsed.id ?? 0,
+                title: req.title || '',
+                type: req.type || '',
+                description: req.description || '',
+                priority: req.priority || '',
+                createdAt: req.createdAt,
+                updatedAt: req.updatedAt,
+              }))
+            : [],
           invitees: Array.isArray(parsed.invitees) ? parsed.invitees : [],
           epics: Array.isArray(parsed.epics) ? parsed.epics : [],
         };
@@ -172,26 +153,22 @@ const ProjectCreationPM: React.FC = () => {
       description: '',
       budget: 0,
       projectType: '',
-      startDate: '2025-08-13',
-      endDate: '2025-08-13',
+      startDate: '',
+      endDate: '',
       requirements: [],
       invitees: [],
       epics: [],
     };
   });
 
-  const { data: serverData, refetch: refetchServer, error: fetchError } = useGetProjectDetailsByIdQuery(
+  const { data: serverData, refetch: refetchServer } = useGetProjectDetailsByIdQuery(
     projectId || 0,
     { skip: !projectId }
   );
 
-  const { data: epicsData, error: epicsError } = useGetEpicsByProjectIdQuery(
-    projectId || 0,
-    { skip: !projectId }
-  );
-
-  const [createProject, { isLoading: isCreatingProject, error: createProjectError }] = useCreateProjectMutation();
-  const [sendInvitations, { isLoading: isSendingInvitations, error: sendInvitationsError }] = useSendInvitationsMutation();
+  const { data: epicsData } = useGetEpicsByProjectIdQuery(projectId || 0, {
+    skip: !projectId,
+  });
 
   // Restore projectId from localStorage
   useEffect(() => {
@@ -211,8 +188,8 @@ const ProjectCreationPM: React.FC = () => {
         description: serverData.data.description || '',
         budget: serverData.data.budget || 0,
         projectType: serverData.data.projectType || '',
-        startDate: serverData.data.startDate || '2025-08-13',
-        endDate: serverData.data.endDate || '2025-08-13',
+        startDate: serverData.data.startDate || '',
+        endDate: serverData.data.endDate || '',
         requirements: serverData.data.requirements || [],
         invitees:
           serverData.data.projectMembers?.map((member) => ({
@@ -221,46 +198,12 @@ const ProjectCreationPM: React.FC = () => {
             positions: member.projectPositions?.map((pos) => pos.position) || [],
             accountId: member.accountId,
           })) || [],
-        epics: (epicsData as ExtendedEpicResponseDTO[] | undefined)?.map((epic) => ({
-          epicId: epic.id?.toString() || crypto.randomUUID(),
-          title: epic.name || 'Untitled Epic',
-          description: epic.description || 'No description',
-          startDate: epic.startDate || '2025-08-13',
-          endDate: epic.endDate || '2025-08-13',
-          backendEpicId: epic.id?.toString(),
-          tasks: epic.tasks?.map((task) => ({
-            id: task.id?.toString() || crypto.randomUUID(),
-            taskId: task.id?.toString(),
-            title: task.title || 'Untitled Task',
-            description: task.description || 'No description',
-            startDate: task.startDate || '2025-08-13',
-            endDate: task.endDate || '2025-08-13',
-            suggestedRole: task.suggestedRole || 'Developer',
-            assignedMembers: task.assignedMembers?.map((member) => ({
-              accountId: member.accountId,
-              fullName: member.fullName || 'Unknown Member',
-              picture: member.picture || 'https://i.pravatar.cc/40',
-            })) || [],
-          })) || [],
-        })) || [],
       };
       setLocalFormData(updatedData);
       dispatch(setReduxFormData(updatedData));
       localStorage.setItem('projectFormData', JSON.stringify(updatedData));
     }
-    if (fetchError) {
-      const errorMessage = (fetchError as FetchBaseQueryError)?.data
-        ? ((fetchError as FetchBaseQueryError).data as { message: string }).message
-        : 'Failed to fetch project details.';
-      setErrorMessage(errorMessage);
-    }
-    if (epicsError) {
-      const errorMessage = (epicsError as FetchBaseQueryError)?.data
-        ? ((epicsError as FetchBaseQueryError).data as { message: string }).message
-        : 'Failed to fetch epics.';
-      setErrorMessage(errorMessage);
-    }
-  }, [serverData, epicsData, fetchError, epicsError, dispatch]);
+  }, [serverData, dispatch]);
 
   // Save to localStorage
   useEffect(() => {
@@ -279,104 +222,51 @@ const ProjectCreationPM: React.FC = () => {
     }
   }, [step, maxStepReached]);
 
-  // Handle errors from API calls
-  useEffect(() => {
-    if (createProjectError) {
-      const errorMessage = (createProjectError as FetchBaseQueryError)?.data
-        ? ((createProjectError as FetchBaseQueryError).data as { message: string }).message
-        : 'Failed to create project.';
-      setErrorMessage(errorMessage);
-    }
-    if (sendInvitationsError) {
-      const errorMessage = (sendInvitationsError as FetchBaseQueryError)?.data
-        ? ((sendInvitationsError as FetchBaseQueryError).data as { message: string }).message
-        : 'Failed to send invitations.';
-      setErrorMessage(errorMessage);
-    }
-  }, [createProjectError, sendInvitationsError]);
-
   const handleNext = async (data?: Partial<ProjectFormData>): Promise<void> => {
     if (data) {
       const newFormData = { ...localFormData, ...data };
       setLocalFormData(newFormData);
       dispatch(setReduxFormData(newFormData));
-      // Create project in step 0 if not exists
-      if (step === 0 && !projectId) {
-        try {
-          const projectData = {
-            name: newFormData.name,
-            projectKey: newFormData.projectKey,
-            description: newFormData.description,
-            budget: newFormData.budget,
-            projectType: newFormData.projectType,
-            startDate: newFormData.startDate,
-            endDate: newFormData.endDate,
-          };
-          const response = await createProject(projectData).unwrap();
-          if (response.isSuccess && response.data.id) {
-            dispatch(setProjectId(response.data.id));
-            setLocalFormData((prev) => ({ ...prev, id: response.data.id }));
-            localStorage.setItem('projectCreationId', response.data.id.toString());
-          } else {
-            setErrorMessage(response.message || 'Failed to create project.');
-            return;
-          }
-        } catch (error) {
-          const errorMessage = (error as FetchBaseQueryError)?.data
-            ? ((error as FetchBaseQueryError).data as { message: string }).message
-            : 'An error occurred while creating the project.';
-          setErrorMessage(errorMessage);
-          return;
-        }
-      }
     }
-
     if (step < steps.length - 1) {
       setStep((prev) => prev + 1);
     }
-    await refetchServer();
+    if (projectId) {
+      await refetchServer();
+    }
   };
 
   const handleBack = async () => {
     if (step > 0) {
       setStep((prev) => prev - 1);
     }
-    await refetchServer();
+    if (projectId) {
+      await refetchServer();
+    }
   };
 
   const handleStepClick = async (index: number) => {
     if (index <= maxStepReached) {
       setStep(index);
-      await refetchServer();
+      if (projectId) {
+        await refetchServer();
+      }
     }
   };
 
-  const handleNotifyMembers = async () => {
-    if (!projectId) {
-      setErrorMessage('Project ID is not available.');
-      return;
-    }
-    if (!localFormData.invitees.length) {
-      setErrorMessage('No members to notify. Please add members in the Invite Members step.');
-      return;
-    }
-    try {
-      const response = await sendInvitations(projectId).unwrap();
-      if (response.isSuccess) {
-        localStorage.removeItem('projectFormData');
-        localStorage.removeItem('projectCreationStep');
-        localStorage.removeItem('projectCreationMaxStep');
-        localStorage.removeItem('projectCreationId');
-        dispatch(setProjectId(0));
-        navigate('/project/list');
-      } else {
-        setErrorMessage(response.message || 'Failed to send invitations.');
-      }
-    } catch (error) {
-      const errorMessage = (error as FetchBaseQueryError)?.data
-        ? ((error as FetchBaseQueryError).data as { message: string }).message
-        : 'An error occurred while sending invitations.';
-      setErrorMessage(errorMessage);
+  const handleSubmit = async (): Promise<void> => {
+    localStorage.removeItem('projectFormData');
+    localStorage.removeItem('projectCreationStep');
+    localStorage.removeItem('projectCreationMaxStep');
+    localStorage.removeItem('projectCreationId');
+    dispatch(setProjectId(0));
+    navigate('/project/list');
+  };
+
+  const handleSave = async (): Promise<void> => {
+    // Ensure localFormData is saved to localStorage (already handled by useEffect)
+    if (projectId) {
+      await refetchServer();
     }
   };
 
@@ -429,17 +319,9 @@ const ProjectCreationPM: React.FC = () => {
       case 4:
         return (
           <ProjectOverviewPM
-            formData={{
-              ...localFormData,
-              requirements: localFormData.requirements.map((req) => ({
-            ...req,
-            projectId: localFormData.id ?? 0,
-            createdAt: (req as any).createdAt ?? undefined,
-            updatedAt: (req as any).updatedAt ?? undefined,
-              })),
-            }}
             onBack={handleBack}
-            onNotifyMembers={handleNotifyMembers}
+            onNotifyMembers={handleSubmit}
+            onSave={handleSave}
           />
         );
       default:
@@ -450,17 +332,6 @@ const ProjectCreationPM: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 pt-12 pb-8">
-        {errorMessage && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-            {errorMessage}
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="ml-4 text-red-900 hover:text-red-700"
-            >
-              Close
-            </button>
-          </div>
-        )}
         <div className="relative flex justify-between items-center mb-16">
           {steps.map((label, index) => (
             <div key={index} className="flex-1 flex flex-col items-center relative group">
@@ -488,7 +359,7 @@ const ProjectCreationPM: React.FC = () => {
                     className="w-6 h-6 checkmark"
                     fill="none"
                     stroke="currentColor"
-                    viewBox="0 24 24"
+                    viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>

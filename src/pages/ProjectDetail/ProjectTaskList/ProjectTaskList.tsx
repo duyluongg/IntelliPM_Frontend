@@ -40,9 +40,9 @@ import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
-import UnifiedFilter from '../ProjectTaskList/UnifiedFilter'
-import ExportDropdown from '../ProjectTaskList/ExportDropdownProps'
-import CreateWorkItemModal from './CreateWorkItemModal'
+import UnifiedFilter from '../ProjectTaskList/UnifiedFilter';
+import ExportDropdown from '../ProjectTaskList/ExportDropdownProps';
+import CreateWorkItemModal from './CreateWorkItemModal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -62,7 +62,7 @@ interface UpdateTaskRequestDTO {
   plannedEndDate: string;
   status: string;
   assignedBy: number | null;
-  priority: string| null;
+  priority: string | null;
   createdBy: number;
 }
 
@@ -73,7 +73,7 @@ interface UpdateEpicRequestDTO {
   startDate: string;
   endDate: string;
   status: string;
-  priority: string| null;
+  priority: string | null;
   reporterId: number | null;
   assignedBy: number | null;
   createdBy: number;
@@ -90,7 +90,7 @@ interface UpdateSubtaskRequestDTO {
   status: string;
   reporterId: number;
   assignedBy: number;
-  priority: string| null;
+  priority: string | null;
   createdBy: number;
   sprintId: number;
 }
@@ -129,7 +129,7 @@ interface TaskItem {
   comments: number;
   sprint?: number | null;
   sprintName?: string | null;
-  priority: string| null;
+  priority: string | null;
   assignees: TaskAssignee[];
   dueDate?: string | null;
   labels?: string[];
@@ -162,22 +162,52 @@ interface HeaderBarProps {
   onExportPDF: () => void;
   onCreate: () => void;
   onViewAsChart: () => void;
-  refetchWorkItems: () =>void;
+  refetchWorkItems: () => void;
 }
 
 const Status: React.FC<{ status: string }> = ({ status }) => {
+  const {
+    data: taskStatus,
+    isLoading: loadTaskStatus,
+    isError: taskStatusError,
+  } = useGetCategoriesByGroupQuery('task_status');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const taskStatusLabel =
+    taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
+  const {
+    data: taskTypes,
+    isLoading: isLoadingTaskType,
+    isError: isTaskTypeError,
+  } = useGetCategoriesByGroupQuery('task_type');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('task_priority');
+
   const formatStatusForDisplay = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'to_do':
-        return 'TO DO';
-      case 'in_progress':
-        return 'IN PROGRESS';
-      case 'done':
-        return 'DONE';
-      default:
-        return status;
-    }
+    return (
+      taskStatus?.data.find((s) => s.name === status)?.label ||
+      status.replace('_', ' ').toUpperCase()
+    );
   };
+
+  // const formatStatusForDisplay = (status: string) => {
+  //   switch (status.toLowerCase()) {
+  //     case 'to_do':
+  //       return 'TO DO';
+  //     case 'in_progress':
+  //       return 'IN PROGRESS';
+  //     case 'done':
+  //       return 'DONE';
+  //     default:
+  //       return status;
+  //   }
+  // };
 
   const getStatusStyle = () => {
     switch (status.toLowerCase()) {
@@ -556,8 +586,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           >
             <FaEllipsisV />
           </button>
-          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}>
-          </button>
+          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}></button>
           {isMenuDropdownOpen && (
             <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
@@ -585,12 +614,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       <CreateWorkItemModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        projectId={projectId || 0} 
+        projectId={projectId || 0}
         refetchWorkItems={refetchWorkItems}
       />
     </div>
   );
-
 };
 
 // ProjectTaskList Component
@@ -607,6 +635,11 @@ const ProjectTaskList: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
   const [selectedDueDate, setSelectedDueDate] = useState<string>('');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('task_priority');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -832,7 +865,10 @@ const ProjectTaskList: React.FC = () => {
           createdBy: accountId,
         };
         // Ensure priority is always a string (never null)
-        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? 'MEDIUM',
+        }).unwrap();
       } else {
         const taskData: UpdateTaskRequestDTO = {
           reporterId: item.reporterId || null,
@@ -912,7 +948,10 @@ const ProjectTaskList: React.FC = () => {
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? 'MEDIUM',
+        }).unwrap();
       } else {
         if (field === 'reporter') {
           const taskData: UpdateTaskRequestDTO = {
@@ -987,7 +1026,10 @@ const ProjectTaskList: React.FC = () => {
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask({ ...subtaskData, priority: subtaskData.priority ?? 'MEDIUM' }).unwrap();
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? 'MEDIUM',
+        }).unwrap();
       } else {
         await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
       }
@@ -1229,8 +1271,17 @@ const ProjectTaskList: React.FC = () => {
       !selectedCreatedDate ||
       new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
     const matchesDue =
-      !selectedDueDate || (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
-    return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
+      !selectedDueDate ||
+      (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesType &&
+      matchesLabel &&
+      matchesMember &&
+      matchesCreated &&
+      matchesDue
+    );
   });
 
   const handleCreate = () => {
@@ -1582,18 +1633,35 @@ const ProjectTaskList: React.FC = () => {
                       ''
                     )}
                   </td>
-                   <td
+                  <td
                     style={{ width: `${columnWidths.priority}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
-                    {task.priority ? (
-                      <span className='px-2 py-0.5  text-xs text-gray-800'>
-                        {task.priority}
-                      </span>
-                    ) : (
-                      ''
-                    )}
+                    {task.priority
+                      ? (() => {
+                          const priorityInfo = priorityOptions?.data?.find(
+                            (p) =>
+                              task.priority != null &&
+                              p.name.toLowerCase() === task.priority.toLowerCase()
+                          );
+                          return priorityInfo ? (
+                            <span className='flex items-center gap-1'>
+                              {priorityInfo.iconLink && (
+                                <img
+                                  src={priorityInfo.iconLink}
+                                  alt={priorityInfo.label}
+                                  className='w-4 h-4 object-contain'
+                                />
+                              )}
+                              <span className='text-xs'>{priorityInfo.label}</span>
+                            </span>
+                          ) : (
+                            <span className='text-xs'>{task.priority}</span>
+                          );
+                        })()
+                      : null}
                   </td>
+
                   <td
                     style={{ width: `${columnWidths.assignee}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'

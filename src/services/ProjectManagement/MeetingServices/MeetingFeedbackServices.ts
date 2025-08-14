@@ -11,6 +11,7 @@ export interface MeetingFeedback {
   transcriptText: string;
   isApproved: boolean;
   meetingTopic: string;
+  meetingStatus:string;
 }
 
 export interface MyMeeting {
@@ -36,6 +37,13 @@ export interface RejectedFeedback {
   status: string;
   createdAt: string;
   accountName: string;
+}
+export interface UpdateFeedbackPayload {
+  id: number;             // feedbackId trên URL
+  meetingId: number;
+  accountId: number;
+  feedbackText: string;
+  status: string;         // ví dụ: "Reject" (đúng theo backend yêu cầu)
 }
 
 export const meetingFeedbackApi = createApi({
@@ -79,6 +87,10 @@ export const meetingFeedbackApi = createApi({
     getMyMeetings: builder.query<MyMeeting[], void>({
       query: () => 'meetings/my',
     }),
+        getMeetingFeedbackByTranscriptId: builder.query<MeetingFeedback, number>({
+      // ví dụ curl: GET /api/meeting-summaries/detail/10
+      query: (transcriptId) => `meeting-summaries/detail/${transcriptId}`,
+    }),
 
     // ✅ Lấy rejected feedbacks theo meeting
     getRejectedFeedbacks: builder.query<RejectedFeedback[], number>({
@@ -93,6 +105,23 @@ deleteMeetingSummary: builder.mutation<void, number>({
   }),
 }),
 
+// 🆕 PUT /milestonefeedback/update-feedback/{id}
+    updateFeedback: builder.mutation<void, UpdateFeedbackPayload>({
+      query: ({ id, meetingId, accountId, feedbackText, status }) => ({
+        url: `milestonefeedback/update-feedback/${id}`,
+        method: 'PUT',
+        body: { meetingId, accountId, feedbackText, status },
+      }),
+    }),
+
+    // 🆕 DELETE /milestonefeedback/delete-feedback/{id}
+    deleteFeedback: builder.mutation<void, number>({
+      query: (id) => ({
+        url: `milestonefeedback/delete-feedback/${id}`,
+        method: 'DELETE',
+      }),
+    }),
+
   }),
 });
 
@@ -105,5 +134,8 @@ export const {
   useGetMyMeetingsQuery,
   useLazyGetRejectedFeedbacksQuery,
  useDeleteMeetingSummaryMutation,
+  useUpdateFeedbackMutation,
+  useDeleteFeedbackMutation,
+  useGetMeetingFeedbackByTranscriptIdQuery,
 
 } = meetingFeedbackApi;

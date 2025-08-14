@@ -11,6 +11,7 @@ import Risk from '../../PM/Risk/Risk';
 import Backlog from '../BacklogPage/BacklogPage';
 import KanbanBoardPage from '../KanbanBoardPage/KanbanBoardPage';
 import MilestonePage from '../MilestonePage/MilestonePage';
+import TaskSubtaskSheet from '../../PM/ProjectSheet/TaskSubtaskSheet';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -39,6 +40,7 @@ const ProjectDetailPage = () => {
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
+        {activeTab === 'sheet' && <TaskSubtaskSheet />}
         {/* {activeTab === 'tests' && <Doc/>} */}
 
         {/* Add more tabs as needed */}

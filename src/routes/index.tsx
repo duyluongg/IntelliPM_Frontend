@@ -24,9 +24,10 @@ import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskL
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+import ProjectCreatitonPM from '../pages/ProjectCreation/ProjectCreationPM';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
-import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
+import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectReviewPM';
 import ProjectSummary from '../pages/ProjectDetail/ProjectSummary/ProjectSummary';
 // import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
@@ -73,10 +74,10 @@ export const router = createBrowserRouter([
     path: '/feature',
     element: <FeatureGuidePage />,
   },
-      {
-        path: 'intro',
-        element: <GuestIntroPage />,
-      },
+  {
+    path: 'intro',
+    element: <GuestIntroPage />,
+  },
   {
     path: '/',
     element: <RootLayout />,
@@ -195,6 +196,10 @@ export const router = createBrowserRouter([
         element: <ProjectCreation />,
       },
       {
+        path: `pm/createform`,
+        element: <ProjectCreatitonPM />,
+      },
+      {
         path: `list`,
         element: <ProjectList />,
       },
@@ -206,7 +211,7 @@ export const router = createBrowserRouter([
         path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
       },
-            {
+      {
         path: `:projectKey/complete`,
         element: <ProjectComplete />,
       },

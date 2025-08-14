@@ -212,7 +212,7 @@ const ProjectComplete: React.FC = () => {
                   Close
                 </button>
                 <button
-                  onClick={() => navigate(`/project/${projectKey}/sprints`)}
+                  onClick={() => navigate(`/project?projectKey=${projectKey}#backlog`)}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm transition-all duration-300"
                   aria-label="Go to sprints"
                 >

@@ -25,6 +25,7 @@ export const activityLogApi = createApi({
   reducerPath: 'activityLogApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
+    
     // Uncomment nếu cần auth token
     // prepareHeaders: (headers) => {
     //   const token = localStorage.getItem('accessToken');
@@ -34,30 +35,36 @@ export const activityLogApi = createApi({
     //   return headers;
     // },
   }),
+  tagTypes: ['ActivityLogs'],
   endpoints: (builder) => ({
     getActivityLogsByProjectId: builder.query<ActivityLogResponseDTO[], number>({
       query: (projectId) => `activitylog/project/${projectId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
     }),
 
     getActivityLogsByTaskId: builder.query<ActivityLogResponseDTO[], string>({
       query: (taskId) => `activitylog/task/${taskId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
     }),
 
     getActivityLogsByEpicId: builder.query<ActivityLogResponseDTO[], string>({
       query: (epicId) => `activitylog/epic/${epicId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
     }),
 
     getActivityLogsBySubtaskId: builder.query<ActivityLogResponseDTO[], string>({
       query: (subtaskId) => `activitylog/subtask/${subtaskId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
     }),
 
     getActivityLogsByRiskKey: builder.query<ActivityLogResponseDTO[], string>({
       query: (riskKey) => `activitylog/risk/${riskKey}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
     }),
   }),
 });

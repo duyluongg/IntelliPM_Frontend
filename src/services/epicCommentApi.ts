@@ -37,6 +37,7 @@ export const epicCommentApi = createApi({
             return headers;
         },
     }),
+    tagTypes: ['EpicComments', 'ActivityLogs'],
     endpoints: (builder) => ({
         getCommentsByEpicId: builder.query<EpicCommentDTO[], string>({
             query: (epicId) => ({
@@ -44,6 +45,7 @@ export const epicCommentApi = createApi({
                 method: 'GET',
             }),
             transformResponse: (response: EpicCommentListResponse) => response.data,
+            providesTags: ['EpicComments'],
         }),
 
         createEpicComment: builder.mutation<void, { epicId: string; accountId: number; content: string; createdBy: number }>({
@@ -52,6 +54,7 @@ export const epicCommentApi = createApi({
                 method: 'POST',
                 body: payload,
             }),
+            invalidatesTags: ['EpicComments', 'ActivityLogs'],
         }),
 
         updateEpicComment: builder.mutation<void, { id: number; epicId: string; accountId: number; content: string, createdBy: number }>({
@@ -60,14 +63,34 @@ export const epicCommentApi = createApi({
                 method: 'PUT',
                 body,
             }),
+            invalidatesTags: ['EpicComments', 'ActivityLogs'],
         }),
 
-        deleteEpicComment: builder.mutation<void, { id: number; createdBy: number }>({
-            query: ({id, createdBy}) => ({
+        deleteEpicComment: builder.mutation<void, { id: number; createdBy: number, epicId: string }>({
+            query: ({ id, createdBy }) => ({
                 url: `epiccomment/${id}`,
                 method: 'DELETE',
                 body: { createdBy },
             }),
+            invalidatesTags: ['EpicComments', 'ActivityLogs'],
+            async onQueryStarted({ id, epicId }, { dispatch, queryFulfilled }) {
+                const patchResult = dispatch(
+                    epicCommentApi.util.updateQueryData('getCommentsByEpicId', epicId, (draft) => {
+                        const index = draft.findIndex((comment) => comment.id === id);
+                        if (index !== -1) {
+                            draft.splice(index, 1);
+                        }
+                    })
+                );
+                try {
+                    await queryFulfilled;
+                    console.log('Comment deleted successfully, ID:', id, 'Epic ID:', epicId);
+                } catch (err) {
+                    patchResult.undo();
+                    dispatch(epicCommentApi.util.invalidateTags(['EpicComments']));
+                    console.error('Failed to delete comment:', err);
+                }
+            },
         }),
     }),
 });

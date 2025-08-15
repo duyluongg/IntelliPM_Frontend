@@ -184,7 +184,7 @@ export const epicApi = createApi({
       { projectId: number; data: EpicWithTaskRequestDTO[] }
     >({
       query: ({ projectId, data }) => ({
-        url: `epic/projects/${projectId}/epics/batch`,
+        url: `epic/projects/${projectId}/stories/batch`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

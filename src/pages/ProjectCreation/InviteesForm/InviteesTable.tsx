@@ -57,6 +57,7 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
   getFullnameFromEmail,
 }) => {
   const projectManagers = invitees.filter((inv) => inv.role === 'Project Manager');
+  const teamLeaders = invitees.filter((inv) => inv.role === 'Team Leader');
   const teamMembers = invitees.filter((inv) => inv.role === 'Team Member');
   const clients = invitees.filter((inv) => inv.role === 'Client');
   const [profilePopupMember, setProfilePopupMember] = useState<string | null>(null);
@@ -136,6 +137,70 @@ const InviteesTable: React.FC<InviteesTableProps> = ({
                     <td className='px-6 py-4 flex items-center justify-center'>
                       <button
                         onClick={() => handleProfilePopupOpen(manager.email)}
+                        className='bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white p-2 rounded-lg transition duration-200 ease-in-out'
+                        aria-label='View profile'
+                      >
+                        <BookUser size={20} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {teamLeaders.length > 0 && (
+        <div className='p-6 bg-gradient-to-br from-[#e6f0fd] to-white rounded-xl shadow-lg border border-[#d1e0f8]'>
+          <h3 className='text-xl font-semibold text-[#1c73fd] mb-4'>Team Leaders</h3>
+          <div className='overflow-x-auto'>
+            <table className='w-full bg-white rounded-lg border-collapse border border-[#d1e0f8] min-w-[700px] md:min-w-[500px]'>
+              <thead>
+                <tr className='bg-[#e6f0fd] text-left text-sm font-medium text-[#1c73fd]'>
+                  <th className='px-4 py-4 border-b-2 border-[#d1e0f8] min-w-[60px] text-center'>Avatar</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[220px]'>Email</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[160px]'>Fullname</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[160px]'>Positions</th>
+                  <th className='px-6 py-4 border-b-2 border-[#d1e0f8] min-w-[150px] text-center'>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamLeaders.map((leader) => (
+                  <tr key={leader.email} className='hover:bg-[#e6f0fd] transition-colors'>
+                    <td className='px-4 py-4 text-center'>
+                      {leader.avatar && (
+                        <img
+                          src={leader.avatar}
+                          alt={`${getFullnameFromEmail(leader.email)} avatar`}
+                          className='w-8 h-8 rounded-full mx-auto'
+                        />
+                      )}
+                    </td>
+                    <td className='px-6 py-4 text-sm'>{leader.email}</td>
+                    <td className='px-6 py-4 text-sm'>{getFullnameFromEmail(leader.email)}</td>
+                    <td className='px-6 py-4'>
+                      <div className='flex flex-wrap gap-1.5'>
+                        {leader.positions.map((position) => (
+                          <span
+                            key={position}
+                            className='bg-[#e6f0fd] text-[#1c73fd] text-[14px] px-2 py-1 rounded-full hover:bg-[#d1e0f8] transition'
+                          >
+                            {formatPosition(position)}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className='px-6 py-4 flex items-center justify-center gap-3'>
+                      <button
+                        onClick={() => handlePositionPopupOpen(leader.email)}
+                        className='bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white p-2 rounded-lg transition duration-200 ease-in-out'
+                        aria-label='Add positions'
+                      >
+                        <Plus size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleProfilePopupOpen(leader.email)}
                         className='bg-[#e6f0fd] text-[#1c73fd] hover:bg-[#1c73fd] hover:text-white p-2 rounded-lg transition duration-200 ease-in-out'
                         aria-label='View profile'
                       >

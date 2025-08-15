@@ -151,7 +151,7 @@ const Avatar = ({
             .substring(0, 2)}
         </div>
       )}
-      <span className='text-xs text-gray-800 truncate max-w-[80px]'>{displayName}</span>
+      <span className='text-xs text-gray-800'>{displayName}</span>
       {onDelete && isHovered && (
         <button
           onClick={onDelete}
@@ -209,22 +209,60 @@ const TaskList: React.FC<TaskListProps> = ({
     type: 'TASK';
   } | null>(null);
   const [expandedEpics, setExpandedEpics] = useState<{ [key: string]: boolean }>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Initialize and update expandedEpics when epics prop changes
+  useEffect(() => {
+    // Log epicIds to check for duplicates
+    console.log('Epics:', epics.map((epic) => ({ id: epic.epicId, title: epic.title })));
+    
+    // Check for duplicate epicIds
+    const epicIds = epics.map((epic) => epic.epicId);
+    const uniqueEpicIds = new Set(epicIds);
+    if (uniqueEpicIds.size !== epicIds.length) {
+      console.warn('Duplicate epicIds detected:', epicIds);
+    }
+
+    setExpandedEpics((prev) => {
+      const newState = { ...prev };
+      // Add new epics with default false state
+      epics.forEach((epic) => {
+        if (!(epic.epicId in newState)) {
+          newState[epic.epicId] = false;
+        }
+      });
+      // Remove epics that no longer exist
+      Object.keys(newState).forEach((epicId) => {
+        if (!epics.some((e) => e.epicId === epicId)) {
+          delete newState[epicId];
+        }
+      });
+      console.log('Updated expandedEpics:', newState);
+      return newState;
+    });
+  }, [epics]);
+
+  const toggleEpic = (epicId: string) => {
+    setExpandedEpics((prev) => {
+      const newState = {
+        ...prev,
+        [epicId]: !prev[epicId],
+      };
+      console.log(`Toggled epic ${epicId}:`, newState);
+      return newState;
+    });
+  };
 
   const toggleAllEpics = () => {
     const allExpanded = Object.values(expandedEpics).every((isExpanded) => isExpanded);
-    const newExpandedState = epics.reduce((acc, epic) => {
-      acc[epic.epicId] = !allExpanded;
-      return acc;
-    }, {} as { [key: string]: boolean });
-    setExpandedEpics(newExpandedState);
-  };
-
-  const toggleEpic = (epicId: string) => {
-    setExpandedEpics((prev) => ({
-      ...prev,
-      [epicId]: !prev[epicId],
-    }));
+    setExpandedEpics((prev) => {
+      const newState: { [key: string]: boolean } = {};
+      Object.keys(prev).forEach((epicId) => {
+        newState[epicId] = !allExpanded;
+      });
+      console.log('Toggled all epics:', newState);
+      return newState;
+    });
   };
 
   useEffect(() => {
@@ -307,6 +345,10 @@ const TaskList: React.FC<TaskListProps> = ({
         alert('This member is already assigned.');
         return;
       }
+      if (item.assignees.length >= 3) {
+        alert('A task can have a maximum of 3 assignees.');
+        return;
+      }
       handleAddMember(item.epicId!, item.id, member.accountId);
     }
     setShowMemberDropdown(null);
@@ -347,6 +389,20 @@ const TaskList: React.FC<TaskListProps> = ({
           @keyframes gradientLoading {
             0% { background-position: 200% 50%; }
             100% { background-position: 0% 50%; }
+          }
+          .title-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 4.2em; /* Approximately 3 lines at line-height 1.4 */
+            overflow: hidden;
+          }
+          .assignee-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 5.6em; /* Approximately 3 assignees at ~1.4em each */
+            overflow: hidden;
           }
         `}
       </style>
@@ -433,6 +489,7 @@ const TaskList: React.FC<TaskListProps> = ({
                             <button
                               onClick={() => toggleEpic(epic.epicId)}
                               className='focus:outline-none'
+                              aria-expanded={expandedEpics[epic.epicId] || false}
                             >
                               <svg
                                 className={`w-5 h-5 transform transition-transform ${
@@ -455,7 +512,7 @@ const TaskList: React.FC<TaskListProps> = ({
                           <td className='p-2'>
                             <img src={epicIcon} alt='Epic' className='w-6 h-6 rounded p-1' />
                           </td>
-                          <td className='p-2 whitespace-nowrap'>
+                          <td className='p-2 title-cell'>
                             {editingCell?.id === epicRow.id && editingCell?.field === 'title' ? (
                               <input
                                 type='text'
@@ -467,7 +524,7 @@ const TaskList: React.FC<TaskListProps> = ({
                               />
                             ) : (
                               <span
-                                className='cursor-pointer truncate'
+                                className='cursor-pointer'
                                 onClick={() => handleEditClick(epicRow.id, 'title', epicRow.title)}
                               >
                                 {epicRow.title}
@@ -521,7 +578,9 @@ const TaskList: React.FC<TaskListProps> = ({
                               </span>
                             )}
                           </td>
-                          <td className='p-2'></td>
+                          <td className='p-2 assignee-cell'>
+                            <span className='text-gray-500 text-xs'>-</span>
+                          </td>
                           <td className='p-2'>
                             <button
                               onClick={() => handleDetailsClick(epicRow)}
@@ -554,7 +613,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     className='w-5 h-5 rounded p-0.5'
                                   />
                                 </td>
-                                <td className='p-2 whitespace-nowrap'>
+                                <td className='p-2 title-cell'>
                                   {editingCell?.id === item.id && editingCell?.field === 'title' ? (
                                     <input
                                       type='text'
@@ -566,7 +625,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     />
                                   ) : (
                                     <span
-                                      className='cursor-pointer truncate'
+                                      className='cursor-pointer'
                                       onClick={() => handleEditClick(item.id, 'title', item.title)}
                                     >
                                       {item.title}
@@ -625,7 +684,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className='p-2 relative'>
+                                <td className='p-2 relative assignee-cell'>
                                   {showMemberDropdown?.id === item.id && item.type === 'TASK' ? (
                                     <div
                                       ref={dropdownRef}
@@ -670,7 +729,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                                 </div>
                                               )}
                                             </div>
-                                            <span className='text-gray-900 font-medium truncate'>
+                                            <span className='text-gray-900 font-medium'>
                                               {member.fullName}
                                             </span>
                                           </div>
@@ -680,7 +739,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                   ) : (
                                     <div
                                       onClick={() => handleShowMemberDropdown(item.id, item.type)}
-                                      className='inline-flex flex-nowrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
+                                      className='inline-flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
                                     >
                                       {item.type === 'TASK' && item.assignees.length ? (
                                         item.assignees.map((assignee, index) => (

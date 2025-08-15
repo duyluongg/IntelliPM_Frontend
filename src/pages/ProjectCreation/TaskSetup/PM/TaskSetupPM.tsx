@@ -620,7 +620,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 rounded-3xl shadow-xl">
+    <div className="max-w-7xl mx-auto p-6 bg-white rounded-3xl shadow-xl">
       <TaskSetupHeader
         projectData={projectData}
         projectKey={projectKey}

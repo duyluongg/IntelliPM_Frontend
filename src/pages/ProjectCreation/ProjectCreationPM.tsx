@@ -228,9 +228,11 @@ const ProjectCreationPM: React.FC = () => {
       setLocalFormData(newFormData);
       dispatch(setReduxFormData(newFormData));
     }
+    
     if (step < steps.length - 1) {
-      setStep((prev) => prev + 1);
+      setStep(step + 1);
     }
+    
     if (projectId) {
       await refetchServer();
     }
@@ -238,8 +240,9 @@ const ProjectCreationPM: React.FC = () => {
 
   const handleBack = async () => {
     if (step > 0) {
-      setStep((prev) => prev - 1);
+      setStep(step - 1);
     }
+    
     if (projectId) {
       await refetchServer();
     }
@@ -264,7 +267,6 @@ const ProjectCreationPM: React.FC = () => {
   };
 
   const handleSave = async (): Promise<void> => {
-    // Ensure localFormData is saved to localStorage (already handled by useEffect)
     if (projectId) {
       await refetchServer();
     }

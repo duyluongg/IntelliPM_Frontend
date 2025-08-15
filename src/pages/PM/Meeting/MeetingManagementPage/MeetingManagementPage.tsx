@@ -67,6 +67,7 @@ useEffect(() => {
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
     useGetMeetingsManagedByQuery(accountId!, { skip: !accountId });
+    console.log(meetings)
     
 
   const [deleteMeeting] = useDeleteMeetingMutation();
@@ -494,6 +495,8 @@ onClick={() => {
     </DialogTrigger>
     <AttendanceModal
       meetingTopic={selectedMeeting?.meetingTopic}
+      projectId={selectedMeeting?.projectId}
+      meetingStatus={selectedMeeting?.status}
       participants={participants}
       draft={attendanceDraft}
       setDraft={setAttendanceDraft}

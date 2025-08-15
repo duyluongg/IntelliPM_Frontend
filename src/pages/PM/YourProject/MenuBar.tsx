@@ -86,15 +86,16 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
     documentId,
     { skip: !hasValidDocId }
   );
-  const { data: permissionData, isSuccess: isPermissionSuccess } = useGetPermissionTypeByDocumentQuery(documentId, {
-    skip: !documentId,
-  });
+  const { data: permissionData, isSuccess: isPermissionSuccess } =
+    useGetPermissionTypeByDocumentQuery(documentId, {
+      skip: !documentId,
+    });
 
   useEffect(() => {
-  if (isPermissionSuccess && permissionData?.permissionType) {
-    setPermission(permissionData.permissionType);
-  }
-}, [isPermissionSuccess, permissionData]);
+    if (isPermissionSuccess && permissionData?.permissionType) {
+      setPermission(permissionData.permissionType);
+    }
+  }, [isPermissionSuccess, permissionData]);
 
   const sharedUsers = sharedData?.data || [];
   const [exportDocument] = useExportDocumentMutation();
@@ -293,6 +294,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
       toast.error('Please enter at least one email');
       return;
     }
+    console.log(projectKey);
 
     if (!projectKey) {
       toast.error('Missing project key!');

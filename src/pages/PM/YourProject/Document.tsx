@@ -48,6 +48,7 @@ import { skipToken } from '@reduxjs/toolkit/query';
 import DocumentRealtimeBridge from './DocumentRealtimeBridge';
 import toast from 'react-hot-toast';
 import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/documentPermissionAPI';
+import type { DocumentVisibility } from '../../../types/DocumentType';
 
 interface CommentItem {
   id: number | string;
@@ -72,10 +73,10 @@ export const Document: React.FC = () => {
   const navigate = useNavigate();
   const { documentId } = useParams();
 
-  const docId = documentId ? Number(documentId) : skipToken;
+  const numericDocId = documentId ? Number(documentId) : undefined;
   const { data: permResp, refetch: refetchPermission } = useGetPermissionTypeByDocumentQuery(
-    docId!,
-    { skip: !docId }
+    numericDocId!,
+    { skip: !numericDocId }
   );
   // thêm ref:
   const isHydratedRef = useRef(false);
@@ -85,7 +86,7 @@ export const Document: React.FC = () => {
     isLoading,
     isError,
     refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(docId);
+  } = useGetDocumentByIdQuery(numericDocId ?? skipToken);
 
   const {
     content: initialContent,
@@ -98,7 +99,8 @@ export const Document: React.FC = () => {
 
   const { user } = useAuth();
   const isOwner = !!user && !!createdBy && user.id === createdBy;
-  const permissionType = permResp?.permissionType ?? permResp?.data?.permissionType ?? 'VIEW';
+  const permissionType = permResp?.permissionType ?? 'VIEW';
+
   const canEdit = isOwner ? true : permissionType === 'EDIT';
 
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
@@ -161,7 +163,7 @@ export const Document: React.FC = () => {
   );
 
   const debouncedSaveRef = useRef(
-    debounce((html: string, docVisibility: string | undefined) => {
+    debounce((html: string, docVisibility?: DocumentVisibility) => {
       if (documentId) {
         updateDocument({
           id: Number(documentId),
@@ -459,25 +461,21 @@ export const Document: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>
-      {docId && (
+      {typeof numericDocId === 'number' && (
         <DocumentRealtimeBridge
-          documentId={docId}
+          documentId={numericDocId}
           onPermissionChanged={() => {
             toast.success('Quyền tài liệu đã được cập nhật!');
             refetchPermission();
           }}
           onDocumentUpdated={() => {
-            // Thêm phản hồi cho người dùng và để dễ gỡ lỗi
             toast('Tài liệu vừa được cập nhật bởi người khác.', { icon: '🔄' });
-
-            // BƯỚC QUAN TRỌNG: Hủy bỏ mọi thay đổi đang chờ lưu
             debouncedSaveRef.current.cancel();
-
-            // Tải lại dữ liệu mới
             refetchDocument();
           }}
         />
       )}
+
       {editor && canEdit && isHydratedRef.current && (
         <MenuBar
           editor={editor}
@@ -589,4 +587,3 @@ export const Document: React.FC = () => {
 };
 
 export default Document;
-

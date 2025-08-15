@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
+import Swal from 'sweetalert2';
 import { useAuth, type Role } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
@@ -31,6 +32,7 @@ import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '.
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import { useGetProjectByIdQuery } from '../../services/projectApi';
 
 interface SubtaskDetail {
   id: string;
@@ -175,6 +177,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       skip: !projectId,
     });
 
+  const { data: projectData,
+    isLoading: isProjectDataLoading,
+    refetch: refetchProjectData, } = useGetProjectByIdQuery(projectId!, {
+      skip: !projectId,
+    });
+
   const { data: projectLabels = [], isLoading: isProjectLabelsLoading,
     refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(projectId!, {
       skip: !projectId,
@@ -212,7 +220,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         subtaskId: subtaskDetail?.id,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([
@@ -221,7 +229,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       ]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -289,7 +297,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       await refetchActivityLogs();
     } catch (err) {
       console.error('❌ Failed to update subtask', err);
-      alert('❌ Update failed');
+      //alert('❌ Update failed');
     }
   };
 
@@ -305,12 +313,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      alert(`✅ Uploaded file "${file.name}" successfully!`);
+      //alert(`✅ Uploaded file "${file.name}" successfully!`);
       refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Upload failed:', error);
-      alert('❌ Upload failed!');
+      //alert('❌ Upload failed!');
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -333,25 +341,25 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       await refetchActivityLogs();
     } catch (error) {
       console.error("❌ Error delete file:", error);
-      alert("❌ Delete file failed");
+      //alert("❌ Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
 
-  const handleDeleteFile = async (id: number, createdBy: number) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
-    try {
-      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
-      alert('✅ File deleted!');
-      await refetchAttachments();
-      await refetchActivityLogs();
-    } catch (error) {
-      console.error('❌ Delete failed:', error);
-      alert('❌ Delete failed!');
-    }
-  };
+  // const handleDeleteFile = async (id: number, createdBy: number) => {
+  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
+  //   try {
+  //     await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
+  //     //alert('✅ File deleted!');
+  //     await refetchAttachments();
+  //     await refetchActivityLogs();
+  //   } catch (error) {
+  //     console.error('❌ Delete failed:', error);
+  //     //alert('❌ Delete failed!');
+  //   }
+  // };
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
@@ -364,7 +372,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus });
       console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
       await refetchSubtask();
       await refetchActivityLogs();
@@ -406,8 +414,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
         <input
           className='subtask-input'
+          placeholder="Enter subtask title"
           defaultValue={subtaskDetail?.title}
-          onChange={(e) => setNewTitle(e.target.value)}
+          onChange={(e) => {
+            if (e.target.value.length <= 65) {
+              setNewTitle(e.target.value);
+            } else {
+              alert('Max 65 characters!');
+            }
+          }}
           onBlur={handleUpdateSubtask}
           style={{
             width: '500px',
@@ -445,6 +460,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <label>Description</label>
               <textarea
                 className='subtask-description'
+                placeholder='Enter subtask description'
                 defaultValue={subtaskDetail?.description}
                 onChange={(e) => setNewDescription(e.target.value)}
                 onBlur={handleUpdateSubtask}
@@ -602,12 +618,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                                             content: newContent,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert('✅ Comment updated');
+                                          //alert('✅ Comment updated');
                                           await refetchComments();
                                           await refetchActivityLogs();
                                         } catch (err) {
                                           console.error('❌ Failed to update comment', err);
-                                          alert('❌ Update failed');
+                                          //alert('❌ Update failed');
                                         }
                                       }
                                     }}
@@ -617,22 +633,44 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                                   <button
                                     className='delete-btn'
                                     onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          '🗑️ Are you sure you want to delete this comment?'
-                                        )
-                                      ) {
+                                      const confirmed = await Swal.fire({
+                                        title: 'Delete Comment',
+                                        text: 'Are you sure you want to delete this comment?',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Delete',
+                                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                        customClass: {
+                                          title: 'small-title',
+                                          popup: 'small-popup',
+                                          icon: 'small-icon',
+                                          htmlContainer: 'small-html'
+                                        }
+                                      });
+                                      if (confirmed.isConfirmed) {
                                         try {
+                                          console.log('Deleting comment:', comment.id, 'for subtask:', subtaskDetail?.id);
                                           await deleteSubtaskComment({
                                             id: comment.id,
+                                            subtaskId: subtaskDetail?.id, 
                                             createdBy: accountId,
                                           }).unwrap();
-                                          alert('🗑️ Deleted successfully');
-                                          await refetchComments();
+                                          
                                           await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error('❌ Failed to delete comment', err);
-                                          alert('❌ Delete failed');
+                                          console.error('❌ Failed to delete comment:', err);
+                                          Swal.fire({
+                                            icon: 'error',
+                                            title: 'Delete Failed',
+                                            text: 'Failed to delete comment.',
+                                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                            customClass: {
+                                              title: 'small-title',
+                                              popup: 'small-popup',
+                                              icon: 'small-icon',
+                                              htmlContainer: 'small-html'
+                                            }
+                                          });
                                         }
                                       }
                                     }}
@@ -668,14 +706,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          alert('✅ Comment posted');
+                          //alert('✅ Comment posted');
                           console.error('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs()
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -755,11 +793,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           reporterId: subtaskDetail.reporterId,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Updated subtask assignee');
+                        //alert('✅ Updated subtask assignee');
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Failed to update subtask');
+                        //alert('❌ Failed to update subtask');
                         console.error(err);
                       }
                     }}
@@ -905,7 +943,54 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 <input
                   type='date'
                   value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => setNewStartDate(e.target.value)}
+                  min={projectData?.data?.startDate?.slice(0, 10)}
+                  max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (newEndDate && new Date(value) >= new Date(newEndDate)) {
+                      Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Start Date',
+                        html: 'Start Date must be smaller than Due Date!',
+                        width: '500px',
+                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                        customClass: {
+                          title: 'small-title',
+                          popup: 'small-popup',
+                          icon: 'small-icon',
+                          htmlContainer: 'small-html'
+                        }
+                      });
+                      return;
+                    }
+
+                    if (projectData?.data.startDate && projectData?.data.endDate) {
+                      const projectStart = new Date(projectData.data.startDate);
+                      const projectEnd = new Date(projectData.data.endDate);
+
+                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                             is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                             <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+
+                        return;
+                      }
+                    }
+
+                    setNewStartDate(value);
+                  }}
                   onBlur={handleUpdateSubtask}
                   style={{ width: '150px' }}
                 />
@@ -916,7 +1001,54 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 <input
                   type='date'
                   value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => setNewEndDate(e.target.value)}
+                  min={projectData?.data?.startDate?.slice(0, 10)}
+                  max={newStartDate ? newStartDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (newStartDate && new Date(value) <= new Date(newStartDate)) {
+                      Swal.fire({
+                        icon: 'error',
+                        title: 'Invalid Due Date',
+                        html: 'Due Date must be greater than Start Date!',
+                        width: '500px', // nhỏ lại
+                        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                        customClass: {
+                          title: 'small-title',
+                          popup: 'small-popup',
+                          icon: 'small-icon',
+                          htmlContainer: 'small-html'
+                        }
+                      });
+                      return;
+                    }
+
+                    if (projectData?.data.startDate && projectData?.data.endDate) {
+                      const projectStart = new Date(projectData.data.startDate);
+                      const projectEnd = new Date(projectData.data.endDate);
+
+                      if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                             is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                             <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                          width: '500px', // nhỏ lại
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+
+                        return;
+                      }
+                    }
+
+                    setNewEndDate(value);
+                  }}
                   onBlur={handleUpdateSubtask}
                   style={{ width: '150px' }}
                 />
@@ -944,11 +1076,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Updated subtask reporter');
+                        //alert('✅ Updated subtask reporter');
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Failed to update reporter');
+                        //alert('❌ Failed to update reporter');
                         console.error(err);
                       }
                     }}
@@ -1000,12 +1132,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
           </div>
         </div>
         <DeleteConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDeleteFile}
-        title="Delete this attachment?"
-        message="Once you delete, it's gone for good."
-      />
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDeleteFile}
+          title="Delete this attachment?"
+          message="Once you delete, it's gone for good."
+        />
       </div>
     </div>
   );

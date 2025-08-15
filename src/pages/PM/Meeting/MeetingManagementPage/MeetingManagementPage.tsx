@@ -76,7 +76,12 @@ useEffect(() => {
   { label: '6:00 PM - 8:30 PM', start: '18:00', end: '20:30' },
   { label: '8:30 PM - 11:00 PM', start: '20:30', end: '23:00' },
 ];
-
+const isToday = (yyyyMmDd?: string) => {
+  if (!yyyyMmDd) return false;
+  const now = new Date();
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  return now.getFullYear() === y && (now.getMonth() + 1) === m && now.getDate() === d;
+};
 
 const {
   data: participants = [],
@@ -301,18 +306,27 @@ useEffect(() => {
                     <DialogTrigger asChild>
                       <button
                         className="rounded border px-3 py-1 text-sm hover:bg-gray-100"
-                        onClick={() => {
-                          const formattedFormData = {
-                            ...m,
-                            meetingDate: m.meetingDate.split('T')[0], // YYYY-MM-DD
-                            startTime: new Date(m.startTime).toISOString().substring(11, 16), // HH:mm
-                            endTime: new Date(m.endTime).toISOString().substring(11, 16),   // HH:mm
-                            status: m.status,
-                          };
-                          setSelectedMeeting(m);
-                          setFormData(formattedFormData);
-                          setEditOpen(true);
-                        }}
+onClick={() => {
+  const start = new Date(m.startTime);
+  const end = new Date(m.endTime);
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+
+  const formattedFormData = {
+    ...m,
+    // YYYY-MM-DD theo giờ local
+    meetingDate: `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`,
+    // HH:mm theo giờ local
+    startTime: `${pad2(start.getHours())}:${pad2(start.getMinutes())}`,
+    endTime: `${pad2(end.getHours())}:${pad2(end.getMinutes())}`,
+    status: m.status,
+  };
+
+  setSelectedMeeting(m);
+  setFormData(formattedFormData);
+  setEditOpen(true);
+}}
+
                       >
                         ✏️ Edit
                       </button>
@@ -342,39 +356,42 @@ useEffect(() => {
                         value={formData.meetingDate || ''}
                         onChange={(e) => setFormData({ ...formData, meetingDate: e.target.value })}
                       />
+<label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
+<select
+  className="w-full rounded border px-3 py-2"
+  value={`${formData.startTime}|${formData.endTime}`}
+  onChange={(e) => {
+    const [start, end] = e.target.value.split('|');
+    setFormData({ ...formData, startTime: start, endTime: end });
+  }}
+>
+  {(() => {
+    const editingToday = isToday(formData.meetingDate);
+    const now = new Date();
 
-                      {/* Status động từ Dynamic Category */}
-                      {/* <label className="mb-2 mt-4 block text-sm font-medium">Status</label>
-                      <select
-                        className="w-full rounded border px-3 py-2"
-                        value={formData.status || ''}
-                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      >
-                        {statusOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select> */}
+    return (
+      <>
+        {timeSlots.map((slot) => {
+          const slotStart = new Date(`${formData.meetingDate}T${slot.start}`);
+          // Nếu là hôm nay và slot đã BẮT ĐẦU (now >= slotStart) => disable
+          const started = editingToday && now >= slotStart;
 
-                      <label className="mb-2 mt-4 block text-sm font-medium">Time Slot</label>
-                      <select
-                        className="w-full rounded border px-3 py-2"
-                        value={`${formData.startTime}|${formData.endTime}`}
-                        onChange={(e) => {
-                          const [start, end] = e.target.value.split('|');
-                          setFormData({ ...formData, startTime: start, endTime: end });
-                        }}
-                      >
-                        {timeSlots.map((slot) => {
-                          const isSelected = slot.start === formData.startTime && slot.end === formData.endTime;
-                          return (
-                            <option key={slot.label} value={`${slot.start}|${slot.end}`} disabled={isSelected}>
-                              {slot.label} {isSelected ? '(Current)' : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
+          return (
+            <option
+              key={slot.label}
+              value={`${slot.start}|${slot.end}`}
+              disabled={started}
+            >
+              {slot.label}{started ? ' (Started - unavailable)' : ''}
+            </option>
+          );
+        })}
+      </>
+    );
+  })()}
+</select>
+
+
 
                       <button
                         className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -397,7 +414,7 @@ useEffect(() => {
                             },
                           });
 
-                          toast.success('✅ Cập nhật cuộc họp thành công!');
+                          toast.success('✅ Meeting update successful!');
                           await refetch();
                           setEditOpen(false);
                         }}
@@ -488,4 +505,3 @@ useEffect(() => {
 };
 
 export default MeetingManagementPage;
-

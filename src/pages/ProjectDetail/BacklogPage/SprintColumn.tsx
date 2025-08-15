@@ -5,6 +5,7 @@ import {
   useUpdateTaskStatusMutation,
   useCreateTaskMutation,
   useUpdateTaskSprintMutation,
+  useUpdateTaskEpicMutation,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
 import {
@@ -27,8 +28,12 @@ import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';
 import GenerateTasksPopup from './GenerateTasksPopup';
 import PlanTasksPopup from './PlanTasksPopup';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import WorkItem from '../../WorkItem/WorkItem'; // Import WorkItem component
+
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
+  epics: EpicWithStatsResponseDTO[] | undefined;
   backlogTasks: TaskBacklogResponseDTO[];
   projectId: number;
   projectKey: string;
@@ -39,6 +44,7 @@ interface TaskItemProps {
   task: TaskBacklogResponseDTO;
   index: number;
   sprintId: number | null;
+  epics: EpicWithStatsResponseDTO[] | undefined;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
 
@@ -47,6 +53,7 @@ interface SectionProps {
   tasks: TaskBacklogResponseDTO[];
   sprintId: number | null;
   sprints: SprintWithTaskListResponseDTO[];
+  epics: EpicWithStatsResponseDTO[] | undefined;
   projectId: number;
   projectKey: string;
   workItemCompleted: number;
@@ -67,7 +74,6 @@ const staticStatusOptions = [
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
-// Move mapApiStatusToUI to top level
 const mapApiStatusToUI = (
   apiStatus: string | null | undefined,
   categories: DynamicCategory[]
@@ -95,7 +101,7 @@ const formatDate = (dateStr: string | null | undefined): string => {
   return `${day} ${monthAbbr}`;
 };
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveTask }) => {
   const {
     data: statusCategories,
     isLoading: isStatusLoading,
@@ -105,6 +111,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   });
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
+  const [updateTaskEpic] = useUpdateTaskEpicMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -120,6 +127,10 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   }, [drag]);
 
   const [status, setStatus] = useState<string>('');
+  const [isEpicMenuOpen, setIsEpicMenuOpen] = useState(false);
+  const epicMenuRef = useRef<HTMLDivElement>(null);
+  const [isHoveringEpic, setIsHoveringEpic] = useState(false);
+  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false); // State for WorkItem popup
 
   useEffect(() => {
     if (!isStatusLoading && statusCategories?.data) {
@@ -155,7 +166,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const [titleOverflow, setTitleOverflow] = useState(false);
- 
+
   type TaskType = 'story' | 'bug' | 'epic' | 'task';
   const getTaskIcon = (type: string | null | undefined): string => {
     const iconMap: Record<TaskType, string> = {
@@ -169,8 +180,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpenDropdown(false);
+      }
+      if (epicMenuRef.current && !epicMenuRef.current.contains(e.target as Node)) {
+        setIsEpicMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -179,6 +194,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
   }, [editingTitle]);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      const titleElement = titleRef.current;
+      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
+    }
+  }, [title]);
 
   const handleTitleBlur = async () => {
     if (title === (task.title || '') || !title.trim()) {
@@ -213,21 +235,82 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }
   };
 
-  const assignees = task.taskAssignments.map((a) => ({
-    name: a.accountFullname || 'Unknown',
-    picture: a.accountPicture || null,
-  }));
-  const epicRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (titleRef.current) {
-      const titleElement = titleRef.current;
-      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
+  const handleEpicSelect = async (epicId: string | null) => {
+    try {
+      await updateTaskEpic({
+        id: task.id,
+        epicId,
+        createdBy: accountId,
+      }).unwrap();
+      setIsEpicMenuOpen(false);
+      moveTask(task.id, sprintId, status);
+    } catch (err: any) {
+      alert(`Unable to assign epic: ${err?.data?.message || 'Unknown error'}`);
     }
-  }, [title]);
+  };
+
+  const handleOpenWorkItem = () => {
+    setIsWorkItemOpen(true);
+  };
+
+  const handleCloseWorkItem = () => {
+    setIsWorkItemOpen(false);
+  };
 
   const renderEpicName = () => {
-    if (!task.epicName) return <span className='text-xs text-gray-400'>-</span>;
+    if (!task.epicName) {
+      return (
+        <div
+          className="relative flex justify-start pl-2 mr-5"
+          onMouseEnter={() => setIsHoveringEpic(true)}
+          onMouseLeave={() => setIsHoveringEpic(false)}
+        >
+          <span className="text-xs text-gray-400">
+            {isHoveringEpic ? (
+              <button
+                onClick={() => setIsEpicMenuOpen(true)}
+                className="text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50"
+                title="Assign Epic"
+              >
+                + Epic
+              </button>
+            ) : (
+              '-'
+            )}
+          </span>
+          {isEpicMenuOpen && (
+            <div
+              ref={epicMenuRef}
+              className="absolute z-10 top-6 right-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            >
+              {!Array.isArray(epics) || epics.length === 0 ? (
+                <div className="px-4 py-2 text-sm text-gray-500">No epics available</div>
+              ) : (
+                [
+                  <div
+                    key="no-epic"
+                    onClick={() => handleEpicSelect(null)}
+                    className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                  >
+                    No Epic
+                  </div>,
+                  ...epics.map((epic) => (
+                    <div
+                      key={epic.id}
+                      onClick={() => handleEpicSelect(epic.id)}
+                      className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer truncate"
+                      title={epic.name}
+                    >
+                      {epic.name}
+                    </div>
+                  )),
+                ]
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     let displayEpicName = task.epicName;
     if (displayEpicName.length > 12) {
@@ -235,20 +318,61 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }
 
     return (
-      <span
-        ref={epicRef}
-        className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
-        title={task.epicName || ''}
+      <div
+        className="relative flex justify-end pl-2 mr-5"
+        onMouseEnter={() => setIsHoveringEpic(true)}
+        onMouseLeave={() => setIsHoveringEpic(false)}
       >
-        {displayEpicName}
-      </span>
+        <span
+          className="text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate"
+          title={task.epicName}
+          onClick={() => setIsEpicMenuOpen(true)}
+        >
+          {displayEpicName}
+        </span>
+        {isEpicMenuOpen && (
+          <div
+            ref={epicMenuRef}
+            className="absolute z-10 top-6 right-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          >
+            {!Array.isArray(epics) || epics.length === 0 ? (
+              <div className="px-4 py-2 text-sm text-gray-500">No epics available</div>
+            ) : (
+              [
+                <div
+                  key="no-epic"
+                  onClick={() => handleEpicSelect(null)}
+                  className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                >
+                  No Epic
+                </div>,
+                ...epics.map((epic) => (
+                  <div
+                    key={epic.id}
+                    onClick={() => handleEpicSelect(epic.id)}
+                    className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer truncate"
+                    title={epic.name}
+                  >
+                    {epic.name}
+                  </div>
+                )),
+              ]
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
-  if (isStatusLoading) return <div className='text-xs text-gray-500'>Loading status...</div>;
+  const assignees = task.taskAssignments.map((a) => ({
+    name: a.accountFullname || 'Unknown',
+    picture: a.accountPicture || null,
+  }));
+
+  if (isStatusLoading) return <div className="text-xs text-gray-500">Loading status...</div>;
   if (categoryError)
     return (
-      <div className='text-xs text-red-500'>
+      <div className="text-xs text-red-500">
         Error loading status: {(categoryError as any)?.data?.message || 'Unknown error'}
       </div>
     );
@@ -260,46 +384,51 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      <div className='flex justify-center'>
-        <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className='w-4 h-4' />
+      <div className="flex justify-center">
+        <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className="w-4 h-4" />
       </div>
-      <span className='text-sm text-gray-900 truncate ml-2'>{task.id}</span>
+      <span
+        className="text-sm text-gray-900 truncate ml-2 cursor-pointer hover:text-blue-600 hover:underline"
+        onClick={handleOpenWorkItem}
+      >
+        {task.id}
+      </span>
       {editingTitle ? (
         <input
           ref={titleInputRef}
-          type='text'
+          type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
           onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
-          className='text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full'
+          className="text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
         />
       ) : (
         <span
           ref={titleRef}
-          className='text-sm text-gray-700 truncate cursor-pointer hover:underline w-full'
+          className="text-sm text-gray-700 truncate cursor-pointer hover:underline w-full"
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
-      <div className='flex justify-end pl-2 mr-5'>{renderEpicName()}</div>
-      <div className='flex items-center justify-start relative' ref={dropdownRef}>
+      {renderEpicName()}
+      <div className="flex items-center justify-start relative" ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
           className={`inline-flex text-xs font-bold rounded px-2 py-0.5 items-center gap-0.5 ${currentStyle.bg} ${currentStyle.text} hover:brightness-95`}
           disabled={false}
         >
           <span>{status || 'Loading...'}</span>
-          <ChevronDown className='w-3 h-3 text-gray-500' />
+          <ChevronDown className="w-3 h-3 text-gray-500" />
         </button>
         {openDropdown && (
-          <div className='absolute z-10 top-full mt-1 w-fit bg-white border border-gray-200 rounded shadow-md'>
+          <div className="absolute z-10 top-full mt-1 w-fit bg-white border border-gray-200 rounded shadow-md">
             {statusOptions.map((option) => (
               <div
                 key={option.value}
                 onClick={() => handleStatusChange(option.value)}
-                className='px-2 py-1 text-xs font-bold cursor-pointer hover:bg-gray-100'
+                className="px-2 py-1 text-xs font-bold cursor-pointer hover:bg-gray-100"
               >
                 <span
                   className={`px-2 py-1 rounded ${option.bg} ${option.text} inline-block hover:brightness-95`}
@@ -311,51 +440,59 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           </div>
         )}
       </div>
-      <div className='min-w-[16px]' />
-      <div className='flex -space-x-1 justify-start w-[100px]'>
+      <div className="min-w-[16px]" />
+      <div className="flex -space-x-1 justify-start w-[100px]">
         {assignees.slice(0, 3).map((assignee, index) => (
           <div
             key={index}
-            className='w-6 h-6 rounded-full flex items-center justify-center group relative'
+            className="w-6 h-6 rounded-full flex items-center justify-center group relative"
             title={assignee.name}
           >
             {assignee.picture ? (
               <img
                 src={assignee.picture}
                 alt={`${assignee.name} avatar`}
-                className='w-full h-full object-cover rounded-full'
+                className="w-full h-full object-cover rounded-full"
               />
             ) : (
-              <span className='w-full h-full bg-green-600 text-white text-xs flex items-center justify-center rounded-full'>
+              <span className="w-full h-full bg-green-600 text-white text-xs flex items-center justify-center rounded-full">
                 {assignee.name.charAt(0).toUpperCase()}
               </span>
             )}
-            <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity">
               {assignee.name}
             </span>
           </div>
         ))}
         {assignees.length > 3 && (
-          <div className='w-6 h-6 bg-gray-300 text-gray-600 text-xs rounded-full flex items-center justify-center'>
+          <div className="w-6 h-6 bg-gray-300 text-gray-600 text-xs rounded-full flex items-center justify-center">
             +{assignees.length - 3}
           </div>
         )}
         {!assignees.length && (
-          <div className='w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-600 bg-gray-300'>
+          <div className="w-6 h-6 border-2 border-gray-300 rounded-full flex items-center justify-center text-gray-600 bg-gray-300">
             <svg
-              xmlns='http://www.w3.org/2000/svg'
-              className='w-4 h-4'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
               strokeWidth={2}
             >
-              <circle cx='12' cy='8' r='4' />
-              <path d='M4 20c0-4 4-6 8-6s8 2 8 6' />
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
             </svg>
           </div>
         )}
       </div>
+      {/* WorkItem Popup */}
+      {isWorkItemOpen && (
+        <WorkItem
+          isOpen={isWorkItemOpen}
+          onClose={handleCloseWorkItem}
+          taskId={task.id}
+        />
+      )}
     </div>
   );
 };
@@ -365,6 +502,7 @@ const Section: React.FC<SectionProps> = ({
   tasks,
   sprintId,
   sprints,
+  epics,
   projectId,
   projectKey,
   workItemCompleted,
@@ -383,31 +521,35 @@ const Section: React.FC<SectionProps> = ({
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
   const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
   const [isGenerateTasksPopupOpen, setIsGenerateTasksPopupOpen] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
- const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
- 
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'TASK',
-    item: { sprintId },
-    drop: (item: {
-      id: string;
-      index: number;
-      sprintId: number | null;
-      status: string | null | undefined;
-    }) => {
-      if (item.sprintId !== sprintId) {
-        moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
-      }
-    },
-    collect: (monitor) => ({ isOver: monitor.isOver() }),
-  }));
-
-  drop(ref);
 
   const isSprint = sprintId !== null;
   const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
+  const isCompleted = sprint?.status === 'COMPLETED';
+  const ref = useRef<HTMLDivElement>(null);
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: isCompleted ? '' : 'TASK', // Disable drop for completed sprints
+    item: { sprintId },
+    drop: isCompleted
+      ? undefined
+      : (item: {
+          id: string;
+          index: number;
+          sprintId: number | null;
+          status: string | null | undefined;
+        }) => {
+          if (item.sprintId !== sprintId) {
+            moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
+          }
+        },
+    collect: (monitor) => ({ isOver: monitor.isOver() }),
+  }));
+
+  if (!isCompleted) {
+    drop(ref);
+  }
+
   const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
   const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
 
@@ -433,10 +575,12 @@ const Section: React.FC<SectionProps> = ({
       alert(`Unable to create task: ${err?.data?.message || 'Unknown error'}`);
     }
   };
+
   const handleOpenPlanTasksPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsPlanTasksPopupOpen(true);
   };
+
   const handleCreateSprint = async () => {
     try {
       await createSprint({ projectKey }).unwrap();
@@ -473,12 +617,8 @@ const Section: React.FC<SectionProps> = ({
   };
 
   const handleOpenGenerateTasksPopup = (e: React.MouseEvent) => {
- 
-    
     e.stopPropagation();
-       console.log('sprintIddddd:', sprintId);
     if (sprintId) {
-         console.log('sprintId d:', sprintId);
       setIsGenerateTasksPopupOpen(true);
     }
   };
@@ -499,6 +639,8 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
@@ -512,27 +654,27 @@ const Section: React.FC<SectionProps> = ({
   return (
     <div
       ref={ref}
-      className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver ? 'bg-blue-50' : ''}`}
+      className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver && !isCompleted ? 'bg-blue-50' : ''}`}
     >
       {sprintId === null ? (
-        <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
-          <span className='text-sm font-semibold text-gray-800'>
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300">
+          <span className="text-sm font-semibold text-gray-800">
             Backlogㅤ
-            <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
+            <span className="text-gray-700 font-normal">({tasks.length} work items)</span>
           </span>
-          <div className='flex items-center space-x-2'>
-            <div className='p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]'>
+          <div className="flex items-center space-x-2">
+            <div className="p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]">
               <button
                 onClick={handleOpenPlanTasksPopup}
-                className='w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300'
+                className="w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300"
               >
-                <PlusCircle className='w-4 h-4 mr-1 text-indigo-500' />
+                <PlusCircle className="w-4 h-4 mr-1 text-indigo-500" />
                 Plan Tasks
               </button>
             </div>
             <button
               onClick={handleCreateSprint}
-              className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
+              className="text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300"
               disabled={isCreatingSprint}
             >
               {isCreatingSprint ? 'Creating...' : 'Create Sprint'}
@@ -542,34 +684,34 @@ const Section: React.FC<SectionProps> = ({
       ) : (
         isSprint &&
         sprint && (
-          <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
-            <div className='flex items-center space-x-2'>
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300">
+            <div className="flex items-center space-x-2">
               <input
-                type='checkbox'
-                className='h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'
+                type="checkbox"
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 disabled={sprint.status === 'COMPLETED'}
               />
-              <span className='text-sm font-semibold text-gray-800'>
+              <span className="text-sm font-semibold text-gray-800">
                 {sprint.name}
                 {'ㅤ'}
-                <span className='text-gray-700 font-normal'>
+                <span className="text-gray-700 font-normal">
                   {hasNoDates ? (
                     <button
-                      className='inline-flex items-center text-xs text-black hover:no-underline hover:bg-gray-200 px-1 py-1 rounded'
+                      className="inline-flex items-center text-xs text-black hover:no-underline hover:bg-gray-200 px-1 py-1 rounded"
                       onClick={handleEditSprint}
                     >
                       <svg
-                        fill='none'
-                        viewBox='0 0 16 16'
-                        role='presentation'
-                        className='w-3.5 h-3.5 mr-1'
+                        fill="none"
+                        viewBox="0 0 16 16"
+                        role="presentation"
+                        className="w-3.5 h-3.5 mr-1"
                         style={{ color: 'var(--ds-icon, #000000)' }}
                       >
                         <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          clipRule='evenodd'
-                          d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
+                          fill="currentColor"
+                          fillRule="evenodd" // Fixed from fill-rule
+                          clipRule="evenodd" // Fixed from clip-rule
+                          d="M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z"
                         />
                       </svg>
                       Add Dates
@@ -582,19 +724,18 @@ const Section: React.FC<SectionProps> = ({
                 </span>
               </span>
             </div>
-            <div className='flex items-center space-x-2'>
-              {sprint.status != 'COMPLETED' && (
-                <div className='p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]'>
+            <div className="flex items-center space-x-2">
+              {sprint.status !== 'COMPLETED' && (
+                <div className="p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]">
                   <button
                     onClick={handleOpenGenerateTasksPopup}
-                    className='w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300'
+                    className="w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300"
                   >
-                    <PlusCircle className='w-4 h-4 mr-1 text-indigo-500' />
+                    <PlusCircle className="w-4 h-4 mr-1 text-indigo-500" />
                     More Tasks
                   </button>
                 </div>
               )}
-
               {sprint.status === 'FUTURE' && (
                 <>
                   {hasNoDates ? (
@@ -644,15 +785,14 @@ const Section: React.FC<SectionProps> = ({
                 </button>
               )}
               {sprint.status === 'COMPLETED' && (
-                <span className='text-sm font-medium text-gray-500'>COMPLETED</span>
+                <span className="text-sm font-medium text-gray-500">COMPLETED</span>
               )}
               {sprint.status !== 'FUTURE' &&
                 sprint.status !== 'ACTIVE' &&
                 sprint.status !== 'COMPLETED' && (
-                  <span className='text-sm text-red-500'>Unknown status: {sprint.status}</span>
+                  <span className="text-sm text-red-500">Unknown status: {sprint.status}</span>
                 )}
-
-              <div className='relative' ref={moreMenuRef}>
+              <div className="relative" ref={moreMenuRef}>
                 <button
                   className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
                     isMoreMenuOpen
@@ -660,20 +800,20 @@ const Section: React.FC<SectionProps> = ({
                       : 'border-transparent'
                   }`}
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                  aria-label='Sprint options'
+                  aria-label="Sprint options"
                 >
                   <MoreHorizontal size={16} />
                 </button>
                 {isMoreMenuOpen && (
-                  <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
+                  <div className="absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg">
                     <button
-                      className='block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={handleEditSprint}
                     >
                       Edit Sprint
                     </button>
                     <button
-                      className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       onClick={handleDeleteSprint}
                     >
                       Delete Sprint
@@ -685,14 +825,14 @@ const Section: React.FC<SectionProps> = ({
           </div>
         )
       )}
-      <div className='divide-y divide-gray-200'>
+      <div className="divide-y divide-gray-200">
         {tasks.length === 0 ? (
-          <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-4 space-y-4 border border-dashed rounded-md'>
+          <div className="flex flex-col items-center justify-center text-center flex-1 py-6 px-4 space-y-4 border border-dashed rounded-md">
             <div>
-              <p className='text-sm font-semibold text-gray-800'>
+              <p className="text-sm font-semibold text-gray-800">
                 {sprintId === null ? 'Your backlog is empty' : 'Your sprint is empty'}
               </p>
-              <p className='text-sm text-gray-500'>
+              <p className="text-sm text-gray-500">
                 {sprintId === null
                   ? 'Add a task to your backlog to get started.'
                   : 'Add a task to this sprint to get started.'}
@@ -700,8 +840,8 @@ const Section: React.FC<SectionProps> = ({
             </div>
             {sprintId === null && (
               <button
-                onClick={() => setNewTaskTitle('New Task')} // Trigger input focus
-                className='px-3 py-1.5 text-sm border rounded hover:bg-gray-100 transition text-gray-700 border-gray-300'
+                onClick={() => setNewTaskTitle('New Task')}
+                className="px-3 py-1.5 text-sm border rounded hover:bg-gray-100 transition text-gray-700 border-gray-300"
               >
                 Create Task
               </button>
@@ -715,20 +855,21 @@ const Section: React.FC<SectionProps> = ({
                 task={task}
                 index={index}
                 sprintId={sprintId}
+                epics={epics}
                 moveTask={moveTask}
               />
             ))}
           </>
         )}
-        <div className='flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100'>
-          <ChevronDown className='w-4 h-4 text-gray-400' />
+        <div className="flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100">
+          <ChevronDown className="w-4 h-4 text-gray-400" />
           <input
-            type='text'
+            type="text"
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             onKeyDown={handleAddTask}
-            placeholder='What needs to be done?'
-            className='flex-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded bg-transparent'
+            placeholder="What needs to be done?"
+            className="flex-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded bg-transparent"
           />
         </div>
       </div>
@@ -775,13 +916,13 @@ const Section: React.FC<SectionProps> = ({
         projectKey={projectKey}
         onTaskUpdated={onTaskUpdated}
       />
-
     </div>
   );
 };
 
 const SprintColumn: React.FC<SprintColumnProps> = ({
   sprints,
+  epics,
   backlogTasks,
   projectId,
   projectKey,
@@ -811,7 +952,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
   };
 
   return (
-    <div className='space-y-4 w-full'>
+    <div className="space-y-4 w-full">
       {sprints.map((sprint) => {
         const completed = sprint.tasks.filter((task) =>
           statusCategories?.data
@@ -826,6 +967,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
             tasks={sprint.tasks}
             sprintId={sprint.id}
             sprints={sprints}
+            epics={epics}
             projectId={projectId}
             projectKey={projectKey}
             workItemCompleted={completed}
@@ -836,10 +978,11 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
         );
       })}
       <Section
-        title='Backlog'
+        title="Backlog"
         tasks={backlogTasks}
         sprintId={null}
         sprints={sprints}
+        epics={epics}
         projectId={projectId}
         projectKey={projectKey}
         workItemCompleted={0}

@@ -94,6 +94,7 @@ export interface WorkItemList {
   commentCount: number;
   sprintId: number | null;
   sprintName: string | null;
+  priority: string| null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
@@ -133,7 +134,7 @@ interface TaskItem {
   plannedResourceCost: number | null;
   actualCost: number | null;
   actualResourceCost: number | null;
-  priority: string;
+  priority: string| null;
   status: string;
   evaluate: string | null;
   createdAt: string;
@@ -479,6 +480,20 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
+
+    updateProjectStatus: builder.mutation<void, { id: number; status: string; }>({
+      query: ({ id, status }) => ({
+        url: `project/${id}/status`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({status}),
+      }),
+      invalidatesTags: ['Project'],
+    }),
+
+
   }),
 });
 
@@ -500,4 +515,5 @@ export const {
   useRejectProjectMutation,
   useGetProjectItemsByKeyQuery,
   useLazyCheckProjectKeyQuery,
+  useUpdateProjectStatusMutation,
 } = projectApi;

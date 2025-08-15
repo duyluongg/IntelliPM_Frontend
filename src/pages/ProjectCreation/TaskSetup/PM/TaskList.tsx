@@ -208,62 +208,8 @@ const TaskList: React.FC<TaskListProps> = ({
     id: string;
     type: 'TASK';
   } | null>(null);
-  const [expandedEpics, setExpandedEpics] = useState<{ [key: string]: boolean }>({});
+  const [expandedEpicIndices, setExpandedEpicIndices] = useState<Set<number>>(new Set());
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-
-  // Initialize and update expandedEpics when epics prop changes
-  useEffect(() => {
-    // Log epicIds to check for duplicates
-    console.log('Epics:', epics.map((epic) => ({ id: epic.epicId, title: epic.title })));
-    
-    // Check for duplicate epicIds
-    const epicIds = epics.map((epic) => epic.epicId);
-    const uniqueEpicIds = new Set(epicIds);
-    if (uniqueEpicIds.size !== epicIds.length) {
-      console.warn('Duplicate epicIds detected:', epicIds);
-    }
-
-    setExpandedEpics((prev) => {
-      const newState = { ...prev };
-      // Add new epics with default false state
-      epics.forEach((epic) => {
-        if (!(epic.epicId in newState)) {
-          newState[epic.epicId] = false;
-        }
-      });
-      // Remove epics that no longer exist
-      Object.keys(newState).forEach((epicId) => {
-        if (!epics.some((e) => e.epicId === epicId)) {
-          delete newState[epicId];
-        }
-      });
-      console.log('Updated expandedEpics:', newState);
-      return newState;
-    });
-  }, [epics]);
-
-  const toggleEpic = (epicId: string) => {
-    setExpandedEpics((prev) => {
-      const newState = {
-        ...prev,
-        [epicId]: !prev[epicId],
-      };
-      console.log(`Toggled epic ${epicId}:`, newState);
-      return newState;
-    });
-  };
-
-  const toggleAllEpics = () => {
-    const allExpanded = Object.values(expandedEpics).every((isExpanded) => isExpanded);
-    setExpandedEpics((prev) => {
-      const newState: { [key: string]: boolean } = {};
-      Object.keys(prev).forEach((epicId) => {
-        newState[epicId] = !allExpanded;
-      });
-      console.log('Toggled all epics:', newState);
-      return newState;
-    });
-  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -280,6 +226,27 @@ const TaskList: React.FC<TaskListProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [setIsMemberDropdownOpen]);
+
+  const toggleEpic = (epicIndex: number) => {
+    setExpandedEpicIndices((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(epicIndex)) {
+        newSet.delete(epicIndex);
+      } else {
+        newSet.add(epicIndex);
+      }
+      console.log(`Toggled epic at index ${epicIndex}:`, newSet);
+      return newSet;
+    });
+  };
+
+  const toggleAllEpics = () => {
+    const allExpanded = expandedEpicIndices.size === epics.length;
+    setExpandedEpicIndices(
+      allExpanded ? new Set() : new Set(epics.map((_, i) => i))
+    );
+    console.log('Toggled all epics:', !allExpanded ? 'Expanded' : 'Collapsed');
+  };
 
   const handleEditClick = (id: string, field: string, value: string) => {
     setEditingCell({ id, field });
@@ -432,9 +399,7 @@ const TaskList: React.FC<TaskListProps> = ({
         <section className='p-3 font-sans bg-white w-full'>
           <div className='mb-4'>
             <button onClick={toggleAllEpics} className='text-sm text-blue-600 hover:text-blue-800'>
-              {Object.values(expandedEpics).every((isExpanded) => isExpanded)
-                ? 'Collapse All'
-                : 'Expand All'}
+              {expandedEpicIndices.size === epics.length ? 'Collapse All' : 'Expand All'}
             </button>
           </div>
           {epics.length === 0 ? (
@@ -487,13 +452,13 @@ const TaskList: React.FC<TaskListProps> = ({
                         <tr className='border-b border-gray-200 bg-white hover:bg-gray-50'>
                           <td className='p-2'>
                             <button
-                              onClick={() => toggleEpic(epic.epicId)}
+                              onClick={() => toggleEpic(epicIndex)}
                               className='focus:outline-none'
-                              aria-expanded={expandedEpics[epic.epicId] || false}
+                              aria-expanded={expandedEpicIndices.has(epicIndex)}
                             >
                               <svg
                                 className={`w-5 h-5 transform transition-transform ${
-                                  expandedEpics[epic.epicId] ? 'rotate-90' : ''
+                                  expandedEpicIndices.has(epicIndex) ? 'rotate-90' : ''
                                 }`}
                                 fill='none'
                                 stroke='currentColor'
@@ -591,7 +556,7 @@ const TaskList: React.FC<TaskListProps> = ({
                             </button>
                           </td>
                         </tr>
-                        {expandedEpics[epic.epicId] &&
+                        {expandedEpicIndices.has(epicIndex) &&
                           (taskRows.length === 0 ? (
                             <tr>
                               <td colSpan={8} className='p-4 text-gray-500 text-sm text-center'>

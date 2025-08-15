@@ -30,6 +30,13 @@ export interface SharedUserDTO {
   permissionType: 'VIEW' | 'EDIT';
 }
 
+export interface GetPermissionTypeResponse {
+  isSuccess: boolean;
+  code: number;
+  documentId: number;
+  permissionType: PermissionType;
+}
+
 
 export const documentPermissionApi = createApi({
   reducerPath: 'documentPermissionApi',
@@ -70,10 +77,18 @@ export const documentPermissionApi = createApi({
         { type: 'DocumentsPermission', id: documentId },
       ],
     }),
+
+    getPermissionTypeByDocument: builder.query<GetPermissionTypeResponse, number>({
+      query: (documentId) => ({
+        url: `document-permissions/${documentId}/permission-type`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
 export const {
   useUpdatePermissionTypeMutation,
   useGetSharedUsersByDocumentQuery,
+  useGetPermissionTypeByDocumentQuery,
 } = documentPermissionApi;

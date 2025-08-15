@@ -31,6 +31,7 @@ import subtaskIcon from '../../../assets/icon/type_subtask.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import {
   useCreateDocumentMutation,
   useGetDocumentMappingQuery,
@@ -39,9 +40,9 @@ import { useAuth } from '../../../services/AuthContext';
 import { useDispatch } from 'react-redux';
 import { setCurrentProjectId } from '../../../components/slices/Project/projectCurrentSlice';
 import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
-import UnifiedFilter from '../ProjectTaskList/UnifiedFilter'
-import ExportDropdown from '../ProjectTaskList/ExportDropdownProps'
-import CreateWorkItemModal from './CreateWorkItemModal'
+import UnifiedFilter from '../ProjectTaskList/UnifiedFilter';
+import ExportDropdown from '../ProjectTaskList/ExportDropdownProps';
+import CreateWorkItemModal from './CreateWorkItemModal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -61,7 +62,7 @@ interface UpdateTaskRequestDTO {
   plannedEndDate: string;
   status: string;
   assignedBy: number | null;
-  priority: string;
+  priority: string | null;
   createdBy: number;
 }
 
@@ -72,6 +73,7 @@ interface UpdateEpicRequestDTO {
   startDate: string;
   endDate: string;
   status: string;
+  priority: string | null;
   reporterId: number | null;
   assignedBy: number | null;
   createdBy: number;
@@ -88,7 +90,7 @@ interface UpdateSubtaskRequestDTO {
   status: string;
   reporterId: number;
   assignedBy: number;
-  priority: string;
+  priority: string | null;
   createdBy: number;
   sprintId: number;
 }
@@ -127,6 +129,7 @@ interface TaskItem {
   comments: number;
   sprint?: number | null;
   sprintName?: string | null;
+  priority: string | null;
   assignees: TaskAssignee[];
   dueDate?: string | null;
   labels?: string[];
@@ -159,22 +162,52 @@ interface HeaderBarProps {
   onExportPDF: () => void;
   onCreate: () => void;
   onViewAsChart: () => void;
-  refetchWorkItems: () =>void;
+  refetchWorkItems: () => void;
 }
 
 const Status: React.FC<{ status: string }> = ({ status }) => {
+  const {
+    data: taskStatus,
+    isLoading: loadTaskStatus,
+    isError: taskStatusError,
+  } = useGetCategoriesByGroupQuery('task_status');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const taskStatusLabel =
+    taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
+  const {
+    data: taskTypes,
+    isLoading: isLoadingTaskType,
+    isError: isTaskTypeError,
+  } = useGetCategoriesByGroupQuery('task_type');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('task_priority');
+
   const formatStatusForDisplay = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'to_do':
-        return 'TO DO';
-      case 'in_progress':
-        return 'IN PROGRESS';
-      case 'done':
-        return 'DONE';
-      default:
-        return status;
-    }
+    return (
+      taskStatus?.data.find((s) => s.name === status)?.label ||
+      status.replace('_', ' ').toUpperCase()
+    );
   };
+
+  // const formatStatusForDisplay = (status: string) => {
+  //   switch (status.toLowerCase()) {
+  //     case 'to_do':
+  //       return 'TO DO';
+  //     case 'in_progress':
+  //       return 'IN PROGRESS';
+  //     case 'done':
+  //       return 'DONE';
+  //     default:
+  //       return status;
+  //   }
+  // };
 
   const getStatusStyle = () => {
     switch (status.toLowerCase()) {
@@ -553,8 +586,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           >
             <FaEllipsisV />
           </button>
-          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}>
-          </button>
+          <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}></button>
           {isMenuDropdownOpen && (
             <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
@@ -582,12 +614,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       <CreateWorkItemModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        projectId={projectId || 0} 
+        projectId={projectId || 0}
         refetchWorkItems={refetchWorkItems}
       />
     </div>
   );
-
 };
 
 // ProjectTaskList Component
@@ -604,6 +635,11 @@ const ProjectTaskList: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
   const [selectedDueDate, setSelectedDueDate] = useState<string>('');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('task_priority');
   useEffect(() => {
     if (projectDetails?.data?.id) {
       dispatch(setCurrentProjectId(projectDetails.data.id));
@@ -806,6 +842,7 @@ const ProjectTaskList: React.FC = () => {
           startDate: item.created || new Date().toISOString(),
           endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
+          priority: item.priority || '',
           reporterId: item.reporterId || null,
           assignedBy: item.assignees[0]?.id || null,
           createdBy: accountId,
@@ -821,13 +858,17 @@ const ProjectTaskList: React.FC = () => {
           status: item.status,
           reporterId: item.reporterId || 0,
           assignedBy: item.assignees[0]?.id || 0,
-          priority: 'MEDIUM',
+          priority: (item.priority ?? '') || '', // ensure string, never null
           sprintId: item.sprint || 0,
           startDate: item.created || new Date().toISOString(),
           endDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        // Ensure priority is always a string (never null)
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? '',
+        }).unwrap();
       } else {
         const taskData: UpdateTaskRequestDTO = {
           reporterId: item.reporterId || null,
@@ -841,7 +882,7 @@ const ProjectTaskList: React.FC = () => {
           plannedEndDate: field === 'dueDate' ? formattedDate : item.dueDate || '',
           status: item.status,
           assignedBy: item.assignees[0]?.id || null,
-          priority: 'MEDIUM',
+          priority: item.priority || '',
           createdBy: accountId,
         };
         await updateTask({ id: item.key, body: taskData }).unwrap();
@@ -885,6 +926,7 @@ const ProjectTaskList: React.FC = () => {
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           status: item.status,
+          priority: item.priority || '',
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || null,
           createdBy: accountId,
@@ -901,12 +943,15 @@ const ProjectTaskList: React.FC = () => {
           sprintId: item.sprint || 0,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || 0, // Already correct
           assignedBy: field === 'assignees' ? member.accountId : item.assignees[0]?.id || 0,
-          priority: 'MEDIUM',
+          priority: item.priority || '',
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? '',
+        }).unwrap();
       } else {
         if (field === 'reporter') {
           const taskData: UpdateTaskRequestDTO = {
@@ -921,7 +966,7 @@ const ProjectTaskList: React.FC = () => {
             plannedEndDate: item.dueDate || '',
             status: item.status,
             assignedBy: item.assignees[0]?.id || null,
-            priority: 'MEDIUM',
+            priority: item.priority || '',
             createdBy: accountId,
           };
           await updateTask({ id: item.key, body: taskData }).unwrap();
@@ -958,6 +1003,7 @@ const ProjectTaskList: React.FC = () => {
           endDate: item.dueDate || '',
           status: item.status,
           reporterId: item.reporterId || null,
+          priority: item.priority || '',
           assignedBy: null,
           createdBy: accountId,
         };
@@ -975,12 +1021,15 @@ const ProjectTaskList: React.FC = () => {
           reporterId: item.reporterId || 0, // Already correct
           assignedBy: 0,
           sprintId: item.sprint || 0,
-          priority: 'MEDIUM',
+          priority: item.priority || '',
           startDate: item.created || new Date().toISOString(),
           endDate: item.dueDate || '',
           createdBy: accountId,
         };
-        await updateSubtask(subtaskData).unwrap();
+        await updateSubtask({
+          ...subtaskData,
+          priority: subtaskData.priority ?? '',
+        }).unwrap();
       } else {
         await deleteTaskAssignment({ taskId: itemId, assignmentId: assigneeId }).unwrap();
       }
@@ -1006,6 +1055,7 @@ const ProjectTaskList: React.FC = () => {
     status: 110,
     comments: 120,
     sprint: 100,
+    priority: 100,
     assignee: 250,
     dueDate: 130,
     labels: 120,
@@ -1096,6 +1146,7 @@ const ProjectTaskList: React.FC = () => {
             status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
             comments: item.commentCount || 0,
             sprint: item.sprintId || null,
+            priority: item.priority || '',
             sprintName: item.sprintName || null,
             assignees: assignments,
             dueDate: item.dueDate || null,
@@ -1220,8 +1271,17 @@ const ProjectTaskList: React.FC = () => {
       !selectedCreatedDate ||
       new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
     const matchesDue =
-      !selectedDueDate || (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
-    return matchesSearch && matchesStatus && matchesType && matchesLabel && matchesMember && matchesCreated && matchesDue;
+      !selectedDueDate ||
+      (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesType &&
+      matchesLabel &&
+      matchesMember &&
+      matchesCreated &&
+      matchesDue
+    );
   });
 
   const handleCreate = () => {
@@ -1327,6 +1387,16 @@ const ProjectTaskList: React.FC = () => {
                 className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
               >
                 Sprint
+                <div
+                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                />
+              </th>
+              <th
+                style={{ width: `${columnWidths.priority}px` }}
+                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+              >
+                Priority
                 <div
                   className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
                   onMouseDown={(e) => handleMouseDown(e, 'sprint')}
@@ -1563,6 +1633,35 @@ const ProjectTaskList: React.FC = () => {
                       ''
                     )}
                   </td>
+                  <td
+                    style={{ width: `${columnWidths.priority}px` }}
+                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                  >
+                    {task.priority
+                      ? (() => {
+                          const priorityInfo = priorityOptions?.data?.find(
+                            (p) =>
+                              task.priority != null &&
+                              p.name.toLowerCase() === task.priority.toLowerCase()
+                          );
+                          return priorityInfo ? (
+                            <span className='flex items-center gap-1'>
+                              {priorityInfo.iconLink && (
+                                <img
+                                  src={priorityInfo.iconLink}
+                                  alt={priorityInfo.label}
+                                  className='w-4 h-4 object-contain'
+                                />
+                              )}
+                              <span className='text-xs'>{priorityInfo.label}</span>
+                            </span>
+                          ) : (
+                            <span className='text-xs'>{task.priority}</span>
+                          );
+                        })()
+                      : null}
+                  </td>
+
                   <td
                     style={{ width: `${columnWidths.assignee}px` }}
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'

@@ -29,6 +29,7 @@ import CompleteSprintPopup from './CompleteSprintPopup';
 import GenerateTasksPopup from './GenerateTasksPopup';
 import PlanTasksPopup from './PlanTasksPopup';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import WorkItem from '../../WorkItem/WorkItem'; // Import WorkItem component
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -129,6 +130,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
   const [isEpicMenuOpen, setIsEpicMenuOpen] = useState(false);
   const epicMenuRef = useRef<HTMLDivElement>(null);
   const [isHoveringEpic, setIsHoveringEpic] = useState(false);
+  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false); // State for WorkItem popup
 
   useEffect(() => {
     if (!isStatusLoading && statusCategories?.data) {
@@ -247,11 +249,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
     }
   };
 
+  const handleOpenWorkItem = () => {
+    setIsWorkItemOpen(true);
+  };
+
+  const handleCloseWorkItem = () => {
+    setIsWorkItemOpen(false);
+  };
+
   const renderEpicName = () => {
     if (!task.epicName) {
       return (
         <div
-          className="relative flex justify-end pl-2 mr-5"
+          className="relative flex justify-start pl-2 mr-5"
           onMouseEnter={() => setIsHoveringEpic(true)}
           onMouseLeave={() => setIsHoveringEpic(false)}
         >
@@ -377,7 +387,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
       <div className="flex justify-center">
         <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className="w-4 h-4" />
       </div>
-      <span className="text-sm text-gray-900 truncate ml-2">{task.id}</span>
+      <span
+        className="text-sm text-gray-900 truncate ml-2 cursor-pointer hover:text-blue-600 hover:underline"
+        onClick={handleOpenWorkItem}
+      >
+        {task.id}
+      </span>
       {editingTitle ? (
         <input
           ref={titleInputRef}
@@ -470,6 +485,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
           </div>
         )}
       </div>
+      {/* WorkItem Popup */}
+      {isWorkItemOpen && (
+        <WorkItem
+          isOpen={isWorkItemOpen}
+          onClose={handleCloseWorkItem}
+          taskId={task.id}
+        />
+      )}
     </div>
   );
 };
@@ -686,8 +709,8 @@ const Section: React.FC<SectionProps> = ({
                       >
                         <path
                           fill="currentColor"
-                          fillRule="evenodd"
-                          clipRule="evenodd"
+                          fillRule="evenodd" // Fixed from fill-rule
+                          clipRule="evenodd" // Fixed from clip-rule
                           d="M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z"
                         />
                       </svg>

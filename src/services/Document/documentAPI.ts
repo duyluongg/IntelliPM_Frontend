@@ -4,6 +4,7 @@ import type { CreateDocumentRequest, DocumentType } from '../../types/DocumentTy
 import type {
   ShareDocumentByEmailRequest,
   ShareDocumentByEmailResult,
+  ShareDocWireData,
 } from '../../types/ShareDocumentType';
 
 interface ShareDocumentViaEmailRequest {
@@ -184,31 +185,21 @@ export const documentApi = createApi({
       },
     }),
 
-    shareDocumentToEmails: builder.mutation<any, ShareDocumentByEmailRequest>({
-      query: ({ documentId, emails, message }) => ({
-        url: `documents/${documentId}/share`,
-        method: 'POST',
-        body: {
-          emails,
-          message,
-        },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    }),
-
-    // --- RTK Query mutation ---
     shareDocumentByEmails: builder.mutation<
-      ShareDocumentByEmailResult,
+      ShareDocumentByEmailResult, // ← kết quả đã chuẩn hoá cho component
       ShareDocumentByEmailRequest
     >({
       query: ({ documentId, emails, message, projectKey, permissionType }) => ({
         url: `documents/${documentId}/share`,
         method: 'POST',
-        body: { emails, message, projectKey, permissionType },
+        body: { emails, message, projectKey, permissionType }, // không cần documentId trong body
       }),
-      transformResponse: (response: ApiResponse<ShareDocumentByEmailResult>) => response.data,
+      // response backend: ApiResponse<ShareDocWireData>
+      transformResponse: (raw: ApiResponse<ShareDocWireData>): ShareDocumentByEmailResult => ({
+        isSuccess: (raw?.isSuccess ?? false) && (raw?.data?.success ?? false),
+        failedEmails: raw?.data?.failedEmails ?? [],
+        message: raw?.message ?? '',
+      }),
     }),
 
     getMyPermission: builder.query<{ permission: string }, number>({
@@ -255,7 +246,6 @@ export const {
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
   useShareDocumentViaEmailMutation,
-  useShareDocumentToEmailsMutation,
   useShareDocumentByEmailsMutation,
   useGetMyPermissionQuery,
   useGetDocumentsByProjectIdQuery,

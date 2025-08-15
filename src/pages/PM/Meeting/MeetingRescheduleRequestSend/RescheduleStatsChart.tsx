@@ -10,9 +10,9 @@ export interface RescheduleItem {
   id?: number;
   meetingId: number;
   requesterId: number;
-  requestedDate: string; // ISO
+  requestedDate: string; 
   reason: string;
-  status: string; // PENDING/APPROVED/REJECTED/...
+  status: string; 
   pmProposedDate?: string | null;
   pmNote?: string | null;
 }

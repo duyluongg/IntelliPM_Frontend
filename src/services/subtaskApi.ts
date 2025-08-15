@@ -108,6 +108,17 @@ export const subtaskApi = createApi({
         body: { taskId, title, createdBy },
       }),
     }),
+    
+    createAISubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number }>({
+      query: ({ taskId, title, createdBy }) => ({
+        url: 'subtask',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: { taskId, title, createdBy },
+      }),
+    }),
 
     getSubtaskById: builder.query<SubtaskResponseDTO, string>({
       query: (id) => `subtask/${id}`,
@@ -177,4 +188,5 @@ export const {
   useGetSubtaskFullDetailedByIdQuery,
   useUpdateSubtaskPlannedHoursMutation,
   useUpdateSubtaskActualHoursMutation,
+  useCreateAISubtaskMutation,
 } = subtaskApi;

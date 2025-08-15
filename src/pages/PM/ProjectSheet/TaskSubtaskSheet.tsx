@@ -4,10 +4,20 @@
 // import { useUpdateTaskStatusMutation } from '../../../services/taskApi';
 // import { useUpdateSubtaskStatusMutation } from '../../../services/subtaskApi';
 // import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
-// import { useUpdateSubtaskPlannedHoursMutation } from '../../../services/subtaskApi'; // Add this import
+// import { useUpdateSubtaskPlannedHoursMutation } from '../../../services/subtaskApi';
+// import { useUpdatePlannedHoursMutation } from '../../../services/taskApi';
 // import type { SubtaskItem } from '../../../services/projectApi';
 // import type { TaskItem } from '../../../services/projectApi';
 // import { useSearchParams } from 'react-router-dom';
+// import {
+//   useGetTaskAssignmentsByTaskIdQuery,
+//   useLazyGetTaskAssignmentsByTaskIdQuery,
+// } from '../../../services/taskAssignmentApi';
+// import AssignedByPopup from './AssignedByPopup';
+
+// interface ExtendedTaskItem extends TaskItem {
+//   assignedBy?: string | null;
+// }
 
 // const TaskSubtaskSheet: React.FC = () => {
 //   const [searchParams] = useSearchParams();
@@ -20,27 +30,53 @@
 //   } = useGetFullProjectDetailsByKeyQuery(projectKey, {
 //     skip: !projectKey || projectKey === 'NotFound',
 //   });
-//   const [tasks, setTasks] = useState<TaskItem[]>([]);
+//   const [tasks, setTasks] = useState<ExtendedTaskItem[]>([]);
 //   const [editedCells, setEditedCells] = useState<Record<string, any>>({});
 //   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 //   const [updateTaskStatus] = useUpdateTaskStatusMutation();
 //   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
-//   const [updateSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation(); // Add mutation
+//   const [updateSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation();
+//   const [updatePlannedHours] = useUpdatePlannedHoursMutation();
 //   const userJson = localStorage.getItem('user');
 //   const accountId = userJson ? JSON.parse(userJson).id : null;
 //   const [isRefetching, setIsRefetching] = useState(false);
+//   const [showPopup, setShowPopup] = useState(false);
+//   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+//   const [selectedItemType, setSelectedItemType] = useState<'task' | 'subtask'>('task');
 
 //   const { data: taskStatusOptions, isLoading: loadTaskStatus } =
 //     useGetCategoriesByGroupQuery('task_status');
 //   const { data: subtaskStatusOptions, isLoading: loadSubtaskStatus } =
 //     useGetCategoriesByGroupQuery('subtask_status');
 
+//   const [trigger, { data: dynamicAssignments }] = useLazyGetTaskAssignmentsByTaskIdQuery();
+//   const [allTaskAssignments, setAllTaskAssignments] = useState<Record<string, any[]>>({});
+
 //   useEffect(() => {
 //     if (data?.data?.tasks) {
-//       setTasks(data.data.tasks);
-//       console.log('Tasks updated from data:', data.data.tasks);
+//       setTasks(data.data.tasks as ExtendedTaskItem[]);
+//       data.data.tasks.forEach((task) => {
+//         trigger(task.id, true)
+//           .unwrap()
+//           .then((assignments) => {
+//             setAllTaskAssignments((prev) => ({
+//               ...prev,
+//               [task.id]: assignments,
+//             }));
+//           })
+//           .catch((error) => console.error(`Failed to fetch assignments for ${task.id}:`, error));
+//       });
 //     }
-//   }, [data]);
+//   }, [data, trigger]);
+
+//   useEffect(() => {
+//     if (dynamicAssignments && selectedItemId) {
+//       setAllTaskAssignments((prev) => ({
+//         ...prev,
+//         [selectedItemId]: dynamicAssignments,
+//       }));
+//     }
+//   }, [dynamicAssignments, selectedItemId]);
 
 //   const handleCellChange = (itemId: string, field: string, value: any, isSubtask?: boolean) => {
 //     const key = `${itemId}-${field}${isSubtask ? '-subtask' : ''}`;
@@ -66,7 +102,10 @@
 //       }).unwrap();
 //       setEditedCells((prev) => ({ ...prev, [`${taskId}-status`]: newStatus }));
 //       await refetchProject();
-//       console.log('Task status updated, refetched data:', data?.data?.tasks.find((t) => t.id === taskId));
+//       console.log(
+//         'Task status updated, refetched data:',
+//         data?.data?.tasks.find((t) => t.id === taskId)
+//       );
 //     } catch (err) {
 //       console.error('Failed to update task status', err);
 //     } finally {
@@ -99,12 +138,35 @@
 //     }
 //   };
 
+//   const handleTaskPlannedHoursChange = async (taskId: string, hours: number) => {
+//     if (hours < 0) {
+//       alert('Planned hours cannot be negative.');
+//       return;
+//     }
+//     try {
+//       setIsRefetching(true);
+//       await updatePlannedHours({
+//         id: taskId,
+//         plannedHours: hours,
+//         createdBy: accountId,
+//       }).unwrap();
+//       await refetchProject();
+//       console.log(
+//         'Task planned hours updated, refetched data:',
+//         data?.data?.tasks.find((t) => t.id === taskId)
+//       );
+//     } catch (err) {
+//       console.error('Failed to update task planned hours', err);
+//     } finally {
+//       setIsRefetching(false);
+//     }
+//   };
+
 //   const handleSubtaskPlannedHoursChange = async (subtaskId: string, taskId: string, hours: number) => {
 //     if (hours < 0) {
 //       alert('Planned hours cannot be negative.');
 //       return;
 //     }
-
 //     try {
 //       setIsRefetching(true);
 //       await updateSubtaskPlannedHours({
@@ -122,6 +184,27 @@
 //     } finally {
 //       setIsRefetching(false);
 //     }
+//   };
+
+//   const handleAssignedByClick = (itemId: string, hasSubtasks: boolean) => {
+//     setSelectedItemId(itemId);
+//     setSelectedItemType(hasSubtasks ? 'task' : 'subtask');
+//     trigger(itemId, true)
+//       .unwrap()
+//       .then((assignments) => {
+//         setAllTaskAssignments((prev) => ({
+//           ...prev,
+//           [itemId]: assignments,
+//         }));
+//       })
+//       .catch((error) => console.error(`Failed to fetch assignments for ${itemId}:`, error));
+//     setShowPopup(true);
+//   };
+
+//   const closePopup = () => {
+//     setShowPopup(false);
+//     setSelectedItemId(null);
+//     setSelectedItemType('task');
 //   };
 
 //   if (isLoading || loadTaskStatus || loadSubtaskStatus) return <div>Loading...</div>;
@@ -157,12 +240,21 @@
 //     </Resizable>
 //   );
 
+//   const getAssignedNames = (itemId: string) => {
+//     const assignmentsForTask = allTaskAssignments[itemId] || [];
+//     return assignmentsForTask.length > 0
+//       ? assignmentsForTask.map((a) => a.accountFullname).join(', ')
+//       : '-';
+//   };
+
 //   return (
 //     <div className='container mx-auto p-4'>
 //       <h1 className='text-2xl font-bold mb-4'>
 //         Task & Subtask Sheet - {data?.data?.name || 'Unknown Project'}
 //       </h1>
-//       {isRefetching && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+//       {isRefetching && (
+//         <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+//       )}
 //       <div className='overflow-x-auto'>
 //         <table className='min-w-full bg-white border border-gray-200'>
 //           <thead>
@@ -271,7 +363,10 @@
 //             {tasks.map((task) => (
 //               <React.Fragment key={task.id}>
 //                 <tr className='hover:bg-gray-100 bg-gray-200'>
-//                   <td className='border p-2 flex items-center' onClick={() => toggleTaskExpand(task.id)}>
+//                   <td
+//                     className='border p-2 flex items-center'
+//                     onClick={() => toggleTaskExpand(task.id)}
+//                   >
 //                     {expandedTasks.has(task.id) ? '−' : '+'} {task.id}
 //                   </td>
 //                   <td className='border p-2'>{task.title}</td>
@@ -342,9 +437,11 @@
 //                     <input
 //                       type='number'
 //                       value={editedCells[`${task.id}-plannedHours`] || task.plannedHours || ''}
-//                       onChange={(e) =>
-//                         handleCellChange(task.id, 'plannedHours', parseFloat(e.target.value) || 0)
-//                       }
+//                       onChange={(e) => {
+//                         const hours = parseFloat(e.target.value) || 0;
+//                         handleCellChange(task.id, 'plannedHours', hours);
+//                         handleTaskPlannedHoursChange(task.id, hours);
+//                       }}
 //                       className='w-full p-1 border rounded'
 //                       disabled={!!task.subtasks?.length}
 //                     />
@@ -395,7 +492,12 @@
 //                       disabled={!!task.subtasks?.length}
 //                     />
 //                   </td>
-//                   <td className='border p-2'>-</td>
+//                   <td
+//                     className='border p-2 cursor-pointer text-blue-500 hover:underline'
+//                     onClick={() => handleAssignedByClick(task.id, !!task.subtasks?.length)}
+//                   >
+//                     {getAssignedNames(task.id)}
+//                   </td>
 //                   <td className='border p-2'>{task.sprintId || '-'}</td>
 //                 </tr>
 //                 {expandedTasks.has(task.id) &&
@@ -568,7 +670,12 @@
 //                           disabled={false}
 //                         />
 //                       </td>
-//                       <td className='border p-2'>{subtask.assignedBy}</td>
+//                       <td
+//                         className='border p-2 cursor-pointer text-blue-500 hover:underline'
+//                         onClick={() => handleAssignedByClick(subtask.id, false)}
+//                       >
+//                         {subtask.assignedFullName || subtask.assignedUsername || '-'}
+//                       </td>
 //                       <td className='border p-2'>{task.sprintId || '-'}</td>
 //                     </tr>
 //                   ))}
@@ -577,6 +684,17 @@
 //           </tbody>
 //         </table>
 //       </div>
+
+//       {showPopup && (
+//         <AssignedByPopup
+//           open={showPopup}
+//           onClose={closePopup}
+//           workItemId={selectedItemId || ''}
+//           type={selectedItemType}
+//           onRefetch={refetchProject}
+//           assignments={allTaskAssignments[selectedItemId || ''] || []}
+//         />
+//       )}
 //     </div>
 //   );
 // };
@@ -591,10 +709,15 @@ import { useUpdateTaskStatusMutation } from '../../../services/taskApi';
 import { useUpdateSubtaskStatusMutation } from '../../../services/subtaskApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useUpdateSubtaskPlannedHoursMutation } from '../../../services/subtaskApi';
+import { useUpdatePlannedHoursMutation } from '../../../services/taskApi';
 import type { SubtaskItem } from '../../../services/projectApi';
 import type { TaskItem } from '../../../services/projectApi';
 import { useSearchParams } from 'react-router-dom';
-import { useGetTaskAssignmentsByTaskIdQuery } from '../../../services/taskAssignmentApi';
+import {
+  useGetTaskAssignmentsByTaskIdQuery,
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+} from '../../../services/taskAssignmentApi';
+import AssignedByPopup from './AssignedByPopup';
 
 interface ExtendedTaskItem extends TaskItem {
   assignedBy?: string | null;
@@ -617,27 +740,47 @@ const TaskSubtaskSheet: React.FC = () => {
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
   const [updateSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation();
+  const [updatePlannedHours] = useUpdatePlannedHoursMutation();
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
   const [isRefetching, setIsRefetching] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'task' | 'subtask'>('task');
 
   const { data: taskStatusOptions, isLoading: loadTaskStatus } =
     useGetCategoriesByGroupQuery('task_status');
   const { data: subtaskStatusOptions, isLoading: loadSubtaskStatus } =
     useGetCategoriesByGroupQuery('subtask_status');
 
-  const { data: assignments } = useGetTaskAssignmentsByTaskIdQuery(selectedItemId || '', {
-    skip: !selectedItemId,
-  });
+  const [trigger, { data: dynamicAssignments }] = useLazyGetTaskAssignmentsByTaskIdQuery();
+  const [allTaskAssignments, setAllTaskAssignments] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     if (data?.data?.tasks) {
       setTasks(data.data.tasks as ExtendedTaskItem[]);
-      console.log('Tasks updated from data:', data.data.tasks);
+      data.data.tasks.forEach((task) => {
+        trigger(task.id, true)
+          .unwrap()
+          .then((assignments) => {
+            setAllTaskAssignments((prev) => ({
+              ...prev,
+              [task.id]: assignments,
+            }));
+          })
+          .catch((error) => console.error(`Failed to fetch assignments for ${task.id}:`, error));
+      });
     }
-  }, [data]);
+  }, [data, trigger]);
+
+  useEffect(() => {
+    if (dynamicAssignments && selectedItemId) {
+      setAllTaskAssignments((prev) => ({
+        ...prev,
+        [selectedItemId]: dynamicAssignments,
+      }));
+    }
+  }, [dynamicAssignments, selectedItemId]);
 
   const handleCellChange = (itemId: string, field: string, value: any, isSubtask?: boolean) => {
     const key = `${itemId}-${field}${isSubtask ? '-subtask' : ''}`;
@@ -663,7 +806,10 @@ const TaskSubtaskSheet: React.FC = () => {
       }).unwrap();
       setEditedCells((prev) => ({ ...prev, [`${taskId}-status`]: newStatus }));
       await refetchProject();
-      console.log('Task status updated, refetched data:', data?.data?.tasks.find((t) => t.id === taskId));
+      console.log(
+        'Task status updated, refetched data:',
+        data?.data?.tasks.find((t) => t.id === taskId)
+      );
     } catch (err) {
       console.error('Failed to update task status', err);
     } finally {
@@ -696,12 +842,35 @@ const TaskSubtaskSheet: React.FC = () => {
     }
   };
 
+  const handleTaskPlannedHoursChange = async (taskId: string, hours: number) => {
+    if (hours < 0) {
+      alert('Planned hours cannot be negative.');
+      return;
+    }
+    try {
+      setIsRefetching(true);
+      await updatePlannedHours({
+        id: taskId,
+        plannedHours: hours,
+        createdBy: accountId,
+      }).unwrap();
+      await refetchProject();
+      console.log(
+        'Task planned hours updated, refetched data:',
+        data?.data?.tasks.find((t) => t.id === taskId)
+      );
+    } catch (err) {
+      console.error('Failed to update task planned hours', err);
+    } finally {
+      setIsRefetching(false);
+    }
+  };
+
   const handleSubtaskPlannedHoursChange = async (subtaskId: string, taskId: string, hours: number) => {
     if (hours < 0) {
       alert('Planned hours cannot be negative.');
       return;
     }
-
     try {
       setIsRefetching(true);
       await updateSubtaskPlannedHours({
@@ -722,13 +891,40 @@ const TaskSubtaskSheet: React.FC = () => {
   };
 
   const handleAssignedByClick = (itemId: string, hasSubtasks: boolean) => {
-    setSelectedItemId(itemId);
-    setShowPopup(true);
+    if (hasSubtasks) {
+      setSelectedItemType('task');
+      setSelectedItemId(itemId);
+      trigger(itemId, true)
+        .unwrap()
+        .then((assignments) => {
+          setAllTaskAssignments((prev) => ({
+            ...prev,
+            [itemId]: assignments,
+          }));
+          setShowPopup(true);
+        })
+        .catch((error) => console.error(`Failed to fetch assignments for ${itemId}:`, error));
+    } else if (!hasSubtasks) {
+      setSelectedItemType('task');
+      setSelectedItemId(itemId);
+      trigger(itemId, true)
+        .unwrap()
+        .then((assignments) => {
+          setAllTaskAssignments((prev) => ({
+            ...prev,
+            [itemId]: assignments,
+          }));
+          setShowPopup(true);
+        })
+        .catch((error) => console.error(`Failed to fetch assignments for ${itemId}:`, error));
+    }
+    // No action for subtask
   };
 
   const closePopup = () => {
     setShowPopup(false);
     setSelectedItemId(null);
+    setSelectedItemType('task');
   };
 
   if (isLoading || loadTaskStatus || loadSubtaskStatus) return <div>Loading...</div>;
@@ -764,10 +960,11 @@ const TaskSubtaskSheet: React.FC = () => {
     </Resizable>
   );
 
-  // Function to get assigned names from assignments
   const getAssignedNames = (itemId: string) => {
-    if (!assignments) return '-'; 
-    return assignments.map((a) => a.accountFullname).join(', ');
+    const assignmentsForTask = allTaskAssignments[itemId] || [];
+    return assignmentsForTask.length > 0
+      ? assignmentsForTask.map((a) => a.accountFullname).join(', ')
+      : '-';
   };
 
   return (
@@ -775,7 +972,9 @@ const TaskSubtaskSheet: React.FC = () => {
       <h1 className='text-2xl font-bold mb-4'>
         Task & Subtask Sheet - {data?.data?.name || 'Unknown Project'}
       </h1>
-      {isRefetching && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+      {isRefetching && (
+        <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+      )}
       <div className='overflow-x-auto'>
         <table className='min-w-full bg-white border border-gray-200'>
           <thead>
@@ -884,7 +1083,10 @@ const TaskSubtaskSheet: React.FC = () => {
             {tasks.map((task) => (
               <React.Fragment key={task.id}>
                 <tr className='hover:bg-gray-100 bg-gray-200'>
-                  <td className='border p-2 flex items-center' onClick={() => toggleTaskExpand(task.id)}>
+                  <td
+                    className='border p-2 flex items-center'
+                    onClick={() => toggleTaskExpand(task.id)}
+                  >
                     {expandedTasks.has(task.id) ? '−' : '+'} {task.id}
                   </td>
                   <td className='border p-2'>{task.title}</td>
@@ -955,9 +1157,11 @@ const TaskSubtaskSheet: React.FC = () => {
                     <input
                       type='number'
                       value={editedCells[`${task.id}-plannedHours`] || task.plannedHours || ''}
-                      onChange={(e) =>
-                        handleCellChange(task.id, 'plannedHours', parseFloat(e.target.value) || 0)
-                      }
+                      onChange={(e) => {
+                        const hours = parseFloat(e.target.value) || 0;
+                        handleCellChange(task.id, 'plannedHours', hours);
+                        handleTaskPlannedHoursChange(task.id, hours);
+                      }}
                       className='w-full p-1 border rounded'
                       disabled={!!task.subtasks?.length}
                     />
@@ -1202,43 +1406,15 @@ const TaskSubtaskSheet: React.FC = () => {
       </div>
 
       {showPopup && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white p-4 rounded shadow-lg w-1/3'>
-            <h2 className='text-xl font-bold mb-2'>Assignments for {selectedItemId}</h2>
-            {assignments && assignments.length > 0 ? (
-              <table className='w-full'>
-                <thead>
-                  <tr className='bg-gray-100'>
-                    <th className='p-2 border'>Name</th>
-                    <th className='p-2 border'>Picture</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assignments.map((assignment) => (
-                    <tr key={assignment.id} className='hover:bg-gray-50'>
-                      <td className='p-2 border'>{assignment.accountFullname}</td>
-                      <td className='p-2 border'>
-                        <img
-                          src={assignment.accountPicture || 'https://via.placeholder.com/40'} // Fallback for null picture
-                          alt={assignment.accountFullname}
-                          className='w-10 h-10 rounded-full'
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p>No assignments found.</p>
-            )}
-            <button
-              className='mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
-              onClick={closePopup}
-            >
-              Close
-            </button>
-          </div>
-        </div>
+        <AssignedByPopup
+          open={showPopup}
+          onClose={closePopup}
+          workItemId={selectedItemId || ''}
+          type={selectedItemType}
+          onRefetch={refetchProject}
+          assignments={allTaskAssignments[selectedItemId || ''] || []}
+          isReadOnly={selectedItemType === 'task' && !!tasks.find((t) => t.id === selectedItemId)?.subtasks?.length}
+        />
       )}
     </div>
   );

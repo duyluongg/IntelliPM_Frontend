@@ -118,7 +118,9 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         try {
           const response = await checkAccountByEmail(member.email).unwrap();
           if (response?.isSuccess && response.data) {
-            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : 
+                   response.data.role === 'TEAM_LEADER' ? 'Team Leader' :
+                   response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
             if (response.data.position && isValidPosition(response.data.position) && !position.includes(response.data.position)) {
               position = [response.data.position];
             }
@@ -157,7 +159,9 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         try {
           const response = await checkAccountByEmail(inv.email).unwrap();
           if (response?.isSuccess && response.data) {
-            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : 
+                   response.data.role === 'TEAM_LEADER' ? 'Team Leader' :
+                   response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
             if (response.data.position && isValidPosition(response.data.position) && !position.includes(response.data.position)) {
               position = [response.data.position];
             }
@@ -199,7 +203,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
       else if (initialData?.invitees && initialData.invitees.length > 0) {
         console.log('Populating invitees from initialData.invitees');
         newInvitees = initialData.invitees
-          .filter((email) => email.toLowerCase() !== emailCurrent.toLowerCase()) // Exclude current user's email
+          .filter((email) => email.toLowerCase() !== emailCurrent.toLowerCase())
           .map((email, index) => ({
             email,
             role: 'Team Member',
@@ -218,7 +222,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
             console.log('Populating invitees from localStorage.projectFormData');
             newInvitees = await Promise.all(
               parsedFormData.invitees
-                .filter((inv: any) => inv.email.toLowerCase() !== emailCurrent.toLowerCase()) // Exclude current user's email
+                .filter((inv: any) => inv.email.toLowerCase() !== emailCurrent.toLowerCase())
                 .map((inv: any, index: number) => mapLocalInvitee(inv, index))
             );
           }
@@ -230,7 +234,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     };
 
     initializeInvitees();
-  }, [serverData, initialData, emailCurrent]);
+  }, [serverData, initialData, emailCurrent, checkAccountByEmail, positionData]);
 
   useEffect(() => {
     dispatch(
@@ -292,7 +296,9 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
         const position = response.data.position && isValidPosition(response.data.position) ? [response.data.position] : [];
         const newInvitee: Invitee = {
           email,
-          role: response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member',
+          role: response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : 
+                response.data.role === 'TEAM_LEADER' ? 'Team Leader' :
+                response.data.role === 'CLIENT' ? 'Client' : 'Team Member',
           positions: position,
           details: {
             yearsExperience: response.data.id === 5 ? 5 : 3,
@@ -355,14 +361,16 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
     for (const member of selectedMembers) {
       if (!invitees.some((inv) => inv.email.toLowerCase() === member.accountEmail.toLowerCase()) && member.accountEmail.toLowerCase() !== emailCurrent.toLowerCase()) {
         let position: string[] = [];
-        let role = 'Team Member'; // Default role
+        let role = 'Team Member';
         try {
           const response = await checkAccountByEmail(member.accountEmail).unwrap();
           if (response?.isSuccess && response.data) {
             if (response.data.position && isValidPosition(response.data.position)) {
               position = [response.data.position];
             }
-            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
+            role = response.data.role === 'PROJECT_MANAGER' ? 'Project Manager' : 
+                   response.data.role === 'TEAM_LEADER' ? 'Team Leader' :
+                   response.data.role === 'CLIENT' ? 'Client' : 'Team Member';
           } else {
             errors.push(`No valid account data for '${member.accountEmail}'. Added as Team Member.`);
           }
@@ -652,7 +660,7 @@ const InviteesForm: React.FC<InviteesFormProps> = ({ initialData, serverData, on
           accountId={currentAccount.data.id}
           onClose={() => setShowTeamsPopup(false)}
           onAddSelected={handleAddTeamMembers}
-          existingEmails={[...invitees.map((inv) => inv.email), emailCurrent]} // Include emailCurrent in existingEmails
+          existingEmails={[...invitees.map((inv) => inv.email), emailCurrent]}
         />
       )}
     </div>

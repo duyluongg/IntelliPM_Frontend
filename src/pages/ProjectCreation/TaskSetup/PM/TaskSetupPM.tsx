@@ -117,15 +117,16 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   });
 
   // Transform rawMembersData to match the expected Member interface
-  const membersData = rawMembersData
-    ? {
-        data: rawMembersData.data?.map((member) => ({
-          accountId: member.accountId,
-          fullName: member.fullName,
-          picture: member.picture ?? 'https://i.pravatar.cc/40',
-        })),
-      }
-    : undefined;
+const membersData = rawMembersData
+  ? {
+      data: rawMembersData.data?.map((member) => ({
+        accountId: member.accountId,
+        fullName: member.fullName,
+        picture: member.picture ?? 'https://i.pravatar.cc/40',
+        projectPositions: member.projectPositions || [], // Include projectPositions, default to empty array if undefined
+      })),
+    }
+  : undefined;
 
   const [createEpics, { isLoading: isCreatingEpics, error: createEpicsError }] =
     useCreateEpicsWithTasksMutation();
@@ -560,52 +561,6 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (isSaving || isCreatingEpics) {
-    return (
-      <div className="flex justify-center items-center h-screen bg-gray-50">
-        <style>
-          {`
-          @keyframes gradientText {
-            0% { background-position: 200% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-        `}
-        </style>
-
-        <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl shadow-lg">
-          <span
-            style={{
-              background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
-              backgroundSize: '200% auto',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              display: 'inline-block',
-              animation: 'gradientText 2s linear infinite',
-            }}
-            className="text-xl font-bold tracking-wide"
-          >
-            Saving your tasks...
-          </span>
-
-          <div className="flex gap-1.5">
-            <div
-              className="w-3 h-3 bg-[#1c73fd] rounded-full animate-pulse"
-              style={{ animationDelay: '0s' }}
-            ></div>
-            <div
-              className="w-3 h-3 bg-[#4a90e2] rounded-full animate-pulse"
-              style={{ animationDelay: '0.2s' }}
-            ></div>
-            <div
-              className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse"
-              style={{ animationDelay: '0.4s' }}
-            ></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (projectError || !projectData?.isSuccess || membersError) {
     return (
       <div className="text-center p-8 text-red-500 bg-red-50 rounded-2xl">
@@ -620,7 +575,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 rounded-3xl shadow-xl">
+    <div className="max-w-7xl mx-auto p-6 bg-white rounded-3xl shadow-xl relative">
       <TaskSetupHeader
         projectData={projectData}
         projectKey={projectKey}
@@ -678,6 +633,51 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
           {isSaving ? 'Saving...' : 'Next'}
         </button>
       </div>
+
+      {/* Loading Overlay - Only shows within this component */}
+{(isSaving || isCreatingEpics) && (
+  <div className="absolute inset-0 bg-black bg-opacity-40 flex justify-center items-center rounded-3xl z-50 backdrop-blur-sm">
+    <style>
+      {`
+        @keyframes gradientText {
+          0% { background-position: 200% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+      `}
+    </style>
+
+    <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl shadow-lg">
+      <span
+        style={{
+          background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
+          backgroundSize: '200% auto',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          display: 'inline-block',
+          animation: 'gradientText 2s linear infinite',
+        }}
+        className="text-xl font-bold tracking-wide"
+      >
+        Saving your tasks...
+      </span>
+
+      <div className="flex gap-1.5">
+        <div
+          className="w-3 h-3 bg-[#1c73fd] rounded-full animate-pulse"
+          style={{ animationDelay: '0s' }}
+        ></div>
+        <div
+          className="w-3 h-3 bg-[#4a90e2] rounded-full animate-pulse"
+          style={{ animationDelay: '0.2s' }}
+        ></div>
+        <div
+          className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse"
+          style={{ animationDelay: '0.4s' }}
+        ></div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

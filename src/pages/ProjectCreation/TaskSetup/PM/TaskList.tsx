@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { type TaskState } from '../../../../services/aiApi';
 import EditEpicPopup from '../EditEpicPopup';
 import EditTaskPopup from '../EditTaskPopup';
@@ -6,7 +7,7 @@ import EditDatePopup from '../EditDatePopup';
 import CreateTaskPopup from '../CreateTaskPopup';
 import NotifyPMConfirmPopup from '../NotifyPMConfirmPopup';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
-import taskIcon from '../../../../assets/icon/type_task.svg';
+import storyIcon from '../../../../assets/icon/type_story.svg';
 import epicIcon from '../../../../assets/icon/type_epic.svg';
 import galaxyaiIcon from '../../../../assets/galaxyai.gif';
 import { Plus, BookUser } from 'lucide-react';
@@ -121,7 +122,7 @@ const Avatar = ({
   onDelete,
 }: {
   person: { name: string | null | undefined; picture: string | null; id?: number | null };
-  onDelete?: () => void;
+  onDelete?: (e?: React.MouseEvent) => void;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const displayName = person.name || '-';
@@ -151,10 +152,10 @@ const Avatar = ({
             .substring(0, 2)}
         </div>
       )}
-      <span className='text-xs text-gray-800 truncate max-w-[80px]'>{displayName}</span>
+      <span className='text-xs text-gray-800'>{displayName}</span>
       {onDelete && isHovered && (
         <button
-          onClick={onDelete}
+          onClick={(e) => onDelete(e)}
           className='absolute -top-1 -right-1 text-red-600 hover:text-red-800 text-xs bg-white rounded-full w-4 h-4 flex items-center justify-center'
           title={`Remove ${displayName}`}
         >
@@ -166,6 +167,64 @@ const Avatar = ({
     <span className='text-gray-500 text-xs'>-</span>
   );
 };
+
+interface DropdownProps {
+  children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  relativeTo: HTMLElement | null;
+}
+
+const Dropdown = React.forwardRef<HTMLDivElement, DropdownProps>(
+  ({ children, className, style, relativeTo }, ref) => {
+    const [position, setPosition] = useState({ top: 0, left: 0 });
+
+    useEffect(() => {
+      const updatePosition = () => {
+        if (relativeTo) {
+          const rect = relativeTo.getBoundingClientRect();
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+          
+          setPosition({
+            top: rect.bottom + scrollTop + 2, // +2 for small gap
+            left: rect.left + scrollLeft
+          });
+        }
+      };
+
+      updatePosition();
+      
+      const handleScroll = () => updatePosition();
+      const handleResize = () => updatePosition();
+      
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+      
+      return () => {
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
+      };
+    }, [relativeTo]);
+
+    return ReactDOM.createPortal(
+      <div 
+        ref={ref} 
+        className={className} 
+        style={{
+          ...style,
+          position: 'absolute',
+          top: position.top,
+          left: position.left,
+          zIndex: 2000
+        }}
+      >
+        {children}
+      </div>,
+      document.body
+    );
+  }
+);
 
 const TaskList: React.FC<TaskListProps> = ({
   epics,
@@ -202,46 +261,52 @@ const TaskList: React.FC<TaskListProps> = ({
   projectId,
   handleEvaluationSubmitSuccess,
 }) => {
+  // Ensure epics is always an array
+  const safeEpics = Array.isArray(epics) ? epics : [];
+  
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [showMemberDropdown, setShowMemberDropdown] = useState<{
     id: string;
     type: 'TASK';
+    element: HTMLElement | null;
   } | null>(null);
-  const [expandedEpics, setExpandedEpics] = useState<{ [key: string]: boolean }>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [expandedEpicIndices, setExpandedEpicIndices] = useState<Set<number>>(new Set());
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const assigneeCellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
 
-  const toggleAllEpics = () => {
-    const allExpanded = Object.values(expandedEpics).every((isExpanded) => isExpanded);
-    const newExpandedState = epics.reduce((acc, epic) => {
-      acc[epic.epicId] = !allExpanded;
-      return acc;
-    }, {} as { [key: string]: boolean });
-    setExpandedEpics(newExpandedState);
-  };
-
-  const toggleEpic = (epicId: string) => {
-    setExpandedEpics((prev) => ({
-      ...prev,
-      [epicId]: !prev[epicId],
-    }));
-  };
-
+  // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        memberDropdownRef.current &&
-        !memberDropdownRef.current.contains(event.target as Node)
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setShowMemberDropdown(null);
-        setIsMemberDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [setIsMemberDropdownOpen]);
+  }, []);
+
+  const toggleEpic = (epicIndex: number) => {
+    setExpandedEpicIndices((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(epicIndex)) {
+        newSet.delete(epicIndex);
+      } else {
+        newSet.add(epicIndex);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllEpics = () => {
+    const allExpanded = expandedEpicIndices.size === safeEpics.length;
+    setExpandedEpicIndices(
+      allExpanded ? new Set() : new Set(safeEpics.map((_, i) => i))
+    );
+  };
 
   const handleEditClick = (id: string, field: string, value: string) => {
     setEditingCell({ id, field });
@@ -285,11 +350,14 @@ const TaskList: React.FC<TaskListProps> = ({
     }
 
     if (item.type === 'EPIC') {
-      setEditingEpic({
-        ...epics.find((e) => e.epicId === id)!,
-        [field]: editValue,
-      });
-      handleEditEpic();
+      const foundEpic = safeEpics.find((e) => e.epicId === id);
+      if (foundEpic) {
+        setEditingEpic({
+          ...foundEpic,
+          [field]: editValue,
+        });
+        handleEditEpic();
+      }
     } else if (item.type === 'TASK') {
       handleEditTask(item.epicId!, item.id, {
         [field]: isDateField ? formattedDate : editValue,
@@ -302,39 +370,46 @@ const TaskList: React.FC<TaskListProps> = ({
 
   const handleMemberSelect = (item: TaskRow, member: Member) => {
     if (item.type === 'TASK') {
-      const isAlreadyAssigned = item.assignees.some((assignee) => assignee.id === member.accountId);
+      const isAlreadyAssigned = item.assignees?.some((assignee) => assignee.id === member.accountId) || false;
       if (isAlreadyAssigned) {
-        alert('This member is already assigned.');
-        return;
+        // Remove member if already assigned
+        handleRemoveMember(item.epicId!, item.id, member.accountId);
+      } else {
+        // Add member if not assigned and under limit
+        if ((item.assignees?.length || 0) < 3) {
+          handleAddMember(item.epicId!, item.id, member.accountId);
+        }
       }
-      handleAddMember(item.epicId!, item.id, member.accountId);
     }
-    setShowMemberDropdown(null);
-    setIsMemberDropdownOpen(false);
-  };
-
-  const handleDeleteAssignment = (item: TaskRow, assigneeId: number) => {
-    if (item.type === 'TASK') {
-      handleRemoveMember(item.epicId!, item.id, assigneeId);
-    }
+    // Close dropdown after selection
     setShowMemberDropdown(null);
   };
 
-  const handleShowMemberDropdown = (id: string, type: 'TASK' | 'EPIC') => {
+  const handleShowMemberDropdown = (
+    id: string,
+    type: 'TASK' | 'EPIC',
+    event: React.MouseEvent
+  ) => {
     if (type === 'TASK') {
-      setShowMemberDropdown({ id, type });
-      setIsMemberDropdownOpen(true);
+      const cell = assigneeCellRefs.current.get(id);
+      if (cell) {
+        setShowMemberDropdown({
+          id,
+          type,
+          element: cell
+        });
+      }
     }
   };
 
   const handleDetailsClick = (item: TaskRow) => {
     if (item.type === 'EPIC') {
-      const epic = epics.find((e) => e.epicId === item.id);
+      const epic = safeEpics.find((e) => e.epicId === item.id);
       if (epic) setEditingEpic(epic);
     } else if (item.type === 'TASK') {
-      const epic = epics.find((e) => e.epicId === item.epicId);
+      const epic = safeEpics.find((e) => e.epicId === item.epicId);
       if (epic) {
-        const task = epic.tasks.find((t) => t.id === item.id);
+        const task = (epic.tasks || []).find((t) => t.id === item.id);
         if (task) setEditingTask({ epicId: item.epicId!, task });
       }
     }
@@ -347,6 +422,36 @@ const TaskList: React.FC<TaskListProps> = ({
           @keyframes gradientLoading {
             0% { background-position: 200% 50%; }
             100% { background-position: 0% 50%; }
+          }
+          .title-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 4.2em;
+            overflow: hidden;
+          }
+          .assignee-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 5.6em;
+            overflow: visible;
+            position: relative;
+            z-index: 10;
+          }
+          .dropdown-container {
+            width: 200px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 6px;
+          }
+          .table-container {
+            position: relative;
+            overflow: visible;
           }
         `}
       </style>
@@ -376,17 +481,15 @@ const TaskList: React.FC<TaskListProps> = ({
         <section className='p-3 font-sans bg-white w-full'>
           <div className='mb-4'>
             <button onClick={toggleAllEpics} className='text-sm text-blue-600 hover:text-blue-800'>
-              {Object.values(expandedEpics).every((isExpanded) => isExpanded)
-                ? 'Collapse All'
-                : 'Expand All'}
+              {expandedEpicIndices.size === safeEpics.length ? 'Collapse All' : 'Expand All'}
             </button>
           </div>
-          {epics.length === 0 ? (
+          {safeEpics.length === 0 ? (
             <div className='px-6 py-4 text-center text-gray-500'>
               No epics or tasks created yet. Use "Generate with AI" or "Create Task" to start.
             </div>
           ) : (
-            <div className='overflow-x-auto'>
+            <div className='table-container'>
               <table className='w-full border-collapse text-sm text-gray-800'>
                 <thead>
                   <tr className='bg-gray-100 border-b border-gray-200'>
@@ -401,7 +504,7 @@ const TaskList: React.FC<TaskListProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {epics.map((epic, epicIndex) => {
+                  {safeEpics.map((epic, epicIndex) => {
                     const epicRow: TaskRow = {
                       id: epic.epicId,
                       type: 'EPIC',
@@ -411,14 +514,14 @@ const TaskList: React.FC<TaskListProps> = ({
                       endDate: epic.endDate,
                       assignees: [],
                     };
-                    const taskRows: TaskRow[] = epic.tasks.map((task) => ({
+                    const taskRows: TaskRow[] = (epic.tasks || []).map((task) => ({
                       id: task.id,
                       type: 'TASK',
                       title: task.title,
                       description: task.description,
                       startDate: task.startDate,
                       endDate: task.endDate,
-                      assignees: task.assignedMembers.map((member) => ({
+                      assignees: (task.assignedMembers || []).map((member) => ({
                         id: member.accountId,
                         name: member.fullName,
                         picture: member.picture,
@@ -431,12 +534,13 @@ const TaskList: React.FC<TaskListProps> = ({
                         <tr className='border-b border-gray-200 bg-white hover:bg-gray-50'>
                           <td className='p-2'>
                             <button
-                              onClick={() => toggleEpic(epic.epicId)}
+                              onClick={() => toggleEpic(epicIndex)}
                               className='focus:outline-none'
+                              aria-expanded={expandedEpicIndices.has(epicIndex)}
                             >
                               <svg
                                 className={`w-5 h-5 transform transition-transform ${
-                                  expandedEpics[epic.epicId] ? 'rotate-90' : ''
+                                  expandedEpicIndices.has(epicIndex) ? 'rotate-90' : ''
                                 }`}
                                 fill='none'
                                 stroke='currentColor'
@@ -455,7 +559,7 @@ const TaskList: React.FC<TaskListProps> = ({
                           <td className='p-2'>
                             <img src={epicIcon} alt='Epic' className='w-6 h-6 rounded p-1' />
                           </td>
-                          <td className='p-2 whitespace-nowrap'>
+                          <td className='p-2 title-cell'>
                             {editingCell?.id === epicRow.id && editingCell?.field === 'title' ? (
                               <input
                                 type='text'
@@ -467,7 +571,7 @@ const TaskList: React.FC<TaskListProps> = ({
                               />
                             ) : (
                               <span
-                                className='cursor-pointer truncate'
+                                className='cursor-pointer'
                                 onClick={() => handleEditClick(epicRow.id, 'title', epicRow.title)}
                               >
                                 {epicRow.title}
@@ -521,7 +625,9 @@ const TaskList: React.FC<TaskListProps> = ({
                               </span>
                             )}
                           </td>
-                          <td className='p-2'></td>
+                          <td className='p-2 assignee-cell'>
+                            <span className='text-gray-500 text-xs'>-</span>
+                          </td>
                           <td className='p-2'>
                             <button
                               onClick={() => handleDetailsClick(epicRow)}
@@ -532,7 +638,7 @@ const TaskList: React.FC<TaskListProps> = ({
                             </button>
                           </td>
                         </tr>
-                        {expandedEpics[epic.epicId] &&
+                        {expandedEpicIndices.has(epicIndex) &&
                           (taskRows.length === 0 ? (
                             <tr>
                               <td colSpan={8} className='p-4 text-gray-500 text-sm text-center'>
@@ -549,12 +655,12 @@ const TaskList: React.FC<TaskListProps> = ({
                                 <td className='p-2'>{taskIndex + 1}</td>
                                 <td className='p-2'>
                                   <img
-                                    src={taskIcon}
+                                    src={storyIcon}
                                     alt='Task'
                                     className='w-5 h-5 rounded p-0.5'
                                   />
                                 </td>
-                                <td className='p-2 whitespace-nowrap'>
+                                <td className='p-2 title-cell'>
                                   {editingCell?.id === item.id && editingCell?.field === 'title' ? (
                                     <input
                                       type='text'
@@ -566,7 +672,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     />
                                   ) : (
                                     <span
-                                      className='cursor-pointer truncate'
+                                      className='cursor-pointer'
                                       onClick={() => handleEditClick(item.id, 'title', item.title)}
                                     >
                                       {item.title}
@@ -625,88 +731,99 @@ const TaskList: React.FC<TaskListProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className='p-2 relative'>
-                                  {showMemberDropdown?.id === item.id && item.type === 'TASK' ? (
+                                <td
+                                  className='p-2 relative assignee-cell'
+                                  ref={(el) => {
+                                    if (el) assigneeCellRefs.current.set(item.id, el);
+                                    else assigneeCellRefs.current.delete(item.id);
+                                  }}
+                                >
+                                  <div className='inline-flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer relative'>
                                     <div
-                                      ref={dropdownRef}
-                                      className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                                      onClick={(e) => handleShowMemberDropdown(item.id, item.type, e)}
+                                      className='flex flex-wrap gap-2'
                                     >
-                                      {membersData?.data?.map((member) => {
-                                        const currentAssignees = item.assignees
-                                          .map((a) => a.id)
-                                          .filter((id) => id !== undefined) as number[];
-                                        const isDisabled = currentAssignees.includes(
-                                          member.accountId
-                                        );
-                                        return (
-                                          <div
-                                            key={member.accountId}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                              isDisabled
-                                                ? 'opacity-50 cursor-not-allowed'
-                                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                            }`}
-                                            onClick={() =>
-                                              !isDisabled && handleMemberSelect(item, member)
-                                            }
-                                          >
-                                            <div className='relative'>
-                                              {member.picture ? (
-                                                <img
-                                                  src={member.picture}
-                                                  alt={`${member.fullName}'s avatar`}
-                                                  className='w-8 h-8 rounded-full object-cover border border-gray-200'
-                                                />
-                                              ) : (
-                                                <div
-                                                  className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
-                                                  style={{ backgroundColor: '#6b7280' }}
-                                                >
-                                                  {member.fullName
-                                                    .split(' ')
-                                                    .map((n) => n[0])
-                                                    .join('')
-                                                    .substring(0, 2)}
-                                                </div>
-                                              )}
-                                            </div>
-                                            <span className='text-gray-900 font-medium truncate'>
-                                              {member.fullName}
-                                            </span>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <div
-                                      onClick={() => handleShowMemberDropdown(item.id, item.type)}
-                                      className='inline-flex flex-nowrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
-                                    >
-                                      {item.type === 'TASK' && item.assignees.length ? (
+                                      {item.type === 'TASK' && item.assignees && item.assignees.length ? (
                                         item.assignees.map((assignee, index) => (
                                           <Avatar
                                             key={assignee.id ?? index}
                                             person={assignee}
                                             onDelete={
                                               assignee.id != null
-                                                ? () =>
-                                                    handleDeleteAssignment(
-                                                      item,
-                                                      assignee.id as number
-                                                    )
+                                                ? (e) => {
+                                                    e?.stopPropagation();
+                                                    handleRemoveMember(item.epicId!, item.id, assignee.id as number);
+                                                  }
                                                 : undefined
                                             }
                                           />
                                         ))
-                                      ) : item.type === 'TASK' ? (
+                                      ) : (
                                         <button className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium'>
                                           <Plus className='w-3 h-3' />
                                           Member
                                         </button>
-                                      ) : (
-                                        <span className='text-gray-500 text-xs'>-</span>
                                       )}
                                     </div>
+                                  </div>
+                                  
+                                  {showMemberDropdown?.id === item.id && item.type === 'TASK' && (
+                                    <Dropdown
+                                      ref={dropdownRef}
+                                      className='dropdown-container'
+                                      relativeTo={showMemberDropdown.element}
+                                    >
+                                      {membersData?.data && Array.isArray(membersData.data) && membersData.data.length > 0 ? (
+                                        membersData.data.map((member) => {
+                                          const currentAssignees = (item.assignees || [])
+                                            .map((a) => a.id)
+                                            .filter((id) => id !== undefined) as number[];
+                                          const isAssigned = currentAssignees.includes(member.accountId);
+                                          
+                                          return (
+                                            <div
+                                              key={member.accountId}
+                                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${
+                                                isAssigned
+                                                  ? 'opacity-50'
+                                                  : 'hover:bg-gray-100'
+                                              }`}
+                                              onClick={() => handleMemberSelect(item, member)}
+                                            >
+                                              <div>
+                                                {member.picture ? (
+                                                  <img
+                                                    src={member.picture}
+                                                    alt={`${member.fullName}'s avatar`}
+                                                    className='w-6 h-6 rounded-full object-cover border border-gray-200'
+                                                  />
+                                                ) : (
+                                                  <div
+                                                    className='w-6 h-6 rounded-full flex justify-center items-center text-white text-xs font-bold'
+                                                    style={{ backgroundColor: '#6b7280' }}
+                                                  >
+                                                    {member.fullName
+                                                      .split(' ')
+                                                      .map((n) => n[0])
+                                                      .join('')
+                                                      .substring(0, 2)}
+                                                  </div>
+                                                )}
+                                              </div>
+                                              <div className='flex-1'>
+                                                <span className='text-sm text-gray-900'>
+                                                  {member.fullName}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      ) : (
+                                        <div className='px-2 py-1.5 text-sm text-gray-500'>
+                                          No members available
+                                        </div>
+                                      )}
+                                    </Dropdown>
                                   )}
                                 </td>
                                 <td className='p-2'>

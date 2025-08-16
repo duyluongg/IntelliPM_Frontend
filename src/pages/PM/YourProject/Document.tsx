@@ -45,6 +45,10 @@ import { CommentMark } from './CommentMark';
 import CommentSidebar from './CommentSidebar';
 import SideMenu from './SideMenu';
 import { skipToken } from '@reduxjs/toolkit/query';
+import DocumentRealtimeBridge from './DocumentRealtimeBridge';
+import toast from 'react-hot-toast';
+import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/documentPermissionAPI';
+import type { DocumentVisibility } from '../../../types/DocumentType';
 
 interface CommentItem {
   id: number | string;
@@ -63,21 +67,26 @@ interface MentionItem {
 
 export const Document: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode');
-  const isReadOnly = mode === 'view';
+
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const navigate = useNavigate();
   const { documentId } = useParams();
 
-  const docId = documentId ? Number(documentId) : skipToken;
+  const numericDocId = documentId ? Number(documentId) : undefined;
+  const { data: permResp, refetch: refetchPermission } = useGetPermissionTypeByDocumentQuery(
+    numericDocId!,
+    { skip: !numericDocId }
+  );
+  // thêm ref:
+  const isHydratedRef = useRef(false);
 
   const {
     data: documentData,
     isLoading,
     isError,
     refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(docId);
+  } = useGetDocumentByIdQuery(numericDocId ?? skipToken);
 
   const {
     content: initialContent,
@@ -89,7 +98,10 @@ export const Document: React.FC = () => {
   } = documentData || {};
 
   const { user } = useAuth();
-  console.log(createdBy);
+  const isOwner = !!user && !!createdBy && user.id === createdBy;
+  const permissionType = permResp?.permissionType ?? 'VIEW';
+
+  const canEdit = isOwner ? true : permissionType === 'EDIT';
 
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);
@@ -150,7 +162,19 @@ export const Document: React.FC = () => {
     [documentId, visibility]
   );
 
+  const debouncedSaveRef = useRef(
+    debounce((html: string, docVisibility?: DocumentVisibility) => {
+      if (documentId) {
+        updateDocument({
+          id: Number(documentId),
+          data: { content: html, visibility: docVisibility },
+        });
+      }
+    }, 500)
+  );
+
   const handleTitleSave = async () => {
+    if (!canEdit) return;
     if (currentTitle.trim() && currentTitle !== title) {
       try {
         await updateDocument({
@@ -165,7 +189,7 @@ export const Document: React.FC = () => {
   };
 
   const editor = useEditor({
-    editable: !isReadOnly,
+    editable: canEdit,
     extensions: [
       StarterKit,
       CommentMark,
@@ -243,10 +267,18 @@ export const Document: React.FC = () => {
       },
     },
     onUpdate: ({ editor }) => {
+      if (!canEdit || !isHydratedRef.current) return;
       const html = editor.getHTML();
-      debouncedSave(html);
+      debouncedSaveRef.current(html, visibility);
     },
   });
+
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(canEdit);
+    }
+  }, [editor, canEdit]);
+
   const hasContent = editor && editor.getHTML().trim() !== '<p></p>';
 
   const handleGoToComment = (from: number, to: number, commentId: string) => {
@@ -291,11 +323,22 @@ export const Document: React.FC = () => {
   }, [activeCommentId]); // Chạy mỗi khi activeCommentId thay đổi
 
   useEffect(() => {
-    if (documentData) {
-      setCurrentTitle(documentData.title);
-      editor?.commands.setContent(documentData.content || '');
+    // Chỉ thực thi khi cả editor và documentData đã sẵn sàng
+    if (!editor || !documentData) {
+      return;
     }
-    refetchDocument();
+
+    const currentContent = editor.getHTML();
+    const newContent = documentData.content || '';
+
+    // Chỉ cập nhật nếu nội dung thật sự khác nhau
+    if (currentContent !== newContent) {
+      setCurrentTitle(documentData.title);
+
+      // Cập nhật nội dung mà KHÔNG kích hoạt onUpdate
+      editor.commands.setContent(newContent, false);
+    }
+    isHydratedRef.current = true;
   }, [documentData, editor]);
 
   if (!documentId) {
@@ -418,7 +461,22 @@ export const Document: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>
-      {editor && !isReadOnly && (
+      {typeof numericDocId === 'number' && (
+        <DocumentRealtimeBridge
+          documentId={numericDocId}
+          onPermissionChanged={() => {
+            toast.success('Quyền tài liệu đã được cập nhật!');
+            refetchPermission();
+          }}
+          onDocumentUpdated={() => {
+            toast('Tài liệu vừa được cập nhật bởi người khác.', { icon: '🔄' });
+            debouncedSaveRef.current.cancel();
+            refetchDocument();
+          }}
+        />
+      )}
+
+      {editor && canEdit && isHydratedRef.current && (
         <MenuBar
           editor={editor}
           onToggleChatbot={handleToggleChatbot}
@@ -449,7 +507,7 @@ export const Document: React.FC = () => {
               ) : (
                 <h1
                   className='text-4xl font-extrabold tracking-tight cursor-pointer'
-                  onClick={() => setIsEditingTitle(true)}
+                  onClick={() => canEdit && setIsEditingTitle(true)}
                   title='Click to edit title'
                 >
                   {currentTitle}
@@ -481,10 +539,10 @@ export const Document: React.FC = () => {
           <div ref={contentRef}>
             <EditorContent editor={editor} />
           </div>
-          {!hasContent && (
+          {isHydratedRef.current && canEdit && !hasContent && (
             <SideMenu
               onSelectTemplate={(html) => {
-                if (editor && !isReadOnly) {
+                if (editor && canEdit && isHydratedRef.current) {
                   editor.commands.setContent(html);
 
                   debouncedSave(html);
@@ -496,11 +554,14 @@ export const Document: React.FC = () => {
                   cols: 3,
                   withHeaderRow: true,
                 });
+                if (canEdit && isHydratedRef.current) {
+                  editor?.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true });
+                }
               }}
             />
           )}
 
-          {!isReadOnly && !hasContent && (
+          {isHydratedRef.current && canEdit && !hasContent && (
             <NewStartWithAI
               documentId={Number(documentId)}
               editor={editor}
@@ -508,7 +569,7 @@ export const Document: React.FC = () => {
             />
           )}
 
-          {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor}  />}
+          {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor} />}
         </div>
         {commentList.length > 0 && (
           <CommentSidebar

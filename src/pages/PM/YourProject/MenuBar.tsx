@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { Menu, Transition, Dialog, Switch } from '@headlessui/react';
 import {
@@ -44,6 +44,7 @@ import toast from 'react-hot-toast';
 import type { SharePermission } from '../../../types/ShareDocumentType';
 import jsPDF from 'jspdf';
 import {
+  useGetPermissionTypeByDocumentQuery,
   useGetSharedUsersByDocumentQuery,
   useUpdatePermissionTypeMutation,
   type PermissionType,
@@ -85,8 +86,16 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
     documentId,
     { skip: !hasValidDocId }
   );
+  const { data: permissionData, isSuccess: isPermissionSuccess } =
+    useGetPermissionTypeByDocumentQuery(documentId, {
+      skip: !documentId,
+    });
 
-  
+  useEffect(() => {
+    if (isPermissionSuccess && permissionData?.permissionType) {
+      setPermission(permissionData.permissionType);
+    }
+  }, [isPermissionSuccess, permissionData]);
 
   const sharedUsers = sharedData?.data || [];
   const [exportDocument] = useExportDocumentMutation();
@@ -285,6 +294,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
       toast.error('Please enter at least one email');
       return;
     }
+    console.log(projectKey);
 
     if (!projectKey) {
       toast.error('Missing project key!');

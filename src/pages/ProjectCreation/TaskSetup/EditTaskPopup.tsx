@@ -49,9 +49,7 @@ const EditTaskPopup: React.FC<EditTaskPopupProps> = ({
             />
           </div>
           <div>
-            <label className='block text-sm font-semibold text-gray-700 mb-1'>
-              Description
-            </label>
+            <label className='block text-sm font-semibold text-gray-700 mb-1'>Description</label>
             <textarea
               defaultValue={editingTask.task.description}
               onChange={(e) =>
@@ -65,9 +63,7 @@ const EditTaskPopup: React.FC<EditTaskPopupProps> = ({
             />
           </div>
           <div>
-            <label className='block text-sm font-semibold text-gray-700 mb-1'>
-              Suggested Role
-            </label>
+            <label className='block text-sm font-semibold text-gray-700 mb-1'>Suggested Role</label>
             <select
               defaultValue={editingTask.task.suggestedRole}
               onChange={(e) =>
@@ -144,7 +140,7 @@ const EditTaskPopup: React.FC<EditTaskPopupProps> = ({
                         />
                         <span className='truncate'>
                           {member.fullName} (
-                          {member.projectPositions[0]?.position || 'No Position'})
+                          {member.projectPositions?.[0]?.position || 'No Position'})
                         </span>
                       </div>
                     );
@@ -157,10 +153,7 @@ const EditTaskPopup: React.FC<EditTaskPopupProps> = ({
                 <p className='text-sm text-gray-500 italic'>No members assigned</p>
               ) : (
                 editingTask.task.assignedMembers.map((member) => (
-                  <div
-                    key={member.accountId}
-                    className='flex items-center gap-2 relative group'
-                  >
+                  <div key={member.accountId} className='flex items-center gap-2 relative group'>
                     <button
                       onClick={() => {
                         setEditingTask({

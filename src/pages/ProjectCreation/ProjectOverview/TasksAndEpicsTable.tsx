@@ -16,7 +16,7 @@ import {
   useDeleteTaskAssignmentMutation,
   useCreateTaskAssignmentQuickMutation,
 } from '../../../services/taskAssignmentApi';
-import taskIcon from '../../../assets/icon/type_task.svg';
+import storyIcon from '../../../assets/icon/type_story.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 
 // Hàm formatDate được khai báo ở phạm vi cao hơn
@@ -796,7 +796,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
                     {item.type === 'TASK' && (
-                      <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
+                      <img src={storyIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
                     )}
                     {item.type === 'EPIC' && (
                       <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />

@@ -1,8 +1,10 @@
 
 // src/pages/.../MilestoneFeedbackPanel.tsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../../services/AuthContext';
+import axios from 'axios';
 import {
   useGetMeetingFeedbackByTranscriptIdQuery,
   useApproveMilestoneMutation,
@@ -18,6 +20,7 @@ import { API_BASE_URL } from '../../../../constants/api';
 
 // ⬇️ NEW: dynamic categories hook
 import { useGetCategoriesByGroupQuery } from '../../../../services/dynamicCategoryApi';
+import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
 
 const MilestoneFeedbackPanel: React.FC = () => {
   const { transcriptId } = useParams();
@@ -37,6 +40,13 @@ const MilestoneFeedbackPanel: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedTranscript, setUploadedTranscript] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isEvalOpen, setIsEvalOpen] = useState(false);
+  const [evalPayload, setEvalPayload] = useState<string>('');
+
+
+
+
 
   // edit/delete feedback states
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -51,7 +61,13 @@ const MilestoneFeedbackPanel: React.FC = () => {
   const { data: managedMeetings = [] } = useGetMeetingsManagedByQuery(accountId!, {
     skip: !accountId,
   });
-  
+  const currentMeeting: any = useMemo(
+  () => myMeetings.find((m: any) => m.id === id),
+  [myMeetings, id]
+);
+const projectIdFromMeeting: number = currentMeeting?.projectId ?? 0;
+
+const AI_FEATURE = 'MEETING_SUMMARY';
 
   const [submitFeedback] = useSubmitFeedbackMutation();
   const [approveMilestone] = useApproveMilestoneMutation();
@@ -125,7 +141,7 @@ const MilestoneFeedbackPanel: React.FC = () => {
     return (
       <div className="mx-auto max-w-5xl p-6">
         <p className="rounded bg-red-100 px-5 py-3 text-center text-red-600 font-semibold">
-          ⚠️ Bạn chưa đăng nhập.
+          ⚠️ You are not logged in.
         </p>
       </div>
     );
@@ -138,7 +154,7 @@ const MilestoneFeedbackPanel: React.FC = () => {
     return (
       <div className="mx-auto max-w-5xl p-6">
         <p className="rounded bg-red-100 px-5 py-3 text-red-600">
-          ❌ Lỗi tải chi tiết: {JSON.stringify(error)}
+          ❌ Error loading details: {JSON.stringify(error)}
         </p>
         <button
           onClick={() => navigate(-1)}
@@ -156,7 +172,7 @@ const MilestoneFeedbackPanel: React.FC = () => {
   const onApprove = async () => {
     if (!accountId) return;
     await approveMilestone({ meetingId: id, accountId });
-    alert('Đã duyệt thành công.');
+    toast.success('Approved successfully.');
     refetch();
   };
 
@@ -184,76 +200,174 @@ const onRejectSubmit = async () => {
       status: statusToSend,
     }).unwrap();
 
-    alert('Đã gửi phản hồi từ chối.');
+    toast.success('Rejection response sent.');
     setFeedbackText('');
     setActiveReject(false);
     refetchRejected();
     refetch();
   } catch (e) {
     console.error(e);
-    alert('Gửi phản hồi thất bại. Kiểm tra lại status hoặc thử lại.');
+    alert('Response sending failed. Check status or try again.');
   }
 };
 
 
   const onDeleteSummary = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn xoá meeting summary này không?')) return;
+    if (!window.confirm('Are you sure you want to delete this meeting summary?')) return;
     await deleteMeetingSummary(id);
-    alert('Đã xoá meeting summary thành công.');
+    toast.success('Meeting summary deleted successfully.');
     refetch();
   };
 
-  const onUpload = async () => {
-    if (!accountId) return;
+  
+// const onUpload = async () => {
+//   if (!accountId) return;
+//   setIsUploading(true);
+//   setUploadProgress(null);
 
-    setIsUploading(true);
-    try {
-      if (uploadMethod === 'file') {
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('meetingId', String(id));
-        formData.append('audioFile', file);
-        const res = await fetch(`${API_BASE_URL}meeting-transcripts`, {
-          method: 'POST',
+//   try {
+//     if (uploadMethod === 'file') {
+//       if (!file) return;
+//       const formData = new FormData();
+//       formData.append('meetingId', String(id));
+//       formData.append('audioFile', file);
+
+//       const res = await axios.post(
+//         `${API_BASE_URL}meeting-transcripts`,
+//         formData,
+//         {
+//           headers: { accept: '*/*' },
+//           onUploadProgress: (evt) => {
+//             if (!evt.total) return;
+//             const percent = Math.round((evt.loaded * 100) / evt.total);
+//             setUploadProgress(percent);
+//           },
+//         }
+//       );
+
+//       toast.success('File uploaded successfully!');
+//       setUploadedTranscript(res.data?.transcriptText ?? null);
+      
+      
+//     } else {
+//       if (!videoUrl.trim()) {
+//         alert('Please enter video URL!');
+//         return;
+//       }
+//       const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+//       const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+//         method: 'POST',
+//         headers: { accept: '*/*', 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+//       });
+//       const data = await res.json();
+//       toast.success('Uploaded from URL successfully!');
+//       setUploadedTranscript(data.transcriptText ?? null);
+      
+//     }
+//     refetch();
+//   } catch (e) {
+//     console.error(e);
+//   } finally {
+//     setIsUploading(false);
+//     setUploadProgress(null);
+//   }
+// };
+const onUpload = async () => {
+  if (!accountId) return;
+  setIsUploading(true);
+  setUploadProgress(null);
+
+  try {
+    if (uploadMethod === 'file') {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('meetingId', String(id));
+      formData.append('audioFile', file);
+
+      const res = await axios.post(
+        `${API_BASE_URL}meeting-transcripts`,
+        formData,
+        {
           headers: { accept: '*/*' },
-          body: formData,
-        });
-        const data = await res.json();
-        alert('Đã tải lên file thành công!');
-        setUploadedTranscript(data.transcriptText ?? null);
-      } else {
-        if (!videoUrl.trim()) {
-          alert('Please enter video URL!');
-          return;
+          onUploadProgress: (evt) => {
+            if (!evt.total) return;
+            const percent = Math.round((evt.loaded * 100) / evt.total);
+            setUploadProgress(percent);
+          },
         }
-        const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
-        const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
-          method: 'POST',
-          headers: { accept: '*/*', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
-        });
-        const data = await res.json();
-        alert('Đã tải lên từ URL thành công!');
-        setUploadedTranscript(data.transcriptText ?? null);
+      );
+
+      toast.success('File uploaded successfully!');
+      const newTranscript = res.data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
+
+      // 🔽🔽🔽 MỞ POPUP ĐÁNH GIÁ — chèn NGAY SAU setUploadedTranscript
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting, // đã tính bằng useMemo ở trên
+          source: 'file',
+          uploaderAccountId: accountId,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
       }
-      refetch();
-    } catch (e) {
-      console.error(e);
-      alert('Tải lên thất bại.');
-    } finally {
-      setIsUploading(false);
+      // 🔼🔼🔼
+
+    } else {
+      if (!videoUrl.trim()) {
+        alert('Please enter video URL!');
+        return;
+      }
+      const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+      const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+        method: 'POST',
+        headers: { accept: '*/*', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+      });
+      const data = await res.json();
+      toast.success('Uploaded from URL successfully!');
+      const newTranscript = data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
+
+      // 🔽🔽🔽 MỞ POPUP ĐÁNH GIÁ — chèn NGAY SAU setUploadedTranscript
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting,
+          source: 'url',
+          uploaderAccountId: accountId,
+          originalUrl: videoUrl,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
+      }
+      // 🔼🔼🔼
     }
-  };
+
+    refetch();
+  } catch (e) {
+    console.error(e);
+  } finally {
+    setIsUploading(false);
+    setUploadProgress(null);
+  }
+};
 
   return (
     <div className="mx-auto max-w-5xl p-6">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-gray-800">📌 {meetingTopic}</h1>
+        <h1 className="text-xl font-bold text-gray-800">📌 {meetingTopic}</h1>
         <Link
           to="/meeting-feedback"
           className="rounded bg-gray-800 text-white px-4 py-2 text-sm hover:bg-gray-700"
         >
-          ← Back to list
+          ← Back
         </Link>
       </div>
 
@@ -326,6 +440,16 @@ const onRejectSubmit = async () => {
             >
               {isUploading ? 'Uploading…' : uploadMethod === 'file' ? 'Upload video/audio' : 'Upload from URL'}
             </button>
+
+           {isUploading && (
+  <div className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-2xl">
+    <div className="flex flex-col items-center gap-2">
+      <div className="loader-videoupload" />
+      <p className="text-sm text-gray-700">Uploading… {uploadProgress ?? ''}</p>
+    </div>
+  </div>
+)}
+
 
             {uploadedTranscript && (
               <div className="mt-4 p-4 rounded bg-white border">
@@ -506,6 +630,17 @@ const onRejectSubmit = async () => {
           <br />– For <strong>larger video files</strong>, please use the <strong>Dropbox URL upload</strong> option instead.
         </p>
       </div>
+      <AiResponseEvaluationPopup
+  isOpen={isEvalOpen}
+  onClose={() => setIsEvalOpen(false)}
+  aiResponseJson={evalPayload}
+  projectId={projectIdFromMeeting}
+  aiFeature={AI_FEATURE}
+  onSubmitSuccess={(aiResponseId: number) => {
+    toast.success(`Thanks! Saved rating (ID: ${aiResponseId}).`);
+  }}
+/>
+
     </div>
   );
 };

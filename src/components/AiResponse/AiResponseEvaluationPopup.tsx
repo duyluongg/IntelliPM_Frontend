@@ -44,7 +44,7 @@ const AiResponseEvaluationPopup: React.FC<AiResponseEvaluationPopupProps> = ({
       return historyResponse.data.id;
     } catch (error: any) {
       console.error('Error saving AI response history:', error);
-      setErrorMessage(error.message || 'An unexpected error occurred while saving AI response history.');
+      setErrorMessage(error.data || 'An unexpected error occurred while saving AI response history.');
       return null;
     }
   };

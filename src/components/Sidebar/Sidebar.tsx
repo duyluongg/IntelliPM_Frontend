@@ -61,15 +61,21 @@ export default function Sidebar() {
     error,
   } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
-  const recentProjects: RecentProject[] = projectsData?.isSuccess
-    ? projectsData.data
-        .filter((proj) => proj.status === 'ACTIVE')
-        .map((proj) => ({
-          name: proj.projectName,
-          key: proj.projectKey,
-          icon: proj.iconUrl || projectIcon,
-        }))
-    : [];
+ const recentProjects: RecentProject[] = projectsData?.isSuccess
+  ? projectsData.data
+      .filter((proj) => {
+        if (isRole) {
+          return proj.status === 'ACTIVE';
+        } else {
+          return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
+        }
+      })
+      .map((proj) => ({
+        name: proj.projectName,
+        key: proj.projectKey,
+        icon: proj.iconUrl || projectIcon,
+      }))
+  : [];
 
   useEffect(() => {}, [selectedProjectKey, recentProjects]);
 
@@ -200,7 +206,7 @@ export default function Sidebar() {
                 </div>
 
                 {showProjects && (
-                  <div className='mt-1 pl-5 pr-3 max-h-70 overflow-y-auto'>
+                  <div className='mt-1 pl-5 pr-3 max-h-60 overflow-y-auto'>
                     {isLoading ? (
                       <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
                     ) : error ? (

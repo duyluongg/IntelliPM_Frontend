@@ -63,6 +63,8 @@ import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi'
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import aiIcon from '../../assets/icon/ai.png';
+
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();

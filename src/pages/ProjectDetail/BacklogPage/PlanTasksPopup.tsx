@@ -49,8 +49,16 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
   const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
   const [evaluationPayload, setEvaluationPayload] = useState<string>('');
 
-  const { data: priorityData, isLoading: isPriorityLoading, error: priorityError } = useGetCategoriesByGroupQuery('task_priority', { skip: !isOpen });
-  const priorityOptions = priorityData?.data?.map((category) => category.name) || ['LOW', 'MEDIUM', 'HIGH'];
+  const {
+    data: priorityData,
+    isLoading: isPriorityLoading,
+    error: priorityError,
+  } = useGetCategoriesByGroupQuery('task_priority', { skip: !isOpen });
+  const priorityOptions = priorityData?.data?.map((category) => category.name) || [
+    'LOW',
+    'MEDIUM',
+    'HIGH',
+  ];
 
   const [sprintPlanning, { isLoading: isSprintPlanningLoading }] = useSprintPlanningMutation();
   const [createSprintsWithTasks] = useCreateSprintsWithTasksMutation();
@@ -87,9 +95,7 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
 
   const handleSprintCheckboxChange = (sprintId: string) => {
     setSelectedSprints((prev) =>
-      prev.includes(sprintId)
-        ? prev.filter((id) => id !== sprintId)
-        : [...prev, sprintId]
+      prev.includes(sprintId) ? prev.filter((id) => id !== sprintId) : [...prev, sprintId]
     );
     setSelectedTasks((prev) => {
       const newTasks = { ...prev };
@@ -117,18 +123,31 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
     setEditingSprintId(sprintId);
   };
 
-  const handleSaveSprintDetails = (sprintId: string, updatedDetails: { title: string; startDate: string; endDate: string }) => {
+  const handleSaveSprintDetails = (
+    sprintId: string,
+    updatedDetails: { title: string; startDate: string; endDate: string }
+  ) => {
     setSprints((prev) =>
       prev.map((sprint) =>
         sprint.sprintId === sprintId
-          ? { ...sprint, title: updatedDetails.title, startDate: updatedDetails.startDate, endDate: updatedDetails.endDate }
+          ? {
+              ...sprint,
+              title: updatedDetails.title,
+              startDate: updatedDetails.startDate,
+              endDate: updatedDetails.endDate,
+            }
           : sprint
       )
     );
     setEditingSprintId(null);
   };
 
-  const handleStartTaskEdit = (sprintId: string, taskId: string, currentPriority: string, currentHours: number) => {
+  const handleStartTaskEdit = (
+    sprintId: string,
+    taskId: string,
+    currentPriority: string,
+    currentHours: number
+  ) => {
     setEditingTask({ sprintId, taskId });
     setTaskPriority(currentPriority);
     setTaskPlannedHours(currentHours);
@@ -180,8 +199,8 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
         .filter((sprint) => selectedSprints.includes(sprint.sprintId))
         .map((sprint) => ({
           ...sprint,
-          tasks: sprint.tasks.filter((task) =>
-            selectedTasks[sprint.sprintId]?.includes(task.taskId) || false
+          tasks: sprint.tasks.filter(
+            (task) => selectedTasks[sprint.sprintId]?.includes(task.taskId) || false
           ),
         }));
       console.log('Submitting payload:', payload);
@@ -215,7 +234,7 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60'>
         <style>
           {`
             @keyframes gradientLoading {
@@ -228,17 +247,17 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
             }
           `}
         </style>
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-8 max-h-[85vh] overflow-y-auto">
-          <h2 className="text-2xl font-bold text-[#1c73fd] mb-6">Plan Tasks for Sprints</h2>
+        <div className='bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-8 max-h-[85vh] overflow-y-auto'>
+          <h2 className='text-2xl font-bold text-[#1c73fd] mb-6'>Plan Tasks for Sprints</h2>
           {(error || priorityError) && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-6">
+            <div className='bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-6'>
               {error || (priorityError && 'Failed to load priority options')}
             </div>
           )}
           {isPlanning || isSprintPlanningLoading ? (
-            <div className="flex justify-center items-center py-10 bg-white/50 rounded-2xl shadow-md">
-              <div className="flex flex-col items-center gap-4">
-                <img src={galaxyaiIcon} alt="AI Processing" className="w-10 h-10 animate-pulse" />
+            <div className='flex justify-center items-center py-10 bg-white/50 rounded-2xl shadow-md'>
+              <div className='flex flex-col items-center gap-4'>
+                <img src={galaxyaiIcon} alt='AI Processing' className='w-10 h-10 animate-pulse' />
                 <span
                   style={{
                     background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
@@ -247,7 +266,7 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
                     WebkitTextFillColor: 'transparent',
                     animation: 'gradientLoading 1.8s ease-in-out infinite',
                   }}
-                  className="text-lg font-semibold"
+                  className='text-lg font-semibold'
                 >
                   Generating Sprint Plan...
                 </span>
@@ -255,91 +274,99 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className='grid grid-cols-2 gap-4 mb-6'>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className='block text-sm font-semibold text-gray-700 mb-2'>
                     Number of Sprints
                   </label>
                   <input
-                    type="number"
+                    type='number'
                     value={numberOfSprints}
                     onChange={(e) => setNumberOfSprints(parseInt(e.target.value) || 1)}
-                    min="1"
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200"
+                    min='1'
+                    className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                     disabled={isPlanning || isSubmitting}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  <label className='block text-sm font-semibold text-gray-700 mb-2'>
                     Weeks per Sprint
                   </label>
                   <input
-                    type="number"
+                    type='number'
                     value={weeksPerSprint}
                     onChange={(e) => setWeeksPerSprint(parseInt(e.target.value) || 1)}
-                    min="1"
-                    className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200"
+                    min='1'
+                    className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                     disabled={isPlanning || isSubmitting}
                   />
                 </div>
               </div>
-              <div className="mb-6">
+              <div className='mb-6'>
                 <button
                   onClick={handleGeneratePlan}
                   className={`w-full py-3 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
                     isPlanning || isSubmitting
-                      ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
+                      ? 'bg-gray-400 opacity-70 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg hover:scale-[1.02]'
                   }`}
                   disabled={isPlanning || isSubmitting}
                 >
-                  <img src={aiIcon} alt="AI Icon" className="w-5 h-5 object-contain" />
+                  <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                   {isPlanning ? 'Generating Plan...' : 'Generate Sprint Plan'}
                 </button>
               </div>
               {sprints.length > 0 && (
-                <div className="border border-gray-200 rounded-xl p-5 max-h-[50vh] overflow-y-auto bg-gray-50">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Generated Sprints</h3>
+                <div className='border border-gray-200 rounded-xl p-5 max-h-[50vh] overflow-y-auto bg-gray-50'>
+                  <h3 className='text-lg font-semibold text-gray-800 mb-4'>Generated Sprints</h3>
                   {sprints.map((sprint) => (
-                    <div key={sprint.sprintId} className="mb-6 bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
-                      <div className="flex items-center gap-3">
+                    <div
+                      key={sprint.sprintId}
+                      className='mb-6 bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200'
+                    >
+                      <div className='flex items-center gap-3'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={selectedSprints.includes(sprint.sprintId)}
                           onChange={() => handleSprintCheckboxChange(sprint.sprintId)}
-                          className="h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded"
+                          className='h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded'
                           disabled={isSubmitting}
                         />
-                        <span className="font-semibold text-gray-800">{sprint.title}</span>
-                        <span className="text-sm text-gray-500">
+                        <span className='font-semibold text-gray-800'>{sprint.title}</span>
+                        <span className='text-sm text-gray-500'>
                           ({formatDate(sprint.startDate)} - {formatDate(sprint.endDate)})
                         </span>
                         <button
                           onClick={() => handleEditSprint(sprint.sprintId)}
-                          className="text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200"
+                          className='text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
                           disabled={isSubmitting}
                         >
                           Edit
                         </button>
                       </div>
-                      <p className="text-sm text-gray-600 ml-8 mt-2">{sprint.description}</p>
-                      <div className="ml-8 mt-3 space-y-3">
+                      <p className='text-sm text-gray-600 ml-8 mt-2'>{sprint.description}</p>
+                      <div className='ml-8 mt-3 space-y-3'>
                         {sprint.tasks.map((task) => (
-                          <div key={task.taskId} className="flex items-center gap-3">
+                          <div key={task.taskId} className='flex items-center gap-3'>
                             <input
-                              type="checkbox"
-                              checked={selectedTasks[sprint.sprintId]?.includes(task.taskId) || false}
-                              onChange={() => handleTaskCheckboxChange(sprint.sprintId, task.taskId)}
-                              className="h-4 w-4 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded"
+                              type='checkbox'
+                              checked={
+                                selectedTasks[sprint.sprintId]?.includes(task.taskId) || false
+                              }
+                              onChange={() =>
+                                handleTaskCheckboxChange(sprint.sprintId, task.taskId)
+                              }
+                              className='h-4 w-4 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded'
                               disabled={isSubmitting || !selectedSprints.includes(sprint.sprintId)}
                             />
-                            <span className="text-sm text-gray-800">{task.title}</span>
-                            {editingTask?.sprintId === sprint.sprintId && editingTask?.taskId === task.taskId ? (
-                              <div className="flex items-center gap-2">
+                            <span className='text-sm text-gray-800'>{task.title}</span>
+                            {editingTask?.sprintId === sprint.sprintId &&
+                            editingTask?.taskId === task.taskId ? (
+                              <div className='flex items-center gap-2'>
                                 <select
                                   value={taskPriority}
                                   onChange={(e) => setTaskPriority(e.target.value)}
-                                  className="text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]"
+                                  className='text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]'
                                   disabled={isPriorityLoading}
                                 >
                                   {priorityOptions.map((priority) => (
@@ -349,34 +376,47 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
                                   ))}
                                 </select>
                                 <input
-                                  type="number"
+                                  type='number'
                                   value={taskPlannedHours}
-                                  onChange={(e) => setTaskPlannedHours(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                  min="0"
-                                  className="w-16 text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]"
+                                  onChange={(e) =>
+                                    setTaskPlannedHours(
+                                      e.target.value === '' ? '' : parseInt(e.target.value)
+                                    )
+                                  }
+                                  min='0'
+                                  className='w-16 text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]'
                                 />
                                 <button
                                   onClick={() => handleSaveTaskEdit(sprint.sprintId, task.taskId)}
-                                  className="text-xs text-green-600 hover:text-green-700"
+                                  className='text-xs text-green-600 hover:text-green-700'
                                 >
                                   Save
                                 </button>
                                 <button
                                   onClick={handleCancelTaskEdit}
-                                  className="text-xs text-red-600 hover:text-red-700"
+                                  className='text-xs text-red-600 hover:text-red-700'
                                 >
                                   Cancel
                                 </button>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-500">
+                              <div className='flex items-center gap-2'>
+                                <span className='text-xs text-gray-500'>
                                   ({task.priority}, {task.plannedHours} hours)
                                 </span>
                                 <button
-                                  onClick={() => handleStartTaskEdit(sprint.sprintId, task.taskId, task.priority, task.plannedHours)}
-                                  className="text-xs text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200"
-                                  disabled={isSubmitting || !selectedSprints.includes(sprint.sprintId)}
+                                  onClick={() =>
+                                    handleStartTaskEdit(
+                                      sprint.sprintId,
+                                      task.taskId,
+                                      task.priority,
+                                      task.plannedHours
+                                    )
+                                  }
+                                  className='text-xs text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
+                                  disabled={
+                                    isSubmitting || !selectedSprints.includes(sprint.sprintId)
+                                  }
                                 >
                                   Edit
                                 </button>
@@ -396,10 +436,10 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
                   ))}
                 </div>
               )}
-              <div className="flex justify-end gap-4 mt-8">
+              <div className='flex justify-end gap-4 mt-8'>
                 <button
                   onClick={onClose}
-                  className="px-6 py-2.5 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200"
+                  className='px-6 py-2.5 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200'
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -425,7 +465,7 @@ const PlanTasksPopup: React.FC<PlanTasksPopupProps> = ({
         onClose={handleEvaluationPopupClose}
         aiResponseJson={evaluationPayload}
         projectId={projectId}
-        aiFeature="SPRINT_CREATION"
+        aiFeature='SPRINT_CREATION'
         onSubmitSuccess={handleEvaluationSubmitSuccess}
       />
     </>

@@ -28,6 +28,7 @@ import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 import { Tooltip } from 'react-tooltip';
+import aiIcon from '../../assets/icon/ai.png';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();

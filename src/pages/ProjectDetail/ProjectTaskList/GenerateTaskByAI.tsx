@@ -3,7 +3,7 @@ import { useGenerateAITasksMutation, useCreateTasksMutation } from '../../../ser
 import { toast } from 'react-toastify';
 import type { AITaskResponseDTO, CreateTaskRequest } from '../../../services/taskApi';
 import { useAuth } from '../../../services/AuthContext';
-
+import aiIcon from '../../../assets/icon/ai.png';
 interface GenerateTaskByAIProps {
   isOpen: boolean;
   onClose: () => void;
@@ -84,69 +84,54 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up">
-        <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center gap-3">
-          <svg
-            className="w-8 h-8 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-          <h2 className="text-2xl font-bold text-white">AI-Suggested Tasks</h2>
+    <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in'>
+      <div className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'>
+        <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center gap-3'>
+          <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
+          <h2 className='text-2xl font-bold text-white'>AI-Suggested Tasks</h2>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className='p-6 overflow-y-auto max-h-[60vh]'>
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-8">
+            <div className='flex flex-col items-center justify-center py-8'>
               <svg
-                className="animate-spin w-10 h-10 text-purple-600"
-                fill="none"
-                viewBox="0 0 24 24"
+                className='animate-spin w-10 h-10 text-purple-600'
+                fill='none'
+                viewBox='0 0 24 24'
               >
                 <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
+                  className='opacity-25'
+                  cx='12'
+                  cy='12'
+                  r='10'
+                  stroke='currentColor'
+                  strokeWidth='4'
                 />
                 <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  className='opacity-75'
+                  fill='currentColor'
+                  d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
                 />
               </svg>
-              <p className="mt-4 text-gray-600 text-lg">AI is generating your tasks...</p>
+              <p className='mt-4 text-gray-600 text-lg'>AI is generating your tasks...</p>
             </div>
           ) : aiTasks.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 text-lg">
+            <div className='text-center py-8 text-gray-500 text-lg'>
               No AI-suggested tasks available. Try again later!
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-separate border-spacing-0">
-                <thead className="sticky top-0 bg-gray-50 shadow-sm">
+            <div className='overflow-x-auto'>
+              <table className='w-full border-separate border-spacing-0'>
+                <thead className='sticky top-0 bg-gray-50 shadow-sm'>
                   <tr>
-                    <th className="p-4 text-left text-sm font-semibold text-gray-700 w-16">
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-16'>
                       Select
                     </th>
-                    <th className="p-4 text-left text-sm font-semibold text-gray-700 w-24">
-                      Type
-                    </th>
-                    <th className="p-4 text-left text-sm font-semibold text-gray-700">Title</th>
-                    <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>Type</th>
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700'>Title</th>
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700'>
                       Description
                     </th>
-                    <th className="p-4 text-left text-sm font-semibold text-gray-700 w-24">
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>
                       Status
                     </th>
                   </tr>
@@ -159,24 +144,24 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                       } hover:bg-purple-50 transition-colors duration-200`}
                     >
-                      <td className="p-4 border-b border-gray-200">
+                      <td className='p-4 border-b border-gray-200'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={selectedTasks.includes(task.title)}
                           onChange={() => handleTaskSelect(task.title)}
-                          className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                          className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
                         />
                       </td>
-                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.type}
                       </td>
-                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.title}
                       </td>
-                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.description}
                       </td>
-                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.status}
                       </td>
                     </tr>
@@ -186,10 +171,10 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
             </div>
           )}
         </div>
-        <div className="p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200">
+        <div className='p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200'>
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 transform hover:scale-105"
+            className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'
           >
             Cancel
           </button>

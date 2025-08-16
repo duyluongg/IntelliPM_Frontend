@@ -1,83 +1,99 @@
 import React, { useState, useEffect } from 'react';
-import { useGenerateAITasksMutation, useCreateTasksMutation } from '../../../services/taskApi';
+import { useGenerateEpicsMutation, useCreateEpicMutation } from '../../../services/epicApi';
 import { toast } from 'react-toastify';
-import type { AITaskResponseDTO, CreateTaskRequest } from '../../../services/taskApi';
-import { useAuth } from '../../../services/AuthContext';
+import type { EpicResponseDTO } from '../../../services/epicApi';
 import aiIcon from '../../../assets/icon/ai.png';
-interface GenerateTaskByAIProps {
+
+interface CreateEpicRequest {
+  projectId: number;
+  name: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  reporterId: number;
+  assignedBy: number;
+  createdBy: number;
+}
+
+interface GenerateEpicByAIProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: number;
   refetchWorkItems: () => void;
 }
 
-const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
+const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
   isOpen,
   onClose,
   projectId,
   refetchWorkItems,
 }) => {
-  const { user } = useAuth();
-  const [aiTasks, setAITasks] = useState<AITaskResponseDTO[]>([]);
-  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
-  const [generateAITasks, { isLoading }] = useGenerateAITasksMutation();
-  const [createTasks, { isLoading: isSavingTasks }] = useCreateTasksMutation();
+  const [aiEpics, setAIEpics] = useState<EpicResponseDTO[]>([]);
+  const [selectedEpics, setSelectedEpics] = useState<string[]>([]);
+  const [generateEpics, { isLoading: isGeneratingEpics }] = useGenerateEpicsMutation();
+  const [createEpic, { isLoading: isSavingEpics }] = useCreateEpicMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
   useEffect(() => {
     if (isOpen) {
-      fetchAITasks();
+      fetchAIEpics();
     }
   }, [isOpen, projectId]);
 
-  const fetchAITasks = async () => {
+  const fetchAIEpics = async () => {
     try {
-      const response = await generateAITasks(projectId).unwrap();
-      if (response.isSuccess && response.data) {
-        setAITasks(response.data);
-      } else {
-        toast.error('Failed to generate tasks: ' + (response.message || 'Unknown error'));
-      }
+      const response = await generateEpics(projectId).unwrap();
+      setAIEpics(response);
     } catch (error) {
-      toast.error('Error generating tasks: ' + (error as any)?.data?.message || 'Unknown error');
+      toast.error('Error generating epics: ' + (error as any)?.data?.message || 'Unknown error');
     }
   };
 
-  const handleTaskSelect = (title: string) => {
-    setSelectedTasks((prev) =>
-      prev.includes(title) ? prev.filter((t) => t !== title) : [...prev, title]
+  const handleEpicSelect = (name: string) => {
+    setSelectedEpics((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     );
   };
 
-  const handleSaveTasks = async () => {
-    const tasksToSave: CreateTaskRequest[] = aiTasks
-      .filter((task) => selectedTasks.includes(task.title))
-      .map((task) => ({
-        reporterId: accountId,
-        projectId: task.projectId,
-        epicId: task.epicId || null,
-        sprintId: task.sprintId || null,
-        type: task.type.toUpperCase() as 'TASK' | 'STORY' | 'BUG' | 'SUBTASK' | 'EPIC',
-        title: task.title,
-        description: task.description,
-        priority: task.priority || 'MEDIUM',
-        plannedHours: task.plannedHours || 0,
-        plannedStartDate: task.plannedStartDate || new Date().toISOString(),
-        plannedEndDate: task.plannedEndDate || new Date().toISOString(),
-        status: task.status.replace(' ', '_').toUpperCase() as 'TO_DO' | 'IN_PROGRESS' | 'DONE',
-        createdBy: accountId,
-        dependencies: task.dependencies ? JSON.parse(task.dependencies) : [],
-        manualInput: task.manualInput,
-        generationAiInput: task.generationAiInput,
-      }));
+  const handleSaveEpics = async () => {
+    const epicsToSave: CreateEpicRequest[] = aiEpics
+      .filter((epic) => selectedEpics.includes(epic.name))
+      .map((epic) => {
+        // Validate epic name length (3-65 characters, per backend validation)
+        if (epic.name.length > 65) {
+          throw new Error(`Epic name "${epic.name}" exceeds 65 characters.`);
+        }
+        if (epic.name.length < 3) {
+          throw new Error(`Epic name "${epic.name}" must be at least 3 characters.`);
+        }
+        return {
+          projectId,
+          name: epic.name,
+          description: epic.description,
+          status: epic.status.replace(' ', '_').toUpperCase() as 'TO_DO' | 'IN_PROGRESS' | 'DONE',
+          startDate: epic.startDate || new Date().toISOString(),
+          endDate: epic.endDate || new Date().toISOString(),
+          reporterId: accountId,
+          assignedBy: accountId,
+          createdBy: accountId,
+        };
+      });
 
     try {
-      await createTasks({ tasks: tasksToSave }).unwrap();
-      toast.success('Selected tasks saved successfully!');
+      if (epicsToSave.length === 0) {
+        toast.error('Please select at least one epic to save.');
+        return;
+      }
+      for (const epic of epicsToSave) {
+        await createEpic(epic).unwrap();
+      }
+      toast.success('Selected epics saved successfully!');
       refetchWorkItems();
+      setSelectedEpics([]); // Reset selection after saving
       onClose();
     } catch (error) {
-      toast.error('Error saving tasks: ' + (error as any)?.data?.message || 'Unknown error');
+      toast.error('Error saving epics: ' + (error as any)?.data?.message || (error as any)?.message || 'Unknown error');
     }
   };
 
@@ -88,10 +104,10 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
       <div className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'>
         <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center gap-3'>
           <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
-          <h2 className='text-2xl font-bold text-white'>AI-Suggested Tasks</h2>
+          <h2 className='text-2xl font-bold text-white'>AI-Suggested Epics</h2>
         </div>
         <div className='p-6 overflow-y-auto max-h-[60vh]'>
-          {isLoading ? (
+          {isGeneratingEpics ? (
             <div className='flex flex-col items-center justify-center py-8'>
               <svg
                 className='animate-spin w-10 h-10 text-purple-600'
@@ -112,11 +128,11 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                   d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
                 />
               </svg>
-              <p className='mt-4 text-gray-600 text-lg'>AI is generating your tasks...</p>
+              <p className='mt-4 text-gray-600 text-lg'>AI is generating your epics...</p>
             </div>
-          ) : aiTasks.length === 0 ? (
+          ) : aiEpics.length === 0 ? (
             <div className='text-center py-8 text-gray-500 text-lg'>
-              No AI-suggested tasks available. Try again later!
+              No AI-suggested epics available. Try again later!
             </div>
           ) : (
             <div className='overflow-x-auto'>
@@ -126,8 +142,7 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                     <th className='p-4 text-left text-sm font-semibold text-gray-700 w-16'>
                       Select
                     </th>
-                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>Type</th>
-                    <th className='p-4 text-left text-sm font-semibold text-gray-700'>Title</th>
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700'>Name</th>
                     <th className='p-4 text-left text-sm font-semibold text-gray-700'>
                       Description
                     </th>
@@ -137,9 +152,9 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {aiTasks.map((task, index) => (
+                  {aiEpics.map((epic, index) => (
                     <tr
-                      key={task.title}
+                      key={epic.name}
                       className={`${
                         index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                       } hover:bg-purple-50 transition-colors duration-200`}
@@ -147,22 +162,19 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                       <td className='p-4 border-b border-gray-200'>
                         <input
                           type='checkbox'
-                          checked={selectedTasks.includes(task.title)}
-                          onChange={() => handleTaskSelect(task.title)}
+                          checked={selectedEpics.includes(epic.name)}
+                          onChange={() => handleEpicSelect(epic.name)}
                           className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
                         />
                       </td>
                       <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
-                        {task.type}
+                        {epic.name}
                       </td>
                       <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
-                        {task.title}
+                        {epic.description}
                       </td>
                       <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
-                        {task.description}
-                      </td>
-                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
-                        {task.status}
+                        {epic.status}
                       </td>
                     </tr>
                   ))}
@@ -179,15 +191,15 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
             Cancel
           </button>
           <button
-            onClick={handleSaveTasks}
-            disabled={selectedTasks.length === 0 || isSavingTasks}
+            onClick={handleSaveEpics}
+            disabled={selectedEpics.length === 0 || isSavingEpics}
             className={`px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 transform hover:scale-105 ${
-              selectedTasks.length === 0 || isSavingTasks
+              selectedEpics.length === 0 || isSavingEpics
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600'
             }`}
           >
-            {isSavingTasks ? 'Saving...' : 'Save Selected Tasks'}
+            {isSavingEpics ? 'Saving...' : 'Save Selected Epics'}
           </button>
         </div>
       </div>
@@ -195,4 +207,4 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
   );
 };
 
-export default GenerateTaskByAI;
+export default GenerateEpicByAI;

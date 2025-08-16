@@ -70,11 +70,13 @@ export default function Sidebar() {
           return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
         }
       })
+      .sort((a, b) => b.projectId - a.projectId)
       .map((proj) => ({
         name: proj.projectName,
         key: proj.projectKey,
         icon: proj.iconUrl || projectIcon,
       }))
+       
   : [];
 
   useEffect(() => {}, [selectedProjectKey, recentProjects]);

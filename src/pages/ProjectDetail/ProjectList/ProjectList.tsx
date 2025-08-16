@@ -255,9 +255,12 @@ const ProjectList: React.FC = () => {
   const projects: Project[] = projectsResponse?.data || [];
 
   // Filter projects: Exclude PLANNING projects for non-TEAM_LEADER and non-PROJECT_MANAGER roles
-const filteredProjects = (user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER')
-  ? projects
-  : projects.filter(project => project.projectStatus !== 'PLANNING');
+const filteredProjects = (
+  user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER'
+    ? projects.slice()
+    : projects.filter(project => project.projectStatus !== 'PLANNING').slice()
+).sort((a, b) => b.projectId - a.projectId);
+
 
   const handleProjectClick = (projectKey: string) => {
     navigate(`/project/${projectKey}/summary`);

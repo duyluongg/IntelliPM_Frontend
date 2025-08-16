@@ -46,6 +46,7 @@ const KanbanColumn = forwardRef<
   const isDoneColumn = status.toLowerCase() === 'done';
   const isEmpty = !tasks || tasks.length === 0;
   const isFromSprintId = sprint.id === 0;
+
   return (
     <div
       ref={dropRef}

@@ -47,7 +47,7 @@ interface TaskItemProps {
   sprintId: number | null;
   epics: EpicWithStatsResponseDTO[] | undefined;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
-  onTaskUpdated: () => void; // Added to fix TS2339 and TS2322
+  onTaskUpdated: () => void;
 }
 
 interface SectionProps {
@@ -251,7 +251,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
         createdBy: accountId,
       }).unwrap();
       setIsEpicMenuOpen(false);
-      onTaskUpdated(); // Refresh task list after epic update
+      onTaskUpdated();
     } catch (err: any) {
       alert(`Unable to assign epic: ${err?.data?.message || 'Unknown error'}`);
     }
@@ -384,7 +384,9 @@ const TaskItem: React.FC<TaskItemProps> = ({
         <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className='w-4 h-4' />
       </div>
       <span
-        className='text-sm text-gray-900 truncate ml-2 cursor-pointer hover:text-blue-600 hover:underline'
+        className={`text-sm text-gray-900 truncate ml-2 cursor-pointer hover:text-blue-600 hover:underline ${
+          status === 'DONE' ? 'line-through' : ''
+        }`}
         onClick={handleOpenWorkItem}
       >
         {task.id}
@@ -664,7 +666,6 @@ const Section: React.FC<SectionProps> = ({
               <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
               Plan Tasks
             </button>
-
             <button
               onClick={handleCreateSprint}
               className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'

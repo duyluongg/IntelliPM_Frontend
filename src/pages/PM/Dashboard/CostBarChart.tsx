@@ -11,11 +11,6 @@ import {
 import { useGetCostDashboardQuery } from '../../../services/projectMetricApi';
 import { useSearchParams } from 'react-router-dom';
 
-// const CostBarChart = () => {
-//   const [searchParams] = useSearchParams();
-//   const projectKey = searchParams.get('projectKey') || 'NotFound';
-//   const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
-
 interface CostDashboardData {
   isSuccess: boolean;
   code: number;

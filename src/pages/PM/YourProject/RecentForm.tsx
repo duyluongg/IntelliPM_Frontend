@@ -1,10 +1,21 @@
 // src/pages/RecentForm.tsx
 
 import { Link } from 'react-router-dom';
-import { FileText, Lock, MoreHorizontal, CheckSquare, Trash2, Search } from 'lucide-react';
+// NEW: Thêm icon ChevronDown cho dropdown
+import {
+  FileText,
+  Lock,
+  MoreHorizontal,
+  CheckSquare,
+  Trash2,
+  Search,
+  ChevronDown,
+} from 'lucide-react';
 import {
   useGetDocumentsByProjectIdQuery,
   useDeleteDocumentMutation,
+  // NEW: Import hook để cập nhật document
+  useUpdateVisibilityMutation,
 } from '../../../services/Document/documentAPI';
 import { useEffect, useState, useMemo, Fragment } from 'react';
 import type { RootState } from '../../../app/store';
@@ -13,8 +24,16 @@ import { Menu, Transition } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { ConfirmationModal } from '../../../components/Modal/ConfirmationModal';
 
-// Component Card mới, được tách ra để dễ quản lý
-const DocumentCard = ({ doc, onDelete }: { doc: any; onDelete: (id: number) => void }) => {
+// MODIFIED: Cập nhật props cho DocumentCard
+const DocumentCard = ({
+  doc,
+  onDelete,
+  onUpdateVisibility,
+}: {
+  doc: any;
+  onDelete: (id: number) => void;
+  onUpdateVisibility: (id: number, visibility: 'MAIN' | 'PRIVATE') => void;
+}) => {
   return (
     <div className='relative group flex flex-col bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200'>
       <Link to={`/project/projects/form/document/${doc.id}`} className='flex-grow p-4 pb-0'>
@@ -29,16 +48,67 @@ const DocumentCard = ({ doc, onDelete }: { doc: any; onDelete: (id: number) => v
         </p>
       </Link>
       <div className='p-4 pt-2 flex items-center justify-between'>
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full ${
-            doc.visibility === 'MAIN'
-              ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
-              : 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300'
-          }`}
-        >
-          {doc.visibility === 'PRIVATE' ? <Lock size={12} /> : <CheckSquare size={12} />}
-          {doc.visibility}
-        </span>
+        {/* MODIFIED: Thay thế span bằng Menu (dropdown) */}
+        <Menu as='div' className='relative'>
+          <Menu.Button
+            onClick={(e) => e.stopPropagation()}
+            className={`inline-flex items-center gap-1.5 text-xs font-medium pl-2 pr-1 py-1 rounded-full w-24 justify-center transition-colors ${
+              doc.visibility === 'MAIN'
+                ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900'
+                : 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900'
+            }`}
+          >
+            {doc.visibility === 'PRIVATE' ? <Lock size={12} /> : <CheckSquare size={12} />}
+            <span className='flex-grow text-left'>{doc.visibility}</span>
+            <ChevronDown size={14} />
+          </Menu.Button>
+          <Transition
+            as={Fragment}
+            enter='transition ease-out duration-100'
+            enterFrom='transform opacity-0 scale-95'
+            enterTo='transform opacity-100 scale-100'
+            leave='transition ease-in duration-75'
+            leaveFrom='transform opacity-100 scale-100'
+            leaveTo='transform opacity-0 scale-95'
+          >
+            <Menu.Items className='absolute left-0 bottom-full mb-2 w-32 origin-bottom-left divide-y divide-slate-100 dark:divide-slate-700 rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black/5 focus:outline-none z-10'>
+              <div className='px-1 py-1'>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateVisibility(doc.id, 'MAIN');
+                      }}
+                      className={`${
+                        active ? 'bg-blue-500 text-white' : 'text-slate-700 dark:text-slate-200'
+                      } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
+                    >
+                      <CheckSquare size={14} />
+                      Main
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUpdateVisibility(doc.id, 'PRIVATE');
+                      }}
+                      className={`${
+                        active ? 'bg-red-500 text-white' : 'text-slate-700 dark:text-slate-200'
+                      } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
+                    >
+                      <Lock size={14} />
+                      Private
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
+            </Menu.Items>
+          </Transition>
+        </Menu>
         <Menu as='div' className='relative'>
           <Menu.Button
             onClick={(e) => e.stopPropagation()}
@@ -85,7 +155,6 @@ const DocumentCard = ({ doc, onDelete }: { doc: any; onDelete: (id: number) => v
 export default function RecentForm() {
   const [searchTerm, setSearchTerm] = useState('');
   const [visibilityFilter, setVisibilityFilter] = useState('ALL');
-  // --- THÊM STATE CHO MODAL ---
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<number | null>(null);
 
@@ -101,13 +170,13 @@ export default function RecentForm() {
   });
 
   const [deleteDocument, { isLoading: isDeleting }] = useDeleteDocumentMutation();
+  const [updateVisibility] = useUpdateVisibilityMutation();
 
   useEffect(() => {
     if (projectId) refetch();
   }, [projectId, refetch]);
 
-  // --- THAY ĐỔI LUỒNG XỬ LÝ ---
-
+  // --- HÀM XỬ LÝ CHO VIỆC DELETE (giữ nguyên) ---
   const handleOpenConfirmModal = (id: number) => {
     setDocToDelete(id);
     setIsConfirmModalOpen(true);
@@ -122,10 +191,9 @@ export default function RecentForm() {
       loading: 'Deleting document...',
       success: () => {
         closeModal();
-
         return 'Document deleted successfully!';
       },
-      error: (err) => {
+      error: () => {
         closeModal();
         return 'Failed to delete document.';
       },
@@ -137,7 +205,16 @@ export default function RecentForm() {
     setDocToDelete(null);
   };
 
-  // filteredDocuments giữ nguyên
+  const handleUpdateVisibility = (docId: number, visibility: 'MAIN' | 'PRIVATE') => {
+    const promise = updateVisibility({ id: docId, visibility }).unwrap();
+
+    toast.promise(promise, {
+      loading: 'Updating visibility...',
+      success: 'Visibility updated successfully!',
+      error: 'Failed to update visibility.',
+    });
+  };
+
   const filteredDocuments = useMemo(() => {
     return documents
       .filter((doc: any) => {
@@ -198,15 +275,16 @@ export default function RecentForm() {
               <DocumentCard
                 key={doc.id}
                 doc={doc}
-                // --- TRUYỀN HÀM MỞ MODAL VÀO CARD ---
                 onDelete={handleOpenConfirmModal}
+                // MODIFIED: Truyền hàm update vào card
+                onUpdateVisibility={handleUpdateVisibility}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* --- RENDER MODAL XÁC NHẬN --- */}
+      {/* --- RENDER MODAL XÁC NHẬN (giữ nguyên) --- */}
       <ConfirmationModal
         isOpen={isConfirmModalOpen}
         onClose={closeModal}

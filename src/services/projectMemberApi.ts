@@ -71,9 +71,12 @@ export interface ProjectMemberWithTasksResponse {
   fullName: string;
   username: string;
   accountPicture: string;
+  email: string | null;
+  phone: string | null; 
   hourlyRate: number;
   workingHoursPerDay: number;
   tasks: TaskSummary[];
+  positions: string[];
 }
 
 export const projectMemberApi = createApi({

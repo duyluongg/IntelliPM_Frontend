@@ -228,6 +228,15 @@ export const documentApi = createApi({
         { type: 'Documents', id: _id },
       ],
     }),
+
+    updateVisibility: builder.mutation<any, { id: number; visibility: 'MAIN' | 'PRIVATE' }>({
+      query: ({ id, visibility }) => ({
+        url: `documents/${id}/visibility`,
+        method: 'PATCH',
+        body: { visibility },
+      }),
+      invalidatesTags: ['Documents'],
+    }),
   }),
 });
 
@@ -250,4 +259,5 @@ export const {
   useGetMyPermissionQuery,
   useGetDocumentsByProjectIdQuery,
   useDeleteDocumentMutation,
+  useUpdateVisibilityMutation,
 } = documentApi;

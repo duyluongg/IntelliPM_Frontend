@@ -1,6 +1,11 @@
 import React, { useState,useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { Dialog, DialogTrigger, DialogContent } from '@radix-ui/react-dialog';
+import {
+  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  PieChart, Pie, Cell,
+} from 'recharts';
 import { useAuth } from '../../../../services/AuthContext';
 import {
   useGetMeetingsManagedByQuery,
@@ -14,6 +19,7 @@ import {
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
 import { useGetCategoriesByGroupQuery } from '../../../../services/dynamicCategoryApi';
 import AttendanceModal from '../MeetingManagementPage/AttendanceModal';
+import MeetingAnalytics from './MeetingAnalytics';
 
 const MeetingManagementPage: React.FC = () => {
   const { user } = useAuth();
@@ -61,6 +67,7 @@ useEffect(() => {
 
   const { data: meetings = [], isLoading, isError, error , refetch } =
     useGetMeetingsManagedByQuery(accountId!, { skip: !accountId });
+    console.log(meetings)
     
 
   const [deleteMeeting] = useDeleteMeetingMutation();
@@ -206,6 +213,10 @@ useEffect(() => {
       <h1 className="mb-6 text-2xl font-bold text-gray-800">
         🛠 Manage the meetings you create
       </h1>
+          <MeetingAnalytics
+      meetings={meetings}
+      statusOptions={statusOptions}
+    />
 <div className="mb-6 flex gap-2 flex-wrap">
   {statusOptions.map(s => (
     <button
@@ -241,6 +252,8 @@ useEffect(() => {
     <option value="TODAY">📅 Today</option>
   </select>
 </div>
+
+
       {/* --- Danh sách cuộc họp --- */}
 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
   {meetings
@@ -452,7 +465,7 @@ onClick={() => {
                           setDeleteOpen(false);
                         }}
                       >
-                        🗑️ delete
+                        🗑️ Delete
                       </button>
                     </DialogContent>
                   </Dialog>
@@ -482,6 +495,8 @@ onClick={() => {
     </DialogTrigger>
     <AttendanceModal
       meetingTopic={selectedMeeting?.meetingTopic}
+      projectId={selectedMeeting?.projectId}
+      meetingStatus={selectedMeeting?.status}
       participants={participants}
       draft={attendanceDraft}
       setDraft={setAttendanceDraft}
@@ -503,5 +518,7 @@ onClick={() => {
     </div>
   );
 };
+
+
 
 export default MeetingManagementPage;

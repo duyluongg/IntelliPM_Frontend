@@ -3,9 +3,7 @@ import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal } from 'lucid
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import CompleteSprintPopup from './CompleteSprintPopup';
 import { useGetTasksBySprintIdQuery } from '../../../services/taskApi';
-import {
-  useGetActiveSprintByProjectKeyQuery,
-} from '../../../services/sprintApi';
+import { useGetActiveSprintByProjectKeyQuery } from '../../../services/sprintApi';
 import { User2 } from 'lucide-react';
 
 const SprintIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -291,7 +289,12 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                       className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                       onClick={toggleMembers}
                     />
-                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                    <span
+                      className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5
+                 text-xs bg-gray-800 text-white rounded 
+                 opacity-0 group-hover:opacity-100 transition-opacity 
+                 whitespace-nowrap'
+                    >
                       {member.name}
                     </span>
                   </div>
@@ -305,7 +308,13 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                   className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                   onClick={toggleMembers}
                 />
-                <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                <span
+                  className='absolute top-full left-1/2 mt-1 px-2 py-0.5
+               text-xs bg-gray-800 text-white rounded 
+               opacity-0 group-hover:opacity-100 transition-opacity 
+               whitespace-nowrap pointer-events-none z-10'
+                  style={{ transform: 'translateX(-50%)' }} // luôn căn giữa
+                >
                   {members[0].name}
                 </span>
                 {members.length > 1 && (

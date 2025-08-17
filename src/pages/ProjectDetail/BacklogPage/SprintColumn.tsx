@@ -29,7 +29,7 @@ import CompleteSprintPopup from './CompleteSprintPopup';
 import GenerateTasksPopup from './GenerateTasksPopup';
 import PlanTasksPopup from './PlanTasksPopup';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
-import WorkItem from '../../WorkItem/WorkItem'; // Import WorkItem component
+import WorkItem from '../../WorkItem/WorkItem';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -46,6 +46,7 @@ interface TaskItemProps {
   sprintId: number | null;
   epics: EpicWithStatsResponseDTO[] | undefined;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
+  onTaskUpdated: () => void; // Added to fix TS2339 and TS2322
 }
 
 interface SectionProps {
@@ -101,7 +102,7 @@ const formatDate = (dateStr: string | null | undefined): string => {
   return `${day} ${monthAbbr}`;
 };
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveTask }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveTask, onTaskUpdated }) => {
   const {
     data: statusCategories,
     isLoading: isStatusLoading,
@@ -129,8 +130,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
   const [status, setStatus] = useState<string>('');
   const [isEpicMenuOpen, setIsEpicMenuOpen] = useState(false);
   const epicMenuRef = useRef<HTMLDivElement>(null);
-  const [isHoveringEpic, setIsHoveringEpic] = useState(false);
-  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false); // State for WorkItem popup
+  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false);
 
   useEffect(() => {
     if (!isStatusLoading && statusCategories?.data) {
@@ -243,7 +243,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
         createdBy: accountId,
       }).unwrap();
       setIsEpicMenuOpen(false);
-      moveTask(task.id, sprintId, status);
+      onTaskUpdated(); // Refresh task list after epic update
     } catch (err: any) {
       alert(`Unable to assign epic: ${err?.data?.message || 'Unknown error'}`);
     }
@@ -260,28 +260,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
   const renderEpicName = () => {
     if (!task.epicName) {
       return (
-        <div
-          className="relative flex justify-start pl-2 mr-5"
-          onMouseEnter={() => setIsHoveringEpic(true)}
-          onMouseLeave={() => setIsHoveringEpic(false)}
-        >
-          <span className="text-xs text-gray-400">
-            {isHoveringEpic ? (
-              <button
-                onClick={() => setIsEpicMenuOpen(true)}
-                className="text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50"
-                title="Assign Epic"
-              >
-                + Epic
-              </button>
-            ) : (
-              '-'
-            )}
-          </span>
+        <div className="relative flex justify-start pl-2 min-w-[100px]">
+          <button
+            onClick={() => setIsEpicMenuOpen(true)}
+            className="text-xs text-gray-600 border border-gray-600 rounded px-2 py-[1px] hover:bg-gray-200 whitespace-nowrap"
+            title="Assign Epic"
+          >
+            + Epic
+          </button>
           {isEpicMenuOpen && (
             <div
               ref={epicMenuRef}
-              className="absolute z-10 top-6 right-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+              className="absolute z-10 top-6 left-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
             >
               {!Array.isArray(epics) || epics.length === 0 ? (
                 <div className="px-4 py-2 text-sm text-gray-500">No epics available</div>
@@ -290,18 +280,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
                   <div
                     key="no-epic"
                     onClick={() => handleEpicSelect(null)}
-                    className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
                   >
-                    No Epic
+                    <img src={epicIcon} alt="Epic icon" className="w-4 h-4" />
+                    <span>No Epic</span>
                   </div>,
                   ...epics.map((epic) => (
                     <div
                       key={epic.id}
                       onClick={() => handleEpicSelect(epic.id)}
-                      className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer truncate"
-                      title={epic.name}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
                     >
-                      {epic.name}
+                      <img src={epicIcon} alt="Epic icon" className="w-4 h-4" />
+                      <span className="truncate">{epic.name}</span>
                     </div>
                   )),
                 ]
@@ -318,11 +309,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
     }
 
     return (
-      <div
-        className="relative flex justify-end pl-2 mr-5"
-        onMouseEnter={() => setIsHoveringEpic(true)}
-        onMouseLeave={() => setIsHoveringEpic(false)}
-      >
+      <div className="relative flex justify-start pl-2 min-w-[100px]">
         <span
           className="text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate"
           title={task.epicName}
@@ -333,7 +320,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
         {isEpicMenuOpen && (
           <div
             ref={epicMenuRef}
-            className="absolute z-10 top-6 right-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-10 top-6 left-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
             {!Array.isArray(epics) || epics.length === 0 ? (
               <div className="px-4 py-2 text-sm text-gray-500">No epics available</div>
@@ -342,18 +329,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
                 <div
                   key="no-epic"
                   onClick={() => handleEpicSelect(null)}
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
                 >
-                  No Epic
+                  <img src={epicIcon} alt="Epic icon" className="w-4 h-4" />
+                  <span>No Epic</span>
                 </div>,
                 ...epics.map((epic) => (
                   <div
                     key={epic.id}
                     onClick={() => handleEpicSelect(epic.id)}
-                    className="px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer truncate"
-                    title={epic.name}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
                   >
-                    {epic.name}
+                    <img src={epicIcon} alt="Epic icon" className="w-4 h-4" />
+                    <span className="truncate">{epic.name}</span>
                   </div>
                 )),
               ]
@@ -380,7 +368,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
   return (
     <div
       ref={ref}
-      className={`grid grid-cols-[40px_100px_1fr_auto_120px_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
+      className={`grid grid-cols-[40px_100px_minmax(200px,1fr)_100px_16px_120px_16px_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
@@ -406,13 +394,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
       ) : (
         <span
           ref={titleRef}
-          className="text-sm text-gray-700 truncate cursor-pointer hover:underline w-full"
+          className="text-sm text-gray-700 truncate cursor-pointer hover:underline pr-2"
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
       {renderEpicName()}
+      <div className="min-w-[16px]" />
       <div className="flex items-center justify-start relative" ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
@@ -485,7 +474,6 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, epics, moveT
           </div>
         )}
       </div>
-      {/* WorkItem Popup */}
       {isWorkItemOpen && (
         <WorkItem
           isOpen={isWorkItemOpen}
@@ -529,7 +517,7 @@ const Section: React.FC<SectionProps> = ({
   const isCompleted = sprint?.status === 'COMPLETED';
   const ref = useRef<HTMLDivElement>(null);
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: isCompleted ? '' : 'TASK', // Disable drop for completed sprints
+    accept: isCompleted ? '' : 'TASK',
     item: { sprintId },
     drop: isCompleted
       ? undefined
@@ -709,8 +697,8 @@ const Section: React.FC<SectionProps> = ({
                       >
                         <path
                           fill="currentColor"
-                          fillRule="evenodd" // Fixed from fill-rule
-                          clipRule="evenodd" // Fixed from clip-rule
+                          fillRule="evenodd"
+                          clipRule="evenodd"
                           d="M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z"
                         />
                       </svg>
@@ -857,6 +845,7 @@ const Section: React.FC<SectionProps> = ({
                 sprintId={sprintId}
                 epics={epics}
                 moveTask={moveTask}
+                onTaskUpdated={onTaskUpdated}
               />
             ))}
           </>

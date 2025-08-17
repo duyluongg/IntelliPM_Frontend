@@ -60,14 +60,36 @@ interface MeetingParticipant {
   meetingId: number;
   accountId: number;
   role: string;
-  status: 'Active' | 'Absent';  // hoặc kiểu mở rộng nếu có thêm
+  status: 'Active' | 'Absent';  
   createdAt: string;
+}
+interface ProjectDetails {
+  id: number;
+  name: string;
+  projectKey: string;
+  description: string;
+  budget: number;
+  projectType: string;
+  createdBy: number;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  updatedAt: string;
+  iconUrl: string;
+  status: string;
+}
+
+interface GetSingleProjectResponse {
+  isSuccess: boolean;
+  code: number;
+  data: ProjectDetails;
+  message: string;
 }
 
 
 interface Meeting {
-  id: number;                     // ✅ thêm ID
-  status: string;                 // ✅ thêm status
+  id: number;                    
+  status: string;                 
   projectId: number;
   meetingTopic: string;
   meetingDate: string;
@@ -76,8 +98,8 @@ interface Meeting {
   endTime: string;
   attendees: number;
   participantIds: number[];
-  createdAt?: string;             // (optional nếu muốn hiển thị sau)
-  projectName?: string | null;    // (optional nếu backend có trả về)
+  createdAt?: string;            
+  projectName?: string | null;    
 }
 export interface MeetingEventWithStatus {
   id: string;
@@ -123,7 +145,12 @@ export const meetingApi = createApi({
         body: meetingData,
       }),
     }),
-
+ getProjectById: builder.query<GetSingleProjectResponse, number>({
+      query: (projectId) => ({
+        url: `project/${projectId}`,
+        method: 'GET',
+      }),
+    }),
     createInternalMeeting: builder.mutation<CreateMeetingResponse, CreateMeetingRequest>({
       query: (meetingData) => ({
         url: 'meetings/internal',
@@ -236,6 +263,7 @@ export const {
   useGetProjectsByAccountIdQuery,
   useGetProjectDetailsQuery,
   useCreateMeetingMutation,
+  useGetProjectByIdQuery,
   useGetMeetingsByAccountIdQuery,
   useGetMeetingParticipantsQuery,
   useUpdateParticipantStatusMutation,

@@ -151,7 +151,7 @@ const Avatar = ({
             .substring(0, 2)}
         </div>
       )}
-      <span className='text-xs text-gray-800 truncate max-w-[80px]'>{displayName}</span>
+      <span className='text-xs text-gray-800'>{displayName}</span>
       {onDelete && isHovered && (
         <button
           onClick={onDelete}
@@ -208,24 +208,8 @@ const TaskList: React.FC<TaskListProps> = ({
     id: string;
     type: 'TASK';
   } | null>(null);
-  const [expandedEpics, setExpandedEpics] = useState<{ [key: string]: boolean }>({});
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const toggleAllEpics = () => {
-    const allExpanded = Object.values(expandedEpics).every((isExpanded) => isExpanded);
-    const newExpandedState = epics.reduce((acc, epic) => {
-      acc[epic.epicId] = !allExpanded;
-      return acc;
-    }, {} as { [key: string]: boolean });
-    setExpandedEpics(newExpandedState);
-  };
-
-  const toggleEpic = (epicId: string) => {
-    setExpandedEpics((prev) => ({
-      ...prev,
-      [epicId]: !prev[epicId],
-    }));
-  };
+  const [expandedEpicIndices, setExpandedEpicIndices] = useState<Set<number>>(new Set());
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -242,6 +226,27 @@ const TaskList: React.FC<TaskListProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [setIsMemberDropdownOpen]);
+
+  const toggleEpic = (epicIndex: number) => {
+    setExpandedEpicIndices((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(epicIndex)) {
+        newSet.delete(epicIndex);
+      } else {
+        newSet.add(epicIndex);
+      }
+      console.log(`Toggled epic at index ${epicIndex}:`, newSet);
+      return newSet;
+    });
+  };
+
+  const toggleAllEpics = () => {
+    const allExpanded = expandedEpicIndices.size === epics.length;
+    setExpandedEpicIndices(
+      allExpanded ? new Set() : new Set(epics.map((_, i) => i))
+    );
+    console.log('Toggled all epics:', !allExpanded ? 'Expanded' : 'Collapsed');
+  };
 
   const handleEditClick = (id: string, field: string, value: string) => {
     setEditingCell({ id, field });
@@ -307,6 +312,10 @@ const TaskList: React.FC<TaskListProps> = ({
         alert('This member is already assigned.');
         return;
       }
+      if (item.assignees.length >= 3) {
+        alert('A task can have a maximum of 3 assignees.');
+        return;
+      }
       handleAddMember(item.epicId!, item.id, member.accountId);
     }
     setShowMemberDropdown(null);
@@ -348,6 +357,20 @@ const TaskList: React.FC<TaskListProps> = ({
             0% { background-position: 200% 50%; }
             100% { background-position: 0% 50%; }
           }
+          .title-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 4.2em; /* Approximately 3 lines at line-height 1.4 */
+            overflow: hidden;
+          }
+          .assignee-cell {
+            white-space: normal;
+            word-wrap: break-word;
+            line-height: 1.4;
+            max-height: 5.6em; /* Approximately 3 assignees at ~1.4em each */
+            overflow: hidden;
+          }
         `}
       </style>
       {isGenerating ? (
@@ -376,9 +399,7 @@ const TaskList: React.FC<TaskListProps> = ({
         <section className='p-3 font-sans bg-white w-full'>
           <div className='mb-4'>
             <button onClick={toggleAllEpics} className='text-sm text-blue-600 hover:text-blue-800'>
-              {Object.values(expandedEpics).every((isExpanded) => isExpanded)
-                ? 'Collapse All'
-                : 'Expand All'}
+              {expandedEpicIndices.size === epics.length ? 'Collapse All' : 'Expand All'}
             </button>
           </div>
           {epics.length === 0 ? (
@@ -431,12 +452,13 @@ const TaskList: React.FC<TaskListProps> = ({
                         <tr className='border-b border-gray-200 bg-white hover:bg-gray-50'>
                           <td className='p-2'>
                             <button
-                              onClick={() => toggleEpic(epic.epicId)}
+                              onClick={() => toggleEpic(epicIndex)}
                               className='focus:outline-none'
+                              aria-expanded={expandedEpicIndices.has(epicIndex)}
                             >
                               <svg
                                 className={`w-5 h-5 transform transition-transform ${
-                                  expandedEpics[epic.epicId] ? 'rotate-90' : ''
+                                  expandedEpicIndices.has(epicIndex) ? 'rotate-90' : ''
                                 }`}
                                 fill='none'
                                 stroke='currentColor'
@@ -455,7 +477,7 @@ const TaskList: React.FC<TaskListProps> = ({
                           <td className='p-2'>
                             <img src={epicIcon} alt='Epic' className='w-6 h-6 rounded p-1' />
                           </td>
-                          <td className='p-2 whitespace-nowrap'>
+                          <td className='p-2 title-cell'>
                             {editingCell?.id === epicRow.id && editingCell?.field === 'title' ? (
                               <input
                                 type='text'
@@ -467,7 +489,7 @@ const TaskList: React.FC<TaskListProps> = ({
                               />
                             ) : (
                               <span
-                                className='cursor-pointer truncate'
+                                className='cursor-pointer'
                                 onClick={() => handleEditClick(epicRow.id, 'title', epicRow.title)}
                               >
                                 {epicRow.title}
@@ -521,7 +543,9 @@ const TaskList: React.FC<TaskListProps> = ({
                               </span>
                             )}
                           </td>
-                          <td className='p-2'></td>
+                          <td className='p-2 assignee-cell'>
+                            <span className='text-gray-500 text-xs'>-</span>
+                          </td>
                           <td className='p-2'>
                             <button
                               onClick={() => handleDetailsClick(epicRow)}
@@ -532,7 +556,7 @@ const TaskList: React.FC<TaskListProps> = ({
                             </button>
                           </td>
                         </tr>
-                        {expandedEpics[epic.epicId] &&
+                        {expandedEpicIndices.has(epicIndex) &&
                           (taskRows.length === 0 ? (
                             <tr>
                               <td colSpan={8} className='p-4 text-gray-500 text-sm text-center'>
@@ -554,7 +578,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     className='w-5 h-5 rounded p-0.5'
                                   />
                                 </td>
-                                <td className='p-2 whitespace-nowrap'>
+                                <td className='p-2 title-cell'>
                                   {editingCell?.id === item.id && editingCell?.field === 'title' ? (
                                     <input
                                       type='text'
@@ -566,7 +590,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     />
                                   ) : (
                                     <span
-                                      className='cursor-pointer truncate'
+                                      className='cursor-pointer'
                                       onClick={() => handleEditClick(item.id, 'title', item.title)}
                                     >
                                       {item.title}
@@ -625,7 +649,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                     </span>
                                   )}
                                 </td>
-                                <td className='p-2 relative'>
+                                <td className='p-2 relative assignee-cell'>
                                   {showMemberDropdown?.id === item.id && item.type === 'TASK' ? (
                                     <div
                                       ref={dropdownRef}
@@ -670,7 +694,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                                 </div>
                                               )}
                                             </div>
-                                            <span className='text-gray-900 font-medium truncate'>
+                                            <span className='text-gray-900 font-medium'>
                                               {member.fullName}
                                             </span>
                                           </div>
@@ -680,7 +704,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                   ) : (
                                     <div
                                       onClick={() => handleShowMemberDropdown(item.id, item.type)}
-                                      className='inline-flex flex-nowrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
+                                      className='inline-flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
                                     >
                                       {item.type === 'TASK' && item.assignees.length ? (
                                         item.assignees.map((assignee, index) => (

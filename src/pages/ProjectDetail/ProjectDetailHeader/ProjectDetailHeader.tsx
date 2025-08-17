@@ -1,11 +1,10 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams, useLocation, Link } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import projectIcon from '../../../assets/projectManagement.png';
 
 import {
-  Users2,  
+  Users2,
   Globe,
   CalendarDays,
   List as ListIcon,
@@ -19,11 +18,11 @@ import {
   ChartNoAxesGantt,
   ChartNoAxesCombined,
   FileWarning,
+  Sheet,
   Link as LucideLink,
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Summary', icon: <Globe className='w-4 h-4' />, path: 'summary' },
   { label: 'Timeline', icon: <CalendarDays className='w-4 h-4' />, path: 'timeline' },
   { label: 'Backlog', icon: <ClipboardList className='w-4 h-4' />, path: 'backlog' },
   { label: 'Board', icon: <ClipboardCheck className='w-4 h-4' />, path: 'board' },
@@ -33,15 +32,15 @@ const navItems = [
   { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
-  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
+  { label: 'Sheet', icon: <Sheet className='w-4 h-4' />, path: 'sheet' },
   { label: 'All work', icon: <Users2 className='w-4 h-4' />, path: 'all-work' },
-  { label: 'Code', icon: <Code2 className='w-4 h-4' />, path: 'code' },
+  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
+  { label: 'Summary', icon: <Globe className='w-4 h-4' />, path: 'summary' },
   { label: 'Archived work items', icon: <Archive className='w-4 h-4' />, path: 'archived' },
   { label: 'Pages', icon: <FileText className='w-4 h-4' />, path: 'pages' },
   { label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   { label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
   { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
-
 ];
 
 const ProjectDetailHeader: React.FC = () => {
@@ -112,7 +111,11 @@ const ProjectDetailHeader: React.FC = () => {
       <div className='flex items-center gap-2'>
         <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
         <h1 className='text-lg font-semibold'>
-          {isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found'}
+          {isLoading
+            ? 'Loading...'
+            : error
+            ? 'Error loading project'
+            : projectDetails?.data?.name || 'Not Found'}
         </h1>
       </div>
 

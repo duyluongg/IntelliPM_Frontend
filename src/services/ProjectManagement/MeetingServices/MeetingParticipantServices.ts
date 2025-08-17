@@ -35,6 +35,12 @@ export interface UpdateParticipantStatusDTO {
   status?: string | null; // ✅ dynamic
 }
 
+export interface AddParticipantsResult {
+  added: number[];
+  alreadyIn: number[];
+  conflicted: number[];
+  notFound: number[];
+} 
 
 /* ========== Phản hồi trả về ========= */
 
@@ -94,6 +100,17 @@ completeMeeting: builder.mutation<void, number>({
   }),
 }),
 
+addParticipantsToMeeting: builder.mutation<
+      AddParticipantsResult,
+      { meetingId: number; participantIds: number[] }
+    >({
+      query: ({ meetingId, participantIds }) => ({
+        url: `meetings/${meetingId}/participants`,
+        method: 'POST',
+        body: participantIds,
+      }),
+    }),
+
 
     /** PUT /api/meeting-participants/:id – Điểm danh (Present / Absent) */
     // updateParticipantStatus: builder.mutation<
@@ -127,4 +144,5 @@ export const {
   useGetParticipantsByMeetingIdQuery,
   useUpdateParticipantStatusMutation,
   useCompleteMeetingMutation, 
+  useAddParticipantsToMeetingMutation,
 } = meetingParticipantApi;

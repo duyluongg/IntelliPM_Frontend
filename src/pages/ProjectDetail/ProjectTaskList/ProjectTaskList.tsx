@@ -43,6 +43,7 @@ import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
 import UnifiedFilter from '../ProjectTaskList/UnifiedFilter';
 import ExportDropdown from '../ProjectTaskList/ExportDropdownProps';
 import GenerateTaskByAI from '../ProjectTaskList/GenerateTaskByAI';
+import GenerateEpicByAI from '../ProjectTaskList/GenerateEpicByAI';
 import CreateWorkItemModal from './CreateWorkItemModal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -408,6 +409,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isGenerateAIModalOpen, setIsGenerateAIModalOpen] = useState(false);
+  const [isGenerateEpicAIModalOpen, setIsGenerateEpicAIModalOpen] = useState(false);
 
   const {
     data: membersData,
@@ -595,10 +597,10 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       </div>
 
       <div className='flex items-center gap-1.5'>
-        <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
+        {/* <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
           <MdGroup />
           <span>Group</span>
-        </div>
+        </div> */}
         <div
           className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
           onClick={() => setIsGenerateAIModalOpen(true)}
@@ -606,7 +608,17 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           data-tooltip-content='Generate tasks using AI'
         >
           <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
-          <span>Generate by AI</span>
+          <span>Generate Tasks by AI</span>
+          <Tooltip id='generate-ai-tooltip' />
+        </div>
+        <div
+          className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
+          onClick={() => setIsGenerateEpicAIModalOpen(true)}
+          data-tooltip-id='generate-ai-tooltip'
+          data-tooltip-content='Generate tasks using AI'
+        >
+          <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+          <span>Generate Epics by AI</span>
           <Tooltip id='generate-ai-tooltip' />
         </div>
         <div className='relative'>
@@ -650,6 +662,12 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       <GenerateTaskByAI
         isOpen={isGenerateAIModalOpen}
         onClose={() => setIsGenerateAIModalOpen(false)}
+        projectId={projectId || 0}
+        refetchWorkItems={refetchWorkItems}
+      />
+      <GenerateEpicByAI
+        isOpen={isGenerateEpicAIModalOpen}
+        onClose={() => setIsGenerateEpicAIModalOpen(false)}
         projectId={projectId || 0}
         refetchWorkItems={refetchWorkItems}
       />

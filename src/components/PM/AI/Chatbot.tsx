@@ -15,6 +15,7 @@ import type { Editor } from '@tiptap/react';
 
 import {
   useAskAIMutation,
+  useGenerateFromProjectMutation,
   useGenerateFromTasksMutation,
 } from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
@@ -53,6 +54,11 @@ const suggestions = [
     text: 'Project summary',
     color: 'text-blue-600 dark:text-blue-400',
   },
+  {
+    icon: CheckCircle,
+    text: 'Task summary',
+    color: 'text-blue-600 dark:text-blue-400',
+  },
 ];
 
 const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
@@ -61,11 +67,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [generateFromTasks, { isLoading: isGenLoading }] = useGenerateFromTasksMutation();
+  const [generateFromProject, { isLoading: isProjectLoading }] = useGenerateFromProjectMutation();
 
   const [askAI, { isLoading }] = useAskAIMutation();
   const { documentId } = useParams<{ documentId: string }>();
   const docId = Number(documentId);
-  const busy = isLoading || isGenLoading;
+  const busy = isLoading || isGenLoading || isProjectLoading;
 
   console.log(documentId, 'documentId in Chatbot');
 
@@ -213,9 +220,22 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
     setInputText('');
 
     try {
-      if (messageText === 'Project summary') {
+      if (messageText === 'Task summary') {
         const result = await generateFromTasks(docId).unwrap();
         setMessages((prev) => [...prev, { id: Date.now() + 1, text: result, sender: 'ai' }]);
+        return;
+      }
+
+      if (messageText === 'Project summary') {
+        const result = await generateFromProject(docId).unwrap();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now() + 1,
+            text: result,
+            sender: 'ai',
+          },
+        ]);
         return;
       }
 

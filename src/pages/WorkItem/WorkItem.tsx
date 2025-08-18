@@ -176,8 +176,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
 
-  console.log('ProjectKey: ', projectKey);
-
   const {
     data: attachments = [],
     isLoading: isAttachmentsLoading,
@@ -362,7 +360,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   React.useEffect(() => {
     if (assignees && taskId) {
-      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      setTaskAssignmentMap((prev) => {
+        // Kiểm tra nếu assignees không thay đổi
+        if (
+          JSON.stringify(prev[taskId]) === JSON.stringify(assignees)
+        ) {
+          return prev; // Không cập nhật nếu giống nhau
+        }
+        return { ...prev, [taskId]: assignees };
+      });
     }
   }, [assignees, taskId]);
 
@@ -927,9 +933,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${
-                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -963,61 +968,66 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         >
                           Cancel
                         </button>
-                        <button
-                          onClick={async () => {
-                            setLoadingCreate(true);
-                            try {
-                              for (const title of selectedSuggestions) {
-                                await createAISubtask({
-                                  taskId,
-                                  title,
-                                  createdBy: accountId,
-                                }).unwrap();
+                        {isUserAssignee(taskId) || canEdit ? (
+                          <button
+                            onClick={async () => {
+                              setLoadingCreate(true);
+                              try {
+                                for (const title of selectedSuggestions) {
+                                  await createAISubtask({
+                                    taskId,
+                                    title,
+                                    createdBy: accountId,
+                                  }).unwrap();
+                                }
+                                setShowSuggestionList(false);
+                                setSelectedSuggestions([]);
+                                await refetch();
+                                await refetchActivityLogs();
+                              } catch (err) {
+                                console.error('❌ Failed to create subtasks', err);
+                              } finally {
+                                setLoadingCreate(false);
                               }
-                              setShowSuggestionList(false);
-                              setSelectedSuggestions([]);
-                              await refetch();
-                              await refetchActivityLogs();
-                            } catch (err) {
-                              console.error('❌ Failed to create subtasks', err);
-                            } finally {
-                              setLoadingCreate(false);
-                            }
-                          }}
-                          disabled={selectedSuggestions.length === 0 || loadingCreate}
-                          className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
-                            selectedSuggestions.length === 0 || loadingCreate
+                            }}
+                            disabled={selectedSuggestions.length === 0 || loadingCreate}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
                               ? 'bg-gray-400 cursor-not-allowed'
                               : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                          }`}
-                        >
-                          {loadingCreate ? (
-                            <div className='flex items-center gap-2'>
-                              <svg
-                                className='animate-spin w-5 h-5 text-white'
-                                fill='none'
-                                viewBox='0 0 24 24'
-                              >
-                                <circle
-                                  className='opacity-25'
-                                  cx='12'
-                                  cy='12'
-                                  r='10'
-                                  stroke='currentColor'
-                                  strokeWidth='4'
-                                />
-                                <path
-                                  className='opacity-75'
-                                  fill='currentColor'
-                                  d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
-                                />
-                              </svg>
-                              <span>Creating...</span>
-                            </div>
-                          ) : (
-                            'Create Selected'
-                          )}
-                        </button>
+                              }`}
+                          >
+                            {loadingCreate ? (
+                              <div className='flex items-center gap-2'>
+                                <svg
+                                  className='animate-spin w-5 h-5 text-white'
+                                  fill='none'
+                                  viewBox='0 0 24 24'
+                                >
+                                  <circle
+                                    className='opacity-25'
+                                    cx='12'
+                                    cy='12'
+                                    r='10'
+                                    stroke='currentColor'
+                                    strokeWidth='4'
+                                  />
+                                  <path
+                                    className='opacity-75'
+                                    fill='currentColor'
+                                    d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
+                                  />
+                                </svg>
+                                <span>Creating...</span>
+                              </div>
+                            ) : (
+                              'Create Selected'
+                            )}
+                          </button>
+                        ) : (
+                          <div className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'>
+                            Only Team Leader, Project Manager, or assignees can create subtasks.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1691,8 +1701,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1767,8 +1777,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}

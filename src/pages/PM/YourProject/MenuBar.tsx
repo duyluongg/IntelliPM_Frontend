@@ -28,6 +28,7 @@ import {
   X,
   LinkIcon,
   UserPlus,
+  Loader2,
 } from 'lucide-react';
 
 import * as XLSX from 'xlsx';
@@ -90,6 +91,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
     useGetPermissionTypeByDocumentQuery(documentId, {
       skip: !documentId,
     });
+  const [isExporting, setIsExporting] = useState<'pdf' | 'excel' | null>(null);
 
   useEffect(() => {
     if (isPermissionSuccess && permissionData?.permissionType) {
@@ -225,40 +227,60 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
 
   const handleExportPDF = async () => {
     const el = exportTargetRef?.current ?? document.querySelector<HTMLElement>('.tiptap-content');
+    if (!el || !(el instanceof HTMLElement) || !documentId) return;
+    setIsExporting('pdf');
+    try {
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#fff',
+        windowWidth: el.scrollWidth,
+      });
 
-    if (!el) return;
-    if (!(el instanceof HTMLElement)) return;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
 
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#fff',
-      windowWidth: el.scrollWidth,
-    });
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
 
-    const imgData = canvas.toDataURL('image/png');
+      let heightLeft = imgH;
+      let position = 0;
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-
-    let heightLeft = imgH;
-    let position = 0;
-
-    pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
-    heightLeft -= pageH;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgH;
-      pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
       heightLeft -= pageH;
-    }
 
-    pdf.save('document.pdf');
+      while (heightLeft > 0) {
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+
+      // ✨ Xuất blob để upload
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], `document-${documentId}.pdf`, {
+        type: 'application/pdf',
+      });
+
+      await exportDocument({ documentId, file }).unwrap();
+      toast.success('🎉 Export file successfully!');
+
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `document-${documentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error('Export error:', err);
+      toast.error('❌ Export PDF thất bại!');
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   // const handleExportPDF = () => {
@@ -277,16 +299,53 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
   //   html2pdf().from(element).set(opt).save();
   // };
 
-  const handleExportExcel = () => {
-    if (!editor) return;
+  const handleExportExcel = async () => {
+    if (!editor || !documentId) return;
+    setIsExporting('excel');
+    try {
+      // 1. Lấy text thuần từ editor
+      const content = editor.getText({ blockSeparator: '\n' });
+      const lines = content.split('\n').map((line) => [line]); // array of arrays
 
-    const content = editor.getText({ blockSeparator: '\n' });
-    const lines = content.split('\n').map((line) => [line]); // Tạo mảng các mảng
+      // 2. Tạo workbook Excel
+      const ws = XLSX.utils.aoa_to_sheet(lines);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Document');
 
-    const ws = XLSX.utils.aoa_to_sheet(lines);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Document');
-    XLSX.writeFile(wb, 'document.xlsx');
+      // 3. Ghi workbook ra binary string
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }); // arraybuffer
+
+      // 4. Tạo Blob từ buffer
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 5. Tạo File object từ Blob
+      const file = new File([blob], `document-${documentId}.xlsx`, {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+      // 6. Upload file qua API
+      const response = await exportDocument({ documentId, file }).unwrap();
+
+      toast.success('📤 Excel file uploaded successfully!');
+      console.log('Excel file URL:', response.fileUrl);
+
+      // 7. (Tùy chọn) Tải về máy
+      const downloadLink = document.createElement('a');
+      const blobUrl = URL.createObjectURL(blob);
+      downloadLink.href = blobUrl;
+      downloadLink.download = `document-${documentId}.xlsx`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(blobUrl); // cleanup
+    } catch (error) {
+      console.error('❌ Export Excel thất bại:', error);
+      toast.error('Export Excel thất bại!');
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   const handleShareDocument = async () => {
@@ -347,10 +406,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             <Redo className='w-5 h-5' />
           </button>
         </div>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
-        {/* Dropdown Kiểu chữ (Normal text, Heading) */}
         <Menu as='div' className='relative'>
           <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
             <CaseSensitive className='w-5 h-5 text-blue-600' />
@@ -402,7 +458,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <button
           title='Add Comment'
           onClick={onAddComment}
@@ -411,9 +466,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
         >
           <MessageSquarePlus className='w-5 h-5' />
         </button>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Dropdown Căn lề */}
         <Menu as='div' className='relative'>
           <Menu.Button className='flex items-center gap-1 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
@@ -475,9 +528,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Các nút List */}
         <div className='flex items-center'>
           <button
@@ -514,9 +565,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             <ListTodo className='w-5 h-5' />
           </button>
         </div>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Dropdown Style (Bold, Italic,...) */}
         <Menu as='div' className='relative'>
           <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
@@ -580,7 +629,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <button
           onClick={onToggleChatbot}
           className='flex items-center gap-2 px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900'
@@ -588,10 +636,16 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
           <Sparkles className='w-5 h-5' />
           <span className='text-sm font-semibold'>AI Assistant</span>
         </button>
-
         <Menu as='div' className='relative'>
-          <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
-            <FileDown className='w-5 h-5 text-gray-700 dark:text-gray-300' />
+          <Menu.Button
+            className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-wait' // ✨ Added disabled styles
+            disabled={!!isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className='w-5 h-5 animate-spin text-gray-700 dark:text-gray-300' />
+            ) : (
+              <FileDown className='w-5 h-5 text-gray-700 dark:text-gray-300' />
+            )}
             <span className='text-sm font-medium'>File</span>
             <ChevronDown className='w-4 h-4' />
           </Menu.Button>
@@ -606,21 +660,36 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
           >
             <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
               <Menu.Item>
-                <button onClick={handleExportPDF} className={dropdownItemClass}>
-                  <FileText className='w-5 h-5 text-red-500' />
-                  <span>Export as PDF</span>
+                <button
+                  onClick={handleExportPDF}
+                  className={dropdownItemClass}
+                  disabled={!!isExporting}
+                >
+                  {isExporting === 'pdf' ? (
+                    <Loader2 className='w-5 h-5 animate-spin text-red-500' />
+                  ) : (
+                    <FileText className='w-5 h-5 text-red-500' />
+                  )}
+                  <span>{isExporting === 'pdf' ? 'Exporting...' : 'Export as PDF'}</span>
                 </button>
               </Menu.Item>
               <Menu.Item>
-                <button onClick={handleExportExcel} className={dropdownItemClass}>
-                  <Sheet className='w-5 h-5 text-green-500' />
-                  <span>Export as Excel</span>
+                <button
+                  onClick={handleExportExcel}
+                  className={dropdownItemClass}
+                  disabled={!!isExporting}
+                >
+                  {isExporting === 'excel' ? (
+                    <Loader2 className='w-5 h-5 animate-spin text-green-500' />
+                  ) : (
+                    <Sheet className='w-5 h-5 text-green-500' />
+                  )}
+                  <span>{isExporting === 'excel' ? 'Exporting...' : 'Export as Excel'}</span>
                 </button>
               </Menu.Item>
             </Menu.Items>
           </Transition>
         </Menu>
-
         <div className='ml-auto flex items-center gap-2'>
           <button
             onClick={openShareModal}
@@ -634,7 +703,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
 
       <Transition appear show={isShareModalOpen} as={Fragment}>
         <Dialog as='div' className='relative z-50' onClose={closeShareModal}>
-          {/* Lớp phủ nền */}
           <Transition.Child
             as={Fragment}
             enter='ease-out duration-300'

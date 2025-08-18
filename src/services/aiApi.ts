@@ -12,6 +12,7 @@ export interface Member {
 export interface Task {
   taskId: string;
   title: string;
+  type: string;
   description: string;
   startDate: string;
   endDate: string;
@@ -24,6 +25,7 @@ export interface TaskState {
   id: string;
   taskId: string;
   title: string;
+  type: string;
   description: string;
   startDate: string;
   endDate: string;

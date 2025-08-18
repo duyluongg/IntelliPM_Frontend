@@ -15,10 +15,7 @@ import {
 import TaskList from './TaskList';
 import TaskSetupHeader from './TaskSetupHeader';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
-import CreateTaskPopup from '../CreateTaskPopup';
-import EditTaskPopup from '../EditTaskPopup';
-import EditEpicPopup from '../EditEpicPopup';
-import EditDatePopup from '../EditDatePopup';
+import { taskAiApi } from '../../../../services/taskAiApi';
 
 interface EpicState {
   epicId: string;
@@ -34,6 +31,7 @@ interface Member {
   accountId: number;
   fullName: string;
   picture?: string;
+  projectPositions?: { position: string }[];
 }
 
 interface ProjectFormData {
@@ -69,6 +67,7 @@ interface ProjectFormData {
       id: string;
       taskId?: string;
       title: string;
+      type: string;
       description: string;
       startDate: string;
       endDate: string;
@@ -130,7 +129,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
           accountId: member.accountId,
           fullName: member.fullName,
           picture: member.picture ?? 'https://i.pravatar.cc/40',
-          projectPositions: member.projectPositions || [],
+          projectPositions: member.projectPositions || [{ position: 'No Position' }],
         })),
       }
     : undefined;
@@ -157,6 +156,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   const [newTask, setNewTask] = useState<{
     epicId: string;
     title: string;
+    type: string;
     description: string;
     startDate: string;
     endDate: string;
@@ -169,6 +169,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   }>({
     epicId: '',
     title: '',
+    type: 'TASK',
     description: '',
     startDate: '2025-08-13',
     endDate: '2025-08-13',
@@ -211,6 +212,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
               id: apiTaskId,
               taskId: apiTaskId,
               title: task.title || 'Untitled Task',
+              type: task.type || 'TASK',
               description: task.description || 'No description',
               startDate: new Date(task.startDate || '2025-08-13').toISOString().split('T')[0],
               endDate: new Date(task.endDate || '2025-08-13').toISOString().split('T')[0],
@@ -260,6 +262,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
     setNewTask({
       epicId: epics.length > 0 ? epics[0].epicId : '',
       title: '',
+      type: 'TASK',
       description: '',
       startDate: '2025-08-13',
       endDate: '2025-08-13',
@@ -305,6 +308,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
       id: crypto.randomUUID(),
       taskId: '',
       title: newTask.title,
+      type: newTask.type || 'TASK',
       description: newTask.description || 'No description',
       startDate: newTask.startDate,
       endDate: newTask.endDate,
@@ -384,11 +388,13 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
         .filter((epic) => !epic.backendEpicId)
         .map((epic) => ({
           title: epic.title,
+          type: 'EPIC',
           description: epic.description,
           startDate: new Date(epic.startDate).toISOString(),
           endDate: new Date(epic.endDate).toISOString(),
           tasks: epic.tasks.map((task) => ({
             title: task.title,
+            type: task.type || 'TASK',
             description: task.description,
             startDate: new Date(task.startDate).toISOString(),
             endDate: new Date(task.endDate).toISOString(),
@@ -489,6 +495,10 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
     setDropdownTaskId(null);
   };
 
+  const handleDeleteEpic = (epicId: string) => {
+    setEpics((prev) => prev.filter((epic) => epic.epicId !== epicId));
+  };
+
   const handleAddMember = (epicId: string, taskId: string, accountId: number) => {
     const selectedMember = membersData?.data?.find((member) => member.accountId === accountId);
     if (!selectedMember) return;
@@ -562,13 +572,16 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   const onStoryTasksGenerated = (storyTasks: StoryTaskResponse[]) => {
     setEpics((prev) =>
       prev.map((epic) => {
-        if (epic.title === storyTasks[0]?.data?.title) { // Assuming storyTasks are tied to an epic by title
+        if (epic.title === storyTasks[0]?.data?.title) {
           const newTasks: TaskState[] = storyTasks.map((storyTask) => ({
             id: storyTask.data.itemId || crypto.randomUUID(),
             taskId: storyTask.data.itemId,
             title: storyTask.data.title || 'Untitled Task',
+            type: storyTask.type || 'TASK',
             description: storyTask.data.description || 'No description',
-            startDate: new Date(storyTask.data.startDate || '2025-08-13').toISOString().split('T')[0],
+            startDate: new Date(storyTask.data.startDate || '2025-08-13')
+              .toISOString()
+              .split('T')[0],
             endDate: new Date(storyTask.data.endDate || '2025-08-13').toISOString().split('T')[0],
             suggestedRole: storyTask.data.suggestedRole || 'Developer',
             assignedMembers: storyTask.data.assignedMembers
@@ -592,6 +605,25 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   };
 
   const existingEpicTitles = epics.map((epic) => epic.title);
+
+  // Render loading or error state if projectId is undefined
+  if (projectId === undefined) {
+    return (
+      <div className='w-full max-w-7xl mx-auto p-6'>
+        {isProjectLoading ? (
+          <div className='text-center text-gray-500'>Loading project details...</div>
+        ) : projectError ? (
+          <div className='mb-4 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg'>
+            Failed to load project details. Please try again.
+          </div>
+        ) : (
+          <div className='mb-4 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg'>
+            Project ID is not available.
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className='w-full max-w-7xl mx-auto p-6'>
@@ -627,11 +659,13 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
         setEditingDateTask={setEditingDateTask}
         handleEditTask={handleEditTask}
         handleDeleteTask={handleDeleteTask}
+        handleDeleteEpic={handleDeleteEpic}
         dropdownTaskId={dropdownTaskId}
         setDropdownTaskId={setDropdownTaskId}
         handleAddMember={handleAddMember}
         handleRemoveMember={handleRemoveMember}
         isCreatingTask={isCreatingTask}
+        setIsCreatingTask={setIsCreatingTask}
         newTask={newTask}
         setNewTask={setNewTask}
         isMemberDropdownOpen={isMemberDropdownOpen}
@@ -666,7 +700,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
           <span>{isSaving ? 'Saving...' : 'Next'}</span>
         </button>
       </div>
-      {isEvaluationPopupOpen && projectId && (
+      {isEvaluationPopupOpen && (
         <AiResponseEvaluationPopup
           isOpen={isEvaluationPopupOpen}
           onClose={handleCloseEvaluationPopup}

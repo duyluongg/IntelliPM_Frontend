@@ -59,6 +59,7 @@ const CreateWorkItemModal: React.FC<CreateWorkItemModalProps> = ({
 
   const { user } = useAuth();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const canCreate = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
   const { data: membersData, isLoading: isMembersLoading, error: membersError } =
     useGetProjectMembersWithPositionsQuery(projectId, {
@@ -346,13 +347,19 @@ const CreateWorkItemModal: React.FC<CreateWorkItemModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isCreatingEpic || isCreatingTask || isMembersLoading || isStatusLoading || (type !== 'EPIC' && isEpicsLoading)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-sm font-medium"
-            >
-              {isCreatingEpic || isCreatingTask ? 'Creating...' : 'Create'}
-            </button>
+            {canCreate ? (
+              <button
+                type="submit"
+                disabled={isCreatingEpic || isCreatingTask || isMembersLoading || isStatusLoading || (type !== 'EPIC' && isEpicsLoading)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                {isCreatingEpic || isCreatingTask ? 'Creating...' : 'Create'}
+              </button>
+            ) : (
+              <div className='text-gray-500 text-sm'>
+                Only Team Leader, Project Manager can create.
+              </div>
+            )}
           </div>
         </form>
       </div>

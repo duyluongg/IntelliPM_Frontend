@@ -57,6 +57,7 @@ import { adminApi } from '../services/adminApi';
 import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
 import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
 import { documentPermissionApi } from '../services/Document/documentPermissionAPI';
+import { systemConfigurationApi } from '../services/systemConfigurationApi';
 
 const persistConfig = {
   key: 'root',
@@ -114,7 +115,7 @@ const rootReducer = combineReducers({
   [documentCommentApi.reducerPath]: documentCommentApi.reducer,
   [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
   [documentPermissionApi.reducerPath]: documentPermissionApi.reducer,
-
+  [systemConfigurationApi.reducerPath]: systemConfigurationApi.reducer,
   [adminApi.reducerPath]: adminApi.reducer,
   [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
   [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
@@ -184,6 +185,7 @@ export const store = configureStore({
       aiResponseEvaluationApi.middleware,
       taskAiApi.middleware,
       documentPermissionApi.middleware,
+      systemConfigurationApi.middleware,
     ),
 });
 

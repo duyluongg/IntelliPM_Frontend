@@ -12,16 +12,6 @@ import {
 import { useGetWorkloadDashboardQuery } from '../../../services/projectMetricApi';
 import { useSearchParams } from 'react-router-dom';
 
-// interface WorkloadChartProps {
-//   projectId: number;
-// }
-
-// const WorkloadChart: React.FC<WorkloadChartProps> = ({ projectId }) => {
-// const WorkloadChart = () => {
-//   const [searchParams] = useSearchParams();
-//   const projectKey = searchParams.get('projectKey') || 'NotFound';
-//   const { data, isLoading, isError } = useGetWorkloadDashboardQuery(projectKey);
-
 interface WorkloadMember {
   memberName: string;
   completed: number;

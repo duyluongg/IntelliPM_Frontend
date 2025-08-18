@@ -77,7 +77,7 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
       <div className='flex items-center justify-between mt-2'>
         <div className='flex items-center gap-1 text-xs text-gray-600'>
           <input type='checkbox' checked readOnly className='text-blue-600 w-4 h-4' />
-          <span>{`TB-${task.id}`}</span>
+          <span className={mapApiStatusToUI(task.status) === 'Done' ? 'line-through' : ''}>{`${task.id}`}</span>
         </div>
 
         <div className='flex items-center gap-1'>

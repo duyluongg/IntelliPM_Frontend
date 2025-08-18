@@ -121,6 +121,12 @@ interface EpicWithStatsListResponse {
   data: EpicWithStatsResponseDTO[];
 }
 
+interface GenerateEpicsResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: EpicResponseDTO[];
+}
 
 export const epicApi = createApi({
   reducerPath: 'epicApi',
@@ -184,7 +190,7 @@ export const epicApi = createApi({
       { projectId: number; data: EpicWithTaskRequestDTO[] }
     >({
       query: ({ projectId, data }) => ({
-        url: `epic/projects/${projectId}/epics/batch`,
+        url: `epic/projects/${projectId}/stories/batch`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,7 +243,19 @@ export const epicApi = createApi({
       transformResponse: (response: CreateEpicResponse) => response,
       invalidatesTags: ['Epic'],
     }),
-
+    generateEpics: builder.mutation<EpicResponseDTO[], number>({
+      query: (projectId) => ({
+        url: `ai/${projectId}/generate-epic`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: {},
+      }),
+      transformResponse: (response: GenerateEpicsResponse) => response.data,
+      invalidatesTags: ['Epic'],
+    }),
 
   }),
 });
@@ -251,4 +269,5 @@ export const {
   useUpdateEpicMutation,
   useGetEpicsWithTasksByProjectKeyQuery,
   useCreateEpicMutation,
+  useGenerateEpicsMutation
 } = epicApi;

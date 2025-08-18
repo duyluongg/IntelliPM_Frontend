@@ -63,21 +63,23 @@ export default function Sidebar() {
 
  const recentProjects: RecentProject[] = projectsData?.isSuccess
   ? projectsData.data
-      .filter(
-        (proj) =>
-         // proj.projectStatus === 'ACTIVE' &&
-          proj.status === 'ACTIVE'
-      )
+      .filter((proj) => {
+        if (isRole) {
+          return proj.status === 'ACTIVE';
+        } else {
+          return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
+        }
+      })
+      .sort((a, b) => b.projectId - a.projectId)
       .map((proj) => ({
         name: proj.projectName,
         key: proj.projectKey,
         icon: proj.iconUrl || projectIcon,
       }))
+       
   : [];
 
-useEffect(() => {
-}, [selectedProjectKey, recentProjects]);
-
+  useEffect(() => {}, [selectedProjectKey, recentProjects]);
 
   const handleLogout = () => {
     logout();
@@ -88,6 +90,7 @@ useEffect(() => {
     setShowManageProjects(false);
     navigate('/project/manage');
   };
+
   const handleViewAllProjects = () => {
     setShowManageProjects(false);
     navigate('/project/list');
@@ -108,19 +111,17 @@ useEffect(() => {
     navigate(`/project/${projectKey}/team-members`);
   };
 
-    // 👇 Chỉ cho CLIENT thấy các mục này
-const allowedLabelsForClient = ['Meeting', 'For you'];
+  const allowedLabelsForClient = ['Meeting', 'For you'];
 
-const visibleMenuItems = user?.role === 'CLIENT'
-  ? menuItems.filter((item) =>
-      allowedLabelsForClient.includes(item.label)
-    )
-  : menuItems;
+  const visibleMenuItems =
+    user?.role === 'CLIENT'
+      ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
+      : menuItems;
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
       <div className='pt-4'>
-       {visibleMenuItems.map((item, index) =>  {
+        {visibleMenuItems.map((item, index) => {
           if (item.label === 'Projects' && item.isDropdown) {
             return (
               <div
@@ -136,7 +137,7 @@ const visibleMenuItems = user?.role === 'CLIENT'
                 <div
                   className='px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors'
                   onClick={() => {
-                    setShowProjects((prev) => !prev); // Toggle dropdown mở/đóng
+                    setShowProjects((prev) => !prev);
                     setShowManageProjects(false);
                     setShowProjectDetail(null);
                   }}
@@ -191,7 +192,6 @@ const visibleMenuItems = user?.role === 'CLIENT'
                                   <span>Manage Projects</span>
                                 </div>
                               )}
-
                               <div
                                 onClick={handleViewAllProjects}
                                 className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
@@ -208,8 +208,7 @@ const visibleMenuItems = user?.role === 'CLIENT'
                 </div>
 
                 {showProjects && (
-                  <div className='mt-1 pl-10 pr-4 max-h-64 overflow-y-auto'>
-                    <div className='text-gray-500 text-xs mb-1'>Recent</div>
+                  <div className='mt-1 pl-5 pr-3 max-h-60 overflow-y-auto'>
                     {isLoading ? (
                       <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
                     ) : error ? (
@@ -220,74 +219,67 @@ const visibleMenuItems = user?.role === 'CLIENT'
                       recentProjects.map((proj, i) => {
                         const isSelected = proj.key === selectedProjectKey;
                         return (
-                          <div key={i} className='relative'>
+                          <div key={i} className='relative group/project'>
                             <div
-                              className={`group grid grid-cols-[1fr,auto] gap-x-2 items-center py-1 px-2 rounded ${
+                              className={`flex items-center justify-between py-1 px-2 rounded ${
                                 isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
                               }`}
                             >
-                              <div className='flex items-center space-x-2'>
-                                <Link
-                                  to={`/project?projectKey=${proj.key}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Ngăn không đóng dropdown khi chọn project
-                                  }}
-                                  className={`flex items-center space-x-2 text-sm no-underline ${
-                                    isSelected
-                                      ? 'text-blue-700 font-medium'
-                                      : 'text-gray-800 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
-                                  <span className='truncate relative group/name max-w-[100px]'>
-                                    {shortenProjectName(proj.name)}
-                                    <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
-                                      {proj.name}
-                                    </span>
+                              <Link
+                                to={`/project?projectKey=${proj.key}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                className={`flex items-center space-x-2 text-sm no-underline ${
+                                  isSelected
+                                    ? 'text-blue-700 font-medium'
+                                    : 'text-gray-800 hover:bg-gray-100'
+                                }`}
+                              >
+                                <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
+                                <span className='truncate relative group/name max-w-[110px]'>
+                                  {shortenProjectName(proj.name)}
+                                  <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
+                                    {proj.name}
                                   </span>
-                                </Link>
-                              </div>
-
-                              <div className='relative'>
-                                <div
-                                  className='p-1 border border-gray-200 rounded invisible group-hover:visible hover:bg-gray-100 transition-colors relative'
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowProjectDetail(proj.key);
-                                  }}
-                                >
-                                  <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
-                                </div>
-
-                                <AnimatePresence>
-                                  {showProjectDetail === proj.key && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.95 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.95 }}
-                                      transition={{ duration: 0.2 }}
-                                      className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
-                                    >
-                                      <div
-                                        onClick={() => handleProjectDetailClick(proj.key)}
-                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
-                                      >
-                                        <Rocket className='w-5 h-5 text-gray-500' />
-                                        <span>Project Detail</span>
-                                      </div>
-
-                                      <div
-                                        onClick={() => handleTeamMemberClick(proj.key)}
-                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
-                                      >
-                                        <Users className='w-5 h-5 text-gray-500' />
-                                        <span>Project Member</span>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
+                                </span>
+                              </Link>
+                              <div
+                                className='p-1 border border-gray-200 rounded invisible group-hover/project:visible hover:bg-gray-100 transition-colors'
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowProjectDetail(proj.key);
+                                }}
+                              >
+                                <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
                               </div>
                             </div>
+                            <AnimatePresence>
+                              {showProjectDetail === proj.key && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.95 }}
+                                  transition={{ duration: 0.2 }}
+                                  className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                                >
+                                  <div
+                                    onClick={() => handleProjectDetailClick(proj.key)}
+                                    className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                  >
+                                    <Rocket className='w-5 h-5 text-gray-500' />
+                                    <span>Project Detail</span>
+                                  </div>
+                                  <div
+                                    onClick={() => handleTeamMemberClick(proj.key)}
+                                    className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                  >
+                                    <Users className='w-5 h-5 text-gray-500' />
+                                    <span>Project Member</span>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         );
                       })

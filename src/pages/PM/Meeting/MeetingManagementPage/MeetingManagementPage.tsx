@@ -31,10 +31,12 @@ const MeetingManagementPage: React.FC = () => {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState<string>('ACTIVE');
   const [formData, setFormData]   = useState<any>({});
-const [attendanceDraft, setAttendanceDraft] = useState<Record<number, string>>({});
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<number, string>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dateFilter, setDateFilter] = useState<'ALL' | 'TODAY'>('ALL');
   const toastIds = useRef<{ [key: string]: boolean }>({});
+
+
 
   const { data: statusResp, isLoading: statusLoading } =
   useGetCategoriesByGroupQuery('meeting_status');
@@ -129,10 +131,10 @@ useEffect(() => {
       if (now > deadline) {
         try {
           await deleteMeeting(meeting.id); // dùng API cũ
-          toast.success(`🗑️ Cuộc họp "${meeting.meetingTopic}" đã bị xoá vì quá hạn`);
+          toast.success(`🗑️ The meeting "${meeting.meetingTopic}" has been deleted due to expiration`);
           await refetch(); // cập nhật lại danh sách
         } catch (error) {
-          console.error(`❌ Lỗi khi xoá cuộc họp ${meeting.id}:`, error);
+          console.error(`❌ Error while deleting meeting ${meeting.id}:`, error);
         }
       }
     }
@@ -192,7 +194,7 @@ useEffect(() => {
         meetingId: participant.meetingId,
         accountId: participant.accountId,
         role: participant.role,
-        status: newStatus, // 👈 lấy từ dynamic category
+        status: newStatus, 
       },
     });
 
@@ -275,7 +277,9 @@ useEffect(() => {
     })
     .map((m) => {
       const meta = getStatusMeta(m.status); // 👈 lấy color/label theo dynamic category
-
+const memberCount = participants.filter(
+  (p) => p.meetingId === m.id
+).length;
       return (
         <div
           key={m.id}
@@ -302,7 +306,7 @@ useEffect(() => {
             {new Date(m.endTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
           </p>
 
-          <p className="text-sm text-gray-700">🧑‍🤝‍🧑 {m.attendees} member</p>
+          {/* <p className="text-sm text-gray-700">🧑‍🤝‍🧑 {memberCount} member</p> */}
           <p className="text-sm text-gray-700">
             🔗{' '}
             <a href={m.meetingUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">
@@ -403,9 +407,6 @@ onClick={() => {
     );
   })()}
 </select>
-
-
-
                       <button
                         className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                         onClick={async () => {

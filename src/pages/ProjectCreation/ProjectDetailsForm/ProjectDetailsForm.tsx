@@ -7,8 +7,8 @@ import {
   useCheckProjectNameQuery,
 } from '../../../services/projectApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 import type { ProjectFormData } from '../ProjectCreation';
-import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { DynamicCategory } from '../../../services/dynamicCategoryApi';
 import { useDispatch } from 'react-redux';
 import { setProjectId } from '../../../components/slices/Project/projectCreationSlice';
@@ -24,16 +24,20 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
   const defaultStartDate = today.toISOString().split('T')[0];
   const defaultEndDate = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-  // Utility function to normalize date to YYYY-MM-DD format
+  // Fetch system configurations
+  const { data: nameLengthConfig, isLoading: isNameLengthLoading } = useGetByConfigKeyQuery('project_name_length');
+  const { data: keyLengthConfig, isLoading: isKeyLengthLoading } = useGetByConfigKeyQuery('project_key_length');
+  const { data: budgetConfig, isLoading: isBudgetLoading } = useGetByConfigKeyQuery('project_budget');
+  const { data: durationConfig, isLoading: isDurationLoading } = useGetByConfigKeyQuery('project_duration_days');
+  const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } = useGetCategoriesByGroupQuery('project_type');
+
+  // Normalize date to YYYY-MM-DD format
   const normalizeDateString = (dateString?: string): string => {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '';
     return date.toISOString().split('T')[0];
   };
-
-  const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } =
-    useGetCategoriesByGroupQuery('project_type');
 
   const [formData, setFormData] = useState({
     name: initialData.name || '',
@@ -47,6 +51,7 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
   const [touched, setTouched] = useState({
     name: false,
     projectKey: false,
+    description: false,
     budget: false,
     projectType: false,
     startDate: false,
@@ -57,6 +62,8 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
   const [isKeyFormatValid, setIsKeyFormatValid] = useState<boolean | null>(null);
   const [isKeyUnique, setIsKeyUnique] = useState<boolean | null>(null);
   const [isNameUnique, setIsNameUnique] = useState<boolean | null>(null);
+  const [isNameLengthValid, setIsNameLengthValid] = useState<boolean | null>(null);
+  const [isKeyLengthValid, setIsKeyLengthValid] = useState<boolean | null>(null);
   const [isBudgetValid, setIsBudgetValid] = useState<boolean | null>(null);
   const [isDateValid, setIsDateValid] = useState<boolean | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -68,17 +75,17 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
 
   const projectKeyRegex = /^[A-Z][A-Z]{0,9}$/;
 
-  const { data: keyCheckData, isFetching: isKeyChecking, error: keyCheckError } =
-    useCheckProjectKeyQuery(debouncedProjectKey, {
-      skip: !debouncedProjectKey || !projectKeyRegex.test(debouncedProjectKey),
-    });
+  const { data: keyCheckData, isFetching: isKeyChecking, error: keyCheckError } = useCheckProjectKeyQuery(
+    { projectKey: debouncedProjectKey, projectId: serverData?.id },
+    { skip: !debouncedProjectKey || !projectKeyRegex.test(debouncedProjectKey) }
+  );
 
-  const { data: nameCheckData, isFetching: isNameChecking, error: nameCheckError } =
-    useCheckProjectNameQuery(debouncedProjectName, {
-      skip: !debouncedProjectName || debouncedProjectName.length < 3,
-    });
+  const { data: nameCheckData, isFetching: isNameChecking, error: nameCheckError } = useCheckProjectNameQuery(
+    { projectName: debouncedProjectName, projectId: serverData?.id },
+    { skip: !debouncedProjectName || debouncedProjectName.length < 1 }
+  );
 
-  // Convert date to UTC ISO string for API (e.g., "2025-08-10T00:00:00.000Z")
+  // Convert date to UTC ISO string for API
   const toUTCDateString = (dateString: string): string => {
     if (!dateString) return new Date().toISOString();
     const date = new Date(dateString);
@@ -91,31 +98,87 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
     if (!name.trim()) return '';
     const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, '');
     const words = cleanName.trim().split(/\s+/);
+    const maxLength = Number(keyLengthConfig?.data?.maxValue || 10);
     let key = words
       .map((word) => word.charAt(0).toUpperCase())
       .join('')
-      .slice(0, 10);
+      .slice(0, maxLength);
     return key.match(projectKeyRegex) ? key : '';
   };
 
+  // Validate name length
+  useEffect(() => {
+    if (!formData.name || !nameLengthConfig?.data?.maxValue) {
+      setIsNameLengthValid(null);
+      return;
+    }
+    const maxLength = Number(nameLengthConfig.data.maxValue);
+    setIsNameLengthValid(formData.name.length <= maxLength);
+  }, [formData.name, nameLengthConfig]);
+
+  // Validate project key length
+  useEffect(() => {
+    if (!formData.projectKey || !keyLengthConfig?.data?.minValue || !keyLengthConfig?.data?.maxValue) {
+      setIsKeyLengthValid(null);
+      setIsKeyFormatValid(null);
+      return;
+    }
+    const minLength = Number(keyLengthConfig.data.minValue);
+    const maxLength = Number(keyLengthConfig.data.maxValue);
+    const isLengthValid = formData.projectKey.length >= minLength && formData.projectKey.length <= maxLength;
+    setIsKeyLengthValid(isLengthValid);
+    setIsKeyFormatValid(isLengthValid && projectKeyRegex.test(formData.projectKey));
+  }, [formData.projectKey, keyLengthConfig]);
+
+  // Validate budget
+  useEffect(() => {
+    if (formData.budget === undefined || !budgetConfig?.data?.minValue || !budgetConfig?.data?.maxValue) {
+      setIsBudgetValid(null);
+      return;
+    }
+    const minBudget = Number(budgetConfig.data.minValue);
+    const maxBudget = Number(budgetConfig.data.maxValue);
+    setIsBudgetValid(formData.budget >= minBudget && formData.budget <= maxBudget);
+  }, [formData.budget, budgetConfig]);
+
+  // Validate dates
+  useEffect(() => {
+    if (!formData.startDate || !formData.endDate || !durationConfig?.data?.minValue || !durationConfig?.data?.maxValue) {
+      setIsDateValid(null);
+      return;
+    }
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    if (end <= start) {
+      setIsDateValid(false);
+      return;
+    }
+    const durationDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    const minDays = Number(durationConfig.data.minValue);
+    const maxDays = Number(durationConfig.data.maxValue);
+    setIsDateValid(durationDays >= minDays && durationDays <= maxDays);
+  }, [formData.startDate, formData.endDate, durationConfig]);
+
   // Handle projectKey suggestion and uniqueness
   useEffect(() => {
-    if (!formData.name || touched.projectKey) return;
+    if (!formData.name || touched.projectKey || !keyLengthConfig?.data) return;
 
     const checkAndGenerateUniqueKey = async () => {
       let generatedKey = generateProjectKey(formData.name as string);
       let attempts = 0;
       const maxAttempts = 8;
+      const maxLength = Number(keyLengthConfig.data?.maxValue || 10);
 
       while (generatedKey && attempts < maxAttempts) {
-        if (projectKeyRegex.test(generatedKey)) {
+        if (projectKeyRegex.test(generatedKey) && generatedKey.length <= maxLength) {
           try {
-            const response = await checkProjectKey(generatedKey).unwrap();
+            const response = await checkProjectKey({ projectKey: generatedKey, projectId: serverData?.id }).unwrap();
             if (!response?.data?.exists) {
               setFormData((prev) => ({ ...prev, projectKey: generatedKey }));
               setDebouncedProjectKey(generatedKey);
               setIsKeyUnique(true);
               setIsKeyFormatValid(true);
+              setIsKeyLengthValid(true);
               return;
             }
           } catch (err) {
@@ -124,8 +187,8 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
         }
         const lastChar = generatedKey.slice(-1);
         generatedKey = generatedKey + lastChar;
-        if (generatedKey.length > 10) {
-          generatedKey = generatedKey.slice(0, 10);
+        if (generatedKey.length > maxLength) {
+          generatedKey = generatedKey.slice(0, maxLength);
           break;
         }
         attempts++;
@@ -135,11 +198,12 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
         setDebouncedProjectKey('');
         setIsKeyUnique(null);
         setIsKeyFormatValid(null);
+        setIsKeyLengthValid(null);
       }
     };
 
     checkAndGenerateUniqueKey();
-  }, [formData.name, checkProjectKey]);
+  }, [formData.name, checkProjectKey, keyLengthConfig, serverData?.id]);
 
   // Debounce projectKey and projectName inputs
   useEffect(() => {
@@ -155,29 +219,20 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
     };
   }, [formData.projectKey, formData.name]);
 
-  // Validate project key format and uniqueness
+  // Validate project key uniqueness
   useEffect(() => {
     if (!formData.projectKey) {
-      setIsKeyFormatValid(null);
       setIsKeyUnique(null);
       return;
     }
-
-    const isFormatValid = projectKeyRegex.test(formData.projectKey);
-    setIsKeyFormatValid(isFormatValid);
-
-    if (isFormatValid) {
-      if (keyCheckData?.data?.exists) {
-        setIsKeyUnique(false);
-      } else if (keyCheckData?.data?.exists === false) {
-        setIsKeyUnique(true);
-      } else if (keyCheckError) {
-        setIsKeyUnique(false);
-      }
-    } else {
-      setIsKeyUnique(null);
+    if (keyCheckData?.data?.exists) {
+      setIsKeyUnique(false);
+    } else if (keyCheckData?.data?.exists === false) {
+      setIsKeyUnique(true);
+    } else if (keyCheckError) {
+      setIsKeyUnique(false);
     }
-  }, [formData.projectKey, keyCheckData, keyCheckError]);
+  }, [keyCheckData, keyCheckError]);
 
   // Validate project name uniqueness
   useEffect(() => {
@@ -185,7 +240,6 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
       setIsNameUnique(null);
       return;
     }
-
     if (nameCheckData?.data?.exists) {
       setIsNameUnique(false);
     } else if (nameCheckData?.data?.exists === false) {
@@ -194,30 +248,6 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
       setIsNameUnique(false);
     }
   }, [nameCheckData, nameCheckError]);
-
-  // Validate budget
-  useEffect(() => {
-    if (formData.budget === undefined || formData.budget <= 0) {
-      setIsBudgetValid(false);
-    } else {
-      setIsBudgetValid(true);
-    }
-  }, [formData.budget]);
-
-  // Validate dates
-  useEffect(() => {
-    if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      if (end <= start) {
-        setIsDateValid(false);
-      } else {
-        setIsDateValid(true);
-      }
-    } else {
-      setIsDateValid(null);
-    }
-  }, [formData.startDate, formData.endDate]);
 
   // Load serverData
   useEffect(() => {
@@ -234,6 +264,7 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
       setTouched({
         name: !!serverData.name,
         projectKey: !!serverData.projectKey,
+        description: !!serverData.description,
         budget: !!serverData.budget,
         projectType: !!serverData.projectType,
         startDate: !!serverData.startDate,
@@ -242,16 +273,17 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
     }
   }, [serverData, categoryData, defaultStartDate, defaultEndDate]);
 
-  // Set default projectType when categoryData loads
+  // Set default projectType
   useEffect(() => {
     if (!formData.projectType && categoryData?.data?.[0]?.name) {
+      const defaultType = categoryData.data[0].name;
       setFormData((prev) => ({
         ...prev,
-        projectType: categoryData.data[0].name,
+        projectType: defaultType || '',
       }));
       setTouched((prev) => ({
         ...prev,
-        projectType: true,
+        projectType: !!defaultType,
       }));
     }
   }, [categoryData, formData.projectType]);
@@ -284,9 +316,11 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
     if (name === 'projectKey') {
       setIsKeyFormatValid(null);
       setIsKeyUnique(null);
+      setIsKeyLengthValid(null);
     }
     if (name === 'name') {
       setIsNameUnique(null);
+      setIsNameLengthValid(null);
     }
     setErrorMessage('');
   };
@@ -319,23 +353,23 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
       return false;
     }
 
-    if (!isKeyFormatValid || !isKeyUnique) {
-      setErrorMessage('Project key must be valid and unique.');
+    if (!isKeyFormatValid || !isKeyUnique || !isKeyLengthValid) {
+      setErrorMessage('Project key must be valid, unique, and within length constraints.');
       return false;
     }
 
-    if (!isNameUnique) {
-      setErrorMessage('Project name must be unique.');
+    if (!isNameUnique || !isNameLengthValid) {
+      setErrorMessage('Project name must be unique and within length constraints.');
       return false;
     }
 
     if (!isBudgetValid) {
-      setErrorMessage('Budget must be greater than 0.');
+      setErrorMessage(`Budget must be between ${budgetConfig?.data?.minValue || 1} and ${budgetConfig?.data?.maxValue || 100000000000} VND.`);
       return false;
     }
 
     if (!isDateValid) {
-      setErrorMessage('End date must be after start date.');
+      setErrorMessage(`Project duration must be between ${durationConfig?.data?.minValue || 30} and ${durationConfig?.data?.maxValue || 1095} days.`);
       return false;
     }
 
@@ -417,20 +451,25 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             required
+            maxLength={Number(nameLengthConfig?.data?.maxValue || 150)}
             placeholder="Enter project name"
             className={`mt-2 block w-full border-2 ${
-              touched.name && isNameUnique === false
+              touched.name && (isNameUnique === false || isNameLengthValid === false)
                 ? 'border-red-500'
-                : touched.name && isNameUnique
+                : touched.name && isNameUnique && isNameLengthValid
                 ? 'border-green-500'
                 : 'border-gray-200'
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
+          {isNameLengthLoading && <p className="mt-1 text-sm text-gray-500">Loading name constraints...</p>}
           {touched.name && formData.name && isNameChecking && (
             <p className="mt-1 text-sm text-gray-500">Checking project name...</p>
           )}
-          {touched.name && formData.name && isNameUnique === true && (
-            <p className="mt-1 text-sm text-green-500">Project name is available.</p>
+          {touched.name && formData.name && isNameUnique === true && isNameLengthValid === true && (
+            <p className="mt-1 text-sm text-green-500">Project name is valid and available.</p>
+          )}
+          {touched.name && formData.name && isNameLengthValid === false && (
+            <p className="mt-1 text-sm text-red-500">Project name must not exceed {nameLengthConfig?.data?.maxValue || 150} characters.</p>
           )}
           {touched.name && formData.name && isNameUnique === false && (
             <p className="mt-1 text-sm text-red-500">Project name is already taken.</p>
@@ -450,27 +489,33 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             required
-            maxLength={10}
+            maxLength={Number(keyLengthConfig?.data?.maxValue || 10)}
             placeholder="E.g., TD"
             className={`mt-2 block w-full border-2 ${
-              touched.projectKey && (isKeyFormatValid === false || isKeyUnique === false)
+              touched.projectKey && (isKeyFormatValid === false || isKeyUnique === false || isKeyLengthValid === false)
                 ? 'border-red-500'
-                : touched.projectKey && isKeyFormatValid && isKeyUnique
+                : touched.projectKey && isKeyFormatValid && isKeyUnique && isKeyLengthValid
                 ? 'border-green-500'
                 : 'border-gray-200'
             } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
           />
+          {isKeyLengthLoading && <p className="mt-1 text-sm text-gray-500">Loading key constraints...</p>}
           {touched.projectKey && formData.projectKey && isKeyChecking && (
             <p className="mt-1 text-sm text-gray-500">Checking project key...</p>
           )}
           {touched.projectKey && formData.projectKey && isKeyFormatValid === false && (
             <p className="mt-1 text-sm text-red-500">
               Project key must start with an uppercase letter, followed by uppercase letters only,
-              max 10 characters.
+              between {keyLengthConfig?.data?.minValue || 1} and {keyLengthConfig?.data?.maxValue || 10} characters.
             </p>
           )}
-          {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === true && (
-            <p className="mt-1 text-sm text-green-500">Project key is available.</p>
+          {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyLengthValid && isKeyUnique === true && (
+            <p className="mt-1 text-sm text-green-500">Project key is valid and available.</p>
+          )}
+          {touched.projectKey && formData.projectKey && isKeyLengthValid === false && (
+            <p className="mt-1 text-sm text-red-500">
+              Project key must be between {keyLengthConfig?.data?.minValue || 1} and {keyLengthConfig?.data?.maxValue || 10} characters.
+            </p>
           )}
           {touched.projectKey && formData.projectKey && isKeyFormatValid && isKeyUnique === false && (
             <p className="mt-1 text-sm text-red-500">Project key is already taken.</p>
@@ -492,6 +537,9 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
             placeholder="Enter project description"
             className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400"
           />
+          {touched.description && !formData.description && (
+            <p className="mt-1 text-sm text-red-500">Description is required.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-6">
@@ -499,7 +547,7 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
             <label className="block text-sm font-medium text-gray-700">Project Type</label>
             {isCategoryLoading ? (
               <p className="mt-1 text-sm text-gray-500">Loading project types...</p>
-            ) : categoryError ? (
+            ) : categoryError || !categoryData?.data?.length ? (
               <p className="mt-1 text-sm text-red-500">
                 Failed to load project types. Please try again.
               </p>
@@ -511,13 +559,11 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
                 onBlur={handleBlur}
                 onKeyDown={handleKeyDown}
                 required
-                className={`mt-2 block w-full border-2 ${
-                  touched.projectType && !formData.projectType ? 'border-red-500' : 'border-gray-200'
-                } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all`}
+                className="mt-2 block w-full border-2 border-gray-200 px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all"
               >
-                {categoryData?.data?.map((category: DynamicCategory) => (
-                  <option key={category.id} value={category.name}>
-                    {category.label}
+                {categoryData.data.map((category: DynamicCategory) => (
+                  <option key={category.name} value={category.name}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -537,21 +583,21 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
               onBlur={handleBlur}
               onKeyDown={handleKeyDown}
               required
-              min={1}
+              min={Number(budgetConfig?.data?.minValue || 1)}
+              max={Number(budgetConfig?.data?.maxValue || 100000000000)}
               placeholder="Enter budget in VND"
               className={`mt-2 block w-full border-2 ${
-                touched.budget && isBudgetValid === false
-                  ? 'border-red-500'
-                  : touched.budget && isBudgetValid
-                  ? 'border-gray-200'
-                  : 'border-gray-200'
+                touched.budget && isBudgetValid === false ? 'border-red-500' : touched.budget && isBudgetValid ? 'border-green-500' : 'border-gray-200'
               } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all placeholder-gray-400`}
             />
-            {touched.budget && formData.budget !== undefined && formData.budget > 0 && (
+            {isBudgetLoading && <p className="mt-1 text-sm text-gray-500">Loading budget constraints...</p>}
+            {touched.budget && formData.budget !== undefined && formData.budget > 0 && isBudgetValid && (
               <p className="mt-1 text-sm text-gray-500">{formatBudget(formData.budget)}</p>
             )}
-            {touched.budget && formData.budget !== undefined && formData.budget <= 0 && (
-              <p className="mt-1 text-sm text-red-500">Budget must be greater than 0 VND.</p>
+            {touched.budget && formData.budget !== undefined && isBudgetValid === false && (
+              <p className="mt-1 text-sm text-red-500">
+                Budget must be between {budgetConfig?.data?.minValue || 1} and {budgetConfig?.data?.maxValue || 100000000000} VND.
+              </p>
             )}
           </div>
         </div>
@@ -586,20 +632,26 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
               min={formData.startDate}
               required
               className={`mt-2 block w-full border-2 ${
-                touched.endDate && isDateValid === false ? 'border-red-500' : 'border-gray-200'
+                touched.endDate && (isDateValid === false || !formData.endDate) ? 'border-red-500' : 'border-gray-200'
               } px-6 py-3 rounded-xl focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] transition-all`}
             />
+            {isDurationLoading && <p className="mt-1 text-sm text-gray-500">Loading duration constraints...</p>}
             {touched.endDate && !formData.endDate && (
               <p className="mt-1 text-sm text-red-500">End date is required.</p>
             )}
             {touched.endDate && formData.startDate && formData.endDate && isDateValid === false && (
-              <p className="mt-1 text-sm text-red-500">End date must be after start date.</p>
+              <p className="mt-1 text-sm text-red-500">
+                Project duration must be between {durationConfig?.data?.minValue || 30} and {durationConfig?.data?.maxValue || 1095} days.
+              </p>
+            )}
+            {touched.endDate && formData.startDate && formData.endDate && isDateValid === true && (
+              <p className="mt-1 text-sm text-green-500">Project duration is valid.</p>
             )}
           </div>
         </div>
 
-        {(isCreating || isUpdating) && (
-          <div className="text-gray-600 text-sm">Saving project...</div>
+        {(isCreating || isUpdating || isNameLengthLoading || isKeyLengthLoading || isBudgetLoading || isDurationLoading) && (
+          <div className="text-gray-600 text-sm">Processing...</div>
         )}
 
         <div className="pt-6 flex justify-end">
@@ -608,9 +660,15 @@ const ProjectDetailsForm: React.FC<ProjectDetailsFormProps> = ({ initialData, se
             disabled={
               isCreating ||
               isUpdating ||
+              isNameLengthLoading ||
+              isKeyLengthLoading ||
+              isBudgetLoading ||
+              isDurationLoading ||
               isKeyFormatValid === false ||
               isKeyUnique === false ||
+              isKeyLengthValid === false ||
               isNameUnique === false ||
+              isNameLengthValid === false ||
               isBudgetValid === false ||
               isDateValid === false ||
               !formData.projectKey ||

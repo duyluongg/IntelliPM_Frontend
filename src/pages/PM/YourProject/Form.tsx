@@ -1,8 +1,8 @@
 // src/components/DocumentTypeSelector.tsx
 
-import React, { useState, type JSX } from 'react';
+import React, { useMemo, useState, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Globe } from 'lucide-react';
+import { Lock, Globe, HelpCircle } from 'lucide-react';
 import { DocumentOptionCard } from './DocumentOptionCard';
 import { Dialog, DialogPanel, DialogTitle, Transition } from '@headlessui/react';
 import { useCreateDocumentMutation } from '../../../services/Document/documentAPI';
@@ -14,6 +14,7 @@ import type {
   DocumentType,
   DocumentVisibility,
 } from '../../../types/DocumentType';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
 const DocumentTypeSelector: React.FC = () => {
   const navigate = useNavigate();
@@ -26,31 +27,34 @@ const DocumentTypeSelector: React.FC = () => {
   const [title, setTitle] = useState('');
 
   const [createDocument, { isLoading }] = useCreateDocumentMutation();
+  const { data } = useGetCategoriesByGroupQuery('document_visibility_type');
 
-  const documentOptions: {
-    id: DocumentVisibility;
-    name: string;
-    icon: JSX.Element;
-    description: string;
-    features: string[];
-    recommended?: boolean;
-  }[] = [
-    {
-      id: 'MAIN',
-      name: 'Main Document',
-      icon: <Globe className='w-7 h-7 text-blue-600' />,
-      description: 'Visible to all project members. Use this for public documents within the team.',
-      features: ['Everyone in the project can view', 'No invitation required'],
-      recommended: true,
-    },
-    {
-      id: 'PRIVATE',
-      name: 'Private Document',
-      icon: <Lock className='w-7 h-7 text-red-600' />,
-      description: 'Only visible to you and invited members.',
-      features: ['Restricted visibility', 'Great for drafts or sensitive info'],
-    },
-  ];
+  const documentOptions = useMemo(() => {
+    const items = (data?.data ?? [])
+      .filter((c) => c.isActive)
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+    const pickIcon = (name: string): JSX.Element => {
+      const key = name.toUpperCase();
+      if (key === 'MAIN') return <Globe className='w-7 h-7 text-blue-600' />;
+      if (key === 'PRIVATE') return <Lock className='w-7 h-7 text-red-600' />;
+      return <HelpCircle className='w-7 h-7 text-slate-500' />;
+    };
+
+    const defaultFeatures: Record<string, string[]> = {
+      MAIN: ['Everyone in the project can view', 'No invitation required'],
+      PRIVATE: ['Restricted visibility', 'Great for drafts or sensitive info'],
+    };
+
+    return items.map((c) => ({
+      id: c.name as DocumentVisibility,
+      name: c.label || c.name,
+      icon: pickIcon(c.name),
+      description: c.description || '',
+      features: defaultFeatures[c.name.toUpperCase()] ?? [],
+      recommended: c.name.toUpperCase() === 'MAIN',
+    }));
+  }, [data]);
 
   const handleSelectType = (typeId: DocumentVisibility) => {
     if (!projectId) {

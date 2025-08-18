@@ -43,6 +43,7 @@ import { useGetLabelsByProjectIdQuery } from '../../../services/labelApi';
 import UnifiedFilter from '../ProjectTaskList/UnifiedFilter';
 import ExportDropdown from '../ProjectTaskList/ExportDropdownProps';
 import GenerateTaskByAI from '../ProjectTaskList/GenerateTaskByAI';
+import GenerateEpicByAI from '../ProjectTaskList/GenerateEpicByAI';
 import CreateWorkItemModal from './CreateWorkItemModal';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -50,6 +51,7 @@ import html2canvas from 'html2canvas';
 import type { RootState } from '../../../app/store';
 import { useSelector } from 'react-redux';
 import type { CreateDocumentRequest } from '../../../types/DocumentType';
+import aiIcon from '../../../assets/icon/ai.png';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -407,6 +409,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isGenerateAIModalOpen, setIsGenerateAIModalOpen] = useState(false);
+  const [isGenerateEpicAIModalOpen, setIsGenerateEpicAIModalOpen] = useState(false);
 
   const {
     data: membersData,
@@ -519,10 +522,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === member.id
-                        ? 'border-blue-500 ring-2 ring-blue-200'
-                        : 'border-gray-300'
-                        }`}
+                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
+                        selectedMemberId === member.id
+                          ? 'border-blue-500 ring-2 ring-blue-200'
+                          : 'border-gray-300'
+                      }`}
                       onClick={() => handleMemberClick(member.id)}
                     />
                     <span
@@ -541,10 +545,11 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === members[0].id
-                    ? 'border-blue-500 ring-2 ring-blue-200'
-                    : 'border-gray-300'
-                    }`}
+                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
+                    selectedMemberId === members[0].id
+                      ? 'border-blue-500 ring-2 ring-blue-200'
+                      : 'border-gray-300'
+                  }`}
                   onClick={() => handleMemberClick(members[0].id)}
                 />
                 <span
@@ -592,32 +597,29 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       </div>
 
       <div className='flex items-center gap-1.5'>
-        <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
+        {/* <div className='flex items-center gap-1 bg-white border border-gray-300 px-2 py-1 rounded text-sm text-gray-500 cursor-pointer'>
           <MdGroup />
           <span>Group</span>
+        </div> */}
+        <div
+          className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
+          onClick={() => setIsGenerateAIModalOpen(true)}
+          data-tooltip-id='generate-ai-tooltip'
+          data-tooltip-content='Generate tasks using AI'
+        >
+          <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+          <span>Generate Tasks by AI</span>
+          <Tooltip id='generate-ai-tooltip' />
         </div>
         <div
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer"
-          onClick={() => setIsGenerateAIModalOpen(true)}
-          data-tooltip-id="generate-ai-tooltip"
-          data-tooltip-content="Generate tasks using AI"
+          className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
+          onClick={() => setIsGenerateEpicAIModalOpen(true)}
+          data-tooltip-id='generate-ai-tooltip'
+          data-tooltip-content='Generate tasks using AI'
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
-          <span>Generate by AI</span>
-          <Tooltip id="generate-ai-tooltip" />
+          <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+          <span>Generate Epics by AI</span>
+          <Tooltip id='generate-ai-tooltip' />
         </div>
         <div className='relative'>
           <button
@@ -660,6 +662,12 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
       <GenerateTaskByAI
         isOpen={isGenerateAIModalOpen}
         onClose={() => setIsGenerateAIModalOpen(false)}
+        projectId={projectId || 0}
+        refetchWorkItems={refetchWorkItems}
+      />
+      <GenerateEpicByAI
+        isOpen={isGenerateEpicAIModalOpen}
+        onClose={() => setIsGenerateEpicAIModalOpen(false)}
         projectId={projectId || 0}
         refetchWorkItems={refetchWorkItems}
       />
@@ -1162,62 +1170,62 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
-        const uniqueAssignees = Array.from(
-          new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
-        );
+          const uniqueAssignees = Array.from(
+            new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
+          );
 
-        const assignments: TaskAssignee[] = uniqueAssignees
-          .filter(
-            (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
-          )
-          .map((assignee: ApiAssignee) => ({
-            id: assignee.accountId,
-            fullName: assignee.fullname || 'Unknown',
-            initials:
-              assignee.fullname
-                ?.split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: assignee.picture || undefined,
-          }));
+          const assignments: TaskAssignee[] = uniqueAssignees
+            .filter(
+              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+            )
+            .map((assignee: ApiAssignee) => ({
+              id: assignee.accountId,
+              fullName: assignee.fullname || 'Unknown',
+              initials:
+                assignee.fullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: assignee.picture || undefined,
+            }));
 
-        return {
-          id: item.key || '',
-          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-          key: item.key || '',
-          taskId: item.taskId || null,
-          summary: item.summary || '',
+          return {
+            id: item.key || '',
+            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+            key: item.key || '',
+            taskId: item.taskId || null,
+            summary: item.summary || '',
 
-          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-          comments: item.commentCount || 0,
-          sprint: item.sprintId || null,
-          priority: item.priority || '',
-          sprintName: item.sprintName || null,
-          assignees: assignments,
-          dueDate: item.dueDate || null,
-          labels: item.labels || [],
-          created: item.createdAt || '',
-          updated: item.updatedAt || '',
-          reporter: {
-            id: item.reporterId || null,
-            fullName: item.reporterFullname || 'Unknown',
-            initials:
-              item.reporterFullname
-                ?.split(' ')
-                .map((n: string) => n[0])
-                .join('')
-                .substring(0, 2) || '',
-            avatarColor: '#f3eded',
-            picture: item.reporterPicture || undefined,
-          },
-          reporterId: item.reporterId || null,
-          projectId: item.projectId || projectId,
-          epicId: item.taskId || null,
-          description: '',
-        };
-      });
+            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+            comments: item.commentCount || 0,
+            sprint: item.sprintId || null,
+            priority: item.priority || '',
+            sprintName: item.sprintName || null,
+            assignees: assignments,
+            dueDate: item.dueDate || null,
+            labels: item.labels || [],
+            created: item.createdAt || '',
+            updated: item.updatedAt || '',
+            reporter: {
+              id: item.reporterId || null,
+              fullName: item.reporterFullname || 'Unknown',
+              initials:
+                item.reporterFullname
+                  ?.split(' ')
+                  .map((n: string) => n[0])
+                  .join('')
+                  .substring(0, 2) || '',
+              avatarColor: '#f3eded',
+              picture: item.reporterPicture || undefined,
+            },
+            reporterId: item.reporterId || null,
+            projectId: item.projectId || projectId,
+            epicId: item.taskId || null,
+            description: '',
+          };
+        });
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -1311,7 +1319,8 @@ const ProjectTaskList: React.FC = () => {
     const matchesStatus =
       !selectedStatus || task.status.toLowerCase() === selectedStatus.toLowerCase();
     const matchesType = !selectedType || task.type.toLowerCase() === selectedType.toLowerCase();
-    const matchesPriority = !selectedPriority || task.priority?.toLowerCase() === selectedPriority.toLowerCase();
+    const matchesPriority =
+      !selectedPriority || task.priority?.toLowerCase() === selectedPriority.toLowerCase();
     const matchesLabel = !selectedLabel || task.labels?.includes(selectedLabel);
     const matchesMember =
       !selectedMemberId || task.assignees.some((assignee) => assignee.id === selectedMemberId);
@@ -1374,8 +1383,8 @@ const ProjectTaskList: React.FC = () => {
         isUpdatingSubtask ||
         isCreatingAssignment ||
         isDeletingAssignment) && (
-          <div className='text-center py-4 text-blue-500'>Processing...</div>
-        )}
+        <div className='text-center py-4 text-blue-500'>Processing...</div>
+      )}
       <div className='overflow-x-auto bg-white w-full block'>
         <table
           className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
@@ -1690,26 +1699,26 @@ const ProjectTaskList: React.FC = () => {
                   >
                     {task.priority
                       ? (() => {
-                        const priorityInfo = priorityOptions?.data?.find(
-                          (p) =>
-                            task.priority != null &&
-                            p.name.toLowerCase() === task.priority.toLowerCase()
-                        );
-                        return priorityInfo ? (
-                          <span className='flex items-center gap-1'>
-                            {priorityInfo.iconLink && (
-                              <img
-                                src={priorityInfo.iconLink}
-                                alt={priorityInfo.label}
-                                className='w-4 h-4 object-contain'
-                              />
-                            )}
-                            <span className='text-xs'>{priorityInfo.label}</span>
-                          </span>
-                        ) : (
-                          <span className='text-xs'>{task.priority}</span>
-                        );
-                      })()
+                          const priorityInfo = priorityOptions?.data?.find(
+                            (p) =>
+                              task.priority != null &&
+                              p.name.toLowerCase() === task.priority.toLowerCase()
+                          );
+                          return priorityInfo ? (
+                            <span className='flex items-center gap-1'>
+                              {priorityInfo.iconLink && (
+                                <img
+                                  src={priorityInfo.iconLink}
+                                  alt={priorityInfo.label}
+                                  className='w-4 h-4 object-contain'
+                                />
+                              )}
+                              <span className='text-xs'>{priorityInfo.label}</span>
+                            </span>
+                          ) : (
+                            <span className='text-xs'>{task.priority}</span>
+                          );
+                        })()
                       : null}
                   </td>
 
@@ -1718,7 +1727,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                      showMemberDropdown?.field === 'assignees' ? (
+                    showMemberDropdown?.field === 'assignees' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1731,10 +1740,11 @@ const ProjectTaskList: React.FC = () => {
                             return (
                               <div
                                 key={member.accountId}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                  }`}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                  isDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                }`}
                                 onClick={() =>
                                   !isDisabled && handleMemberSelect(task, 'assignees', member)
                                 }
@@ -1782,11 +1792,11 @@ const ProjectTaskList: React.FC = () => {
                               onDelete={
                                 assignee.id != null && assignee.id !== 0
                                   ? () =>
-                                    handleDeleteAssignment(
-                                      task.key,
-                                      assignee.id as number,
-                                      task.type
-                                    )
+                                      handleDeleteAssignment(
+                                        task.key,
+                                        assignee.id as number,
+                                        task.type
+                                      )
                                   : undefined
                               }
                             />
@@ -1826,13 +1836,13 @@ const ProjectTaskList: React.FC = () => {
                   >
                     {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
                       ? task.labels.map((label, index) => (
-                        <span
-                          key={index}
-                          className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
-                        >
-                          {label}
-                        </span>
-                      ))
+                          <span
+                            key={index}
+                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                          >
+                            {label}
+                          </span>
+                        ))
                       : ''}
                   </td>
                   <td
@@ -1860,7 +1870,7 @@ const ProjectTaskList: React.FC = () => {
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
                   >
                     {showMemberDropdown?.id === task.id &&
-                      showMemberDropdown?.field === 'reporter' ? (
+                    showMemberDropdown?.field === 'reporter' ? (
                       <div
                         ref={dropdownRef}
                         className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
@@ -1870,10 +1880,11 @@ const ProjectTaskList: React.FC = () => {
                           return (
                             <div
                               key={member.accountId}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
-                                ? 'opacity-50 cursor-not-allowed'
-                                : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                }`}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
+                                isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                              }`}
                               onClick={() =>
                                 !isDisabled && handleMemberSelect(task, 'reporter', member)
                               }

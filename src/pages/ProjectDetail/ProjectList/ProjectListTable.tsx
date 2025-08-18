@@ -24,11 +24,14 @@ const ProjectListTable: React.FC = () => {
   const projects = projectsResponse?.data || [];
 
   // Filter projects based on search query
-  const filteredProjects = projects.filter(
+const filteredProjects = projects
+  .filter(
     (project) =>
       project.projectName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.projectKey.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  )
+  .slice() 
+  .sort((a, b) => b.projectId - a.projectId);
 
   if (isLoading) {
     return (

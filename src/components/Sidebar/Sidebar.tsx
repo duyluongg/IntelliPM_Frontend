@@ -61,15 +61,23 @@ export default function Sidebar() {
     error,
   } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
-  const recentProjects: RecentProject[] = projectsData?.isSuccess
-    ? projectsData.data
-        .filter((proj) => proj.status === 'ACTIVE')
-        .map((proj) => ({
-          name: proj.projectName,
-          key: proj.projectKey,
-          icon: proj.iconUrl || projectIcon,
-        }))
-    : [];
+ const recentProjects: RecentProject[] = projectsData?.isSuccess
+  ? projectsData.data
+      .filter((proj) => {
+        if (isRole) {
+          return proj.status === 'ACTIVE';
+        } else {
+          return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
+        }
+      })
+      .sort((a, b) => b.projectId - a.projectId)
+      .map((proj) => ({
+        name: proj.projectName,
+        key: proj.projectKey,
+        icon: proj.iconUrl || projectIcon,
+      }))
+       
+  : [];
 
   useEffect(() => {}, [selectedProjectKey, recentProjects]);
 
@@ -105,9 +113,10 @@ export default function Sidebar() {
 
   const allowedLabelsForClient = ['Meeting', 'For you'];
 
-  const visibleMenuItems = user?.role === 'CLIENT'
-    ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
-    : menuItems;
+  const visibleMenuItems =
+    user?.role === 'CLIENT'
+      ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
+      : menuItems;
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
@@ -199,8 +208,7 @@ export default function Sidebar() {
                 </div>
 
                 {showProjects && (
-                  <div className='mt-1 pl-10 pr-4 max-h-64 overflow-y-auto'>
-                    <div className='text-gray-500 text-xs mb-1'>Recent</div>
+                  <div className='mt-1 pl-5 pr-3 max-h-60 overflow-y-auto'>
                     {isLoading ? (
                       <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
                     ) : error ? (
@@ -211,10 +219,7 @@ export default function Sidebar() {
                       recentProjects.map((proj, i) => {
                         const isSelected = proj.key === selectedProjectKey;
                         return (
-                          <div
-                            key={i}
-                            className='relative group/project'
-                          >
+                          <div key={i} className='relative group/project'>
                             <div
                               className={`flex items-center justify-between py-1 px-2 rounded ${
                                 isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
@@ -232,7 +237,7 @@ export default function Sidebar() {
                                 }`}
                               >
                                 <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
-                                <span className='truncate relative group/name max-w-[100px]'>
+                                <span className='truncate relative group/name max-w-[110px]'>
                                   {shortenProjectName(proj.name)}
                                   <span className='absolute invisible group-hover/name:visible bg-gray-800 text-white text-xs rounded py-1 px-2 top-full left-1/2 transform -translate-x-1/2 mt-2 max-w-fit z-20'>
                                     {proj.name}

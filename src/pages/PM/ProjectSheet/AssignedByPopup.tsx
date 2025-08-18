@@ -1303,7 +1303,27 @@ const AssignedByPopup: React.FC<Props> = ({ open, onClose, workItemId, type, onR
 
   const [updateAssignmentPlannedHoursBulk] = useUpdateAssignmentPlannedHoursBulkMutation();
 
+  // useEffect(() => {
+  //   if (open && type === 'task' && taskAssignmentsData) {
+  //     const mapped = taskAssignmentsData
+  //       .filter((a: any) => a.id && a.id > 0)
+  //       .map((a: any) => ({
+  //         accountId: a.accountId,
+  //         hours: Number(a.plannedHours) || 0, // Ensure hours is a number
+  //         maxHours: Number(a.workingHoursPerDay) || 8,
+  //         accountFullname: a.accountFullname || 'Unknown',
+  //         accountPicture: a.accountPicture || null,
+  //         id: a.id,
+  //       }));
+  //     console.log('Mapped taskAssignments:', mapped);
+  //     setTaskAssignments(mapped);
+  //   }
+  // }, [open, type, taskAssignmentsData]);
+
   useEffect(() => {
+    if (open && type === 'task') {
+      refetchAssignments(); // Trigger refetch when popup opens
+    }
     if (open && type === 'task' && taskAssignmentsData) {
       const mapped = taskAssignmentsData
         .filter((a: any) => a.id && a.id > 0)
@@ -1318,7 +1338,7 @@ const AssignedByPopup: React.FC<Props> = ({ open, onClose, workItemId, type, onR
       console.log('Mapped taskAssignments:', mapped);
       setTaskAssignments(mapped);
     }
-  }, [open, type, taskAssignmentsData]);
+  }, [open, type, taskAssignmentsData, refetchAssignments]);
 
   const handleHourChange = (accountId: number, hours: string) => {
     if (!isReadOnly) {

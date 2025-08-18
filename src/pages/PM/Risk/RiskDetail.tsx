@@ -534,7 +534,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                 </div>
                 <div
                   className='reporter-avatar w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm bg-gray-200'
-                  title={editableRisk.creatorFullName || editableRisk.creatorUserName || 'Unknown'}
+                  title={editableRisk.creatorFullName || editableRisk.creatorUserName || 'System'}
                 >
                   {editableRisk.creatorPicture ? (
                     <img
@@ -543,14 +543,17 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                       className='w-full h-full object-cover'
                     />
                   ) : (
-                    <div className='avatar-placeholder bg-gray-300 text-white'>
-                      {editableRisk.creatorFullName
-                        ?.split(' ')
-                        .map((n) => n[0])
-                        .join('') ||
-                        editableRisk.creatorUserName?.slice(0, 2)?.toUpperCase() ||
-                        '?'}
+                    <div className='avatar-placeholder bg-gray-300 text-white flex items-center justify-center w-full h-full'>
+                      ⚙️
                     </div>
+                    // <div className='avatar-placeholder bg-gray-300 text-white'>
+                    //   {editableRisk.creatorFullName
+                    //     ?.split(' ')
+                    //     .map((n) => n[0])
+                    //     .join('') ||
+                    //     editableRisk.creatorUserName?.slice(0, 2)?.toUpperCase() ||
+                    //     '?'}
+                    // </div>
                   )}
                 </div>
               </div>
@@ -1011,52 +1014,6 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                       </button>
                     )}
                   </div>
-                  // <div
-                  //   className='attachment-card relative bg-white p-3 rounded-lg shadow-md hover:shadow-lg transition'
-                  //   key={file.id}
-                  //   onMouseEnter={() => setHoveredFileId(file.id)}
-                  //   onMouseLeave={() => setHoveredFileId(null)}
-                  // >
-                  //   <a
-                  //     href={file.fileUrl}
-                  //     target='_blank'
-                  //     rel='noopener noreferrer'
-                  //     className='block'
-                  //   >
-                  //     <div className='thumbnail w-full h-32 overflow-hidden rounded-md'>
-                  //       {file.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  //         <img
-                  //           src={file.fileUrl}
-                  //           alt={file.fileName}
-                  //           className='w-full h-full object-cover'
-                  //         />
-                  //       ) : (
-                  //         <div className='doc-thumbnail flex items-center justify-center w-full h-32 overflow-hidden rounded-md bg-gray-100'>
-                  //           <span className='doc-text text-gray-700'>
-                  //             {file.fileName?.length > 15
-                  //               ? file.fileName.slice(0, 15) + '...'
-                  //               : file.fileName}
-                  //           </span>
-                  //         </div>
-                  //       )}
-                  //     </div>
-                  //     <div className='file-meta mt-2 text-sm text-gray-600'>
-                  //       <div className='file-name font-medium' title={file.fileName}>
-                  //         {file.fileName}
-                  //       </div>
-                  //       <div className='file-date'>
-                  //         {new Date(file.uploadedAt).toLocaleString('vi-VN', { hour12: false })}
-                  //       </div>
-                  //     </div>
-                  //   </a>
-                  //   <button
-                  //     onClick={() => handleDeleteFile(file.id)}
-                  //     className='delete-file-btn absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition'
-                  //     title='Delete file'
-                  //   >
-                  //     <Trash2 size={15} />
-                  //   </button>
-                  // </div>
                 ))}
                 <div
                   className='upload-box bg-gray-100 p-4 rounded-lg shadow-md hover:shadow-lg transition flex flex-col items-center justify-center cursor-pointer'
@@ -1232,7 +1189,10 @@ const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
                                 window.confirm('🗑️ Are you sure you want to delete this comment?')
                               ) {
                                 try {
-                                  await deleteRiskComment({ id: comment.id, createdBy: accountId }).unwrap();
+                                  await deleteRiskComment({
+                                    id: comment.id,
+                                    createdBy: accountId,
+                                  }).unwrap();
                                   alert('🗑️ Deleted successfully');
                                   await refetchComments();
                                   await refetchActivityLogs();

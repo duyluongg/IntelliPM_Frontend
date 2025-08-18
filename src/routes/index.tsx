@@ -46,6 +46,8 @@ import MeetingRequestRejectPage from '../pages/PM/Meeting/MeetingRequestReject/M
 import CreateDocumentRequestMeeting from '../pages/PM/Meeting/MeetingRequestReject/CreateDocumentRequestMeeting';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
+import AdminProjectPage from '../pages/Admin/ProjectPage/AdminProjectPage';
+import ProjectDashboard from '../pages/Admin/ProjectPage/ProjectDashboard';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
 import Login from '../components/Login';
@@ -313,6 +315,13 @@ export const router = createBrowserRouter([
       {
         path: 'analytics',
         element: <Analytics />,
+      },
+      {
+        path: 'projects',
+        element: <AdminProjectPage />,
+      },
+      { path:'projects/:projectId/dashboard' ,
+        element: <ProjectDashboard />
       },
     ],
   },

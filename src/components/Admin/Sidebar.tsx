@@ -19,6 +19,7 @@ interface SidebarProps {
 const menuItems = [
   { icon: <Home className="w-5 h-5" />, label: 'Dashboard', path: '/admin' },
   { icon: <Users className="w-5 h-5" />, label: 'Members', path: '/admin/members' },
+  { icon: <Rocket className="w-5 h-5" />, label: 'Projects', path: '/admin/projects' },
   { icon: <AlertTriangle className="w-5 h-5" />, label: 'Risks', path: '/admin/risks' },
   { icon: <BarChart2 className="w-5 h-5" />, label: 'Reports', path: '/admin/reports' },
   { icon: <PieChart className="w-5 h-5" />, label: 'Analytics', path: '/admin/analytics' },

@@ -159,8 +159,8 @@ interface HeaderBarProps {
   setSelectedLabel: Dispatch<SetStateAction<string>>;
   selectedMemberId: number | null;
   setSelectedMemberId: Dispatch<SetStateAction<number | null>>;
-  selectedCreatedDate: string;
-  setSelectedCreatedDate: Dispatch<SetStateAction<string>>;
+  selectedStartDate: string;
+  setSelectedStartDate: Dispatch<SetStateAction<string>>;
   selectedDueDate: string;
   setSelectedDueDate: Dispatch<SetStateAction<string>>;
   onExportExcel: () => void;
@@ -395,8 +395,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
   setSelectedPriority,
   selectedMemberId,
   setSelectedMemberId,
-  selectedCreatedDate,
-  setSelectedCreatedDate,
+  selectedStartDate,
+  setSelectedStartDate,
   selectedDueDate,
   setSelectedDueDate,
   onExportExcel,
@@ -585,8 +585,8 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           setSelectedLabel={setSelectedLabel}
           selectedPriority={selectedPriority}
           setSelectedPriority={setSelectedPriority}
-          selectedCreatedDate={selectedCreatedDate}
-          setSelectedCreatedDate={setSelectedCreatedDate}
+          selectedStartDate={selectedStartDate}
+          setSelectedStartDate={setSelectedStartDate}
           selectedDueDate={selectedDueDate}
           setSelectedDueDate={setSelectedDueDate}
           typeOptions={typeOptions}
@@ -688,7 +688,7 @@ const ProjectTaskList: React.FC = () => {
   const [selectedPriority, setSelectedPriority] = useState<string>('');
   const [selectedLabel, setSelectedLabel] = useState<string>('');
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
-  const [selectedCreatedDate, setSelectedCreatedDate] = useState<string>(''); // New state
+  const [selectedStartDate, setSelectedStartDate] = useState<string>(''); // New state
   const [selectedDueDate, setSelectedDueDate] = useState<string>('');
   const {
     data: priorityOptions,
@@ -1324,20 +1324,43 @@ const ProjectTaskList: React.FC = () => {
     const matchesLabel = !selectedLabel || task.labels?.includes(selectedLabel);
     const matchesMember =
       !selectedMemberId || task.assignees.some((assignee) => assignee.id === selectedMemberId);
-    const matchesCreated =
-      !selectedCreatedDate ||
-      new Date(task.created).toISOString().split('T')[0] === selectedCreatedDate;
-    const matchesDue =
-      !selectedDueDate ||
-      (task.dueDate && new Date(task.dueDate).toISOString().split('T')[0] === selectedDueDate);
+
+    // Lọc theo khoảng thời gian Created
+    const taskCreatedDate = new Date(task.created).toISOString().split('T')[0]; // Định dạng YYYY-MM-DD
+    const startDate = selectedStartDate ? new Date(selectedStartDate) : null;
+    const dueDate = selectedDueDate ? new Date(selectedDueDate) : null;
+    const matchesCreatedRange =
+      !selectedStartDate && !selectedDueDate // Không có khoảng thời gian, chấp nhận tất cả
+        ? true
+        : !startDate && dueDate // Chỉ có Due Date, kiểm tra task.created <= dueDate
+        ? !dueDate || new Date(taskCreatedDate) <= dueDate
+        : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.created >= startDate
+        ? !startDate || new Date(taskCreatedDate) >= startDate
+        : startDate && dueDate // Có cả hai, kiểm tra task.created nằm trong khoảng
+        ? new Date(taskCreatedDate) >= startDate && new Date(taskCreatedDate) <= dueDate
+        : true;
+
+    // Lọc theo khoảng thời gian Due Date (nếu có)
+    const taskDueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : null;
+    const matchesDueRange =
+      !selectedStartDate && !selectedDueDate // Không có khoảng thời gian, chấp nhận tất cả
+        ? true
+        : !startDate && dueDate // Chỉ có Due Date, kiểm tra task.dueDate <= dueDate
+        ? !taskDueDate || !dueDate || new Date(taskDueDate) <= dueDate
+        : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.dueDate >= startDate
+        ? !taskDueDate || !startDate || new Date(taskDueDate) >= startDate
+        : startDate && dueDate // Có cả hai, kiểm tra task.dueDate nằm trong khoảng
+        ? !taskDueDate || (new Date(taskDueDate) >= startDate && new Date(taskDueDate) <= dueDate)
+        : true;
+
     return (
       matchesSearch &&
       matchesStatus &&
       matchesType &&
       matchesLabel &&
       matchesMember &&
-      matchesCreated &&
-      matchesDue &&
+      matchesCreatedRange &&
+      matchesDueRange &&
       matchesPriority
     );
   });
@@ -1372,8 +1395,8 @@ const ProjectTaskList: React.FC = () => {
         setSelectedMemberId={setSelectedMemberId}
         selectedDueDate={selectedDueDate}
         setSelectedDueDate={setSelectedDueDate}
-        setSelectedCreatedDate={setSelectedCreatedDate}
-        selectedCreatedDate={selectedCreatedDate}
+        setSelectedStartDate={setSelectedStartDate}
+        selectedStartDate={selectedStartDate}
         onCreate={handleCreate}
         onViewAsChart={handleViewAsChart}
         refetchWorkItems={refetchWorkItems}

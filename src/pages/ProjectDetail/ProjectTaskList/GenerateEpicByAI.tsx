@@ -3,6 +3,7 @@ import { useGenerateEpicsMutation, useCreateEpicMutation } from '../../../servic
 import { toast } from 'react-toastify';
 import type { EpicResponseDTO } from '../../../services/epicApi';
 import aiIcon from '../../../assets/icon/ai.png';
+import { useAuth, type Role } from '../../../services/AuthContext';
 
 interface CreateEpicRequest {
   projectId: number;
@@ -34,6 +35,8 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
   const [generateEpics, { isLoading: isGeneratingEpics }] = useGenerateEpicsMutation();
   const [createEpic, { isLoading: isSavingEpics }] = useCreateEpicMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const { user } = useAuth();
+  const canCreate = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
   useEffect(() => {
     if (isOpen) {
@@ -155,9 +158,8 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
                   {aiEpics.map((epic, index) => (
                     <tr
                       key={epic.name}
-                      className={`${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-purple-50 transition-colors duration-200`}
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        } hover:bg-purple-50 transition-colors duration-200`}
                     >
                       <td className='p-4 border-b border-gray-200'>
                         <input
@@ -190,17 +192,22 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
           >
             Cancel
           </button>
-          <button
-            onClick={handleSaveEpics}
-            disabled={selectedEpics.length === 0 || isSavingEpics}
-            className={`px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 transform hover:scale-105 ${
-              selectedEpics.length === 0 || isSavingEpics
+          {canCreate ? (
+            <button
+              onClick={handleSaveEpics}
+              disabled={selectedEpics.length === 0 || isSavingEpics}
+              className={`px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 transform hover:scale-105 ${selectedEpics.length === 0 || isSavingEpics
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600'
-            }`}
-          >
-            {isSavingEpics ? 'Saving...' : 'Save Selected Epics'}
-          </button>
+                }`}
+            >
+              {isSavingEpics ? 'Saving...' : 'Save Selected Epics'}
+            </button>
+          ) : (
+            <div className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'>
+              Only Team Leader, Project Manager can create epics.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -18,8 +19,8 @@ interface UnifiedFilterProps {
   setSelectedLabel: (value: string) => void;
   selectedPriority: string;
   setSelectedPriority: (value: string) => void;
-  selectedCreatedDate: string;
-  setSelectedCreatedDate: (value: string) => void;
+  selectedStartDate: string;
+  setSelectedStartDate: (value: string) => void;
   selectedDueDate: string;
   setSelectedDueDate: (value: string) => void;
   typeOptions: FilterOption[];
@@ -35,8 +36,8 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
   setSelectedLabel,
   selectedPriority,
   setSelectedPriority,
-  selectedCreatedDate,
-  setSelectedCreatedDate,
+  selectedStartDate,
+  setSelectedStartDate,
   selectedDueDate,
   setSelectedDueDate,
   typeOptions,
@@ -103,13 +104,15 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
       activeFilters.push(
         `Priority: ${priorityOptions.find((opt) => opt.value === selectedPriority)?.label || 'Unknown'}`
       );
-    if (selectedCreatedDate) activeFilters.push(`Created: ${selectedCreatedDate}`);
-    if (selectedDueDate) activeFilters.push(`Due: ${selectedDueDate}`);
+    if (selectedStartDate || selectedDueDate)
+      activeFilters.push(
+        `Created: ${selectedStartDate || 'Any'} to ${selectedDueDate || 'Any'}`.trim()
+      );
     return activeFilters.length > 0 ? activeFilters.join(', ') : 'All Filters';
   };
 
   // Handle filter selection
-  const handleSelect = (category: string, value: string) => {
+  const handleSelect = (category: string, value: string, isStart?: boolean) => {
     if (category === 'Status') {
       setSelectedStatus(value === selectedStatus ? '' : value);
     } else if (category === 'Type') {
@@ -119,9 +122,11 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
     } else if (category === 'Priority') {
       setSelectedPriority(value === selectedPriority ? '' : value);
     } else if (category === 'Created') {
-      setSelectedCreatedDate(value === selectedCreatedDate ? '' : value);
-    } else if (category === 'DueDate') {
-      setSelectedDueDate(value === selectedDueDate ? '' : value);
+      if (isStart) {
+        setSelectedStartDate(value);
+      } else {
+        setSelectedDueDate(value);
+      }
     }
   };
 
@@ -304,7 +309,7 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
             )}
           </div>
 
-          {/* Created Date Section */}
+          {/* Created Date Range Section */}
           <div className="border-b border-gray-200">
             <button
               onClick={() => toggleSection('Created')}
@@ -322,86 +327,50 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
             </button>
             {openSection === 'Created' && (
               <div className="px-2 pb-2">
-                <DatePicker
-                  selected={parseDate(selectedCreatedDate)}
-                  onChange={(date: Date | null) => handleSelect('Created', formatDate(date))}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="Select Created Date"
-                  className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  popperPlacement="bottom-start"
-                  popperModifiers={[
-                    {
-                      name: 'preventOverflow',
-                      options: {
-                        boundary: document.body,
+                <div className="flex gap-2 mb-2">
+                  <DatePicker
+                    selected={parseDate(selectedStartDate)}
+                    onChange={(date: Date | null) => handleSelect('Created', formatDate(date), true)}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Start Date"
+                    className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    popperPlacement="bottom-start"
+                    popperModifiers={[
+                      {
+                        name: 'preventOverflow',
+                        options: { boundary: document.body },
+                        fn: (state) => ({ ...state }),
                       },
-                      fn: (state) => {
-                        return { ...state };
+                      {
+                        name: 'flip',
+                        options: { fallbackPlacements: ['bottom'] },
+                        fn: (state) => ({ ...state }),
                       },
-                    },
-                    {
-                      name: 'flip',
-                      options: {
-                        fallbackPlacements: ['bottom'],
+                    ]}
+                    popperClassName="z-20"
+                  />
+                  <DatePicker
+                    selected={parseDate(selectedDueDate)}
+                    onChange={(date: Date | null) => handleSelect('Created', formatDate(date), false)}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Due Date"
+                    className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    popperPlacement="bottom-start"
+                    popperModifiers={[
+                      {
+                        name: 'preventOverflow',
+                        options: { boundary: document.body },
+                        fn: (state) => ({ ...state }),
                       },
-                      fn: (state) => {
-                        return { ...state };
+                      {
+                        name: 'flip',
+                        options: { fallbackPlacements: ['bottom'] },
+                        fn: (state) => ({ ...state }),
                       },
-                    },
-                  ]}
-                  popperClassName="z-20"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Due Date Section */}
-          <div>
-            <button
-              onClick={() => toggleSection('DueDate')}
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-100"
-            >
-              <span>Due Date</span>
-              <svg
-                className={`w-4 h-4 transition-transform ${openSection === 'DueDate' ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            {openSection === 'DueDate' && (
-              <div className="px-2 pb-2">
-                <DatePicker
-                  selected={parseDate(selectedDueDate)}
-                  onChange={(date: Date | null) => handleSelect('DueDate', formatDate(date))}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="Select Due Date"
-                  className="w-full px-2 py-1 text-sm text-gray-700 border border-gray-300 rounded hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  popperPlacement="bottom-start"
-                  popperModifiers={[
-                    {
-                      name: 'preventOverflow',
-                      options: {
-                        boundary: document.body,
-                      },
-                      fn: (state) => {
-                        return { ...state };
-                      },
-                    },
-                    {
-                      name: 'flip',
-                      options: {
-                        fallbackPlacements: ['bottom'],
-                      },
-                      fn: (state) => {
-                        return { ...state };
-                      },
-                    },
-                  ]}
-                  popperClassName="z-20"
-                />
+                    ]}
+                    popperClassName="z-20"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -414,7 +383,7 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
                 setSelectedType('');
                 setSelectedLabel('');
                 setSelectedPriority('');
-                setSelectedCreatedDate('');
+                setSelectedStartDate('');
                 setSelectedDueDate('');
                 setIsDropdownOpen(false);
               }}

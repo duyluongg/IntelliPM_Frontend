@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useGetTaskPlanningMutation,
-  type TaskState,
   type EpicPreviewDTO,
   type StoryTaskResponse,
+  type TaskState,
+  type EpicState,
 } from '../../../../services/aiApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../../services/projectApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../../services/projectMemberApi';
@@ -16,16 +17,6 @@ import TaskList from './TaskList';
 import TaskSetupHeader from './TaskSetupHeader';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
 import { taskAiApi } from '../../../../services/taskAiApi';
-
-interface EpicState {
-  epicId: string;
-  title: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  tasks: TaskState[];
-  backendEpicId?: string;
-}
 
 interface Member {
   accountId: number;
@@ -63,21 +54,7 @@ interface ProjectFormData {
     startDate: string;
     endDate: string;
     backendEpicId?: string;
-    tasks?: Array<{
-      id: string;
-      taskId?: string;
-      title: string;
-      type: string;
-      description: string;
-      startDate: string;
-      endDate: string;
-      suggestedRole: string;
-      assignedMembers: Array<{
-        accountId: number;
-        fullName: string;
-        picture: string;
-      }>;
-    }>;
+    tasks?: Array<TaskState>;
   }>;
 }
 
@@ -572,7 +549,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
   const onStoryTasksGenerated = (storyTasks: StoryTaskResponse[]) => {
     setEpics((prev) =>
       prev.map((epic) => {
-        if (epic.title === storyTasks[0]?.data?.title) {
+        if (epic.title === storyTasks[0]?.data.title) {  // Assume epicTitle in response or adjust
           const newTasks: TaskState[] = storyTasks.map((storyTask) => ({
             id: storyTask.data.itemId || crypto.randomUUID(),
             taskId: storyTask.data.itemId,
@@ -591,6 +568,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
                   picture: member.picture ?? 'https://i.pravatar.cc/40',
                 }))
               : [],
+            storyTitle: storyTask.type === 'TASK' ? storyTask.data.title : undefined,
           }));
           return {
             ...epic,

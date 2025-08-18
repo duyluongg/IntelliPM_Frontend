@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { type TaskState, type EpicPreviewDTO, type StoryTaskResponse } from '../../../../services/aiApi';
+import {
+  type TaskState,
+  type EpicPreviewDTO,
+  type StoryTaskResponse,
+  type EpicState,
+} from '../../../../services/aiApi';
 import EditEpicPopup from '../EditEpicPopup';
 import EditTaskPopup from '../EditTaskPopup';
 import EditDatePopup from '../EditDatePopup';
@@ -51,16 +56,6 @@ interface NotifyPMConfirmPopupProps {
   handleConfirm: () => void;
 }
 
-interface EpicState {
-  epicId: string;
-  title: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  tasks: TaskState[];
-  backendEpicId?: string;
-}
-
 interface Member {
   accountId: number;
   fullName: string;
@@ -70,13 +65,14 @@ interface Member {
 
 interface TaskRow {
   id: string;
-  type: 'TASK' | 'EPIC';
+  type: 'TASK' | 'EPIC' | 'STORY';
   title: string;
   description: string;
   startDate: string;
   endDate: string;
   assignees: { name: string; picture: string | null; id?: number | null }[];
   epicId?: string;
+  storyTitle?: string;
 }
 
 interface TaskListProps {
@@ -372,9 +368,7 @@ const TaskList: React.FC<TaskListProps> = ({
 
   const toggleAllEpics = () => {
     const allExpanded = expandedEpicIndices.size === safeEpics.length;
-    setExpandedEpicIndices(
-      allExpanded ? new Set() : new Set(safeEpics.map((_, i) => i))
-    );
+    setExpandedEpicIndices(allExpanded ? new Set() : new Set(safeEpics.map((_, i) => i)));
   };
 
   const handleEditClick = (id: string, field: string, value: string) => {
@@ -427,7 +421,7 @@ const TaskList: React.FC<TaskListProps> = ({
         });
         handleEditEpic();
       }
-    } else if (item.type === 'TASK') {
+    } else if (item.type === 'TASK' || item.type === 'STORY') {
       handleEditTask(item.epicId!, item.id, {
         [field]: isDateField ? formattedDate : editValue,
       });
@@ -438,8 +432,9 @@ const TaskList: React.FC<TaskListProps> = ({
   };
 
   const handleMemberSelect = (item: TaskRow, member: Member) => {
-    if (item.type === 'TASK') {
-      const isAlreadyAssigned = item.assignees?.some((assignee) => assignee.id === member.accountId) || false;
+    if (item.type === 'TASK' || item.type === 'STORY') {
+      const isAlreadyAssigned =
+        item.assignees?.some((assignee) => assignee.id === member.accountId) || false;
       if (isAlreadyAssigned) {
         handleRemoveMember(item.epicId!, item.id, member.accountId);
       } else {
@@ -453,15 +448,15 @@ const TaskList: React.FC<TaskListProps> = ({
 
   const handleShowMemberDropdown = (
     id: string,
-    type: 'TASK' | 'EPIC',
+    type: 'TASK' | 'EPIC' | 'STORY',
     event: React.MouseEvent
   ) => {
-    if (type === 'TASK') {
+    if (type === 'TASK' || type === 'STORY') {
       const cell = assigneeCellRefs.current.get(id);
       if (cell) {
         setShowMemberDropdown({
           id,
-          type,
+          type: 'TASK', // treat as TASK
           element: cell,
         });
       }
@@ -472,7 +467,7 @@ const TaskList: React.FC<TaskListProps> = ({
     if (item.type === 'EPIC') {
       const epic = safeEpics.find((e) => e.epicId === item.id);
       if (epic) setEditingEpic(epic);
-    } else if (item.type === 'TASK') {
+    } else if (item.type === 'TASK' || item.type === 'STORY') {
       const epic = safeEpics.find((e) => e.epicId === item.epicId);
       if (epic) {
         const task = (epic.tasks || []).find((t) => t.id === item.id);
@@ -626,7 +621,7 @@ const TaskList: React.FC<TaskListProps> = ({
                     };
                     const taskRows: TaskRow[] = (epic.tasks || []).map((task) => ({
                       id: task.id,
-                      type: 'TASK',
+                      type: task.type as 'TASK' | 'STORY',
                       title: task.title,
                       description: task.description,
                       startDate: task.startDate,
@@ -637,6 +632,7 @@ const TaskList: React.FC<TaskListProps> = ({
                         picture: member.picture ?? null,
                       })),
                       epicId: epic.epicId,
+                      storyTitle: task.title,
                     }));
 
                     return (
@@ -750,11 +746,15 @@ const TaskList: React.FC<TaskListProps> = ({
                           <td className='p-2 flex gap-2'>
                             <button
                               onClick={() => handleOpenGenerateStoryTask(epic)}
-                              className='text-sm text-blue-600 hover:text-blue-800'
+                              className='text-sm text-white bg-gradient-to-r from-purple-600 to-blue-500 
+                                     hover:from-purple-700 hover:to-blue-600 px-2 py-2 rounded-md 
+                                      flex items-center gap-2 shadow-md transition-all'
                               title='Generate Story/Task'
                             >
-                              Generate
+                              <img src={aiIcon} alt='AI Icon' className='w-4 h-4' />
+                         
                             </button>
+
                             <button
                               onClick={() => handleDeleteEpic(epic.epicId)}
                               className='text-red-600 hover:text-red-800'
@@ -782,7 +782,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                 <td className='p-2'>
                                   <img
                                     src={taskIcon}
-                                    alt='Task'
+                                    alt={item.type}
                                     className='w-5 h-5 rounded p-0.5'
                                   />
                                 </td>
@@ -866,10 +866,12 @@ const TaskList: React.FC<TaskListProps> = ({
                                 >
                                   <div className='inline-flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer relative'>
                                     <div
-                                      onClick={(e) => handleShowMemberDropdown(item.id, item.type, e)}
+                                      onClick={(e) =>
+                                        handleShowMemberDropdown(item.id, item.type, e)
+                                      }
                                       className='flex flex-wrap gap-2'
                                     >
-                                      {item.type === 'TASK' && item.assignees && item.assignees.length ? (
+                                      {item.assignees && item.assignees.length ? (
                                         item.assignees.map((assignee, index) => (
                                           <Avatar
                                             key={assignee.id ?? index}
@@ -878,7 +880,11 @@ const TaskList: React.FC<TaskListProps> = ({
                                               assignee.id != null
                                                 ? (e) => {
                                                     e?.stopPropagation();
-                                                    handleRemoveMember(item.epicId!, item.id, assignee.id as number);
+                                                    handleRemoveMember(
+                                                      item.epicId!,
+                                                      item.id,
+                                                      assignee.id as number
+                                                    );
                                                   }
                                                 : undefined
                                             }
@@ -892,63 +898,66 @@ const TaskList: React.FC<TaskListProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  {showMemberDropdown?.id === item.id && item.type === 'TASK' && (
-                                    <Dropdown
-                                      ref={dropdownRef}
-                                      className='dropdown-container'
-                                      relativeTo={showMemberDropdown.element}
-                                    >
-                                      {membersData?.data && Array.isArray(membersData.data) && membersData.data.length > 0 ? (
-                                        membersData.data.map((member) => {
-                                          const currentAssignees = (item.assignees || [])
-                                            .map((a) => a.id)
-                                            .filter((id) => id !== undefined) as number[];
-                                          const isAssigned = currentAssignees.includes(member.accountId);
-                                          return (
-                                            <div
-                                              key={member.accountId}
-                                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${
-                                                isAssigned
-                                                  ? 'opacity-50'
-                                                  : 'hover:bg-gray-100'
-                                              }`}
-                                              onClick={() => handleMemberSelect(item, member)}
-                                            >
-                                              <div>
-                                                {member.picture ? (
-                                                  <img
-                                                    src={member.picture}
-                                                    alt={`${member.fullName}'s avatar`}
-                                                    className='w-6 h-6 rounded-full object-cover border border-gray-200'
-                                                  />
-                                                ) : (
-                                                  <div
-                                                    className='w-6 h-6 rounded-full flex justify-center items-center text-white text-xs font-bold'
-                                                    style={{ backgroundColor: '#6b7280' }}
-                                                  >
-                                                    {member.fullName
-                                                      .split(' ')
-                                                      .map((n) => n[0])
-                                                      .join('')
-                                                      .substring(0, 2)}
-                                                  </div>
-                                                )}
+                                  {showMemberDropdown?.id === item.id &&
+                                    (item.type === 'TASK' || item.type === 'STORY') && (
+                                      <Dropdown
+                                        ref={dropdownRef}
+                                        className='dropdown-container'
+                                        relativeTo={showMemberDropdown.element}
+                                      >
+                                        {membersData?.data &&
+                                        Array.isArray(membersData.data) &&
+                                        membersData.data.length > 0 ? (
+                                          membersData.data.map((member) => {
+                                            const currentAssignees = (item.assignees || [])
+                                              .map((a) => a.id)
+                                              .filter((id) => id !== undefined) as number[];
+                                            const isAssigned = currentAssignees.includes(
+                                              member.accountId
+                                            );
+                                            return (
+                                              <div
+                                                key={member.accountId}
+                                                className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer ${
+                                                  isAssigned ? 'opacity-50' : 'hover:bg-gray-100'
+                                                }`}
+                                                onClick={() => handleMemberSelect(item, member)}
+                                              >
+                                                <div>
+                                                  {member.picture ? (
+                                                    <img
+                                                      src={member.picture}
+                                                      alt={`${member.fullName}'s avatar`}
+                                                      className='w-6 h-6 rounded-full object-cover border border-gray-200'
+                                                    />
+                                                  ) : (
+                                                    <div
+                                                      className='w-6 h-6 rounded-full flex justify-center items-center text-white text-xs font-bold'
+                                                      style={{ backgroundColor: '#6b7280' }}
+                                                    >
+                                                      {member.fullName
+                                                        .split(' ')
+                                                        .map((n) => n[0])
+                                                        .join('')
+                                                        .substring(0, 2)}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                                <div className='flex-1'>
+                                                  <span className='text-sm text-gray-900'>
+                                                    {member.fullName}
+                                                  </span>
+                                                </div>
                                               </div>
-                                              <div className='flex-1'>
-                                                <span className='text-sm text-gray-900'>
-                                                  {member.fullName}
-                                                </span>
-                                              </div>
-                                            </div>
-                                          );
-                                        })
-                                      ) : (
-                                        <div className='px-2 py-1.5 text-sm text-gray-500'>
-                                          No members available
-                                        </div>
-                                      )}
-                                    </Dropdown>
-                                  )}
+                                            );
+                                          })
+                                        ) : (
+                                          <div className='px-2 py-1.5 text-sm text-gray-500'>
+                                            No members available
+                                          </div>
+                                        )}
+                                      </Dropdown>
+                                    )}
                                 </td>
                                 <td className='p-2'>
                                   <button
@@ -1068,7 +1077,7 @@ const TaskList: React.FC<TaskListProps> = ({
           onClose={handleCloseEvaluationPopup}
           aiResponseJson={aiResponseJson}
           projectId={projectId}
-          aiFeature='TASK_PLANNING'
+          aiFeature='STORY_TASK_GENERATION'
           onSubmitSuccess={handleEvaluationSubmitSuccess}
         />
       )}

@@ -85,6 +85,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     storyTitle: '',
   });
   const [isEpicTasksVisible, setIsEpicTasksVisible] = useState(false);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const [generateStoryTask, { isLoading: isGenerateStoryTaskLoading }] = useGenerateStoryTaskMutation();
@@ -100,7 +101,12 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
         setNewTask((prev) => ({ ...prev, storyTitle: firstStory.title }));
       }
     }
-  }, [isOpen, epics, epicTitle]);
+  }, [isOpen, epics, epicTitle, newTask]);
+
+  const currentEpicTitle = selectedEpic ? selectedEpic.title : epicTitle;
+  const currentStartDate = selectedEpic ? selectedEpic.startDate : epicStartDate;
+  const currentEndDate = selectedEpic ? selectedEpic.endDate : epicEndDate;
+  const currentExistingTitles = selectedEpic ? selectedEpic.tasks.map((t) => t.title) : existingTitles;
 
   const handleEpicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const epicId = e.target.value;
@@ -453,23 +459,61 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
             }
           `}
         </style>
-        <div className='bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 max-h-[85vh] overflow-y-auto'>
+        <div className='bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 max-h-[85vh] overflow-y-auto'>
           <div className='flex justify-between items-center mb-6'>
-            <h2 className='text-2xl font-bold text-[#1c73fd]'>Create {createType}</h2>
+            <h2 className='text-2xl font-bold text-[#1c73fd] flex items-center gap-3'>
+              {!manualMode && <img src={aiIcon} alt='AI Icon' className='w-8 h-8' />}
+              {manualMode ? `Create ${createType}` : `Generate ${createType}s`} for Epic: {currentEpicTitle}
+            </h2>
             <button onClick={onClose} className='text-gray-500 hover:text-gray-700'>
               <X className='w-6 h-6' />
             </button>
+          </div>
+
+          <div className='mb-6'>
+            <button
+              onClick={() => setIsDetailsVisible(!isDetailsVisible)}
+              className='flex items-center gap-2 text-[#1c73fd] hover:text-[#155ac7] text-sm font-medium mb-2'
+            >
+              {isDetailsVisible ? (
+                <ChevronUp className='w-5 h-5' />
+              ) : (
+                <ChevronDown className='w-5 h-5' />
+              )}
+              {isDetailsVisible ? 'Hide' : 'Show'} Project Details
+            </button>
+            {isDetailsVisible && (
+              <div className='p-4 bg-blue-50 border border-blue-200 rounded-xl'>
+                <p className='text-blue-800 text-sm'>
+                  <strong>Project:</strong> {projectKey} • <strong>Epic:</strong> {currentEpicTitle} • <strong>Existing {createType}s:</strong> {currentExistingTitles.length}
+                </p>
+                <p className='text-blue-800 text-sm'>
+                  <strong>Duration:</strong> {formatDate(currentStartDate)} - {formatDate(currentEndDate)}
+                </p>
+                {currentExistingTitles.length > 0 && (
+                  <div className='mt-2'>
+                    <p className='text-blue-700 text-xs mb-1'>Current {createType.toLowerCase()}s:</p>
+                    <div className='flex flex-wrap gap-2'>
+                      {currentExistingTitles.slice(0, 5).map((title, index) => (
+                        <span key={index} className='text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full'>
+                          {title}
+                        </span>
+                      ))}
+                      {currentExistingTitles.length > 5 && (
+                        <span className='text-xs text-blue-600'>+{currentExistingTitles.length - 5} more</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error && (
             <div className='bg-red-50 border border-red-200 text-red-600 text-sm p-4 rounded-xl mb-6'>
               <div className='flex items-start gap-2'>
                 <svg className='w-5 h-5 text-red-500 mt-0.5 flex-shrink-0' fill='currentColor' viewBox='0 0 20 20'>
-                  <path
-                    fillRule='evenodd'
-                    d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z'
-                    clipRule='evenodd'
-                  />
+                  <path fillRule='evenodd' d='M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z' clipRule='evenodd' />
                 </svg>
                 {error}
               </div>
@@ -529,7 +573,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
               <p className='text-sm text-gray-500 mb-4'>No epics available. Please create an epic first.</p>
             )}
 
-            {createType === 'TASK' && selectedEpic && manualMode && (
+            {createType === 'TASK' && selectedEpic && (
               <div className='mb-4'>
                 <label className='block text-sm font-medium text-gray-700 mb-1'>Select Story *</label>
                 <select
@@ -569,39 +613,37 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                     </h3>
                     {selectedEpic.tasks.filter((task) => task.type === 'TASK').length > 0 ? (
                       <div className='space-y-3'>
-                        {selectedEpic.tasks
-                          .filter((task) => task.type === 'TASK')
-                          .map((task) => (
-                            <div
-                              key={task.id}
-                              className='bg-white p-4 rounded-lg shadow-sm border border-gray-100'
-                            >
-                              <h4 className='font-semibold text-gray-800'>{task.title}</h4>
-                              <p className='text-gray-600 text-sm mb-2'>{task.description}</p>
-                              <div className='flex items-center gap-4 text-sm text-gray-500'>
-                                <div>Story: {task.title || 'N/A'}</div>
-                                <div>Start: {formatDate(task.startDate)}</div>
-                                <div>End: {formatDate(task.endDate)}</div>
-                                <div>Role: {task.suggestedRole}</div>
-                              </div>
-                              {task.assignedMembers.length > 0 && (
-                                <div className='mt-2'>
-                                  <p className='text-sm text-gray-700 font-medium'>Assigned Members:</p>
-                                  <div className='flex flex-wrap gap-2 mt-1'>
-                                    {task.assignedMembers.map((member) => (
-                                      <div
-                                        key={member.accountId}
-                                        className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
-                                      >
-                                        <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
-                                        <span>{member.fullName}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                        {selectedEpic.tasks.filter((task) => task.type === 'TASK').map((task) => (
+                          <div
+                            key={task.id}
+                            className='bg-white p-4 rounded-lg shadow-sm border border-gray-100'
+                          >
+                            <h4 className='font-semibold text-gray-800'>{task.title}</h4>
+                            <p className='text-gray-600 text-sm mb-2'>{task.description}</p>
+                            <div className='flex items-center gap-4 text-sm text-gray-500'>
+                              <div>Story: {task.title || 'N/A'}</div>
+                              <div>Start: {formatDate(task.startDate)}</div>
+                              <div>End: {formatDate(task.endDate)}</div>
+                              <div>Role: {task.suggestedRole}</div>
                             </div>
-                          ))}
+                            {task.assignedMembers.length > 0 && (
+                              <div className='mt-2'>
+                                <p className='text-sm text-gray-700 font-medium'>Assigned Members:</p>
+                                <div className='flex flex-wrap gap-2 mt-1'>
+                                  {task.assignedMembers.map((member) => (
+                                    <div
+                                      key={member.accountId}
+                                      className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
+                                    >
+                                      <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
+                                      <span>{member.fullName}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <p className='text-sm text-gray-500'>No tasks available for this epic.</p>
@@ -623,461 +665,347 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                   disabled={isGenerating || isSubmitting || !selectedEpic || (createType === 'TASK' && !selectedStoryTitle)}
                 >
                   <img src={aiIcon} alt='AI Icon' className='w-6 h-6 object-contain' />
-                  <span className='text-lg'>Generate {createType} Suggestions</span>
+                  <span className='text-lg'>{isGenerating ? `Generating ${createType}s...` : `Generate ${createType} Suggestions`}</span>
                 </button>
               </div>
             )}
 
-            {manualMode && selectedEpic && (
-              <div className='space-y-4'>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>{createType} Title *</label>
-                  <input
-                    type='text'
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                    placeholder={`Enter ${createType.toLowerCase()} title`}
-                  />
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>{createType} Description</label>
-                  <textarea
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd] resize-none'
-                    rows={3}
-                    placeholder={`Enter ${createType.toLowerCase()} description`}
-                  />
-                </div>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-1'>Start Date</label>
-                    <input
-                      type='date'
-                      value={newTask.startDate}
-                      onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
-                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                    />
-                  </div>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-1'>End Date</label>
-                    <input
-                      type='date'
-                      value={newTask.endDate}
-                      onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
-                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>Suggested Role</label>
-                  <select
-                    value={newTask.suggestedRole}
-                    onChange={(e) => setNewTask({ ...newTask, suggestedRole: e.target.value })}
-                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+            {(isGenerating || isGenerateStoryTaskLoading) && (
+              <div className='flex justify-center items-center py-12 bg-white rounded-2xl shadow-md'>
+                <div className='flex flex-col items-center gap-4'>
+                  <img src={galaxyaiIcon} alt='AI Processing' className='w-12 h-12 animate-pulse' />
+                  <span
+                    style={{
+                      background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
+                      backgroundSize: '200% auto',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      animation: 'gradientLoading 1.8s ease-in-out infinite',
+                    }}
+                    className='text-xl font-semibold'
                   >
-                    <option value='Developer'>Developer</option>
-                    <option value='Designer'>Designer</option>
-                    <option value='Tester'>Tester</option>
-                    <option value='Manager'>Manager</option>
-                  </select>
-                </div>
-                <div className='relative'>
-                  <label className='block text-sm font-medium text-gray-700 mb-1'>Assign Members</label>
-                  <div className='flex flex-wrap gap-2 mb-2'>
-                    {newTask.assignedMembers.map((member) => (
-                      <div
-                        key={member.accountId}
-                        className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
-                      >
-                        <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
-                        <span>{member.fullName}</span>
-                        <button
-                          onClick={() => handleRemoveTaskMember(member.accountId)}
-                          className='text-red-600 hover:text-red-800'
-                        >
-                          <X className='w-4 h-4' />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      ref={dropdownButtonRef}
-                      onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-                      className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium'
-                    >
-                      <Plus className='w-4 h-4' />
-                      Add Member
-                    </button>
-                  </div>
-                  {isMemberDropdownOpen && (
-                    <div
-                      className='absolute z-50 w-64 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-2'
-                      style={{
-                        top: dropdownButtonRef.current
-                          ? dropdownButtonRef.current.getBoundingClientRect().bottom + window.scrollY + 4
-                          : 0,
-                        left: dropdownButtonRef.current
-                          ? dropdownButtonRef.current.getBoundingClientRect().left + window.scrollX
-                          : 0,
-                      }}
-                    >
-                      {membersData?.data && membersData.data.length > 0 ? (
-                        membersData.data.map((member) => (
-                          <div
-                            key={member.accountId}
-                            onClick={() => handleAddTaskMember(member)}
-                            className='flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded'
-                          >
-                            <img src={member.picture} alt={member.fullName} className='w-6 h-6 rounded-full' />
-                            <span className='text-sm'>{member.fullName}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className='px-2 py-1.5 text-sm text-gray-500'>No members available</div>
-                      )}
-                    </div>
-                  )}
+                    Generating {createType.toLowerCase()} Ideas...
+                  </span>
+                  <p className='text-gray-600 text-sm text-center max-w-md'>
+                    AI is analyzing your epic requirements and creating meaningful {createType.toLowerCase()}s for better organization.
+                  </p>
                 </div>
               </div>
             )}
-          </div>
 
-          {(isGenerating || isGenerateStoryTaskLoading) && (
-            <div className='flex justify-center items-center py-12 bg-white rounded-2xl shadow-md'>
-              <div className='flex flex-col items-center gap-4'>
-                <img src={galaxyaiIcon} alt='AI Processing' className='w-12 h-12 animate-pulse' />
-                <span
-                  style={{
-                    background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
-                    backgroundSize: '200% auto',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    animation: 'gradientLoading 1.8s ease-in-out infinite',
-                  }}
-                  className='text-xl font-semibold'
-                >
-                  Generating {createType}s...
-                </span>
-                <p className='text-gray-600 text-sm text-center max-w-md'>
-                  AI is analyzing your {createType === 'TASK' ? 'story' : 'epic'} and creating meaningful {createType.toLowerCase()}s for better project planning.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {storyTasks.length > 0 && (
-            <div className='border border-gray-200 rounded-xl p-6 max-h-[50vh] overflow-y-auto bg-gray-50'>
-              <div className='flex items-center justify-between mb-4'>
-                <h3 className='text-lg font-semibold text-gray-800'>
-                  Generated {createType}s ({storyTasks.length})
-                </h3>
-                <div className='text-sm text-gray-600'>
-                  {selectedStoryTasks.length} of {storyTasks.length} selected
+            {storyTasks.length > 0 && (
+              <div className='border border-gray-200 rounded-xl p-6 max-h-[50vh] overflow-y-auto bg-gray-50'>
+                <div className='flex items-center justify-between mb-4'>
+                  <h3 className='text-lg font-semibold text-gray-800'>
+                    Generated {createType}s ({storyTasks.length})
+                  </h3>
+                  <div className='text-sm text-gray-600'>
+                    {selectedStoryTasks.length} of {storyTasks.length} selected
+                  </div>
                 </div>
-              </div>
 
-              <div className='space-y-4'>
-                {storyTasks.map((item, index) => (
-                  <div
-                    key={`item-${index}`}
-                    className='bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100'
-                  >
-                    <div className='flex items-start gap-4'>
-                      <input
-                        type='checkbox'
-                        checked={selectedStoryTasks.includes(`item-${index}`)}
-                        onChange={() => handleItemCheckboxChange(`item-${index}`)}
-                        className='h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded mt-1'
-                        disabled={isSubmitting}
-                      />
-                      <div className='flex-1'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <h4 className='font-semibold text-gray-800 text-lg'>{item.data.title}</h4>
-                          <div className='flex items-center gap-2'>
-                            {item.aiGenerated && (
-                              <span className='text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium'>
-                                AI Generated
-                              </span>
-                            )}
-                            <button
-                              onClick={() =>
-                                handleStartItemEdit(
-                                  `item-${index}`,
-                                  item.data.title,
-                                  item.data.description,
-                                  item.data.startDate,
-                                  item.data.endDate,
-                                  item.data.suggestedRole,
-                                  item.data.assignedMembers,
-                                  item.data.storyTitle
-                                )
-                              }
-                              className='text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200 font-medium'
-                              disabled={isSubmitting}
-                            >
-                              Edit Details
-                            </button>
+                <div className='space-y-4'>
+                  {storyTasks.map((item, index) => (
+                    <div
+                      key={`item-${index}`}
+                      className='bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100'
+                    >
+                      <div className='flex items-start gap-4'>
+                        <input
+                          type='checkbox'
+                          checked={selectedStoryTasks.includes(`item-${index}`)}
+                          onChange={() => handleItemCheckboxChange(`item-${index}`)}
+                          className='h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded mt-1'
+                          disabled={isSubmitting}
+                        />
+                        <div className='flex-1'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <h4 className='font-semibold text-gray-800 text-lg'>{item.data.title}</h4>
+                            <div className='flex items-center gap-2'>
+                              {item.aiGenerated && (
+                                <span className='text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-medium'>
+                                  AI Generated
+                                </span>
+                              )}
+                              <button
+                                onClick={() =>
+                                  handleStartItemEdit(
+                                    `item-${index}`,
+                                    item.data.title,
+                                    item.data.description,
+                                    item.data.startDate,
+                                    item.data.endDate,
+                                    item.data.suggestedRole,
+                                    item.data.assignedMembers,
+                                    item.data.storyTitle
+                                  )
+                                }
+                                className='text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200 font-medium'
+                                disabled={isSubmitting}
+                              >
+                                Edit Details
+                              </button>
+                            </div>
                           </div>
-                        </div>
 
-                        <p className='text-gray-600 mb-3 leading-relaxed'>{item.data.description}</p>
+                          <p className='text-gray-600 mb-3 leading-relaxed'>{item.data.description}</p>
 
-                        <div className='flex items-center gap-4 text-sm text-gray-500'>
-                          {item.type === 'TASK' && (
+                          <div className='flex items-center gap-4 text-sm text-gray-500'>
+                            {item.type === 'TASK' && (
+                              <div className='flex items-center gap-1'>
+                                <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                  <path
+                                    strokeLinecap='round'
+                                    strokeLinejoin='round'
+                                    strokeWidth={2}
+                                    d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+                                  />
+                                </svg>
+                                <span>Story: {item.data.storyTitle || 'N/A'}</span>
+                              </div>
+                            )}
                             <div className='flex items-center gap-1'>
                               <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                                 <path
                                   strokeLinecap='round'
                                   strokeLinejoin='round'
                                   strokeWidth={2}
-                                  d='M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'
+                                  d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
                                 />
                               </svg>
-                              <span>Story: {item.data.storyTitle || 'N/A'}</span>
+                              <span>Start: {formatDate(item.data.startDate)}</span>
+                            </div>
+                            <div className='flex items-center gap-1'>
+                              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                <path
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                  strokeWidth={2}
+                                  d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+                                />
+                              </svg>
+                              <span>End: {formatDate(item.data.endDate)}</span>
+                            </div>
+                            <div className='flex items-center gap-1'>
+                              <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                                <path
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                  strokeWidth={2}
+                                  d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
+                                />
+                              </svg>
+                              <span>Role: {item.data.suggestedRole}</span>
+                            </div>
+                          </div>
+
+                          {item.data.assignedMembers.length > 0 && (
+                            <div className='mt-3'>
+                              <p className='text-sm text-gray-700 font-medium'>Assigned Members:</p>
+                              <div className='flex flex-wrap gap-2 mt-1'>
+                                {item.data.assignedMembers.map((member) => (
+                                  <div
+                                    key={member.accountId}
+                                    className='flex items-center gap-2 text-sm bg-gray-100 px-3 py-1 rounded-full'
+                                  >
+                                    <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
+                                    <span>{member.fullName}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
-                          <div className='flex items-center gap-1'>
-                            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-                              />
-                            </svg>
-                            <span>Start: {formatDate(item.data.startDate)}</span>
-                          </div>
-                          <div className='flex items-center gap-1'>
-                            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-                              />
-                            </svg>
-                            <span>End: {formatDate(item.data.endDate)}</span>
-                          </div>
-                          <div className='flex items-center gap-1'>
-                            <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                              <path
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                                strokeWidth={2}
-                                d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-                              />
-                            </svg>
-                            <span>Role: {item.data.suggestedRole}</span>
-                          </div>
-                        </div>
 
-                        {item.data.assignedMembers.length > 0 && (
-                          <div className='mt-3'>
-                            <p className='text-sm text-gray-700 font-medium'>Assigned Members:</p>
-                            <div className='flex flex-wrap gap-2 mt-1'>
-                              {item.data.assignedMembers.map((member) => (
-                                <div
-                                  key={member.accountId}
-                                  className='flex items-center gap-2 text-sm bg-gray-100 px-3 py-1 rounded-full'
-                                >
-                                  <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
-                                  <span>{member.fullName}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {editingItemId === `item-${index}` && (
-                          <div className='mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200'>
-                            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                              {item.type === 'TASK' && (
-                                <div className='md:col-span-2'>
-                                  <label className='block text-sm font-medium text-gray-700 mb-1'>Story *</label>
-                                  <select
-                                    value={selectedStoryTitle}
-                                    onChange={handleStoryChange}
-                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                                  >
-                                    <option value=''>Select a story</option>
-                                    {selectedEpic?.tasks
-                                      .filter((task) => task.type === 'STORY')
-                                      .map((story) => (
-                                        <option key={story.id} value={story.title}>
-                                          {story.title}
-                                        </option>
-                                      ))}
-                                  </select>
-                                </div>
-                              )}
-                              <div className='md:col-span-2'>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>{createType} Title *</label>
-                                <input
-                                  type='text'
-                                  value={itemTitle}
-                                  onChange={(e) => setItemTitle(e.target.value)}
-                                  className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                                  placeholder={`Enter ${createType.toLowerCase()} title`}
-                                />
-                              </div>
-                              <div className='md:col-span-2'>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Description</label>
-                                <textarea
-                                  value={itemDescription}
-                                  onChange={(e) => setItemDescription(e.target.value)}
-                                  rows={3}
-                                  className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd] resize-none'
-                                  placeholder={`Enter ${createType.toLowerCase()} description`}
-                                />
-                              </div>
-                              <div>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Start Date</label>
-                                <input
-                                  type='date'
-                                  value={itemStartDate}
-                                  onChange={(e) => setItemStartDate(e.target.value)}
-                                  className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                                />
-                              </div>
-                              <div>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>End Date</label>
-                                <input
-                                  type='date'
-                                  value={itemEndDate}
-                                  onChange={(e) => setItemEndDate(e.target.value)}
-                                  className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                                />
-                              </div>
-                              <div className='md:col-span-2'>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Suggested Role</label>
-                                <select
-                                  value={itemSuggestedRole}
-                                  onChange={(e) => setItemSuggestedRole(e.target.value)}
-                                  className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
-                                >
-                                  <option value='Developer'>Developer</option>
-                                  <option value='Designer'>Designer</option>
-                                  <option value='Tester'>Tester</option>
-                                  <option value='Manager'>Manager</option>
-                                </select>
-                              </div>
-                              <div className='md:col-span-2 relative'>
-                                <label className='block text-sm font-medium text-gray-700 mb-1'>Assign Members</label>
-                                <div className='flex flex-wrap gap-2 mb-2'>
-                                  {itemAssignedMembers.map((member) => (
-                                    <div
-                                      key={member.accountId}
-                                      className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
+                          {editingItemId === `item-${index}` && (
+                            <div className='mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200'>
+                              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                {item.type === 'TASK' && (
+                                  <div className='md:col-span-2'>
+                                    <label className='block text-sm font-medium text-gray-700 mb-1'>Story *</label>
+                                    <select
+                                      value={selectedStoryTitle}
+                                      onChange={handleStoryChange}
+                                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
                                     >
-                                      <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
-                                      <span>{member.fullName}</span>
-                                      <button
-                                        onClick={() => handleRemoveMember(member.accountId)}
-                                        className='text-red-600 hover:text-red-800'
-                                      >
-                                        <X className='w-4 h-4' />
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button
-                                    ref={dropdownButtonRef}
-                                    onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
-                                    className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium'
-                                  >
-                                    <Plus className='w-4 h-4' />
-                                    Add Member
-                                  </button>
-                                </div>
-                                {isMemberDropdownOpen && (
-                                  <div
-                                    className='absolute z-50 w-64 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-2'
-                                    style={{
-                                      top: dropdownButtonRef.current
-                                        ? dropdownButtonRef.current.getBoundingClientRect().bottom + window.scrollY + 4
-                                        : 0,
-                                      left: dropdownButtonRef.current
-                                        ? dropdownButtonRef.current.getBoundingClientRect().left + window.scrollX
-                                        : 0,
-                                    }}
-                                  >
-                                    {membersData?.data && membersData.data.length > 0 ? (
-                                      membersData.data.map((member) => (
-                                        <div
-                                          key={member.accountId}
-                                          onClick={() => handleAddMember(member)}
-                                          className='flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded'
-                                        >
-                                          <img src={member.picture} alt={member.fullName} className='w-6 h-6 rounded-full' />
-                                          <span className='text-sm'>{member.fullName}</span>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <div className='px-2 py-1.5 text-sm text-gray-500'>No members available</div>
-                                    )}
+                                      <option value=''>Select a story</option>
+                                      {selectedEpic?.tasks
+                                        .filter((task) => task.type === 'STORY')
+                                        .map((story) => (
+                                          <option key={story.id} value={story.title}>
+                                            {story.title}
+                                          </option>
+                                        ))}
+                                    </select>
                                   </div>
                                 )}
+                                <div className='md:col-span-2'>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>{createType} Title *</label>
+                                  <input
+                                    type='text'
+                                    value={itemTitle}
+                                    onChange={(e) => setItemTitle(e.target.value)}
+                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                                    placeholder={`Enter ${createType.toLowerCase()} title`}
+                                  />
+                                </div>
+                                <div className='md:col-span-2'>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>Description</label>
+                                  <textarea
+                                    value={itemDescription}
+                                    onChange={(e) => setItemDescription(e.target.value)}
+                                    rows={3}
+                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd] resize-none'
+                                    placeholder={`Enter ${createType.toLowerCase()} description`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>Start Date</label>
+                                  <input
+                                    type='date'
+                                    value={itemStartDate}
+                                    onChange={(e) => setItemStartDate(e.target.value)}
+                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                                  />
+                                </div>
+                                <div>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>End Date</label>
+                                  <input
+                                    type='date'
+                                    value={itemEndDate}
+                                    onChange={(e) => setItemEndDate(e.target.value)}
+                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                                  />
+                                </div>
+                                <div className='md:col-span-2'>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>Suggested Role</label>
+                                  <select
+                                    value={itemSuggestedRole}
+                                    onChange={(e) => setItemSuggestedRole(e.target.value)}
+                                    className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                                  >
+                                    <option value='Developer'>Developer</option>
+                                    <option value='Designer'>Designer</option>
+                                    <option value='Tester'>Tester</option>
+                                    <option value='Manager'>Manager</option>
+                                  </select>
+                                </div>
+                                <div className='md:col-span-2 relative'>
+                                  <label className='block text-sm font-medium text-gray-700 mb-1'>Assign Members</label>
+                                  <div className='flex flex-wrap gap-2 mb-2'>
+                                    {itemAssignedMembers.map((member) => (
+                                      <div
+                                        key={member.accountId}
+                                        className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
+                                      >
+                                        <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
+                                        <span>{member.fullName}</span>
+                                        <button
+                                          onClick={() => handleRemoveMember(member.accountId)}
+                                          className='text-red-600 hover:text-red-800'
+                                        >
+                                          <X className='w-4 h-4' />
+                                        </button>
+                                      </div>
+                                    ))}
+                                    <button
+                                      ref={dropdownButtonRef}
+                                      onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+                                      className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium'
+                                    >
+                                      <Plus className='w-4 h-4' />
+                                      Add Member
+                                    </button>
+                                  </div>
+                                  {isMemberDropdownOpen && (
+                                    <div
+                                      className='absolute z-50 w-64 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-2'
+                                      style={{
+                                        top: dropdownButtonRef.current
+                                          ? dropdownButtonRef.current.getBoundingClientRect().bottom + window.scrollY + 4
+                                          : 0,
+                                        left: dropdownButtonRef.current
+                                          ? dropdownButtonRef.current.getBoundingClientRect().left + window.scrollX
+                                          : 0,
+                                      }}
+                                    >
+                                      {membersData?.data && membersData.data.length > 0 ? (
+                                        membersData.data.map((member) => (
+                                          <div
+                                            key={member.accountId}
+                                            onClick={() => handleAddMember(member)}
+                                            className='flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded'
+                                          >
+                                            <img src={member.picture} alt={member.fullName} className='w-6 h-6 rounded-full' />
+                                            <span className='text-sm'>{member.fullName}</span>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className='px-2 py-1.5 text-sm text-gray-500'>No members available</div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className='flex justify-end gap-2 mt-4'>
+                                <button
+                                  onClick={handleCancelItemEdit}
+                                  className='px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors'
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleSaveItemEdit(`item-${index}`)}
+                                  className='px-4 py-2 text-sm bg-[#1c73fd] text-white rounded-lg hover:bg-[#155ac7] transition-colors'
+                                >
+                                  Save Changes
+                                </button>
                               </div>
                             </div>
-                            <div className='flex justify-end gap-2 mt-4'>
-                              <button
-                                onClick={handleCancelItemEdit}
-                                className='px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors'
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleSaveItemEdit(`item-${index}`)}
-                                className='px-4 py-2 text-sm bg-[#1c73fd] text-white rounded-lg hover:bg-[#155ac7] transition-colors'
-                              >
-                                Save Changes
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className='flex justify-end gap-4 mt-8'>
-            <button
-              onClick={onClose}
-              className='px-6 py-3 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200'
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            {manualMode && selectedEpic ? (
+            <div className='flex justify-end gap-4 mt-8'>
               <button
-                onClick={handleCreateItem}
-                className={`px-6 py-3 text-sm font-semibold text-white rounded-xl transition-all duration-300 ${
-                  isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)
-                    ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
-                }`}
-                disabled={isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)}
+                onClick={onClose}
+                className='px-6 py-3 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200'
+                disabled={isSubmitting}
               >
-                Create {createType}
+                Cancel
               </button>
-            ) : (
-              storyTasks.length > 0 && (
+              {manualMode && selectedEpic ? (
                 <button
-                  onClick={handleSubmit}
+                  onClick={handleCreateItem}
                   className={`px-6 py-3 text-sm font-semibold text-white rounded-xl transition-all duration-300 ${
-                    isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0
+                    isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)
                       ? 'bg-gray-500 opacity-70 cursor-not-allowed'
                       : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
                   }`}
-                  disabled={isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0}
+                  disabled={isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)}
                 >
-                  {isSubmitting ? 'Adding...' : `Add Selected ${createType}s (${selectedStoryTasks.length})`}
+                  Create {createType}
                 </button>
-              )
-            )}
+              ) : (
+                storyTasks.length > 0 && (
+                  <button
+                    onClick={handleSubmit}
+                    className={`px-6 py-3 text-sm font-semibold text-white rounded-xl transition-all duration-300 ${
+                      isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0
+                        ? 'bg-gray-500 opacity-70 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
+                    }`}
+                    disabled={isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0}
+                  >
+                    {isSubmitting ? 'Adding...' : `Add Selected ${createType}s (${selectedStoryTasks.length})`}
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </div>
       </div>

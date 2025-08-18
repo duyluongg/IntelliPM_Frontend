@@ -226,19 +226,18 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
           ) : (
             <>
               <div className='mb-6'>
-<button
-  onClick={handleGenerateTasks}
-  className={`w-full py-3 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
-    isGenerating || isSubmitting
-      ? 'bg-gray-400 opacity-70 cursor-not-allowed'
-      : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg hover:scale-[1.02]'
-  }`}
-  disabled={isGenerating || isSubmitting}
->
-  <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
-  {isGenerating ? 'Generating Tasks...' : 'Generate Tasks'}
-</button>
-
+                <button
+                  onClick={handleGenerateTasks}
+                  className={`w-full py-3 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
+                    isGenerating || isSubmitting
+                      ? 'bg-gray-400 opacity-70 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg hover:scale-[1.02]'
+                  }`}
+                  disabled={isGenerating || isSubmitting}
+                >
+                  <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                  {isGenerating ? 'Generating Tasks...' : 'Generate Tasks'}
+                </button>
               </div>
               {tasks.length > 0 && (
                 <div className='border border-gray-200 rounded-xl p-5 max-h-[50vh] overflow-y-auto bg-gray-50'>

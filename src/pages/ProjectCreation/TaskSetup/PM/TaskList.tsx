@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { type TaskState } from '../../../../services/aiApi';
+import { type TaskState, type EpicPreviewDTO } from '../../../../services/aiApi';
 import EditEpicPopup from '../EditEpicPopup';
 import EditTaskPopup from '../EditTaskPopup';
 import EditDatePopup from '../EditDatePopup';
 import CreateTaskPopup from '../CreateTaskPopup';
 import NotifyPMConfirmPopup from '../NotifyPMConfirmPopup';
+import GenerateEpicsPopup from '../GenerateEpicsPopup';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
 import storyIcon from '../../../../assets/icon/type_story.svg';
 import epicIcon from '../../../../assets/icon/type_epic.svg';
 import galaxyaiIcon from '../../../../assets/galaxyai.gif';
+import aiIcon from '../../../../assets/icon/ai.png';
 import { Plus, BookUser } from 'lucide-react';
 
 interface EpicState {
@@ -87,6 +89,9 @@ interface TaskListProps {
   aiResponseJson: string;
   projectId: number | undefined;
   handleEvaluationSubmitSuccess: (aiResponseId: number) => void;
+  projectKey: string;
+  existingEpicTitles: string[];
+  onEpicsGenerated: (epics: EpicPreviewDTO[]) => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -187,7 +192,7 @@ const Dropdown = React.forwardRef<HTMLDivElement, DropdownProps>(
           const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
           
           setPosition({
-            top: rect.bottom + scrollTop + 2, // +2 for small gap
+            top: rect.bottom + scrollTop + 2,
             left: rect.left + scrollLeft
           });
         }
@@ -260,10 +265,11 @@ const TaskList: React.FC<TaskListProps> = ({
   aiResponseJson,
   projectId,
   handleEvaluationSubmitSuccess,
+  projectKey,
+  existingEpicTitles,
+  onEpicsGenerated,
 }) => {
-  // Ensure epics is always an array
   const safeEpics = Array.isArray(epics) ? epics : [];
-  
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState<string>('');
   const [showMemberDropdown, setShowMemberDropdown] = useState<{
@@ -272,10 +278,10 @@ const TaskList: React.FC<TaskListProps> = ({
     element: HTMLElement | null;
   } | null>(null);
   const [expandedEpicIndices, setExpandedEpicIndices] = useState<Set<number>>(new Set());
+  const [isGenerateEpicsOpen, setIsGenerateEpicsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const assigneeCellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
 
-  // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -372,16 +378,13 @@ const TaskList: React.FC<TaskListProps> = ({
     if (item.type === 'TASK') {
       const isAlreadyAssigned = item.assignees?.some((assignee) => assignee.id === member.accountId) || false;
       if (isAlreadyAssigned) {
-        // Remove member if already assigned
         handleRemoveMember(item.epicId!, item.id, member.accountId);
       } else {
-        // Add member if not assigned and under limit
         if ((item.assignees?.length || 0) < 3) {
           handleAddMember(item.epicId!, item.id, member.accountId);
         }
       }
     }
-    // Close dropdown after selection
     setShowMemberDropdown(null);
   };
 
@@ -437,7 +440,7 @@ const TaskList: React.FC<TaskListProps> = ({
             max-height: 5.6em;
             overflow: visible;
             position: relative;
-            z-index: 10;
+            zIndex: 10;
           }
           .dropdown-container {
             width: 200px;
@@ -479,9 +482,16 @@ const TaskList: React.FC<TaskListProps> = ({
         </div>
       ) : (
         <section className='p-3 font-sans bg-white w-full'>
-          <div className='mb-4'>
+          <div className='mb-4 flex items-center gap-4'>
             <button onClick={toggleAllEpics} className='text-sm text-blue-600 hover:text-blue-800'>
               {expandedEpicIndices.size === safeEpics.length ? 'Collapse All' : 'Expand All'}
+            </button>
+            <button
+              onClick={() => setIsGenerateEpicsOpen(true)}
+              className='text-sm text-white bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 px-4 py-2 rounded-md flex items-center gap-2'
+            >
+              <img src={aiIcon} alt='AI Icon' className='w-4 h-4' />
+              Generate Epics
             </button>
           </div>
           {safeEpics.length === 0 ? (
@@ -766,7 +776,6 @@ const TaskList: React.FC<TaskListProps> = ({
                                       )}
                                     </div>
                                   </div>
-                                  
                                   {showMemberDropdown?.id === item.id && item.type === 'TASK' && (
                                     <Dropdown
                                       ref={dropdownRef}
@@ -779,7 +788,6 @@ const TaskList: React.FC<TaskListProps> = ({
                                             .map((a) => a.id)
                                             .filter((id) => id !== undefined) as number[];
                                           const isAssigned = currentAssignees.includes(member.accountId);
-                                          
                                           return (
                                             <div
                                               key={member.accountId}
@@ -906,6 +914,17 @@ const TaskList: React.FC<TaskListProps> = ({
           projectId={projectId}
           aiFeature='TASK_PLANNING'
           onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
+
+      {isGenerateEpicsOpen && projectId && (
+        <GenerateEpicsPopup
+          isOpen={isGenerateEpicsOpen}
+          onClose={() => setIsGenerateEpicsOpen(false)}
+          projectId={projectId}
+          projectKey={projectKey}
+          existingEpicTitles={existingEpicTitles}
+          onEpicsGenerated={onEpicsGenerated}
         />
       )}
     </>

@@ -238,4 +238,5 @@ export const {
   useGetTaskPlanningMutation,
   useSprintPlanningMutation,
   useGenerateTasksForSprintMutation,
+  useGenerateEpicsMutation,
 } = aiApi;

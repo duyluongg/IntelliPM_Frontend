@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetTaskPlanningMutation, type TaskState } from '../../../../services/aiApi';
+import {
+  useGetTaskPlanningMutation,
+  type TaskState,
+  type EpicPreviewDTO,
+} from '../../../../services/aiApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../../services/projectApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../../services/projectMemberApi';
-import { useCreateEpicsWithTasksMutation, type EpicWithTaskRequestDTO } from '../../../../services/epicApi';
+import {
+  useCreateEpicsWithTasksMutation,
+  type EpicWithTaskRequestDTO,
+} from '../../../../services/epicApi';
 import TaskList from './TaskList';
 import TaskSetupHeader from './TaskSetupHeader';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
@@ -75,9 +82,9 @@ interface ProjectFormData {
 }
 
 interface TaskSetupPMProps {
-  projectId: number | undefined; // Added projectId
+  projectId: number | undefined;
   projectKey: string;
-  handleNext: (data?: Partial<ProjectFormData>) => Promise<void>; // Updated signature
+  handleNext: (data?: Partial<ProjectFormData>) => Promise<void>;
 }
 
 const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handleNext }) => {
@@ -116,17 +123,16 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
     skip: !projectId,
   });
 
-  // Transform rawMembersData to match the expected Member interface
-const membersData = rawMembersData
-  ? {
-      data: rawMembersData.data?.map((member) => ({
-        accountId: member.accountId,
-        fullName: member.fullName,
-        picture: member.picture ?? 'https://i.pravatar.cc/40',
-        projectPositions: member.projectPositions || [], // Include projectPositions, default to empty array if undefined
-      })),
-    }
-  : undefined;
+  const membersData = rawMembersData
+    ? {
+        data: rawMembersData.data?.map((member) => ({
+          accountId: member.accountId,
+          fullName: member.fullName,
+          picture: member.picture ?? 'https://i.pravatar.cc/40',
+          projectPositions: member.projectPositions || [],
+        })),
+      }
+    : undefined;
 
   const [createEpics, { isLoading: isCreatingEpics, error: createEpicsError }] =
     useCreateEpicsWithTasksMutation();
@@ -163,14 +169,14 @@ const membersData = rawMembersData
     epicId: '',
     title: '',
     description: '',
-    startDate: '2025-08-13', // Updated to fixed date
-    endDate: '2025-08-13', // Updated to fixed date
+    startDate: '2025-08-13',
+    endDate: '2025-08-13',
     suggestedRole: 'Developer',
     assignedMembers: [],
     newEpicTitle: '',
     newEpicDescription: 'No description',
-    newEpicStartDate: '2025-08-13', // Updated to fixed date
-    newEpicEndDate: '2025-08-20', // Updated to fixed date
+    newEpicStartDate: '2025-08-13',
+    newEpicEndDate: '2025-08-20',
   });
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -192,39 +198,32 @@ const membersData = rawMembersData
       console.log('AI API Response:', JSON.stringify(response, null, 2));
       if ('data' in response && response.data) {
         const apiEpics = response.data.data;
-        const newEpics: EpicState[] = apiEpics.map((epic: any) => {
-          console.log('Epic Data:', JSON.stringify(epic.data, null, 2));
-          return {
-            epicId: epic.data.epicId || crypto.randomUUID(),
-            title: epic.data.title || 'Untitled Epic',
-            description: epic.data.description || 'No description',
-            startDate: new Date(epic.data.startDate || '2025-08-13').toISOString().split('T')[0],
-            endDate: new Date(epic.data.endDate || '2025-08-20').toISOString().split('T')[0],
-            tasks: epic.data.tasks.map((task: any) => {
-              console.log('Task Data:', JSON.stringify(task, null, 2));
-              const apiTaskId = task.id || task.Id || task.taskId || crypto.randomUUID();
-              if (!task.id && !task.Id && !task.taskId) {
-                console.warn(`Task "${task.title}" has no valid ID field (id/Id/taskId). Using UUID: ${apiTaskId}`);
-              }
-              return {
-                id: apiTaskId,
-                taskId: apiTaskId,
-                title: task.title || 'Untitled Task',
-                description: task.description || 'No description',
-                startDate: new Date(task.startDate || '2025-08-13').toISOString().split('T')[0],
-                endDate: new Date(task.endDate || '2025-08-13').toISOString().split('T')[0],
-                suggestedRole: task.suggestedRole || 'Developer',
-                assignedMembers: task.assignedMembers
-                  ? task.assignedMembers.map((member: any) => ({
-                      accountId: member.accountId,
-                      fullName: member.fullName || 'Unknown Member',
-                      picture: member.picture ?? 'https://i.pravatar.cc/40',
-                    }))
-                  : [],
-              };
-            }),
-          };
-        });
+        const newEpics: EpicState[] = apiEpics.map((epic: any) => ({
+          epicId: epic.data.epicId || crypto.randomUUID(),
+          title: epic.data.title || 'Untitled Epic',
+          description: epic.data.description || 'No description',
+          startDate: new Date(epic.data.startDate || '2025-08-13').toISOString().split('T')[0],
+          endDate: new Date(epic.data.endDate || '2025-08-20').toISOString().split('T')[0],
+          tasks: epic.data.tasks.map((task: any) => {
+            const apiTaskId = task.id || task.Id || task.taskId || crypto.randomUUID();
+            return {
+              id: apiTaskId,
+              taskId: apiTaskId,
+              title: task.title || 'Untitled Task',
+              description: task.description || 'No description',
+              startDate: new Date(task.startDate || '2025-08-13').toISOString().split('T')[0],
+              endDate: new Date(task.endDate || '2025-08-13').toISOString().split('T')[0],
+              suggestedRole: task.suggestedRole || 'Developer',
+              assignedMembers: task.assignedMembers
+                ? task.assignedMembers.map((member: any) => ({
+                    accountId: member.accountId,
+                    fullName: member.fullName || 'Unknown Member',
+                    picture: member.picture ?? 'https://i.pravatar.cc/40',
+                  }))
+                : [],
+            };
+          }),
+        }));
         setEpics((prev) => [...prev, ...newEpics]);
         setAiResponseJson(JSON.stringify(response.data));
       } else if ('error' in response) {
@@ -241,13 +240,13 @@ const membersData = rawMembersData
 
   const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
     console.log('AI Response ID:', aiResponseId);
-    handleNext({ epics }); // Pass epics to ProjectCreationPM
+    handleNext({ epics });
   };
 
   const handleCloseEvaluationPopup = () => {
     setIsEvaluationPopupOpen(false);
     setAiResponseJson('');
-    handleNext({ epics }); // Pass epics to ProjectCreationPM
+    handleNext({ epics });
   };
 
   const handleConfirmNotifyPM = () => {
@@ -261,14 +260,14 @@ const membersData = rawMembersData
       epicId: epics.length > 0 ? epics[0].epicId : '',
       title: '',
       description: '',
-      startDate: '2025-08-13', // Updated to fixed date
-      endDate: '2025-08-13', // Updated to fixed date
+      startDate: '2025-08-13',
+      endDate: '2025-08-13',
       suggestedRole: 'Developer',
       assignedMembers: [],
       newEpicTitle: '',
       newEpicDescription: 'No description',
-      newEpicStartDate: '2025-08-13', // Updated to fixed date
-      newEpicEndDate: '2025-08-20', // Updated to fixed date
+      newEpicStartDate: '2025-08-13',
+      newEpicEndDate: '2025-08-20',
     });
   };
 
@@ -544,43 +543,40 @@ const membersData = rawMembersData
           : epic
       )
     );
+    setDropdownTaskId(null);
   };
 
-  const handleAIMode = () => {
-    setIsGenerating(true);
-    handleAICreate();
+  const onEpicsGenerated = (newEpics: EpicPreviewDTO[]) => {
+    const formattedEpics: EpicState[] = newEpics.map((epic) => ({
+      epicId: crypto.randomUUID(),
+      title: epic.title || 'Untitled Epic',
+      description: epic.description || 'No description',
+      startDate: epic.startDate || '2025-08-13',
+      endDate: epic.endDate || '2025-08-20',
+      tasks: [],
+    }));
+    setEpics((prev) => [...prev, ...formattedEpics]);
   };
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (memberDropdownRef.current && !memberDropdownRef.current.contains(event.target as Node)) {
-        setIsMemberDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  if (projectError || !projectData?.isSuccess || membersError) {
-    return (
-      <div className="text-center p-8 text-red-500 bg-red-50 rounded-2xl">
-        Error:{' '}
-        {projectError
-          ? 'Failed to fetch project details.'
-          : membersError
-          ? 'Failed to fetch project members.'
-          : projectData?.message}
-      </div>
-    );
-  }
+  const existingEpicTitles = epics.map((epic) => epic.title);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-white rounded-3xl shadow-xl relative">
+    <div className='w-full max-w-7xl mx-auto p-6'>
+      {errorMessage && (
+        <div className='mb-4 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg'>
+          {errorMessage}
+        </div>
+      )}
+      {successMessage && (
+        <div className='mb-4 p-4 bg-green-50 border border-green-200 text-green-600 text-sm rounded-lg'>
+          {successMessage}
+        </div>
+      )}
       <TaskSetupHeader
-        projectData={projectData}
+        projectData={projectData ?? { data: { name: '' } }}
         projectKey={projectKey}
         isGenerating={isGenerating}
-        handleAIMode={handleAIMode}
+        handleAIMode={handleAICreate}
         handleOpenCreateTask={handleOpenCreateTask}
         errorMessage={errorMessage}
         successMessage={successMessage}
@@ -619,65 +615,33 @@ const membersData = rawMembersData
         aiResponseJson={aiResponseJson}
         projectId={projectId}
         handleEvaluationSubmitSuccess={handleEvaluationSubmitSuccess}
+        projectKey={projectKey}
+        existingEpicTitles={existingEpicTitles}
+        onEpicsGenerated={onEpicsGenerated}
       />
-      <div className="flex justify-end gap-4 mt-6">
+      <div className='flex justify-end mt-6'>
         <button
           onClick={handleSaveAndProceed}
-          disabled={isCreatingEpics || isSaving}
-          className={`px-6 py-3 rounded-xl text-white font-semibold transition-all duration-300 ${
-            isCreatingEpics || isSaving
-              ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-              : 'bg-gradient-to-r from-[#6b7280] to-[#4b5563] hover:from-[#4b5563] hover:to-[#374151] shadow-md hover:shadow-lg'
+          className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform ${
+            isSaving
+              ? 'bg-gray-400 text-white cursor-not-allowed'
+              : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white shadow-lg hover:shadow-xl hover:scale-[1.02] hover:from-[#1a68e0] hover:to-[#3e7ed1]'
           }`}
+          disabled={isSaving}
         >
-          {isSaving ? 'Saving...' : 'Next'}
+          <span>{isSaving ? 'Saving...' : 'Next'}</span>
         </button>
       </div>
-
-      {/* Loading Overlay - Only shows within this component */}
-{(isSaving || isCreatingEpics) && (
-  <div className="absolute inset-0 bg-black bg-opacity-40 flex justify-center items-center rounded-3xl z-50 backdrop-blur-sm">
-    <style>
-      {`
-        @keyframes gradientText {
-          0% { background-position: 200% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}
-    </style>
-
-    <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl shadow-lg">
-      <span
-        style={{
-          background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
-          backgroundSize: '200% auto',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          display: 'inline-block',
-          animation: 'gradientText 2s linear infinite',
-        }}
-        className="text-xl font-bold tracking-wide"
-      >
-        Saving your tasks...
-      </span>
-
-      <div className="flex gap-1.5">
-        <div
-          className="w-3 h-3 bg-[#1c73fd] rounded-full animate-pulse"
-          style={{ animationDelay: '0s' }}
-        ></div>
-        <div
-          className="w-3 h-3 bg-[#4a90e2] rounded-full animate-pulse"
-          style={{ animationDelay: '0.2s' }}
-        ></div>
-        <div
-          className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse"
-          style={{ animationDelay: '0.4s' }}
-        ></div>
-      </div>
-    </div>
-  </div>
-)}
+      {isEvaluationPopupOpen && projectId && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={projectId}
+          aiFeature='TASK_PLANNING'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
     </div>
   );
 };

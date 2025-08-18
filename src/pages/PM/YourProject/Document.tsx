@@ -81,12 +81,13 @@ export const Document: React.FC = () => {
   // thêm ref:
   const isHydratedRef = useRef(false);
 
-  const {
-    data: documentData,
-    isLoading,
-    isError,
-    refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(numericDocId ?? skipToken);
+  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(
+    numericDocId!,
+    {
+      skip: !numericDocId,
+      refetchOnMountOrArgChange: true,
+    }
+  );
 
   const {
     content: initialContent,
@@ -554,9 +555,6 @@ export const Document: React.FC = () => {
                   cols: 3,
                   withHeaderRow: true,
                 });
-                if (canEdit && isHydratedRef.current) {
-                  editor?.commands.insertTable({ rows: 3, cols: 3, withHeaderRow: true });
-                }
               }}
             />
           )}

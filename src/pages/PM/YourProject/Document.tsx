@@ -470,7 +470,7 @@ export const Document: React.FC = () => {
             refetchPermission();
           }}
           onDocumentUpdated={() => {
-            toast('Tài liệu vừa được cập nhật bởi người khác.', { icon: '🔄' });
+            // toast('Tài liệu vừa được cập nhật bởi người khác.', { icon: '🔄' });
             debouncedSaveRef.current.cancel();
             refetchDocument();
           }}

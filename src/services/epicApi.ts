@@ -53,6 +53,7 @@ interface EpicDetailResponse {
 export interface EpicWithTaskRequestDTO {
   epicId?: string;
   title: string;
+  type: string;
   description: string;
   startDate: string;
   endDate: string;
@@ -190,7 +191,7 @@ export const epicApi = createApi({
       { projectId: number; data: EpicWithTaskRequestDTO[] }
     >({
       query: ({ projectId, data }) => ({
-        url: `epic/projects/${projectId}/stories/batch`,
+        url: `epic/projects/${projectId}/batch`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

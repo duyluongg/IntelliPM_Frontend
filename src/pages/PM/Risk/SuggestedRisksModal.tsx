@@ -521,8 +521,10 @@ interface SuggestedRisk {
   id: number;
   title: string;
   description: string;
-  impactLevel: 'Low' | 'Medium' | 'High';
-  probability: 'Low' | 'Medium' | 'High';
+  // impactLevel: 'Low' | 'Medium' | 'High';
+  // probability: 'Low' | 'Medium' | 'High';
+  impactLevel: string;
+  probability: string;
   type: string;
   mitigationPlan: string;
   contingencyPlan: string;
@@ -548,6 +550,12 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
   const { data: categoryData, isLoading: isCategoryLoading } =
     useGetCategoriesByGroupQuery('risk_type');
   const riskTypes = categoryData?.data || [];
+  const { data: impactData, isLoading: isImpactLoading } =
+    useGetCategoriesByGroupQuery('risk_impact_level');
+  const impactLevels = impactData?.data || [];
+  const { data: likelihoodData, isLoading: isLikelihoodLoading } =
+    useGetCategoriesByGroupQuery('risk_probability_level');
+  const likelihoods = likelihoodData?.data || [];
 
   useEffect(() => {
     trigger(projectKey);
@@ -560,8 +568,10 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
         id: idx + 1,
         title: item.title,
         description: item.description,
-        impactLevel: item.impactLevel as 'Low' | 'Medium' | 'High',
-        probability: item.probability as 'Low' | 'Medium' | 'High',
+        // impactLevel: item.impactLevel as 'Low' | 'Medium' | 'High',
+        // probability: item.probability as 'Low' | 'Medium' | 'High',
+        impactLevel: item.impactLevel,
+        probability: item.probability,
         type: item.type,
         mitigationPlan: item.mitigationPlan,
         contingencyPlan: item.contingencyPlan,
@@ -606,7 +616,7 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
     });
     const updated = [...suggestedRisks];
     updated[index].approved = true;
-    updated[index].isEditing = false; 
+    updated[index].isEditing = false;
     setSuggestedRisks(updated);
   };
 
@@ -656,7 +666,7 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
               className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition'
               onClick={handleClose}
             >
-              Close
+              X
             </button>
           </div>
         </div>
@@ -711,9 +721,11 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
                     }
                     disabled={!risk.isEditing || risk.approved}
                   >
-                    <option value='Low'>Low</option>
-                    <option value='Medium'>Medium</option>
-                    <option value='High'>High</option>
+                    {impactLevels.map((level: any) => (
+                      <option key={level.id} value={level.name}>
+                        {level.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -734,9 +746,11 @@ const SuggestedRisksModal: React.FC<Props> = ({ onClose, onApprove, projectId })
                     }
                     disabled={!risk.isEditing || risk.approved}
                   >
-                    <option value='Low'>Low</option>
-                    <option value='Medium'>Medium</option>
-                    <option value='High'>High</option>
+                    {likelihoods.map((likelihood: any) => (
+                      <option key={likelihood.id} value={likelihood.name}>
+                        {likelihood.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

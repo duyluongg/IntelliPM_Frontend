@@ -2,12 +2,16 @@ import React from 'react';
 import { ChevronDown, Trash2, FileText, Tag } from 'lucide-react';
 import type { RequirementRequest } from '../../../services/requirementApi';
 import type { DynamicCategoryResponse } from '../../../services/dynamicCategoryApi';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
+import { useSelector } from 'react-redux';
+import { selectProjectId } from '../../../components/slices/Project/projectCreationSlice';
 
 interface LocalRequirement extends RequirementRequest {
   uiId: string;
   id?: number;
   expanded?: boolean;
   titleError?: string;
+  descriptionError?: string;
 }
 
 interface RequirementInputProps {
@@ -33,7 +37,14 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   removeRequirement,
   onSave,
 }) => {
+  const projectId = useSelector(selectProjectId);
+  const { data: titleLengthConfig, isLoading: isTitleLengthLoading } = useGetByConfigKeyQuery('title_length');
+  const { data: descriptionLengthConfig, isLoading: isDescriptionLengthLoading } = useGetByConfigKeyQuery('description_length');
+
   const selectedPriority = prioritiesResponse?.data?.find((p) => p.name === req.priority);
+
+  const isTitleValid = !req.titleError && req.title.trim().length > 0;
+  const isDescriptionValid = !req.descriptionError;
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -52,12 +63,18 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
             onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Requirement title"
+            maxLength={Number(titleLengthConfig?.data?.maxValue || 255)}
             className={`flex-1 border-2 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10 ${
-              req.titleError ? 'border-red-400' : 'border-gray-200'
+              req.titleError || !isTitleValid ? 'border-red-400' : 'border-gray-200'
             }`}
             required
           />
+          {isTitleLengthLoading && <p className="text-gray-500 text-xs mt-1">Loading title constraints...</p>}
           {req.titleError && <p className="text-red-600 text-xs mt-1">{req.titleError}</p>}
+          {!req.titleError && !req.title && <p className="text-red-600 text-xs mt-1">Title is required.</p>}
+          {!req.titleError && req.title && isTitleValid && (
+            <p className="text-green-600 text-xs mt-1">Title is valid.</p>
+          )}
           {!req.expanded && req.priority && selectedPriority?.iconLink && (
             <div
               className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
@@ -158,9 +175,13 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
               onChange={(e) => updateRequirement(req.uiId, 'description', e.target.value)}
               onKeyDown={handleKeyDown}
               rows={5}
-              className="w-full mt-2 border-2 border-gray-200 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd]"
-              required
+              maxLength={Number(descriptionLengthConfig?.data?.maxValue || 1000)}
+              className={`w-full mt-2 border-2 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] ${
+                req.descriptionError ? 'border-red-400' : 'border-gray-200'
+              }`}
             />
+            {isDescriptionLengthLoading && <p className="text-gray-500 text-xs mt-1">Loading description constraints...</p>}
+            {req.descriptionError && <p className="text-red-600 text-xs mt-1">{req.descriptionError}</p>}
           </div>
         </div>
       )}

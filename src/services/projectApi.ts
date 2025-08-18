@@ -94,7 +94,7 @@ export interface WorkItemList {
   commentCount: number;
   sprintId: number | null;
   sprintName: string | null;
-  priority: string| null;
+  priority: string | null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
@@ -134,7 +134,7 @@ export interface TaskItem {
   plannedResourceCost: number | null;
   actualCost: number | null;
   actualResourceCost: number | null;
-  priority: string| null;
+  priority: string | null;
   status: string;
   evaluate: string | null;
   createdAt: string;
@@ -395,15 +395,25 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
-    checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
-      query: (projectKey) => ({
-        url: `project/check-project-key?projectKey=${projectKey}`,
+    checkProjectKey: builder.query<
+      CheckProjectKeyResponse,
+      { projectKey: string; projectId?: number }
+    >({
+      query: ({ projectKey, projectId }) => ({
+        url: `project/check-project-key?projectKey=${projectKey}${
+          projectId ? `&projectId=${projectId}` : ''
+        }`,
         method: 'GET',
       }),
     }),
-    checkProjectName: builder.query<CheckProjectNameResponse, string>({
-      query: (projectName) => ({
-        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}`,
+    checkProjectName: builder.query<
+      CheckProjectNameResponse,
+      { projectName: string; projectId?: number }
+    >({
+      query: ({ projectName, projectId }) => ({
+        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${
+          projectId ? `&projectId=${projectId}` : ''
+        }`,
         method: 'GET',
       }),
     }),
@@ -483,26 +493,24 @@ export const projectApi = createApi({
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
 
-    updateProjectStatus: builder.mutation<void, { id: number; status: string; }>({
+    updateProjectStatus: builder.mutation<void, { id: number; status: string }>({
       query: ({ id, status }) => ({
         url: `project/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({status}),
+        body: JSON.stringify({ status }),
       }),
       invalidatesTags: ['Project'],
     }),
-
-
   }),
 });
 
 export const {
   useGetAllProjectsQuery,
   useGetProjectByIdQuery,
-  useLazyGetProjectByIdQuery  ,
+  useLazyGetProjectByIdQuery,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,

@@ -21,8 +21,8 @@ export interface Task {
 
 // Định nghĩa kiểu dữ liệu cho task trong state (dùng trong TaskSetup)
 export interface TaskState {
-  id: string; 
-  taskId: string; 
+  id: string;
+  taskId: string;
   title: string;
   description: string;
   startDate: string;
@@ -145,6 +145,25 @@ export interface AITaskForSprintDTO {
   priority: string;
   plannedHours: number;
 }
+
+export interface GenerateEpicsRequestDTO {
+  existingEpicTitles: string[];
+}
+
+// Định nghĩa kiểu dữ liệu cho response generate epics
+export interface GenerateEpicsResponseDTO {
+  isSuccess: boolean;
+  code: number;
+  data: EpicPreviewDTO[];
+  message: string;
+}
+export interface EpicPreviewDTO {
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  aiGenerated: boolean;
+}
 export interface GenerateTasksForSprintRequestDTO {
   projectKey: string;
 }
@@ -167,7 +186,10 @@ export const aiApi = createApi({
       }),
     }),
 
-     sprintPlanning: builder.mutation<SprintPlanningResponseDTO, { projectId: number; body: SprintPlanningRequestDTO }>({
+    sprintPlanning: builder.mutation<
+      SprintPlanningResponseDTO,
+      { projectId: number; body: SprintPlanningRequestDTO }
+    >({
       query: ({ projectId, body }) => ({
         url: `ai/project/${projectId}/sprint-planning`,
         method: 'POST',
@@ -179,7 +201,10 @@ export const aiApi = createApi({
       }),
       transformResponse: (response: SprintPlanningResponseDTO) => response,
     }),
-generateTasksForSprint: builder.mutation<GenerateTasksForSprintResponseDTO, { sprintId: number; body: GenerateTasksForSprintRequestDTO }>({
+    generateTasksForSprint: builder.mutation<
+      GenerateTasksForSprintResponseDTO,
+      { sprintId: number; body: GenerateTasksForSprintRequestDTO }
+    >({
       query: ({ sprintId, body }) => ({
         url: `ai/sprint/${sprintId}/generate-tasks`,
         method: 'POST',
@@ -191,7 +216,26 @@ generateTasksForSprint: builder.mutation<GenerateTasksForSprintResponseDTO, { sp
       }),
       transformResponse: (response: GenerateTasksForSprintResponseDTO) => response,
     }),
+    generateEpics: builder.mutation<
+      GenerateEpicsResponseDTO,
+      { projectId: number; body: GenerateEpicsRequestDTO }
+    >({
+      query: ({ projectId, body }) => ({
+        url: `ai/project/${projectId}/generate-epics`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: GenerateEpicsResponseDTO) => response,
+    }),
   }),
 });
 
-export const { useGetTaskPlanningMutation, useSprintPlanningMutation, useGenerateTasksForSprintMutation } = aiApi;
+export const {
+  useGetTaskPlanningMutation,
+  useSprintPlanningMutation,
+  useGenerateTasksForSprintMutation,
+} = aiApi;

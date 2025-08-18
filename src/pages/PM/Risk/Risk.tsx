@@ -22,8 +22,7 @@
 // import { useGetProjectsByAccountIdQuery } from '../../../services/accountApi';
 
 // const Risk = () => {
-//   const [searchParams, setSearchParams] = useSearchParams();
-//   //const [searchParams] = useSearchParams();
+//   const [searchParams] = useSearchParams();
 //   const { projectKey: paramProjectKey } = useParams();
 //   const queryProjectKey = searchParams.get('projectKey');
 //   const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
@@ -71,7 +70,7 @@
 //     }
 //   }, [projectKey, checkOverdueTasks, refetch]);
 
-//   if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading) {
+//   if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading || isScopeCategoriesLoading) {
 //     return (
 //       <div className='flex items-center justify-center h-full text-gray-500 text-sm'>
 //         Loading risks...
@@ -96,6 +95,14 @@
 //       userName: m.username,
 //       picture: m.picture,
 //     })) || [];
+
+//   // Filter risks based on scopeFilter
+//   const filteredRisks = risks.filter((risk) => {
+//     if (scopeFilter === 'ALL') return true;
+//     if (scopeFilter === 'TASK') return risk.taskId !== null;
+//     if (scopeFilter === 'PROJECT') return risk.taskId === null;
+//     return true;
+//   });
 
 //   const getInitials = (name?: string | null) => {
 //     if (!name) return '';
@@ -180,7 +187,6 @@
 //     const getStyle = (categoryName: string) => {
 //       const category = categories?.find((cat) => cat.name === categoryName);
 //       if (!category?.color) return 'bg-gray-100 text-gray-700';
-//       console.log(category.color);
 //       const [bgColor, textColor] = category.color.includes(',')
 //         ? category.color.split(',')
 //         : [category.color, category.color];
@@ -218,7 +224,6 @@
 //   };
 
 //   const handleSaveRisk = async (newRisk: any) => {
-//     console.log(newRisk.responsibleId);
 //     try {
 //       const request = {
 //         projectKey,
@@ -287,18 +292,14 @@
 //   };
 
 //   return (
-//     // bg-gray-50
 //     <div className='p-6 min-h-screen'>
 //       <div className='flex justify-between items-center mb-6'>
 //         <h1 className='text-2xl font-bold text-gray-800'>Risk Management</h1>
-//         {/* <div className='flex items-center space-x-4'>
+//         <div className='flex items-center space-x-4'>
 //           <select
 //             className='p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
 //             value={scopeFilter}
-//             onChange={(e) => {
-//               setScopeFilter(e.target.value);
-//               setSearchParams({ projectKey, scope: e.target.value !== 'ALL' ? e.target.value : '' });
-//             }}
+//             onChange={(e) => setScopeFilter(e.target.value)}
 //           >
 //             <option value='ALL'>All Scopes</option>
 //             {scopeTypes.map((scope) => (
@@ -307,20 +308,6 @@
 //               </option>
 //             ))}
 //           </select>
-//           <button
-//             className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
-//             onClick={openCreateRiskModal}
-//           >
-//             + Add Risk
-//           </button>
-//           <button
-//             className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition'
-//             onClick={openSuggestedRisks}
-//           >
-//             🤖 Suggest by AI
-//           </button>
-//         </div> */}
-//         <div className='space-x-4'>
 //           <button
 //             className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
 //             onClick={openCreateRiskModal}
@@ -351,7 +338,7 @@
 //               </tr>
 //             </thead>
 //             <tbody>
-//               {risks.map((risk) => (
+//               {filteredRisks.map((risk) => (
 //                 <tr key={risk.id} className='border-b hover:bg-gray-50'>
 //                   <td className='p-3'>
 //                     <span
@@ -501,8 +488,6 @@
 // export default Risk;
 
 
-
-
 import { useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import {
@@ -548,6 +533,9 @@ const Risk = () => {
   const { data: scopeCategoriesData, isLoading: isScopeCategoriesLoading } =
     useGetCategoriesByGroupQuery('risk_scope');
 
+  const { data: generatedByCategoriesData, isLoading: isGeneratedByCategoriesLoading } =
+    useGetCategoriesByGroupQuery('risk_generated_by');
+
   const { data, isLoading, error, refetch } = useGetRisksByProjectKeyQuery(projectKey);
   const [createRisk] = useCreateRiskMutation();
   const [checkOverdueTasks] = useCheckOverdueTasksMutation();
@@ -575,7 +563,7 @@ const Risk = () => {
     }
   }, [projectKey, checkOverdueTasks, refetch]);
 
-  if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading || isScopeCategoriesLoading) {
+  if (isLoading || isProjectLoading || isCategoryLoading || isSeverityLoading || isScopeCategoriesLoading || isGeneratedByCategoriesLoading) {
     return (
       <div className='flex items-center justify-center h-full text-gray-500 text-sm'>
         Loading risks...
@@ -593,6 +581,7 @@ const Risk = () => {
   const risks = data.data;
   const riskTypes = categoryData?.data || [];
   const scopeTypes = scopeCategoriesData?.data || [];
+  const generatedByTypes = generatedByCategoriesData?.data || [];
   const assignees =
     membersData?.data?.map((m) => ({
       id: m.accountId,
@@ -730,17 +719,20 @@ const Risk = () => {
 
   const handleSaveRisk = async (newRisk: any) => {
     try {
+      const defaultScope = scopeTypes.find((scope: any) => scope.name === 'PROJECT')?.name || 'PROJECT';
+      const defaultGeneratedBy = generatedByTypes.find((gen: any) => gen.name === 'MANUAL')?.name || 'MANUAL';
+
       const request = {
         projectKey,
         responsibleId: newRisk.responsibleId,
         createdBy: accountId,
         taskId: null,
-        riskScope: 'GENERAL',
+        riskScope: defaultScope,
         title: newRisk.title,
         description: newRisk.description,
-        status: 'OPEN',
+        status: newRisk.status,
         type: newRisk.type,
-        generatedBy: 'Manual',
+        generatedBy: defaultGeneratedBy,
         probability: newRisk.probability,
         impactLevel: newRisk.impactLevel,
         isApproved: true,
@@ -764,17 +756,20 @@ const Risk = () => {
   const handleApproveSuggestedRisk = async (risk: any) => {
     const today = new Date().toISOString().split('T')[0] + 'T00:00:00Z';
     try {
+      const defaultScope = scopeTypes.find((scope: any) => scope.name === 'PROJECT')?.name || 'PROJECT';
+      const defaultGeneratedBy = generatedByTypes.find((gen: any) => gen.name === 'AI')?.name || 'AI';
+
       const request = {
         projectKey,
         responsibleId: null,
         createdBy: accountId,
         taskId: null,
-        riskScope: 'PROJECT',
+        riskScope: defaultScope,
         title: risk.title,
         description: risk.description,
-        status: 'OPEN',
+        status: risk.status,
         type: risk.type,
-        generatedBy: 'AI',
+        generatedBy: defaultGeneratedBy,
         probability: risk.probability || risk.likelihood,
         impactLevel: risk.impactLevel || risk.impact,
         isApproved: true,

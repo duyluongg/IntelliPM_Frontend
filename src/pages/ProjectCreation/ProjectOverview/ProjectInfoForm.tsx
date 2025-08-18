@@ -55,11 +55,11 @@ const ProjectInfoForm: React.FC<ProjectInfoFormProps> = ({
 
   const projectKeyRegex = /^[A-Z][A-Z]{0,9}$/;
   const { data: keyCheckData, isFetching: isKeyChecking, error: keyCheckError } = useCheckProjectKeyQuery(
-    debouncedProjectKey || '',
+    { projectKey: debouncedProjectKey, projectId },
     { skip: !debouncedProjectKey || !projectKeyRegex.test(debouncedProjectKey) }
   );
   const { data: nameCheckData, isFetching: isNameChecking, error: nameCheckError } = useCheckProjectNameQuery(
-    debouncedProjectName || '',
+    { projectName: debouncedProjectName, projectId },
     { skip: !debouncedProjectName || debouncedProjectName.length < 3 }
   );
   const { data: categoryData, isLoading: isCategoryLoading, error: categoryError } = useGetCategoriesByGroupQuery('project_type');

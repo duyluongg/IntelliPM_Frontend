@@ -124,10 +124,10 @@ const BacklogPage: React.FC = () => {
         data: {
           title: epicForm.name,
           description: epicForm.description,
+          type: 'epic', // Added to satisfy EpicWithTaskRequestDTO
           startDate: toUTCISODate(epicForm.startDate),
           endDate: toUTCISODate(epicForm.endDate),
           tasks: [], // Empty tasks for now
-
         },
       }).unwrap();
       refetchEpics();

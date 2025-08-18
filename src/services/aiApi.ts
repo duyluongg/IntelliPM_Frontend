@@ -164,6 +164,40 @@ export interface EpicPreviewDTO {
   endDate: string;
   aiGenerated: boolean;
 }
+
+
+export interface GenerateStoryTaskRequestDTO {
+  type: 'STORY' | 'TASK';
+  epicTitle: string;
+  epicStartDate: string;
+  epicEndDate: string;
+  storyTitle?: string;
+  storyStartDate?: string;
+  storyEndDate?: string;
+  existingTitles?: string[];
+}
+
+export interface StoryTaskResponse {
+  type: 'STORY' | 'TASK';
+  aiGenerated: boolean;
+  data: {
+    itemId: string;
+    title: string;
+    description: string;
+    startDate: string;
+    endDate: string;
+    suggestedRole: string;
+    assignedMembers: Member[];
+  };
+}
+
+export interface GenerateStoryTaskResponseDTO {
+  isSuccess: boolean;
+  code: number;
+  data: StoryTaskResponse[];
+  message: string;
+}
+
 export interface GenerateTasksForSprintRequestDTO {
   projectKey: string;
 }
@@ -231,6 +265,21 @@ export const aiApi = createApi({
       }),
       transformResponse: (response: GenerateEpicsResponseDTO) => response,
     }),
+    generateStoryTask: builder.mutation<
+      GenerateStoryTaskResponseDTO,
+      { projectId: number; body: GenerateStoryTaskRequestDTO }
+    >({
+      query: ({ projectId, body }) => ({
+        url: `ai/project/${projectId}/generate-story-task`,
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+      transformResponse: (response: GenerateStoryTaskResponseDTO) => response,
+    }),
   }),
 });
 
@@ -239,4 +288,5 @@ export const {
   useSprintPlanningMutation,
   useGenerateTasksForSprintMutation,
   useGenerateEpicsMutation,
+  useGenerateStoryTaskMutation,
 } = aiApi;

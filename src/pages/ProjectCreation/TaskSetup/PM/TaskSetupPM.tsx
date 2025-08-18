@@ -4,6 +4,7 @@ import {
   useGetTaskPlanningMutation,
   type TaskState,
   type EpicPreviewDTO,
+  type StoryTaskResponse,
 } from '../../../../services/aiApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../../services/projectApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../../services/projectMemberApi';
@@ -558,6 +559,38 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
     setEpics((prev) => [...prev, ...formattedEpics]);
   };
 
+  const onStoryTasksGenerated = (storyTasks: StoryTaskResponse[]) => {
+    setEpics((prev) =>
+      prev.map((epic) => {
+        if (epic.title === storyTasks[0]?.data?.title) { // Assuming storyTasks are tied to an epic by title
+          const newTasks: TaskState[] = storyTasks.map((storyTask) => ({
+            id: storyTask.data.itemId || crypto.randomUUID(),
+            taskId: storyTask.data.itemId,
+            title: storyTask.data.title || 'Untitled Task',
+            description: storyTask.data.description || 'No description',
+            startDate: new Date(storyTask.data.startDate || '2025-08-13').toISOString().split('T')[0],
+            endDate: new Date(storyTask.data.endDate || '2025-08-13').toISOString().split('T')[0],
+            suggestedRole: storyTask.data.suggestedRole || 'Developer',
+            assignedMembers: storyTask.data.assignedMembers
+              ? storyTask.data.assignedMembers.map((member) => ({
+                  accountId: member.accountId,
+                  fullName: member.fullName || 'Unknown Member',
+                  picture: member.picture ?? 'https://i.pravatar.cc/40',
+                }))
+              : [],
+          }));
+          return {
+            ...epic,
+            tasks: [...epic.tasks, ...newTasks],
+          };
+        }
+        return epic;
+      })
+    );
+    setAiResponseJson(JSON.stringify({ storyTasks }));
+    setIsEvaluationPopupOpen(true);
+  };
+
   const existingEpicTitles = epics.map((epic) => epic.title);
 
   return (
@@ -618,6 +651,7 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
         projectKey={projectKey}
         existingEpicTitles={existingEpicTitles}
         onEpicsGenerated={onEpicsGenerated}
+        onStoryTasksGenerated={onStoryTasksGenerated}
       />
       <div className='flex justify-end mt-6'>
         <button

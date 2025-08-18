@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { type TaskState, type EpicPreviewDTO } from '../../../../services/aiApi';
+import { type TaskState, type EpicPreviewDTO, type StoryTaskResponse } from '../../../../services/aiApi';
 import EditEpicPopup from '../EditEpicPopup';
 import EditTaskPopup from '../EditTaskPopup';
 import EditDatePopup from '../EditDatePopup';
 import CreateTaskPopup from '../CreateTaskPopup';
 import NotifyPMConfirmPopup from '../NotifyPMConfirmPopup';
 import GenerateEpicsPopup from '../GenerateEpicsPopup';
+import GenerateStoryTaskPopup from '../GenerateStoryTaskPopup';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
 import storyIcon from '../../../../assets/icon/type_story.svg';
 import epicIcon from '../../../../assets/icon/type_epic.svg';
@@ -92,6 +93,7 @@ interface TaskListProps {
   projectKey: string;
   existingEpicTitles: string[];
   onEpicsGenerated: (epics: EpicPreviewDTO[]) => void;
+  onStoryTasksGenerated: (storyTasks: StoryTaskResponse[]) => void;
 }
 
 const formatDate = (dateStr?: string | null) => {
@@ -268,6 +270,7 @@ const TaskList: React.FC<TaskListProps> = ({
   projectKey,
   existingEpicTitles,
   onEpicsGenerated,
+  onStoryTasksGenerated,
 }) => {
   const safeEpics = Array.isArray(epics) ? epics : [];
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
@@ -279,6 +282,8 @@ const TaskList: React.FC<TaskListProps> = ({
   } | null>(null);
   const [expandedEpicIndices, setExpandedEpicIndices] = useState<Set<number>>(new Set());
   const [isGenerateEpicsOpen, setIsGenerateEpicsOpen] = useState(false);
+  const [isGenerateStoryTaskOpen, setIsGenerateStoryTaskOpen] = useState(false);
+  const [selectedEpic, setSelectedEpic] = useState<EpicState | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const assigneeCellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
 
@@ -418,6 +423,11 @@ const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
+  const handleOpenGenerateStoryTask = (epic: EpicState) => {
+    setSelectedEpic(epic);
+    setIsGenerateStoryTaskOpen(true);
+  };
+
   return (
     <>
       <style>
@@ -493,6 +503,22 @@ const TaskList: React.FC<TaskListProps> = ({
               <img src={aiIcon} alt='AI Icon' className='w-4 h-4' />
               Generate Epics
             </button>
+            <select
+              onChange={(e) => {
+                const epicId = e.target.value;
+                const epic = safeEpics.find((e) => e.epicId === epicId);
+                if (epic) handleOpenGenerateStoryTask(epic);
+              }}
+              className='text-sm border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500'
+              disabled={safeEpics.length === 0}
+            >
+              <option value=''>Select Epic for Stories/Tasks</option>
+              {safeEpics.map((epic) => (
+                <option key={epic.epicId} value={epic.epicId}>
+                  {epic.title}
+                </option>
+              ))}
+            </select>
           </div>
           {safeEpics.length === 0 ? (
             <div className='px-6 py-4 text-center text-gray-500'>
@@ -925,6 +951,23 @@ const TaskList: React.FC<TaskListProps> = ({
           projectKey={projectKey}
           existingEpicTitles={existingEpicTitles}
           onEpicsGenerated={onEpicsGenerated}
+        />
+      )}
+
+      {isGenerateStoryTaskOpen && selectedEpic && projectId && (
+        <GenerateStoryTaskPopup
+          isOpen={isGenerateStoryTaskOpen}
+          onClose={() => setIsGenerateStoryTaskOpen(false)}
+          projectId={projectId}
+          projectKey={projectKey}
+          epicTitle={selectedEpic.title}
+          epicStartDate={selectedEpic.startDate}
+          epicEndDate={selectedEpic.endDate}
+          existingTitles={selectedEpic.tasks.map((task) => task.title)}
+          onStoryTasksGenerated={(storyTasks) => {
+            onStoryTasksGenerated(storyTasks);
+            setIsGenerateStoryTaskOpen(false);
+          }}
         />
       )}
     </>

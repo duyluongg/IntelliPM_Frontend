@@ -406,21 +406,12 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             <Redo className='w-5 h-5' />
           </button>
         </div>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         <Menu as='div' className='relative'>
-          <Menu.Button
-            className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-wait' // ✨ Added disabled styles
-            disabled={!!isExporting} // ✨ Disable button while exporting
-          >
-            {isExporting ? (
-              <Loader2 className='w-5 h-5 animate-spin text-gray-700 dark:text-gray-300' /> // ✨ Show loader
-            ) : (
-              <FileDown className='w-5 h-5 text-gray-700 dark:text-gray-300' /> // ✨ Show default icon
-            )}
-            <span className='text-sm font-medium'>File</span>
-            <ChevronDown className='w-4 h-4' /> 
+          <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
+            <CaseSensitive className='w-5 h-5 text-blue-600' />
+            <span className='text-sm font-medium'>{getActiveTextStyle()}</span>
+            <ChevronDown className='w-4 h-4' />
           </Menu.Button>
           <Transition
             as={Fragment}
@@ -467,7 +458,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <button
           title='Add Comment'
           onClick={onAddComment}
@@ -476,9 +466,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
         >
           <MessageSquarePlus className='w-5 h-5' />
         </button>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Dropdown Căn lề */}
         <Menu as='div' className='relative'>
           <Menu.Button className='flex items-center gap-1 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
@@ -540,9 +528,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Các nút List */}
         <div className='flex items-center'>
           <button
@@ -579,9 +565,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             <ListTodo className='w-5 h-5' />
           </button>
         </div>
-
         <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-
         {/* Dropdown Style (Bold, Italic,...) */}
         <Menu as='div' className='relative'>
           <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
@@ -645,7 +629,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-
         <button
           onClick={onToggleChatbot}
           className='flex items-center gap-2 px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900'
@@ -653,10 +636,16 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
           <Sparkles className='w-5 h-5' />
           <span className='text-sm font-semibold'>AI Assistant</span>
         </button>
-
         <Menu as='div' className='relative'>
-          <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
-            <FileDown className='w-5 h-5 text-gray-700 dark:text-gray-300' />
+          <Menu.Button
+            className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-wait' // ✨ Added disabled styles
+            disabled={!!isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className='w-5 h-5 animate-spin text-gray-700 dark:text-gray-300' />
+            ) : (
+              <FileDown className='w-5 h-5 text-gray-700 dark:text-gray-300' />
+            )}
             <span className='text-sm font-medium'>File</span>
             <ChevronDown className='w-4 h-4' />
           </Menu.Button>
@@ -671,21 +660,36 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
           >
             <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
               <Menu.Item>
-                <button onClick={handleExportPDF} className={dropdownItemClass}>
-                  <FileText className='w-5 h-5 text-red-500' />
-                  <span>Export as PDF</span>
+                <button
+                  onClick={handleExportPDF}
+                  className={dropdownItemClass}
+                  disabled={!!isExporting}
+                >
+                  {isExporting === 'pdf' ? (
+                    <Loader2 className='w-5 h-5 animate-spin text-red-500' />
+                  ) : (
+                    <FileText className='w-5 h-5 text-red-500' />
+                  )}
+                  <span>{isExporting === 'pdf' ? 'Exporting...' : 'Export as PDF'}</span>
                 </button>
               </Menu.Item>
               <Menu.Item>
-                <button onClick={handleExportExcel} className={dropdownItemClass}>
-                  <Sheet className='w-5 h-5 text-green-500' />
-                  <span>Export as Excel</span>
+                <button
+                  onClick={handleExportExcel}
+                  className={dropdownItemClass}
+                  disabled={!!isExporting}
+                >
+                  {isExporting === 'excel' ? (
+                    <Loader2 className='w-5 h-5 animate-spin text-green-500' />
+                  ) : (
+                    <Sheet className='w-5 h-5 text-green-500' />
+                  )}
+                  <span>{isExporting === 'excel' ? 'Exporting...' : 'Export as Excel'}</span>
                 </button>
               </Menu.Item>
             </Menu.Items>
           </Transition>
         </Menu>
-
         <div className='ml-auto flex items-center gap-2'>
           <button
             onClick={openShareModal}
@@ -699,7 +703,6 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
 
       <Transition appear show={isShareModalOpen} as={Fragment}>
         <Dialog as='div' className='relative z-50' onClose={closeShareModal}>
-          {/* Lớp phủ nền */}
           <Transition.Child
             as={Fragment}
             enter='ease-out duration-300'

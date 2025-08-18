@@ -297,7 +297,15 @@ const WorkItemDetail: React.FC = () => {
 
   React.useEffect(() => {
     if (assignees && taskId) {
-      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      setTaskAssignmentMap((prev) => {
+        // Kiểm tra nếu assignees không thay đổi
+        if (
+          JSON.stringify(prev[taskId]) === JSON.stringify(assignees)
+        ) {
+          return prev; // Không cập nhật nếu giống nhau
+        }
+        return { ...prev, [taskId]: assignees };
+      });
     }
   }, [assignees, taskId]);
 

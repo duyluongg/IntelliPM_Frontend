@@ -176,8 +176,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
 
-  console.log('ProjectKey: ', projectKey);
-
   const {
     data: attachments = [],
     isLoading: isAttachmentsLoading,
@@ -362,7 +360,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   React.useEffect(() => {
     if (assignees && taskId) {
-      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      setTaskAssignmentMap((prev) => {
+        // Kiểm tra nếu assignees không thay đổi
+        if (
+          JSON.stringify(prev[taskId]) === JSON.stringify(assignees)
+        ) {
+          return prev; // Không cập nhật nếu giống nhau
+        }
+        return { ...prev, [taskId]: assignees };
+      });
     }
   }, [assignees, taskId]);
 
@@ -986,8 +992,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
                             className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
                               }`}
                           >
                             {loadingCreate ? (

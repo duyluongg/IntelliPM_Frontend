@@ -1,12 +1,12 @@
 import React from 'react';
-import { Brain, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import aiIcon from '../../../../assets/icon/ai.png';
 
 interface TaskSetupHeaderProps {
-  projectData: any;
+  projectData: { data?: { name?: string } };
   projectKey: string;
   isGenerating: boolean;
-  handleAIMode: () => void;
+  handleAIMode: () => Promise<void>;
   handleOpenCreateTask: () => void;
   errorMessage: string | null;
   successMessage: string | null;

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import type { AITaskResponseDTO, CreateTaskRequest } from '../../../services/taskApi';
 import { useAuth } from '../../../services/AuthContext';
 import aiIcon from '../../../assets/icon/ai.png';
+
 interface GenerateTaskByAIProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,6 +24,7 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
   const [generateAITasks, { isLoading }] = useGenerateAITasksMutation();
   const [createTasks, { isLoading: isSavingTasks }] = useCreateTasksMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const canCreate = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
 
   useEffect(() => {
     if (isOpen) {
@@ -140,9 +142,8 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                   {aiTasks.map((task, index) => (
                     <tr
                       key={task.title}
-                      className={`${
-                        index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-purple-50 transition-colors duration-200`}
+                      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        } hover:bg-purple-50 transition-colors duration-200`}
                     >
                       <td className='p-4 border-b border-gray-200'>
                         <input
@@ -178,17 +179,22 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
           >
             Cancel
           </button>
-          <button
-            onClick={handleSaveTasks}
-            disabled={selectedTasks.length === 0 || isSavingTasks}
-            className={`px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 transform hover:scale-105 ${
-              selectedTasks.length === 0 || isSavingTasks
+          {canCreate ? (
+            <button
+              onClick={handleSaveTasks}
+              disabled={selectedTasks.length === 0 || isSavingTasks}
+              className={`px-6 py-2 rounded-lg text-white font-semibold transition-all duration-200 transform hover:scale-105 ${selectedTasks.length === 0 || isSavingTasks
                 ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600'
-            }`}
-          >
-            {isSavingTasks ? 'Saving...' : 'Save Selected Tasks'}
-          </button>
+                }`}
+            >
+              {isSavingTasks ? 'Saving...' : 'Save Selected Tasks'}
+            </button>
+          ) : (
+            <div className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'>
+              Only Team Leader, Project Manager can create tasks.
+            </div>
+          )}
         </div>
       </div>
     </div>

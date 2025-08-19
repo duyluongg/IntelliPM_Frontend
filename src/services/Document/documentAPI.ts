@@ -164,7 +164,14 @@ export const documentApi = createApi({
 
     generateFromTasks: builder.mutation<string, number>({
       query: (documentId) => ({
-        url: `documents/${documentId}/generate-from-tasks`,
+        url: `documents/${documentId}/generate-from-task`,
+        method: 'POST',
+      }),
+      transformResponse: (response: { content: string }) => response.content,
+    }),
+    generateFromProject: builder.mutation<string, number>({
+      query: (documentId) => ({
+        url: `documents/${documentId}/generate-from-project`,
         method: 'POST',
       }),
       transformResponse: (response: { content: string }) => response.content,
@@ -254,6 +261,7 @@ export const {
   useDocumentStatusQuery,
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
+  useGenerateFromProjectMutation,
   useShareDocumentViaEmailMutation,
   useShareDocumentByEmailsMutation,
   useGetMyPermissionQuery,

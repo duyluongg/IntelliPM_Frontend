@@ -28,6 +28,12 @@ interface EpicState {
   backendEpicId?: string;
 }
 
+interface Member {
+  accountId: number;
+  fullName: string;
+  picture: string;
+}
+
 const TaskSetup: React.FC = () => {
   const navigate = useNavigate();
   const { projectKey } = useParams<{ projectKey: string }>();
@@ -65,6 +71,18 @@ const TaskSetup: React.FC = () => {
   } = useGetProjectMembersWithPositionsQuery(projectId || 0, {
     skip: !projectId,
   });
+
+  // Transform membersData to ensure picture is a string
+  const transformedMembersData = membersData
+    ? {
+        ...membersData,
+        data: membersData.data?.map((member) => ({
+          ...member,
+          picture: member.picture || 'https://i.pravatar.cc/40',
+        })),
+      }
+    : undefined;
+
   const [createEpics, { isLoading: isCreatingEpics, error: createEpicsError }] =
     useCreateEpicsWithTasksMutation();
   const [sendEmailToPM, { isLoading: isSendingEmail, error: sendEmailError }] =
@@ -93,7 +111,7 @@ const TaskSetup: React.FC = () => {
     startDate: string;
     endDate: string;
     suggestedRole: string;
-    assignedMembers: { accountId: number; fullName: string; picture: string }[];
+    assignedMembers: Member[];
     newEpicTitle?: string;
     newEpicDescription?: string;
     newEpicStartDate?: string;
@@ -150,6 +168,7 @@ const TaskSetup: React.FC = () => {
               return {
                 id: apiTaskId,
                 taskId: apiTaskId,
+                type: task.type || 'TASK',
                 title: task.title || 'Untitled Task',
                 description: task.description || 'No description',
                 startDate: new Date(task.startDate).toISOString().split('T')[0],
@@ -242,6 +261,7 @@ const TaskSetup: React.FC = () => {
     const task: TaskState = {
       id: crypto.randomUUID(),
       taskId: '',
+      type: 'TASK',
       title: newTask.title,
       description: newTask.description || 'No description',
       startDate: newTask.startDate,
@@ -269,6 +289,11 @@ const TaskSetup: React.FC = () => {
         )
       );
     }
+    setIsCreatingTask(false);
+    setIsMemberDropdownOpen(false);
+  };
+
+  const handleCloseCreateTask = () => {
     setIsCreatingTask(false);
     setIsMemberDropdownOpen(false);
   };
@@ -326,11 +351,13 @@ const TaskSetup: React.FC = () => {
         const requestPayload: EpicWithTaskRequestDTO[] = epics
           .filter((epic) => !epic.backendEpicId)
           .map((epic) => ({
+            type: 'EPIC',
             title: epic.title,
             description: epic.description,
             startDate: new Date(epic.startDate).toISOString(),
             endDate: new Date(epic.endDate).toISOString(),
             tasks: epic.tasks.map((task) => ({
+              type: task.type,
               title: task.title,
               description: task.description,
               startDate: new Date(task.startDate).toISOString(),
@@ -390,11 +417,13 @@ const TaskSetup: React.FC = () => {
       const requestPayload: EpicWithTaskRequestDTO[] = epics
         .filter((epic) => !epic.backendEpicId)
         .map((epic) => ({
+          type: 'EPIC',
           title: epic.title,
           description: epic.description,
           startDate: new Date(epic.startDate).toISOString(),
           endDate: new Date(epic.endDate).toISOString(),
           tasks: epic.tasks.map((task) => ({
+            type: task.type,
             title: task.title,
             description: task.description,
             startDate: new Date(task.startDate).toISOString(),
@@ -702,7 +731,7 @@ const TaskSetup: React.FC = () => {
       <EpicDisplay
         epics={epics}
         isGenerating={isGenerating}
-        membersData={membersData}
+        membersData={transformedMembersData}
         dropdownTaskId={dropdownTaskId}
         setDropdownTaskId={setDropdownTaskId}
         handleOpenEditEpic={setEditingEpic}
@@ -725,7 +754,7 @@ const TaskSetup: React.FC = () => {
         <EditTaskPopup
           editingTask={editingTask}
           setEditingTask={setEditingTask}
-          membersData={membersData}
+          membersData={transformedMembersData}
           isMemberDropdownOpen={isMemberDropdownOpen}
           setIsMemberDropdownOpen={setIsMemberDropdownOpen}
           handleEditTask={handleEditTask}
@@ -741,12 +770,16 @@ const TaskSetup: React.FC = () => {
         />
       )}
 
-      {isCreatingTask && (
+      {isCreatingTask && projectId && projectKey && (
         <CreateTaskPopup
+          isOpen={isCreatingTask}
+          onClose={handleCloseCreateTask}
+          projectId={projectId}
+          projectKey={projectKey}
           epics={epics}
           newTask={newTask}
           setNewTask={setNewTask}
-          membersData={membersData}
+          membersData={transformedMembersData}
           isMemberDropdownOpen={isMemberDropdownOpen}
           setIsMemberDropdownOpen={setIsMemberDropdownOpen}
           handleCreateTask={handleCreateTask}

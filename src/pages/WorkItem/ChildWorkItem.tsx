@@ -55,8 +55,10 @@ interface SubtaskDetail {
 const ChildWorkItem: React.FC = () => {
   const { key: subtaskId } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams()
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const [searchParams] = useSearchParams();
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
@@ -917,7 +919,7 @@ const ChildWorkItem: React.FC = () => {
                 </div>
               )}
 
-              {/* <div className='detail-item'>
+              <div className='detail-item'>
                 <label>Parent</label>
                 {subtaskDetail.taskId ? (
                   <Link
@@ -929,12 +931,12 @@ const ChildWorkItem: React.FC = () => {
                 ) : (
                   <span>Task [None]</span>
                 )}
-              </div> */}
+              </div>
 
-              <div className='detail-item'>
+              {/* <div className='detail-item'>
                 <label>Parent</label>
                   <span>Task [{subtaskDetail.taskId ?? 'None'}]</span>
-              </div>
+              </div> */}
 
               <div className='detail-item'>
                 <label>Sprint</label>

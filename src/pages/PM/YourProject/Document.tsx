@@ -81,13 +81,10 @@ export const Document: React.FC = () => {
   // thêm ref:
   const isHydratedRef = useRef(false);
 
-  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(
-    numericDocId!,
-    {
-      skip: !numericDocId,
-      refetchOnMountOrArgChange: true,
-    }
-  );
+  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(numericDocId!, {
+    skip: !numericDocId,
+    refetchOnMountOrArgChange: true,
+  });
 
   const {
     content: initialContent,
@@ -102,14 +99,21 @@ export const Document: React.FC = () => {
   const isOwner = !!user && !!createdBy && user.id === createdBy;
   const permissionType = permResp?.permissionType ?? 'VIEW';
 
-  const canEdit = isOwner ? true : permissionType === 'EDIT';
-
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);
   const projectId = projectIdRaw != null ? Number(projectIdRaw) : undefined;
   const { data, isSuccess } = useGetProjectByIdQuery(projectId as number, {
     skip: !projectId,
   });
+  const isInProject =
+    documentData?.projectId !== undefined &&
+    projectId !== undefined &&
+    documentData.projectId === projectId;
+
+  const canEdit = isOwner || isInProject || permissionType === 'EDIT';
+
+  console.log(isInProject, 'isInProject');
+  console.log(canEdit, 'canEdit');
 
   const projectKey = data?.data?.projectKey;
 

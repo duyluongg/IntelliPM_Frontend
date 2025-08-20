@@ -53,7 +53,11 @@ export default function Sidebar() {
 
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const isRole = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+
+  // chuẩn hóa role
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
+  const isRoleManager = rawRole === 'PROJECT_MANAGER' || rawRole === 'TEAM_LEADER';
 
   const {
     data: projectsData,
@@ -61,25 +65,24 @@ export default function Sidebar() {
     error,
   } = useGetProjectsByAccountQuery(user?.accessToken || '');
 
- const recentProjects: RecentProject[] = projectsData?.isSuccess
-  ? projectsData.data
-      .filter((proj) => {
-        if (isRole) {
-          return proj.status === 'ACTIVE';
-        } else {
-          return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
-        }
-      })
-      .sort((a, b) => b.projectId - a.projectId)
-      .map((proj) => ({
-        name: proj.projectName,
-        key: proj.projectKey,
-        icon: proj.iconUrl || projectIcon,
-      }))
-       
-  : [];
+  // đảm bảo luôn là array
+  const projectsRaw = Array.isArray(projectsData?.data) ? projectsData!.data : [];
 
-  useEffect(() => {}, [selectedProjectKey, recentProjects]);
+  const recentProjects: RecentProject[] = projectsRaw
+    .filter((proj: any) => {
+      if (isRoleManager) return proj.status === 'ACTIVE';
+      return proj.status === 'ACTIVE' && proj.projectStatus !== 'PLANNING';
+    })
+    .sort((a: any, b: any) => b.projectId - a.projectId)
+    .map((proj: any) => ({
+      name: proj.projectName,
+      key: proj.projectKey,
+      icon: proj.iconUrl || projectIcon,
+    }));
+
+  useEffect(() => {
+    // console.log('[Sidebar] role=', user?.role, 'isClient=', isClient);
+  }, [user?.role, isClient]);
 
   const handleLogout = () => {
     logout();
@@ -111,12 +114,13 @@ export default function Sidebar() {
     navigate(`/project/${projectKey}/team-members`);
   };
 
-  const allowedLabelsForClient = ['Meeting', 'For you'];
+  // client click → đi thẳng timeline bằng hash
+  const clientProjectHref = (key: string) => `/project?projectKey=${key}#timeline`;
 
-  const visibleMenuItems =
-    user?.role === 'CLIENT'
-      ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
-      : menuItems;
+  const allowedLabelsForClient = ['Meeting', 'For you', 'Projects'];
+  const visibleMenuItems = isClient
+    ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
+    : menuItems;
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
@@ -146,9 +150,8 @@ export default function Sidebar() {
                     <div className='flex items-center space-x-2'>
                       {hovered || showProjects ? (
                         <ChevronRight
-                          className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${
-                            showProjects ? 'rotate-90' : ''
-                          }`}
+                          className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${showProjects ? 'rotate-90' : ''
+                            }`}
                         />
                       ) : (
                         item.icon
@@ -157,7 +160,7 @@ export default function Sidebar() {
                     </div>
                     {(hovered || showProjects) && (
                       <div className='flex items-center space-x-2 relative'>
-                        {isRole && (
+                        {isRoleManager && (
                           <Plus
                             className='w-4 h-4 hover:text-blue-500 cursor-pointer'
                             onClick={(e) => {
@@ -183,7 +186,7 @@ export default function Sidebar() {
                               transition={{ duration: 0.2 }}
                               className='absolute top-0 left-full ml-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
                             >
-                              {isRole && (
+                              {isRoleManager && (
                                 <div
                                   onClick={handleViewAllProjectsManage}
                                   className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
@@ -212,7 +215,7 @@ export default function Sidebar() {
                     {isLoading ? (
                       <div className='text-sm text-gray-500 py-1'>Loading projects...</div>
                     ) : error ? (
-                      <div className='text-sm text-red-500 py-1'>Error: {error.toString()}</div>
+                      <div className='text-sm text-red-500 py-1'>Error: {String(error)}</div>
                     ) : recentProjects.length === 0 ? (
                       <div className='text-sm text-gray-500 py-1'>No projects found</div>
                     ) : (
@@ -221,20 +224,22 @@ export default function Sidebar() {
                         return (
                           <div key={i} className='relative group/project'>
                             <div
-                              className={`flex items-center justify-between py-1 px-2 rounded ${
-                                isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
-                              }`}
+                              className={`flex items-center justify-between py-1 px-2 rounded ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+                                }`}
                             >
                               <Link
-                                to={`/project?projectKey=${proj.key}`}
+                                to={
+                                  isClient
+                                    ? clientProjectHref(proj.key) // CLIENT → vào thẳng timeline
+                                    : `/project?projectKey=${proj.key}` // role khác → trang project mặc định
+                                }
                                 onClick={(e) => {
                                   e.stopPropagation();
                                 }}
-                                className={`flex items-center space-x-2 text-sm no-underline ${
-                                  isSelected
+                                className={`flex items-center space-x-2 text-sm no-underline ${isSelected
                                     ? 'text-blue-700 font-medium'
                                     : 'text-gray-800 hover:bg-gray-100'
-                                }`}
+                                  }`}
                               >
                                 <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
                                 <span className='truncate relative group/name max-w-[110px]'>
@@ -244,42 +249,50 @@ export default function Sidebar() {
                                   </span>
                                 </span>
                               </Link>
-                              <div
-                                className='p-1 border border-gray-200 rounded invisible group-hover/project:visible hover:bg-gray-100 transition-colors'
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowProjectDetail(proj.key);
-                                }}
-                              >
-                                <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
-                              </div>
-                            </div>
-                            <AnimatePresence>
-                              {showProjectDetail === proj.key && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.95 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.95 }}
-                                  transition={{ duration: 0.2 }}
-                                  className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+
+                              {/* 3 chấm chỉ hiện với non-client */}
+                              {!isClient && (
+                                <div
+                                  className='p-1 border border-gray-200 rounded invisible group-hover/project:visible hover:bg-gray-100 transition-colors'
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowProjectDetail(proj.key);
+                                  }}
                                 >
-                                  <div
-                                    onClick={() => handleProjectDetailClick(proj.key)}
-                                    className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
-                                  >
-                                    <Rocket className='w-5 h-5 text-gray-500' />
-                                    <span>Project Detail</span>
-                                  </div>
-                                  <div
-                                    onClick={() => handleTeamMemberClick(proj.key)}
-                                    className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
-                                  >
-                                    <Users className='w-5 h-5 text-gray-500' />
-                                    <span>Project Member</span>
-                                  </div>
-                                </motion.div>
+                                  <MoreHorizontal className='w-4 h-4 text-gray-500 hover:text-blue-500 cursor-pointer' />
+                                </div>
                               )}
-                            </AnimatePresence>
+                            </div>
+
+                            {/* Dropdown chi tiết: ẩn với CLIENT */}
+                            {!isClient && (
+                              <AnimatePresence>
+                                {showProjectDetail === proj.key && (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.2 }}
+                                    className='absolute top-full right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20'
+                                  >
+                                    <div
+                                      onClick={() => handleProjectDetailClick(proj.key)}
+                                      className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                    >
+                                      <Rocket className='w-5 h-5 text-gray-500' />
+                                      <span>Project Detail</span>
+                                    </div>
+                                    <div
+                                      onClick={() => handleTeamMemberClick(proj.key)}
+                                      className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                    >
+                                      <Users className='w-5 h-5 text-gray-500' />
+                                      <span>Project Member</span>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            )}
                           </div>
                         );
                       })

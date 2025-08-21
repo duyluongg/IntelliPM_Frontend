@@ -24,7 +24,7 @@ export interface ManagedMeeting {
 export interface CreateMeetingLogRequest {
   meetingId: number;
   accountId: number;
-  action: 'CREATE_MEETING' | 'UPDATE_MEETING' | 'DELETE_MEETING'; // thêm nếu cần
+  action: 'CREATE_MEETING' | 'UPDATE_MEETING' | 'DELETE_MEETING'; 
 }
 
 // Giao diện cho response tạo log
@@ -33,6 +33,17 @@ export interface CreateMeetingLogResponse {
   message: string;
   data: any;
 } 
+
+// Giao diện cho Meeting Log
+export interface MeetingLog {
+  id: number;
+  meetingId: number;
+  accountId: number;
+  action: 'CREATE_MEETING' | 'UPDATE_MEETING' | 'DELETE_MEETING';
+  createdAt: string;
+  accountName: string;
+}
+
 
 export const meetingLogApi = createApi({
   reducerPath: 'meetingLogApi',
@@ -43,11 +54,16 @@ export const meetingLogApi = createApi({
       return headers;
     },
   }),
+  
   endpoints: (builder) => ({
     // GET /meetings/managed-by/:id
     getMeetingsManagedBy: builder.query<ManagedMeeting[], number>({
       query: (accountId) => `meetings/managed-by/${accountId}`,
     }),
+// GET /meeting-logs/meeting/:meetingId
+getMeetingLogsByMeetingId: builder.query<MeetingLog[], number>({
+  query: (meetingId) => `meeting-logs/meeting/${meetingId}`,
+}),
 
     // POST /meeting-logs
     createMeetingLog: builder.mutation<CreateMeetingLogResponse, CreateMeetingLogRequest>({
@@ -63,4 +79,5 @@ export const meetingLogApi = createApi({
 export const {
   useGetMeetingsManagedByQuery,
   useCreateMeetingLogMutation,
+  useGetMeetingLogsByMeetingIdQuery,
 } = meetingLogApi;

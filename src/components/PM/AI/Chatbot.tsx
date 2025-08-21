@@ -39,16 +39,16 @@ const suggestions = [
     text: 'Summarize this doc',
     color: 'text-purple-600 dark:text-purple-400',
   },
-  {
-    icon: Pencil,
-    text: 'Make this doc more clear and concise',
-    color: 'text-green-600 dark:text-green-400',
-  },
-  {
-    icon: CheckCircle,
-    text: 'Extract action items from this doc',
-    color: 'text-blue-600 dark:text-blue-400',
-  },
+  // {
+  //   icon: Pencil,
+  //   text: 'Make this doc more clear and concise',
+  //   color: 'text-green-600 dark:text-green-400',
+  // },
+  // {
+  //   icon: CheckCircle,
+  //   text: 'Extract action items from this doc',
+  //   color: 'text-blue-600 dark:text-blue-400',
+  // },
   {
     icon: CheckCircle,
     text: 'Project summary',
@@ -167,7 +167,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
           ...prev,
           {
             id: Date.now(),
-            text: '⚠️ Không có nội dung nào trong tài liệu để tóm tắt.',
+            text: '⚠️ There is no content in the document to summarize.',
             sender: 'ai',
           },
         ]);
@@ -263,10 +263,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
       <div className='flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
         <div className='flex items-center gap-2'>
           <Sparkles className='w-6 h-6 text-blue-600' />
-          <span className='font-semibold text-gray-800 dark:text-white'>Sidekick</span>
-          <span className='text-xs font-semibold text-blue-700 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-400 px-2 py-0.5 rounded-full'>
-            Beta
-          </span>
+          <span className='font-semibold text-gray-800 dark:text-white'>IntelliPM AI</span>
         </div>
         <div className='flex items-center gap-1'>
           <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
@@ -348,7 +345,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
                 handleSendMessage();
               }
             }}
-            placeholder='Message Sidekick...'
+            placeholder='Message IntelliPM AI...'
             className='w-full h-12 pr-20 pl-3 py-3 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none'
           />
           <button

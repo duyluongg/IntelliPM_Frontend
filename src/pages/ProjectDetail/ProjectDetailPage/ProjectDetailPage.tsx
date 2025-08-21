@@ -36,7 +36,7 @@ const ProjectDetailPage = () => {
         {activeTab === 'backlog' && <Backlog />}
         {activeTab === 'board' && <KanbanBoardPage />}
         {activeTab === 'timeline' && <MilestonePage />}
-        {activeTab === 'forms' && <Form />}
+        {activeTab === 'documents' && <Form />}
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}

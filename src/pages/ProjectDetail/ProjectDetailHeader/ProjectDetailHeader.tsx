@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useSearchParams, useLocation, Link } from 'react-router-dom';
+import { useSearchParams, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
+import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
 
 import {
@@ -11,7 +12,6 @@ import {
   ClipboardList,
   ClipboardCheck,
   Flag,
-  Code2,
   Archive,
   FileText,
   PackagePlus,
@@ -28,7 +28,7 @@ const navItems = [
   { label: 'Board', icon: <ClipboardCheck className='w-4 h-4' />, path: 'board' },
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
-  { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
+  { label: 'Documents', icon: <FileText className='w-4 h-4' />, path: 'documents' },
   { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
@@ -43,35 +43,47 @@ const navItems = [
   { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
 ];
 
+const CLIENT_ALLOWED = ['timeline'];
+
 const ProjectDetailHeader: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [visibleTabs, setVisibleTabs] = useState(navItems);
   const [hiddenTabs, setHiddenTabs] = useState<typeof navItems>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
+
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const navigate = useNavigate();
 
-  const activeTab = useMemo(() => {
-    return location.hash.replace('#', '') || 'list';
-  }, [location.hash]);
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const activeTab = useMemo(() => location.hash.replace('#', '') || 'list', [location.hash]);
+
+  // Lấy role từ AuthContext giống Sidebar
+  const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
+
+  // Lọc nav theo role
+  const allowedNav = useMemo(() => {
+    return isClient ? navItems.filter((i) => CLIENT_ALLOWED.includes(i.path)) : navItems;
+  }, [isClient]);
 
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
 
   const updateTabs = () => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const tabWidth = 100;
-      const maxVisible = Math.floor(containerWidth / tabWidth);
-      if (maxVisible < navItems.length) {
-        setVisibleTabs(navItems.slice(0, maxVisible));
-        setHiddenTabs(navItems.slice(maxVisible));
-      } else {
-        setVisibleTabs(navItems);
-        setHiddenTabs([]);
-      }
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.offsetWidth;
+    const tabWidth = 100;
+    const maxVisible = Math.floor(containerWidth / tabWidth);
+
+    if (maxVisible < allowedNav.length) {
+      setVisibleTabs(allowedNav.slice(0, maxVisible));
+      setHiddenTabs(allowedNav.slice(maxVisible));
+    } else {
+      setVisibleTabs(allowedNav);
+      setHiddenTabs([]);
     }
   };
 
@@ -79,7 +91,7 @@ const ProjectDetailHeader: React.FC = () => {
     updateTabs();
     window.addEventListener('resize', updateTabs);
     return () => window.removeEventListener('resize', updateTabs);
-  }, []);
+  }, [allowedNav]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,6 +107,13 @@ const ProjectDetailHeader: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Chặn truy cập tab khác: CLIENT ⇒ ép về timeline
+  useEffect(() => {
+    if (isClient && activeTab !== 'timeline') {
+      navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
+    }
+  }, [isClient, activeTab, navigate, projectKey]);
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -137,7 +156,8 @@ const ProjectDetailHeader: React.FC = () => {
             </li>
           ))}
 
-          {hiddenTabs.length > 0 && (
+          {/* CLIENT thì không hiển thị nút More luôn */}
+          {!isClient && hiddenTabs.length > 0 && (
             <li className='relative' ref={moreButtonRef}>
               <button
                 onClick={() => setIsPopupOpen(!isPopupOpen)}

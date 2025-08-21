@@ -57,7 +57,7 @@ const ModalDetailRoom: FC<Props> = ({ meeting, onClose }) => {
 
   // Hàm điều hướng khi bấm nút Reschedule Meeting
   const handleRescheduleClick = () => {
-    navigate('/meeting-reschedule-request', { state: { meeting } }); // Truyền thông tin cuộc họp qua state
+    navigate('/meeting-reschedule-request', { state: { meeting } }); 
   };
 
   return (

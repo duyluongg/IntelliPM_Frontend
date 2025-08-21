@@ -3047,6 +3047,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         try {
                                           await deleteTaskComment({
                                             id: comment.id,
+                                            taskId,
                                             createdBy: accountId,
                                           }).unwrap();
                                           alert('🗑️ Deleted successfully');

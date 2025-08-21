@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   Plus,
   Settings,
+  AlertTriangle,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -19,6 +20,11 @@ import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 import { useAuth } from '../../services/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import projectIcon from '../../assets/projectManagement.png';
+import {
+  useGetHealthDashboardQuery,
+  useCalculateMetricsBySystemMutation,
+} from '../../services/projectMetricApi';
+import { useRef } from 'react';
 
 interface RecentProject {
   name: string;
@@ -48,6 +54,7 @@ export default function Sidebar() {
   const [showManageProjects, setShowManageProjects] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showProjectDetail, setShowProjectDetail] = useState<string | null>(null);
+  const [alertStatus, setAlertStatus] = useState<{ [key: string]: boolean }>({});
   const [searchParams] = useSearchParams();
   const selectedProjectKey = searchParams.get('projectKey');
 
@@ -58,6 +65,8 @@ export default function Sidebar() {
   const rawRole = (user?.role ?? '').toString().trim();
   const isClient = rawRole.toUpperCase() === 'CLIENT';
   const isRoleManager = rawRole === 'PROJECT_MANAGER' || rawRole === 'TEAM_LEADER';
+  const isRoleProjectManager = rawRole === 'PROJECT_MANAGER';
+  const canViewProjectMembers = rawRole !== 'TEAM_MEMBER' && rawRole !== 'TEAM_LEADER';
 
   const {
     data: projectsData,
@@ -79,6 +88,29 @@ export default function Sidebar() {
       key: proj.projectKey,
       icon: proj.iconUrl || projectIcon,
     }));
+
+  // Trigger metric calculation for each project only on initial mount
+  const [calculate] = useCalculateMetricsBySystemMutation();
+  const hasCalculated = useRef(false); // Track if metrics have been calculated
+
+  useEffect(() => {
+    if (hasCalculated.current || recentProjects.length === 0) return;
+
+    const calculateMetrics = async () => {
+      try {
+        hasCalculated.current = true; // Mark as calculated
+        await Promise.all(
+          recentProjects.map((proj) =>
+            calculate({ projectKey: proj.key }).unwrap()
+          )
+        );
+      } catch (err) {
+        console.error('❌ Error calculating metrics for projects:', err);
+      }
+    };
+
+    calculateMetrics();
+  }, []);
 
   useEffect(() => {
     // console.log('[Sidebar] role=', user?.role, 'isClient=', isClient);
@@ -150,8 +182,9 @@ export default function Sidebar() {
                     <div className='flex items-center space-x-2'>
                       {hovered || showProjects ? (
                         <ChevronRight
-                          className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${showProjects ? 'rotate-90' : ''
-                            }`}
+                          className={`w-5 h-5 text-gray-500 transition-transform duration-200 transform ${
+                            showProjects ? 'rotate-90' : ''
+                          }`}
                         />
                       ) : (
                         item.icon
@@ -224,8 +257,9 @@ export default function Sidebar() {
                         return (
                           <div key={i} className='relative group/project'>
                             <div
-                              className={`flex items-center justify-between py-1 px-2 rounded ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
-                                }`}
+                              className={`flex items-center justify-between py-1 px-2 rounded ${
+                                isSelected ? 'bg-blue-100' : 'hover:bg-gray-100'
+                              }`}
                             >
                               <Link
                                 to={
@@ -236,10 +270,11 @@ export default function Sidebar() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                 }}
-                                className={`flex items-center space-x-2 text-sm no-underline ${isSelected
+                                className={`flex items-center space-x-2 text-sm no-underline ${
+                                  isSelected
                                     ? 'text-blue-700 font-medium'
                                     : 'text-gray-800 hover:bg-gray-100'
-                                  }`}
+                                }`}
                               >
                                 <img src={proj.icon} alt='Project icon' className='w-6 h-6' />
                                 <span className='truncate relative group/name max-w-[110px]'>
@@ -282,13 +317,15 @@ export default function Sidebar() {
                                       <Rocket className='w-5 h-5 text-gray-500' />
                                       <span>Project Detail</span>
                                     </div>
-                                    <div
-                                      onClick={() => handleTeamMemberClick(proj.key)}
-                                      className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
-                                    >
-                                      <Users className='w-5 h-5 text-gray-500' />
-                                      <span>Project Member</span>
-                                    </div>
+                                    {canViewProjectMembers && (
+                                      <div
+                                        onClick={() => handleTeamMemberClick(proj.key)}
+                                        className='flex items-center space-x-2 py-2 px-4 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer'
+                                      >
+                                        <Users className='w-5 h-5 text-gray-500' />
+                                        <span>Project Member</span>
+                                      </div>
+                                    )}
                                   </motion.div>
                                 )}
                               </AnimatePresence>

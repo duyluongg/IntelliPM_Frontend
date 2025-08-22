@@ -1028,7 +1028,8 @@ const MilestoneFeedbackPanel: React.FC = () => {
         }
       }
 
-      refetch();
+      await Promise.all([refetch(), refetchRejected()]);
+
     } catch (e) {
       console.error(e);
     } finally {

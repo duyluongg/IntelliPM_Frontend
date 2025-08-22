@@ -58,15 +58,15 @@ export default function CommentSidebar({
   return (
     <div className='w-80 flex-shrink-0 bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 flex flex-col'>
       <div className='p-4 border-b border-gray-200 dark:border-gray-700'>
-        <h2 className='text-lg font-bold text-gray-800 dark:text-gray-100'>📋 Bình luận</h2>
+        <h2 className='text-lg font-bold text-gray-800 dark:text-gray-100'>Comments</h2>
       </div>
 
       {comments.length === 0 ? (
         <div className='flex-grow flex flex-col items-center justify-center text-center p-4'>
           <MessageSquareOff className='w-12 h-12 text-gray-400 mb-3' />
           <p className='text-sm text-gray-500 dark:text-gray-400'>
-            Chưa có bình luận nào. <br />
-            Hãy chọn một đoạn văn bản và thêm bình luận nhé.
+            No comments yet. <br />
+            Please select a text passage and add a comment.
           </p>
         </div>
       ) : (

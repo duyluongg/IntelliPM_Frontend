@@ -112,6 +112,8 @@ export const Document: React.FC = () => {
     documentData.projectId === projectId;
 
   const canEdit = isOwner || isInProject || permissionType === 'EDIT';
+  console.log(isInProject, 'isInProject');
+  console.log(canEdit, 'canEdit');
 
   const projectKey = data?.data?.projectKey;
 
@@ -415,7 +417,7 @@ export const Document: React.FC = () => {
 
         await refetchComments();
         // Translated to English
-        toast.success('✅ Comment created successfully!');
+        toast.success('Comment created successfully!');
       } catch (error) {
         // Translated to English
         console.error('❌ Failed to create comment:', error);
@@ -454,11 +456,30 @@ export const Document: React.FC = () => {
   };
 
   const handleDeleteComment = async (commentId: number | string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+    // Sử dụng Swal.fire để xác nhận
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'swal-confirm-button', // Sử dụng class đã có
+        cancelButton: 'swal-cancel-button', // Sử dụng class đã có
+      },
+    });
 
+    // Nếu người dùng không xác nhận, thì dừng hàm
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Phần logic còn lại giữ nguyên
     const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
     if (!commentToDelete) {
       console.error('Không tìm thấy comment để xóa trong danh sách.');
+      toast.error('Could not find comment to delete.'); // Thay thế alert bằng toast
       return;
     }
 
@@ -478,12 +499,14 @@ export const Document: React.FC = () => {
         documentId: Number(documentId),
       }).unwrap();
 
+      toast.success(' Comment deleted successfully!'); // Thêm thông báo thành công
       if (activeCommentId === commentId.toString()) setActiveCommentId(null);
     } catch (error) {
       console.error('Xóa bình luận thất bại:', error);
-      alert('Đã xảy ra lỗi khi xóa bình luận.');
+      toast.error('Failed to delete comment.'); // Thay thế alert bằng toast
     }
   };
+
   const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>

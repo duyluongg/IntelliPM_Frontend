@@ -15,6 +15,7 @@ import type {
   DocumentVisibility,
 } from '../../../types/DocumentType';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 
 const DocumentTypeSelector: React.FC = () => {
   const navigate = useNavigate();
@@ -28,6 +29,11 @@ const DocumentTypeSelector: React.FC = () => {
 
   const [createDocument, { isLoading }] = useCreateDocumentMutation();
   const { data } = useGetCategoriesByGroupQuery('document_visibility_type');
+  const { data: titleCfgResp, isLoading: isCfgLoading } =
+    useGetByConfigKeyQuery('document_title_length');
+  const minLength = titleCfgResp?.data?.minValue ? Number(titleCfgResp.data.minValue) : 1;
+  const maxLength = titleCfgResp?.data?.maxValue ? Number(titleCfgResp.data.maxValue) : 255;
+  const isTitleValid = title.trim().length >= minLength && title.trim().length <= maxLength;
 
   const documentOptions = useMemo(() => {
     const items = (data?.data ?? [])
@@ -163,7 +169,11 @@ const DocumentTypeSelector: React.FC = () => {
                       type='text'
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && isTitleValid && !isLoading) {
+                          handleConfirm();
+                        }
+                      }}
                       placeholder='e.g., "Q1 Marketing Plan"'
                       className='mt-2 w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition'
                       autoFocus
@@ -180,8 +190,13 @@ const DocumentTypeSelector: React.FC = () => {
                     <button
                       type='button'
                       onClick={handleConfirm}
-                      disabled={isLoading || !title.trim()}
-                      className='px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-500 disabled:cursor-not-allowed transition-colors'
+                      disabled={isLoading || !isTitleValid}
+                      className={`px-5 py-2.5 text-sm font-semibold text-white rounded-lg transition-colors
+    ${
+      isLoading || !isTitleValid
+        ? 'bg-blue-400 dark:bg-blue-500 cursor-not-allowed'
+        : 'bg-blue-600 hover:bg-blue-700'
+    }`}
                     >
                       {isLoading ? 'Creating...' : 'Create Document'}
                     </button>

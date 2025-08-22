@@ -233,6 +233,40 @@ const templates = {
     <li data-type="taskItem" data-checked="false"><p>Triển khai và review</p></li>
   </ul>
 `,
+  'meeting-note': `
+  <h1>Meeting Notes: [Chủ đề cuộc họp]</h1>
+  <p><strong>Ngày:</strong> [Ngày] | <strong>Thời gian:</strong> [Giờ] | <strong>Địa điểm:</strong> [Địa điểm]</p>
+
+  <h2>👥 Người tham dự</h2>
+  <ul>
+    <li>[Tên người tham dự 1]</li>
+    <li>[Tên người tham dự 2]</li>
+  </ul>
+
+  <h2>📝 Nội dung cuộc họp (Agenda)</h2>
+  <ol>
+    <li>Chủ đề 1: [Mô tả]</li>
+    <li>Chủ đề 2: [Mô tả]</li>
+  </ol>
+
+  <h2>💬 Thảo luận & Ghi chú</h2>
+  <p>Ghi lại các điểm chính, ý tưởng và thảo luận tại đây...</p>
+
+  <h2>✅ Các mục hành động (Action Items)</h2>
+  <ul data-type="taskList">
+    <li data-type="taskItem" data-checked="false">
+      <p>Nhiệm vụ 1 - Giao cho: @[Tên] - Hạn chót: [Ngày]</p>
+    </li>
+    <li data-type="taskItem" data-checked="false">
+      <p>Nhiệm vụ 2 - Giao cho: @[Tên] - Hạn chót: [Ngày]</p>
+    </li>
+  </ul>
+
+  <h2>⚖️ Các quyết định chính</h2>
+  <ul>
+    <li>Quyết định 1: [Mô tả]</li>
+  </ul>
+`,
 };
 
 // Component để hiển thị danh sách
@@ -290,7 +324,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ onSelectTemplate, onInsertTable }) 
 
       {/* --- Modal Chọn Template --- */}
       <Transition appear show={isModalOpen} as={Fragment}>
-        <Dialog as='div' className='relative z-10' onClose={closeModal}>
+        <Dialog as='div' className='relative z-20' onClose={closeModal}>
           <Transition.Child
             as={Fragment}
             enter='ease-out duration-300'
@@ -326,7 +360,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ onSelectTemplate, onInsertTable }) 
                   </Dialog.Title>
 
                   {/* ✅ Lưới hiển thị các template */}
-                  <div className='mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+                  <div className='mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
                     {Object.keys(templates).map((key) => (
                       <div
                         key={key}

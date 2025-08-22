@@ -62,6 +62,7 @@ import ProfilePage from '../pages/Account/ProfilePage';
 import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
 import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete';
 import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/MilestoneFeedbackPanel';
+import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 
 export const router = createBrowserRouter([
   {
@@ -315,6 +316,10 @@ export const router = createBrowserRouter([
       {
         path: 'analytics',
         element: <Analytics />,
+      },
+      {
+        path: 'configurations',
+        element: <SystemConfigPage />,
       },
       {
         path: 'projects',

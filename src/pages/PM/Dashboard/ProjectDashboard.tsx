@@ -1404,6 +1404,7 @@ const ProjectDashboard: React.FC = () => {
     isLoading: isTaskStatusLoading,
     refetch: refetchTaskStatus,
   } = useGetTaskStatusDashboardQuery(projectKey);
+
   const {
     data: timeData,
     isLoading: isTimeLoading,
@@ -1436,6 +1437,16 @@ const ProjectDashboard: React.FC = () => {
     isLoading: isHistoryLoading,
     refetch: refetchHistory,
   } = useGetMetricHistoryByProjectKeyQuery(projectKey);
+
+  useGetHealthDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetTaskStatusDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetProgressDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetTimeDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetWorkloadDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetCostDashboardQuery(projectKey, { pollingInterval: 5000 });
+  useGetProjectMetricAIByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
+  useGetMetricHistoryByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
+
   const location = useLocation();
 
   const [triggerGetRecommendations, { data: recData, isLoading: isRecLoading }] =
@@ -1457,6 +1468,7 @@ const ProjectDashboard: React.FC = () => {
       try {
         await calculate({ projectKey }).unwrap();
         await refetch();
+        await refetchHealth();
         setIsCalculateDone(true);
       } catch (err) {
         console.error('❌ Error calculating/refetching metrics:', err);

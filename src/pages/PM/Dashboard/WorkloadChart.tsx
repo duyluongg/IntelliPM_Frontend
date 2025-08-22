@@ -9,8 +9,6 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from 'recharts';
-import { useGetWorkloadDashboardQuery } from '../../../services/projectMetricApi';
-import { useSearchParams } from 'react-router-dom';
 
 interface WorkloadMember {
   memberName: string;

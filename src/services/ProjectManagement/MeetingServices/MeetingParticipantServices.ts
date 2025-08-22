@@ -82,6 +82,29 @@ export const meetingParticipantApi = createApi({
       }),
     }),
 
+    removeParticipantFromMeeting: builder.mutation<
+  { message: string } | void,
+  { meetingId: number; accountId: number }
+>({
+  query: ({ meetingId, accountId }) => ({
+    url: `meetings/${meetingId}/participants/${accountId}`,
+    method: 'DELETE',
+  }),
+  async onQueryStarted({ meetingId, accountId }, { dispatch, queryFulfilled }) {
+    const patch = dispatch(
+      meetingParticipantApi.util.updateQueryData('getParticipantsByMeetingId', meetingId, (draft) => {
+        const idx = draft.findIndex((p) => p.accountId === accountId);
+        if (idx !== -1) draft.splice(idx, 1);
+      }),
+    );
+    try {
+      await queryFulfilled;
+    } catch {
+      patch.undo();
+    }
+  },
+}),
+
     /* --- PARTICIPANTS ---------------------------------------------------- */
 
     /** GET /api/meeting-participants/meeting/:meetingId – Danh sách người tham gia */
@@ -145,4 +168,5 @@ export const {
   useUpdateParticipantStatusMutation,
   useCompleteMeetingMutation, 
   useAddParticipantsToMeetingMutation,
+  useRemoveParticipantFromMeetingMutation,
 } = meetingParticipantApi;

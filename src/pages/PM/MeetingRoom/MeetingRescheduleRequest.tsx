@@ -15,40 +15,6 @@
 //   const [createRescheduleRequest] = useCreateRescheduleRequestMutation();
 
 //   // Hàm xử lý gửi yêu cầu hoãn
-// // const handleSubmit = async () => {
-// //   if (!reason) {
-// //     alert('Please provide a reason for rescheduling');
-// //     return;
-// //   }
-
-// //   setIsSubmitting(true);
-
-// //   const requestData = {
-// //     meetingId: parseInt(meeting.id),  // Đảm bảo meetingId là số
-// //     requesterId: user.id,  // Giả sử ID người yêu cầu là 1, thay bằng user.id thực tế
-// //     requestedDate: new Date().toISOString(),
-// //     reason,
-// //     status: 'PENDING',  // Chắc chắn 'status' là 'Pending', 'Approved' hoặc 'Rejected'
-// //     pmId: null,  // Thay bằng ID PM thực tế
-// //     pmProposedDate: new Date().toISOString(),  // Ngày hoãn
-// //     pmNote: 'Proposed for rescheduling.',
-// //   };
-
-// //   // Thêm console.log để xem dữ liệu gửi đi
-// //   console.log('Request Data:', requestData);
-
-// //   try {
-// //     await createRescheduleRequest(requestData);
-// //     alert('Reschedule request submitted successfully');
-// //     navigate('/meeting');  // Điều hướng về trang lịch họp sau khi gửi yêu cầu
-// //   } catch (error) {
-// //     console.error(error); // Log lỗi để kiểm tra nguyên nhân
-// //     alert('Error submitting reschedule request');
-// //   } finally {
-// //     setIsSubmitting(false);
-// //   }
-// // };
-
 // const handleSubmit = async () => {
 //   if (!reason) {
 //     alert('Please provide a reason for rescheduling');
@@ -132,6 +98,10 @@
 // };
 
 // export default MeetingRescheduleRequest;
+
+
+// key changes: map status to enum code + handle pmProposedDate
+
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -139,18 +109,11 @@ import { useCreateRescheduleRequestMutation } from '../../../services/ProjectMan
 import type { FC } from 'react';
 import { useAuth } from '../../../services/AuthContext';
 
-// >>> NEW: system configuration API
+// NEW
 import { useGetAllQuery as useGetAllSystemConfigsQuery } from '../../../services/systemConfigurationApi';
-// >>> NEW: dynamic categories (để lấy default status PENDING nếu có)
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
-/** ===================== Fallback defaults ===================== */
-const DEFAULTS = {
-  REASON_MIN: 5,
-  REASON_MAX: 500,
-  PMNOTE_MAX: 1000, // dùng chung nếu bạn muốn validate note ở nơi khác
-};
-
+const DEFAULTS = { REASON_MIN: 5, REASON_MAX: 500, PMNOTE_MAX: 1000 };
 const toInt = (v: any, fb: number) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : fb;
@@ -166,30 +129,26 @@ const MeetingRescheduleRequest: FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createRescheduleRequest] = useCreateRescheduleRequestMutation();
 
-  // ==== Load system configs (one-shot) ====
+  // System configs
   const { data: cfgResp } = useGetAllSystemConfigsQuery();
   const cfg = useMemo(() => {
     const list = Array.isArray(cfgResp?.data) ? (cfgResp!.data as any[]) : [];
     const byKey = new Map<string, any>(list.map((c) => [c.configKey, c]));
-
     const reasonCfg = byKey.get('meetingReschedule_reason');
-
     return {
       REASON_MIN: toInt(reasonCfg?.minValue, DEFAULTS.REASON_MIN),
       REASON_MAX: toInt(reasonCfg?.maxValue ?? reasonCfg?.valueConfig, DEFAULTS.REASON_MAX),
     };
   }, [cfgResp]);
 
-  // ==== Lấy default status từ dynamic category ====
+  // Dynamic category -> prefer code/value, fallback to 'PENDING'
   const { data: statusResp } = useGetCategoriesByGroupQuery('meetingReschedule_status');
-  const defaultStatus = useMemo(() => {
-    // Ưu tiên phần tử có orderIndex nhỏ nhất, fallback 'PENDING'
-    const arr = statusResp?.data ?? [];
+  const defaultStatusCode = useMemo(() => {
+    const arr: any[] = statusResp?.data ?? [];
     if (arr.length === 0) return 'PENDING';
-    const sorted = [...arr].sort(
-      (a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999)
-    );
-    return sorted[0]?.name || 'PENDING';
+    const sorted = [...arr].sort((a, b) => (a.orderIndex ?? 999) - (b.orderIndex ?? 999));
+    // cố gắng lấy code/value, nếu không có thì fallback 'PENDING'
+    return sorted[0]?.code || sorted[0]?.value || 'PENDING';
   }, [statusResp]);
 
   const handleSubmit = async () => {
@@ -214,25 +173,35 @@ const MeetingRescheduleRequest: FC = () => {
 
     setIsSubmitting(true);
 
-    const requestData = {
-      meetingId: parseInt(meeting.id),
+    const requestData: any = {
+      meetingId: parseInt(meeting.id, 10),
       requesterId: user.id,
       requestedDate: new Date().toISOString(),
       reason: r,
-      status: defaultStatus,     // e.g. 'PENDING'
+      status: defaultStatusCode, // <- đảm bảo enum/code
       pmId: null,
-      pmProposedDate: null,      // client không nên set
-      pmNote: null,              // client không nên set
+      // OPTION A (khuyên dùng): ĐỪNG gửi field nếu server tự set
+      // pmProposedDate: undefined,
+      // pmNote: undefined,
+
+      // OPTION B (nếu server bắt buộc có giá trị): uncomment dòng dưới
+      // pmProposedDate: new Date().toISOString(),
+      // pmNote: null,
     };
 
     try {
       const response: any = await createRescheduleRequest(requestData);
 
-      if (response.error) {
+      if (response?.error) {
         if ('status' in response.error && response.error.status === 409) {
           toast.error('A pending reschedule request already exists for this meeting and requester.');
         } else {
-          toast.error('Error submitting reschedule request');
+          // show backend message nếu có
+          const msg =
+            response.error?.data?.message ||
+            response.error?.data?.title ||
+            'Error submitting reschedule request';
+          toast.error(String(msg));
         }
         setIsSubmitting(false);
         return;
@@ -240,7 +209,7 @@ const MeetingRescheduleRequest: FC = () => {
 
       toast.success('Reschedule request submitted successfully');
       navigate('/meeting');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast.error('Error submitting reschedule request');
     } finally {

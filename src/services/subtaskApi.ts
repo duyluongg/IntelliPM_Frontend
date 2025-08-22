@@ -23,6 +23,7 @@ export interface SubtaskResponseDTO {
   reporterName: string;
   createdBy: number;
   warnings?: string[];
+  percentComplete: number;
 }
 
 export interface SubtaskFullResponseDTO {
@@ -176,6 +177,17 @@ export const subtaskApi = createApi({
         body: JSON.stringify(hours),
       }),
     }),
+
+    updateSubtaskPercentComplete: builder.mutation<void, { id: string; percentComplete: number; createdBy: number }>({
+      query: ({ id, percentComplete, createdBy }) => ({
+        url: `subtask/${id}/percent-complete?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(percentComplete),
+      }),
+    }),
   }),
 });
 
@@ -189,4 +201,5 @@ export const {
   useUpdateSubtaskPlannedHoursMutation,
   useUpdateSubtaskActualHoursMutation,
   useCreateAISubtaskMutation,
+  useUpdateSubtaskPercentCompleteMutation,
 } = subtaskApi;

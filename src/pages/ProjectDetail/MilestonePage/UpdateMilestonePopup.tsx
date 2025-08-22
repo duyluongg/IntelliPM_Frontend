@@ -94,7 +94,7 @@ const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({
             <X className='w-5 h-5' />
           </button>
         </div>
-        <div className='mt-4 text-right'>
+        {/* <div className='mt-4 text-right'>
           <button
             type='button'
             onClick={() => setIsDependencyOpen(true)}
@@ -102,7 +102,7 @@ const UpdateMilestonePopup: React.FC<UpdateMilestonePopupProps> = ({
           >
             Manage Connection
           </button>
-        </div>
+        </div> */}
         <form onSubmit={handleSubmit}>
           <div className='space-y-4'>
             <div>

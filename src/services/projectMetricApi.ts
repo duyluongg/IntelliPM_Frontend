@@ -59,7 +59,7 @@ interface HealthDashboardResponse {
     tasksToBeCompleted: number;
     overdueTasks: number;
     progressPercent: number;
-    costStatus: number;
+    costStatus: string;
     cost: ProjectMetric;
     showAlert: boolean;
   };

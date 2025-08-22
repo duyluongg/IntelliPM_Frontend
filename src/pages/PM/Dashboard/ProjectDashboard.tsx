@@ -1445,7 +1445,7 @@ const ProjectDashboard: React.FC = () => {
   useGetWorkloadDashboardQuery(projectKey, { pollingInterval: 5000 });
   useGetCostDashboardQuery(projectKey, { pollingInterval: 5000 });
   useGetProjectMetricAIByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
-  useGetMetricHistoryByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
+  //useGetMetricHistoryByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
 
   const location = useLocation();
 
@@ -1507,7 +1507,6 @@ const ProjectDashboard: React.FC = () => {
           refetchRec(),
           refetchHistory(),
           showRecommendations ? triggerGetRecommendations(projectKey, false) : Promise.resolve(),
-          //triggerForecast(projectKey),
         ]);
       } catch (err) {
         console.error('❌ Error refetching dashboard data:', err);

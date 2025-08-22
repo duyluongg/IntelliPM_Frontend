@@ -64,6 +64,7 @@ import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete'
 import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/MilestoneFeedbackPanel';
 import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
+import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
 
 export const router = createBrowserRouter([
   {
@@ -325,6 +326,10 @@ export const router = createBrowserRouter([
       {
         path: 'configurations',
         element: <SystemConfigPage />,
+      },
+           {
+        path: 'ai-responses',
+        element: <AiResponsePage />,
       },
       {
         path: 'projects',

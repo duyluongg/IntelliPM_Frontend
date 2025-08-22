@@ -146,8 +146,9 @@
   }
 
   table {
-    border-collapse: collapse;
-    width: 100%;
+    display: block;
+    width: max-content;
+    max-width: none;
   }
 
   th,
@@ -190,4 +191,8 @@
   p {
     page-break-inside: avoid;
   }
+}
+
+.swal-confirm-button{
+  background-color:#4169E1;
 }

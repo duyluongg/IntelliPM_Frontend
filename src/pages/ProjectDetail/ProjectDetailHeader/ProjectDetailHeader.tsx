@@ -3,6 +3,8 @@ import { useSearchParams, useLocation, Link, useNavigate } from 'react-router-do
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
+import { AlertTriangle } from 'lucide-react';
+import { useGetHealthDashboardQuery } from '../../../services/projectMetricApi';
 
 import {
   Users2,
@@ -28,7 +30,7 @@ const navItems = [
   { label: 'Board', icon: <ClipboardCheck className='w-4 h-4' />, path: 'board' },
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
-  { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
+  { label: 'Documents', icon: <FileText className='w-4 h-4' />, path: 'documents' },
   { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
@@ -44,6 +46,7 @@ const navItems = [
 ];
 
 const CLIENT_ALLOWED = ['timeline'];
+const RESTRICTED_TABS_FOR_TEAM = ['dashboard', 'sheet'];
 
 const ProjectDetailHeader: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -63,11 +66,23 @@ const ProjectDetailHeader: React.FC = () => {
   const { user } = useAuth();
   const rawRole = (user?.role ?? '').toString().trim();
   const isClient = rawRole.toUpperCase() === 'CLIENT';
+  const isTeamLeaderOrMember = ['TEAM_LEADER', 'TEAM_MEMBER'].includes(rawRole.toUpperCase());
+
+  const { data: healthData } = useGetHealthDashboardQuery(projectKey);
 
   // Lọc nav theo role
+  // const allowedNav = useMemo(() => {
+  //   return isClient ? navItems.filter((i) => CLIENT_ALLOWED.includes(i.path)) : navItems;
+  // }, [isClient]);
   const allowedNav = useMemo(() => {
-    return isClient ? navItems.filter((i) => CLIENT_ALLOWED.includes(i.path)) : navItems;
-  }, [isClient]);
+    if (isClient) {
+      return navItems.filter((i) => CLIENT_ALLOWED.includes(i.path));
+    }
+    if (isTeamLeaderOrMember) {
+      return navItems.filter((i) => !RESTRICTED_TABS_FOR_TEAM.includes(i.path));
+    }
+    return navItems;
+  }, [isClient, isTeamLeaderOrMember]);
 
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
@@ -109,11 +124,19 @@ const ProjectDetailHeader: React.FC = () => {
   }, []);
 
   // Chặn truy cập tab khác: CLIENT ⇒ ép về timeline
+  // useEffect(() => {
+  //   if (isClient && activeTab !== 'timeline') {
+  //     navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
+  //   }
+  // }, [isClient, activeTab, navigate, projectKey]);
+
   useEffect(() => {
     if (isClient && activeTab !== 'timeline') {
       navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
+    } else if (isTeamLeaderOrMember && RESTRICTED_TABS_FOR_TEAM.includes(activeTab)) {
+      navigate(`?projectKey=${projectKey}#list`, { replace: true });
     }
-  }, [isClient, activeTab, navigate, projectKey]);
+  }, [isClient, isTeamLeaderOrMember, activeTab, navigate, projectKey]);
 
   return (
     <div className='mx-6 pt-6 relative'>
@@ -152,6 +175,9 @@ const ProjectDetailHeader: React.FC = () => {
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
+                {item.path === 'dashboard' && healthData?.data?.showAlert && (
+                  <AlertTriangle className='w-4 h-4 text-red-500 ml-1' />
+                )}
               </Link>
             </li>
           ))}
@@ -183,6 +209,9 @@ const ProjectDetailHeader: React.FC = () => {
                         >
                           {item.icon}
                           <span className='truncate'>{item.label}</span>
+                          {item.path === 'dashboard' && healthData?.data?.showAlert && (
+                            <AlertTriangle className='w-4 h-4 text-red-500 ml-1' />
+                          )}
                         </Link>
                       </li>
                     ))}

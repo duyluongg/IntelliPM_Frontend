@@ -110,7 +110,7 @@ const DocumentTypeSelector: React.FC = () => {
             className='mt-6 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-6 py-3 rounded-lg font-semibold shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors'
             onClick={() => navigate(`/project/projects/form/recent_form`)}
           >
-            Or, start from a recent form
+            Recent documents
           </button>
         </div>
 

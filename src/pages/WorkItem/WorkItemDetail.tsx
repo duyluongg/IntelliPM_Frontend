@@ -26,7 +26,8 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
-  useUpdateTaskSprintMutation
+  useUpdateTaskSprintMutation,
+  useUpdatePercentCompleteMutation,
 } from '../../services/taskApi';
 import {
   useGetTaskFilesByTaskIdQuery,
@@ -113,11 +114,13 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
+  const [updatePercentComplete] = useUpdatePercentCompleteMutation();
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
     Record<string, TaskAssignmentDTO[]>
@@ -200,6 +203,54 @@ const WorkItemDetail: React.FC = () => {
       console.error('❌ Failed to update end date', err);
     }
   };
+
+  const handlePercentCompleteChange = async () => {
+      if (!taskData || newPercentComplete === taskData.percentComplete) return;
+  
+      if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Percent Complete',
+          text: 'Percent complete must be between 0 and 100.',
+          width: '500px',
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        setNewPercentComplete(taskData.percentComplete);
+        return;
+      }
+  
+      try {
+        await updatePercentComplete({
+          id: taskId,
+          percentComplete: newPercentComplete ?? 0,
+          createdBy: accountId,
+        }).unwrap();
+  
+        console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+        await refetchActivityLogs();
+      } catch (err) {
+        console.error('❌ Failed to update task percent complete', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: 'Failed to update percent complete.',
+          width: '500px',
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+      }
+    };
 
   const handleTitleTaskChange = async () => {
     try {
@@ -346,6 +397,7 @@ const WorkItemDetail: React.FC = () => {
       setProjectId(String(taskData.projectId));
       setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
+      setNewPercentComplete(taskData.percentComplete ?? 0);
     }
   }, [taskData]);
 
@@ -1682,6 +1734,35 @@ const WorkItemDetail: React.FC = () => {
                           </span>
                         ))}
                   </span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        max='100'
+                        step='0.01'
+                        value={newPercentComplete ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewPercentComplete(value);
+                        }}
+                        onBlur={handlePercentCompleteChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.percentComplete ?? '0'}% (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.percentComplete ?? '0'}%</span>
                 )}
               </div>
 

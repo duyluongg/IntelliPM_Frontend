@@ -10,7 +10,7 @@ interface HealthData {
     tasksToBeCompleted: number;
     overdueTasks: number;
     progressPercent: number;
-    costStatus: number;
+    costStatus: string;
     cost: ProjectMetric;
     showAlert: boolean;
   };
@@ -51,15 +51,17 @@ const HealthOverview: React.FC<{
     <div className="p-4">
       <div className="space-y-2 text-sm text-gray-700">
         <Row label="Project Status" value={projectStatus || 'No data'} />
-        <Row label="Time" value={timeStatus || 'No data'} />
+        <Row label="Time status" value={timeStatus || 'No data'} />
+        <Row label="Cost status" value={costStatus || 'No data'} />
         <Row label="Tasks" value={`${Math.max(0, tasksToBeCompleted)} tasks to be completed`} />
         <Row label="Workload" value={`${overdueTasks} tasks overdue`} />
-        <Row label="Progress" value={`${progressPercent}% complete`} />
-        <Row
+        <Row label="Progress" value={`${progressPercent}% complete`} /> 
+        {/* <Row
           label="Cost Performance Index"
           value={costStatus === 0 || costStatus === undefined ? '0' : `${costStatus}`}
-        />
+        /> */}
         <Row label="Schedule Performance Index" value={`${cost.schedulePerformanceIndex}`} />
+        <Row label="Cost Performance Index" value={`${cost.costPerformanceIndex}`} />
       </div>
     </div>
   );

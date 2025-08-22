@@ -1361,8 +1361,8 @@
 import React, { useState, useEffect } from 'react';
 import { Resizable } from 'react-resizable';
 import { useGetFullProjectDetailsByKeyQuery } from '../../../services/projectApi';
-import { useUpdateTaskStatusMutation } from '../../../services/taskApi';
-import { useUpdateSubtaskStatusMutation } from '../../../services/subtaskApi';
+import { useUpdateTaskStatusMutation, useUpdatePercentCompleteMutation } from '../../../services/taskApi';
+import { useUpdateSubtaskStatusMutation, useUpdateSubtaskPercentCompleteMutation } from '../../../services/subtaskApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useUpdateSubtaskPlannedHoursMutation, useUpdateSubtaskActualHoursMutation } from '../../../services/subtaskApi';
 import { useUpdatePlannedHoursMutation } from '../../../services/taskApi';
@@ -1400,6 +1400,8 @@ const TaskSubtaskSheet: React.FC = () => {
   const [updateSubtaskPlannedHours] = useUpdateSubtaskPlannedHoursMutation();
   const [updateSubtaskActualHours] = useUpdateSubtaskActualHoursMutation();
   const [updatePlannedHours] = useUpdatePlannedHoursMutation();
+  const [updatePercentComplete] = useUpdatePercentCompleteMutation();
+  const [updateSubtaskPercentComplete] = useUpdateSubtaskPercentCompleteMutation();
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
   const [isRefetching, setIsRefetching] = useState(false);
@@ -1507,6 +1509,62 @@ const TaskSubtaskSheet: React.FC = () => {
       );
     } catch (err) {
       console.error('Failed to update subtask status', err);
+    } finally {
+      setIsRefetching(false);
+    }
+  };
+
+  const handleTaskPercentCompleteBlur = async (taskId: string, percent: number) => {
+    if (percent < 0 || percent > 100) {
+      alert('Percent complete must be between 0 and 100.');
+      return;
+    }
+    const formattedPercent = Number(percent.toFixed(2));
+    console.log(`Frontend sending task ${taskId} with percentComplete: ${formattedPercent}, type: ${typeof formattedPercent}`);
+    try {
+      setIsRefetching(true);
+      await updatePercentComplete({
+        id: taskId,
+        percentComplete: formattedPercent,
+        createdBy: accountId,
+      }).unwrap();
+      setEditedCells((prev) => ({ ...prev, [`${taskId}-percentComplete`]: formattedPercent }));
+      await refetchProject();
+      console.log(
+        'Task percent complete updated, refetched data:',
+        data?.data?.tasks.find((t) => t.id === taskId)
+      );
+    } catch (err) {
+      console.error('Failed to update task percent complete', err);
+      alert('Failed to update percent complete.');
+    } finally {
+      setIsRefetching(false);
+    }
+  };
+
+  const handleSubtaskPercentCompleteBlur = async (subtaskId: string, taskId: string, percent: number) => {
+    if (percent < 0 || percent > 100) {
+      alert('Percent complete must be between 0 and 100.');
+      return;
+    }
+    const formattedPercent = Number(percent.toFixed(2));
+    console.log(`Frontend sending subtask ${subtaskId} with percentComplete: ${formattedPercent}, type: ${typeof formattedPercent}`);
+    try {
+      setIsRefetching(true);
+      await updateSubtaskPercentComplete({
+        id: subtaskId,
+        percentComplete: formattedPercent,
+        createdBy: accountId,
+      }).unwrap();
+      setEditedCells((prev) => ({ ...prev, [`${subtaskId}-percentComplete-subtask`]: formattedPercent }));
+      await refetchProject();
+      console.log(
+        'Subtask percent complete updated, refetched data:',
+        data?.data?.tasks.find((t) => t.id === taskId)
+      );
+    } catch (err) {
+      console.error('Failed to update subtask percent complete', err);
+      alert('Failed to update percent complete.');
     } finally {
       setIsRefetching(false);
     }
@@ -1638,7 +1696,8 @@ const TaskSubtaskSheet: React.FC = () => {
           (task.actualHours ?? 0).toString(),
           formatCost(task.plannedCost),
           formatCost(task.actualCost),
-          task.percentComplete ? `${task.percentComplete}%` : '0%',
+          // task.percentComplete ? `${task.percentComplete}%` : '0%',
+          (editedCells[`${task.id}-percentComplete`] ?? task.percentComplete ?? 0) + '%',
           getAssignedNames(task.id),
         ]);
 
@@ -1658,7 +1717,8 @@ const TaskSubtaskSheet: React.FC = () => {
               (editedCells[`${subtask.id}-actualHours-subtask`] ?? subtask.actualHours ?? 0).toString(),
               formatCost(subtask.plannedCost),
               formatCost(subtask.actualCost),
-              subtask.percentComplete ? `${subtask.percentComplete}%` : '0%',
+              //subtask.percentComplete ? `${subtask.percentComplete}%` : '0%',
+              (editedCells[`${subtask.id}-percentComplete-subtask`] ?? subtask.percentComplete ?? 0) + '%',
               subtask.assignedFullName || subtask.assignedUsername || '-',
             ]);
           });
@@ -1943,8 +2003,30 @@ const TaskSubtaskSheet: React.FC = () => {
                   <td className={`border-b border-gray-200 p-3 text-sm ${task.subtasks?.length ? 'font-bold' : ''}`}>
                     {formatCost(task.actualCost)}
                   </td>
-                  <td className={`border-b border-gray-200 p-3 text-sm ${task.subtasks?.length ? 'font-bold' : ''}`}>
+                  {/* <td className={`border-b border-gray-200 p-3 text-sm ${task.subtasks?.length ? 'font-bold' : ''}`}>
                     {task.percentComplete ? `${task.percentComplete}%` : '0%'}
+                  </td> */}
+                  <td className='border-b border-gray-200 p-3 text-sm'>
+                    {task.subtasks?.length ? (
+                      <span className={task.subtasks?.length ? 'font-bold' : ''}>
+                        {(editedCells[`${task.id}-percentComplete`] ?? task.percentComplete ?? 0)}% (Managed by subtasks)
+                      </span>
+                    ) : (
+                      <input
+                        type='number'
+                        value={editedCells[`${task.id}-percentComplete`] ?? (task.percentComplete ?? 0)}
+                        onChange={(e) =>
+                          handleCellChange(task.id, 'percentComplete', parseFloat(e.target.value) || 0)
+                        }
+                        onBlur={(e) =>
+                          handleTaskPercentCompleteBlur(task.id, parseFloat(e.target.value) || 0)
+                        }
+                        className='w-full p-1.5 border rounded-md focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-colors'
+                        min='0'
+                        max='100'
+                        step='0.1'
+                      />
+                    )}
                   </td>
                   <td
                     className={`border-b border-gray-200 p-3 text-sm ${!task.subtasks?.length ? 'cursor-pointer text-blue-600 hover:underline' : ''} ${task.subtasks?.length ? 'font-bold' : ''}`}
@@ -2047,8 +2129,35 @@ const TaskSubtaskSheet: React.FC = () => {
                       <td className='border-b border-gray-200 p-3 text-sm'>
                         {formatCost(subtask.actualCost)}
                       </td>
-                      <td className='border-b border-gray-200 p-3 text-sm'>
+                      {/* <td className='border-b border-gray-200 p-3 text-sm'>
                         {subtask.percentComplete ? `${subtask.percentComplete}%` : '0%'}
+                      </td> */}
+                      <td className='border-b border-gray-200 p-3 text-sm'>
+                        <input
+                          type='number'
+                          value={
+                            editedCells[`${subtask.id}-percentComplete-subtask`] ?? (subtask.percentComplete ?? 0)
+                          }
+                          onChange={(e) =>
+                            handleCellChange(
+                              subtask.id,
+                              'percentComplete',
+                              parseFloat(e.target.value) || 0,
+                              true
+                            )
+                          }
+                          onBlur={(e) =>
+                            handleSubtaskPercentCompleteBlur(
+                              subtask.id,
+                              task.id,
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
+                          className='w-full p-1.5 border rounded-md focus:ring-2 focus:ring-blue-300 focus:border-blue-500 transition-colors'
+                          min='0'
+                          max='100'
+                          step='0.1'
+                        />
                       </td>
                       <td className='border-b border-gray-200 p-3 text-sm'>
                         {subtask.assignedFullName || subtask.assignedUsername || '-'}

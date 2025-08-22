@@ -30,6 +30,7 @@ import {
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
   useUpdateTaskSprintMutation,
+  useUpdatePercentCompleteMutation,
 } from '../../services/taskApi';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
@@ -136,11 +137,13 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateTaskPriority] = useUpdateTaskPriorityMutation();
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
+  const [updatePercentComplete] = useUpdatePercentCompleteMutation();
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [newSprintId, setNewSprintId] = useState<number>();
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingSuggest, setLoadingSuggest] = useState(false);
@@ -275,6 +278,54 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
+  const handlePercentCompleteChange = async () => {
+    if (!taskData || newPercentComplete === taskData.percentComplete) return;
+
+    if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Percent Complete',
+        text: 'Percent complete must be between 0 and 100.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewPercentComplete(taskData.percentComplete);
+      return;
+    }
+
+    try {
+      await updatePercentComplete({
+        id: taskId,
+        percentComplete: newPercentComplete ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update task percent complete', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
@@ -362,9 +413,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
         // Kiểm tra nếu assignees không thay đổi
-        if (
-          JSON.stringify(prev[taskId]) === JSON.stringify(assignees)
-        ) {
+        if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
           return prev; // Không cập nhật nếu giống nhau
         }
         return { ...prev, [taskId]: assignees };
@@ -491,6 +540,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setSprintId(taskData.sprintId ?? null);
       setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
+      setNewPercentComplete(taskData.percentComplete ?? 0);
     }
   }, [taskData]);
 
@@ -933,8 +983,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                      } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${
+                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                    } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -991,10 +1042,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
-                              ? 'bg-gray-400 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                              }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
+                              selectedSuggestions.length === 0 || loadingCreate
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                            }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1701,13 +1753,66 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
                         ))}
                   </span>
+                )}
+              </div>
+
+              {/* <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  <div className='flex items-center gap-1'>
+                    <input
+                      type='number'
+                      min='0'
+                      max='100'
+                      step='0.01'
+                      value={newPercentComplete ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setNewPercentComplete(value);
+                      }}
+                      onBlur={handlePercentCompleteChange}
+                      style={{ width: '100px' }}
+                      className='border rounded p-1'
+                    />
+                    <span>%</span>
+                  </div>
+                ) : (
+                  <span>{taskData?.percentComplete ?? '0'}%</span>
+                )}
+              </div> */}
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        max='100'
+                        step='0.01'
+                        value={newPercentComplete ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewPercentComplete(value);
+                        }}
+                        onBlur={handlePercentCompleteChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.percentComplete ?? '0'}% (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.percentComplete ?? '0'}%</span>
                 )}
               </div>
 
@@ -1777,8 +1882,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}

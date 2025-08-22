@@ -533,6 +533,21 @@ export const taskApi = createApi({
       transformResponse: (response: AITaskListResponse) => response,
       invalidatesTags: ['Task'],
     }),
+
+    updatePercentComplete: builder.mutation<
+      void,
+      { id: string; percentComplete: number; createdBy: number }
+    >({
+      query: ({ id, percentComplete, createdBy }) => ({
+        url: `task/${id}/percent-complete?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(percentComplete),
+      }),
+      invalidatesTags: ['Task'],
+    }),
   }),
 });
 
@@ -561,4 +576,5 @@ export const {
   useCreateTasksMutation,
   useUpdateTaskEpicMutation,
   useGenerateAITasksMutation,
+  useUpdatePercentCompleteMutation,
 } = taskApi;

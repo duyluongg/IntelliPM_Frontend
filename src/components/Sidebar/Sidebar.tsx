@@ -90,27 +90,27 @@ export default function Sidebar() {
     }));
 
   // Trigger metric calculation for each project only on initial mount
-  const [calculate] = useCalculateMetricsBySystemMutation();
-  const hasCalculated = useRef(false); // Track if metrics have been calculated
+  // const [calculate] = useCalculateMetricsBySystemMutation();
+  // const hasCalculated = useRef(false); // Track if metrics have been calculated
 
-  useEffect(() => {
-    if (hasCalculated.current || recentProjects.length === 0) return;
+  // useEffect(() => {
+  //   if (hasCalculated.current || recentProjects.length === 0) return;
 
-    const calculateMetrics = async () => {
-      try {
-        hasCalculated.current = true; // Mark as calculated
-        await Promise.all(
-          recentProjects.map((proj) =>
-            calculate({ projectKey: proj.key }).unwrap()
-          )
-        );
-      } catch (err) {
-        console.error('❌ Error calculating metrics for projects:', err);
-      }
-    };
+  //   const calculateMetrics = async () => {
+  //     try {
+  //       hasCalculated.current = true; // Mark as calculated
+  //       await Promise.all(
+  //         recentProjects.map((proj) =>
+  //           calculate({ projectKey: proj.key }).unwrap()
+  //         )
+  //       );
+  //     } catch (err) {
+  //       console.error('❌ Error calculating metrics for projects:', err);
+  //     }
+  //   };
 
-    calculateMetrics();
-  }, []);
+  //   calculateMetrics();
+  // }, []);
 
   useEffect(() => {
     // console.log('[Sidebar] role=', user?.role, 'isClient=', isClient);

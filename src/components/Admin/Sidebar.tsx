@@ -25,6 +25,7 @@ const menuItems = [
   { icon: <PieChart className="w-5 h-5" />, label: 'Analytics', path: '/admin/analytics' },
   { icon: <Settings className="w-5 h-5" />, label: 'Settings', path: '/admin/settings' },
   { icon: <Settings className="w-5 h-5" />, label: 'Configurations', path: '/admin/configurations' },
+   { icon: <Settings className="w-5 h-5" />, label: 'Categories', path: '/admin/categories' },
   {
     icon: <Rocket className="w-5 h-5" />,
     label: 'Projects',

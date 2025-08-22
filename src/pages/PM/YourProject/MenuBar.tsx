@@ -50,6 +50,8 @@ import {
   useUpdatePermissionTypeMutation,
   type PermissionType,
 } from '../../../services/Document/documentPermissionAPI';
+import { useAuth } from '../../../services/AuthContext';
+import { useGetProfileByEmailQuery } from '../../../services/accountApi';
 
 interface Props {
   editor: Editor | null;
@@ -66,6 +68,23 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
   if (!editor) {
     return null;
   }
+  const { user } = useAuth();
+  const {
+    data: profileRes,
+    isLoading: isProfileLoading,
+    isError: isProfileError,
+  } = useGetProfileByEmailQuery(user?.email as string, {
+    skip: !user?.email,
+  });
+
+  const avatarUrl =
+    profileRes?.data?.picture ||
+    (user?.email
+      ? `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          user.username || user.email
+        )}&background=0D8ABC&color=fff`
+      : '');
+
   const { documentId: documentIdParam } = useParams<{ documentId: string }>();
   const documentId = Number(documentIdParam);
   const hasValidDocId = Number.isFinite(documentId) && documentId > 0;
@@ -803,16 +822,28 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
                     {/* User - Owner */}
                     <div className='flex items-center justify-between'>
                       <div className='flex items-center gap-3'>
-                        <img
-                          className='h-10 w-10 rounded-full'
-                          src='https://i.pravatar.cc/40?u=tony'
-                          alt='Tony Luong'
-                        />
+                        {isProfileLoading ? (
+                          <div className='h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse' />
+                        ) : (
+                          <img
+                            className='h-10 w-10 rounded-full object-cover'
+                            src={avatarUrl}
+                            alt={user?.username || user?.email || 'Owner'}
+                            onError={(e) => {
+                              // fallback nếu link ảnh hỏng
+                              (
+                                e.currentTarget as HTMLImageElement
+                              ).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                user?.username || user?.email || 'User'
+                              )}`;
+                            }}
+                          />
+                        )}
                         <div>
-                          <p className='font-medium text-gray-900 dark:text-gray-100'>Tony Luong</p>
-                          <p className='text-sm text-gray-500 dark:text-gray-400'>
-                            tony.luong@example.com
+                          <p className='font-medium text-gray-900 dark:text-gray-100'>
+                            {user?.username}
                           </p>
+                          <p className='text-sm text-gray-500 dark:text-gray-400'>{user?.email}</p>
                         </div>
                       </div>
                       <div className='flex items-center gap-3 text-sm text-yellow-600 dark:text-yellow-400'>

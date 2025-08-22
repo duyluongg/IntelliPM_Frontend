@@ -1014,6 +1014,7 @@ import './Risk.css';
 import { useGetProjectsByAccountIdQuery } from '../../../services/accountApi';
 import aiIcon from '../../../assets/icon/ai.png';
 import { Tooltip } from 'react-tooltip';
+import { useAuth } from '../../../services/AuthContext';
 
 const Risk = () => {
   const [searchParams] = useSearchParams();
@@ -1023,7 +1024,11 @@ const Risk = () => {
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;
   const [scopeFilter, setScopeFilter] = useState('ALL');
-  const [dueDateFilter, setDueDateFilter] = useState('ALL'); // 'ACTIVE' for future/today, 'ALL' for all dates
+  const [dueDateFilter, setDueDateFilter] = useState('ALL');
+
+  const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isTeamLeaderOrMember = ['TEAM_LEADER', 'TEAM_MEMBER'].includes(rawRole.toUpperCase());
 
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
@@ -1355,19 +1360,12 @@ const Risk = () => {
             <option value='ALL'>All Due Dates</option>
             <option value='ACTIVE'>Active Due Dates</option>
           </select>
-          <button
+          {/* <button
             className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
             onClick={openCreateRiskModal}
           >
             + Add Risk
           </button>
-          {/* <button
-            className='px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition'
-            onClick={openSuggestedRisks}
-          >
-            🤖 Suggest by AI
-          </button> */}
-
           <div
             className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
             onClick={openSuggestedRisks}
@@ -1377,7 +1375,27 @@ const Risk = () => {
             <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
             <span>Generate Risks by AI</span>
             <Tooltip id='generate-ai-tooltip' />
-          </div>
+          </div> */}
+          {!isTeamLeaderOrMember && (
+            <>
+              <button
+                className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition'
+                onClick={openCreateRiskModal}
+              >
+                + Add Risk
+              </button>
+              <div
+                className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105 cursor-pointer'
+                onClick={openSuggestedRisks}
+                data-tooltip-id='generate-ai-tooltip'
+                data-tooltip-content='Generate tasks using AI'
+              >
+                <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                <span>Generate Risks by AI</span>
+                <Tooltip id='generate-ai-tooltip' />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

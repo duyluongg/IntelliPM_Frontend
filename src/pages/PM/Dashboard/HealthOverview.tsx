@@ -60,8 +60,8 @@ const HealthOverview: React.FC<{
           label="Cost Performance Index"
           value={costStatus === 0 || costStatus === undefined ? '0' : `${costStatus}`}
         /> */}
-        <Row label="Schedule Performance Index" value={`${cost.schedulePerformanceIndex}`} />
-        <Row label="Cost Performance Index" value={`${cost.costPerformanceIndex}`} />
+        {/* <Row label="Schedule Performance Index" value={`${cost.schedulePerformanceIndex}`} />
+        <Row label="Cost Performance Index" value={`${cost.costPerformanceIndex}`} /> */}
       </div>
     </div>
   );

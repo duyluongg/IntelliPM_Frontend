@@ -4,7 +4,7 @@ import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
 import { AlertTriangle } from 'lucide-react';
-import { useGetHealthDashboardQuery } from '../../../services/projectMetricApi';
+import { useGetHealthDashboardQuery, useCalculateMetricsBySystemMutation } from '../../../services/projectMetricApi';
 
 import {
   Users2,
@@ -68,7 +68,12 @@ const ProjectDetailHeader: React.FC = () => {
   const isClient = rawRole.toUpperCase() === 'CLIENT';
   const isTeamLeaderOrMember = ['TEAM_LEADER', 'TEAM_MEMBER'].includes(rawRole.toUpperCase());
 
-  const { data: healthData } = useGetHealthDashboardQuery(projectKey);
+  //const { data: healthData } = useGetHealthDashboardQuery(projectKey);
+
+  const [calculate, { isLoading: isCalculating, error: calculateError }] = useCalculateMetricsBySystemMutation();
+  const { data: healthData, isLoading: isHealthLoading, error: healthError } = useGetHealthDashboardQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
+  });
 
   // Lọc nav theo role
   // const allowedNav = useMemo(() => {

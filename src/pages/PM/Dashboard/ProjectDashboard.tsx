@@ -1468,7 +1468,7 @@ const ProjectDashboard: React.FC = () => {
       try {
         await calculate({ projectKey }).unwrap();
         await refetch();
-        await refetchHealth();
+        //await refetchHealth();
         setIsCalculateDone(true);
       } catch (err) {
         console.error('❌ Error calculating/refetching metrics:', err);
@@ -1573,13 +1573,29 @@ const ProjectDashboard: React.FC = () => {
     }) ?? [];
 
   const ForecastCard: React.FC<{
+    spi: number;
+    cpi: number;
     eac: number;
     etc: number;
     vac: number;
     edac: number;
-  }> = ({ eac, etc, vac, edac }) => (
+  }> = ({ spi, cpi, eac, etc, vac, edac }) => (
     <DashboardCard title='Project Forecast'>
       <div className='flex flex-col gap-3 text-sm text-gray-700'>
+        <div>
+          <strong className='text-blue-700 min-w-[160px]'>Schedule Performance Index (SPI):</strong>
+          <span>{spi.toFixed(2)}</span>
+          <p className='text-xs text-gray-500'>
+            Measures schedule efficiency. Above 1 means ahead of schedule.
+          </p>
+        </div>
+        <div>
+          <strong className='text-blue-700 min-w-[160px]'>Cost Performance Index (CPI):</strong>
+          <span>{cpi.toFixed(2)}</span>
+          <p className='text-xs text-gray-500'>
+            Measures cost efficiency. Above 1 means under budget.
+          </p>
+        </div>
         <div>
           <strong className='text-blue-700'>Estimate at Completion (EAC):</strong>{' '}
           {eac.toLocaleString()}
@@ -1957,6 +1973,8 @@ const ProjectDashboard: React.FC = () => {
       />
 
       <ForecastCard
+        spi={metricData?.data?.schedulePerformanceIndex ?? 0}
+        cpi={metricData?.data?.costPerformanceIndex ?? 0}
         eac={metricData?.data?.estimateAtCompletion ?? 0}
         etc={metricData?.data?.estimateToComplete ?? 0}
         vac={metricData?.data?.varianceAtCompletion ?? 0}

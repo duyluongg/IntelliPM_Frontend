@@ -23,6 +23,7 @@ export interface SubtaskResponseDTO {
   reporterName: string;
   createdBy: number;
   warnings?: string[];
+  percentComplete: number;
 }
 
 export interface SubtaskFullResponseDTO {
@@ -176,6 +177,39 @@ export const subtaskApi = createApi({
         body: JSON.stringify(hours),
       }),
     }),
+
+    updateSubtaskPercentComplete: builder.mutation<void, { id: string; percentComplete: number; createdBy: number }>({
+      query: ({ id, percentComplete, createdBy }) => ({
+        url: `subtask/${id}/percent-complete?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(percentComplete),
+      }),
+    }),
+
+    updateSubtaskPlannedCost: builder.mutation<void, { id: string; plannedCost: number; createdBy: number }>({
+      query: ({ id, plannedCost, createdBy }) => ({
+        url: `subtask/${id}/planned-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(plannedCost),
+      }),
+    }),
+
+    updateSubtaskActualCost: builder.mutation<void, { id: string; actualCost: number; createdBy: number }>({
+      query: ({ id, actualCost, createdBy }) => ({
+        url: `subtask/${id}/actual-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(actualCost),
+      }),
+    }),
   }),
 });
 
@@ -189,4 +223,7 @@ export const {
   useUpdateSubtaskPlannedHoursMutation,
   useUpdateSubtaskActualHoursMutation,
   useCreateAISubtaskMutation,
+  useUpdateSubtaskPercentCompleteMutation,
+  useUpdateSubtaskPlannedCostMutation,
+  useUpdateSubtaskActualCostMutation,
 } = subtaskApi;

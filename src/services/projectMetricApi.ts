@@ -59,7 +59,7 @@ interface HealthDashboardResponse {
     tasksToBeCompleted: number;
     overdueTasks: number;
     progressPercent: number;
-    costStatus: number;
+    costStatus: string;
     cost: ProjectMetric;
     showAlert: boolean;
   };
@@ -182,11 +182,21 @@ export const projectMetricApi = createApi({
       }),
     }),
 
+    // getCostDashboard: builder.query<CostDashboardResponse, string>({
+    //   query: (projectKey) => ({
+    //     url: `projectmetric/cost-dashboard?projectKey=${projectKey}`,
+    //     method: 'GET',
+    //   }),
+    // }),
     getCostDashboard: builder.query<CostDashboardResponse, string>({
       query: (projectKey) => ({
         url: `projectmetric/cost-dashboard?projectKey=${projectKey}`,
         method: 'GET',
       }),
+      transformResponse: (response: any) => {
+        console.log('Raw API response:', response);
+        return response; // đừng map gì hết để chắc chắn
+      },
     }),
 
     getWorkloadDashboard: builder.query<WorkloadDashboardResponse, string>({

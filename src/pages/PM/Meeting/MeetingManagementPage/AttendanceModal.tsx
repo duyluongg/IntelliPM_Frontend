@@ -440,9 +440,9 @@ const onDragEnd = () => {
     <DialogContent className="fixed left-1/2 top-1/2 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl">
       <h3 className="mb-2 text-lg font-semibold">Remove participant?</h3>
       <p className="mb-4 text-sm text-gray-600">
-        Bạn có chắc muốn xoá{' '}
+        Are you sure you want to remove{' '}
         <span className="font-medium text-gray-900">{target?.fullName}</span>{' '}
-        khỏi cuộc họp này không?
+        from this meeting?
       </p>
 
       <div className="mt-4 flex justify-end gap-2">

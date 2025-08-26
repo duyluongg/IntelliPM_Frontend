@@ -23,7 +23,7 @@ interface RequirementInputProps {
   updateRequirement: (id: string, field: keyof RequirementRequest, value: string) => void;
   toggleExpand: (id: string) => void;
   removeRequirement: (id: string) => void;
-  onSave: () => Promise<boolean>;
+  onSave: () => Promise<boolean>; // Chỉ để lưu dữ liệu, không submit
 }
 
 const RequirementInput: React.FC<RequirementInputProps> = ({
@@ -64,7 +64,8 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      await onSave();
+      // Không gọi onSave ở đây nữa để tránh submit form
+      // await onSave();
     }
   };
 
@@ -171,7 +172,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
                       onClick={() => {
                         updateRequirement(req.uiId, 'priority', p.name);
                         setDropdownOpen((prev) => ({ ...prev, [req.uiId]: false }));
-                        onSave();
+                        // Bỏ onSave() ở đây để không tự động submit
                       }}
                       className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                     >

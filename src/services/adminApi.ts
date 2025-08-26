@@ -52,6 +52,42 @@ export interface GetProjectStatusResponse {
   message: string;
 }
 
+export interface ProjectManagerReport {
+  projectManagerId: number;
+  projectManagerName: string;
+  totalProjects: number;
+  activeProjects: number;
+  overdueTasks: number;
+  totalBudget: number;
+  projects: ProjectSummary[];
+}
+
+export interface ProjectSummary {
+  projectId: number;
+  projectKey: string;
+  projectName: string;
+  status: string;
+  spi?: number;
+  cpi?: number;
+  progress: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  budget: number;
+  actualCost: number;
+  remainingBudget: number;
+  milestones: MilestoneSummary[];
+}
+
+export interface MilestoneSummary {
+  milestoneId: number;
+  key: string;
+  name: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: fetchBaseQuery({
@@ -79,7 +115,12 @@ export const adminApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getProjectManagerReports: builder.query<ProjectManagerReport[], void>({
+      query: () => 'admin/project-managers',
+    }),
   }),
 });
 
-export const { useGetAccountsQuery, useGetProjectStatusQuery } = adminApi;
+export const { useGetAccountsQuery, useGetProjectStatusQuery, useGetProjectManagerReportsQuery } =
+  adminApi;

@@ -13,12 +13,13 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
 
-  const { data: projectData, isSuccess: hasProjects } = useGetProjectsByAccountQuery(
-    user?.accessToken || '',
-    {
-      skip: !user?.accessToken,
-    }
-  );
+  const { 
+    data: projectData, 
+    isSuccess: hasProjects, 
+    error: projectError 
+  } = useGetProjectsByAccountQuery(user?.accessToken || '', {
+    skip: !user?.accessToken,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,17 +52,26 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
-    const hasData = hasProjects && projectData?.data?.length > 0;
-    const firstProject = hasData ? projectData.data[0] : null;
 
-    if (isAccessRole && hasData && firstProject) {
-      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+    if (isAccessRole) {
+      if (projectError) {
+        navigate('/');
+        return;
+      }
+      const hasData = hasProjects && projectData?.data?.length > 0;
+      const firstProject = hasData ? projectData.data[0] : null;
+
+      if (hasData && firstProject) {
+        navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+      } else {
+        navigate('/');
+      }
     } else if (user?.role === 'ADMIN') {
       navigate('/admin');
     } else if (user?.role === 'CLIENT') {
       navigate('/meeting');
     }
-  }, [user, hasProjects, projectData, navigate]);
+  }, [user, hasProjects, projectData, projectError, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4">

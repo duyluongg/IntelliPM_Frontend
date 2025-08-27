@@ -64,7 +64,7 @@ const DynamicBulkRegister: React.FC = () => {
       className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4 py-8"
     >
       <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-2xl space-y-6">
-        <h2 className="text-3xl font-bold text-center text-gray-800">Dynamic Bulk Register</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-800">Register Members</h2>
         {/* Header: Email Input and Add Button */}
         <div className="flex space-x-4">
           <input

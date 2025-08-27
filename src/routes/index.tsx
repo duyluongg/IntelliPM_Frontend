@@ -356,7 +356,7 @@ export const router = createBrowserRouter([
         element: <AiResponsePage />,
       },
           {
-        path: 'dynamic-bulk-register',
+        path: 'register-members',
         element: <DynamicBulkRegister />,
       },
       {

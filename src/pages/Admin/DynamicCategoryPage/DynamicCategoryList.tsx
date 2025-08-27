@@ -2,7 +2,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { Edit, Trash2, ToggleLeft, ToggleRight, ImageOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { type DynamicCategory } from '../../../services/dynamicCategoryApi';
 import { useDeleteMutation, useUpdateStatusMutation } from '../../../services/dynamicCategoryApi';
 
@@ -10,10 +9,10 @@ interface DynamicCategoryListProps {
   categories: DynamicCategory[];
   isLoading: boolean;
   error: any;
+  onOpenUpdate: (category: DynamicCategory) => void;
 }
 
-const DynamicCategoryList: React.FC<DynamicCategoryListProps> = ({ categories, isLoading, error }) => {
-  const navigate = useNavigate();
+const DynamicCategoryList: React.FC<DynamicCategoryListProps> = ({ categories, isLoading, error, onOpenUpdate }) => {
   const [deleteCategory] = useDeleteMutation();
   const [updateStatus] = useUpdateStatusMutation();
 
@@ -126,7 +125,7 @@ const DynamicCategoryList: React.FC<DynamicCategoryListProps> = ({ categories, i
                 <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                   <button
                     className="text-blue-600 hover:text-blue-800 transition-colors"
-                    onClick={() => navigate(`/admin/categories/${category.id}/edit`)}
+                    onClick={() => onOpenUpdate(category)}
                     aria-label={`Edit ${category.categoryGroup}`}
                   >
                     {category.categoryGroup}
@@ -166,7 +165,7 @@ const DynamicCategoryList: React.FC<DynamicCategoryListProps> = ({ categories, i
                   <div className="flex space-x-2">
                     <button
                       className="text-blue-600 hover:text-blue-800"
-                      onClick={() => navigate(`/admin/categories/${category.id}/edit`)}
+                      onClick={() => onOpenUpdate(category)}
                       aria-label={`Edit ${category.name}`}
                     >
                       <Edit className="w-4 h-4" />

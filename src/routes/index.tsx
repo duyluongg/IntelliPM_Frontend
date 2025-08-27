@@ -79,7 +79,7 @@ export const router = createBrowserRouter([
     element: <Register />,
   },
     {
-    path: 'verify-success',
+    path: '/verify-success',
     element: <VerifySuccess />,
   },
     {

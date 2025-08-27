@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import type { EpicResponseDTO } from '../../../services/epicApi';
 import aiIcon from '../../../assets/icon/ai.png';
 import { useAuth, type Role } from '../../../services/AuthContext';
+import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
 
 interface CreateEpicRequest {
   projectId: number;
@@ -37,6 +38,8 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const { user } = useAuth();
   const canCreate = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +50,7 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
   const fetchAIEpics = async () => {
     try {
       const response = await generateEpics(projectId).unwrap();
+      setAiResponseJson(JSON.stringify(response));
       setAIEpics(response);
     } catch (error) {
       toast.error('Error generating epics: ' + (error as any)?.data?.message || 'Unknown error');
@@ -74,7 +78,7 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
           projectId,
           name: epic.name,
           description: epic.description,
-          status: epic.status.replace(' ', '_').toUpperCase() as 'TO_DO' | 'IN_PROGRESS' | 'DONE',
+          status: epic.status as 'TO_DO' | 'IN_PROGRESS' | 'DONE',
           startDate: epic.startDate || new Date().toISOString(),
           endDate: epic.endDate || new Date().toISOString(),
           reporterId: accountId,
@@ -94,10 +98,19 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
       toast.success('Selected epics saved successfully!');
       refetchWorkItems();
       setSelectedEpics([]); // Reset selection after saving
-      onClose();
+      setIsEvaluationPopupOpen(true);
     } catch (error) {
       toast.error('Error saving epics: ' + (error as any)?.data?.message || (error as any)?.message || 'Unknown error');
     }
+  };
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
   };
 
   if (!isOpen) return null;
@@ -210,6 +223,19 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
           )}
         </div>
       </div>
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={() => {
+            setIsEvaluationPopupOpen(false);
+            onClose();
+          }}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='EPIC_FROM_PROJECT_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
     </div>
   );
 };

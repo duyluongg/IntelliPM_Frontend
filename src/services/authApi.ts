@@ -20,6 +20,22 @@ interface LoginResponse {
   message: string;
 }
 
+interface RegisterRequest {
+  username: string;
+  password: string;
+  email: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  position: string;
+
+}
+
+interface RegisterResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+}
+
 // ... existing code ...
 interface LogoutRequest {
   refreshToken: string;
@@ -53,7 +69,15 @@ export const authApi = createApi({
         },
       }),
     }),
+register: builder.mutation<RegisterResponse, RegisterRequest>({
+      query: (body) => ({
+        url: 'auth/register',
+        method: 'POST',
+        body,
+      }),
+    }),
+
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation, useRegisterMutation } = authApi;

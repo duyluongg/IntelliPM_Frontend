@@ -12,6 +12,7 @@ import Backlog from '../BacklogPage/BacklogPage';
 import KanbanBoardPage from '../KanbanBoardPage/KanbanBoardPage';
 import MilestonePage from '../MilestonePage/MilestonePage';
 import TaskSubtaskSheet from '../../PM/ProjectSheet/TaskSubtaskSheet';
+import DocumentReport from '../../PM/YourProject/DocumentReport';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -21,7 +22,6 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     const hash = location.hash;
-    console.log('📌 Current hash:', hash);
   }, [location.hash]);
 
   const [searchParams] = useSearchParams();
@@ -41,9 +41,8 @@ const ProjectDetailPage = () => {
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
         {activeTab === 'sheet' && <TaskSubtaskSheet />}
-        {/* {activeTab === 'tests' && <Doc/>} */}
+        {activeTab === 'document-report' && <DocumentReport />}
 
-        {/* Add more tabs as needed */}
       </div>
     </div>
   );

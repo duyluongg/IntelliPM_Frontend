@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import type { AITaskResponseDTO, CreateTaskRequest } from '../../../services/taskApi';
 import { useAuth } from '../../../services/AuthContext';
 import aiIcon from '../../../assets/icon/ai.png';
+import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
 
 interface GenerateTaskByAIProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
   const [createTasks, { isLoading: isSavingTasks }] = useCreateTasksMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const canCreate = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -35,6 +38,7 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
   const fetchAITasks = async () => {
     try {
       const response = await generateAITasks(projectId).unwrap();
+      setAiResponseJson(JSON.stringify(response));
       if (response.isSuccess && response.data) {
         setAITasks(response.data);
       } else {
@@ -75,12 +79,21 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
 
     try {
       await createTasks({ tasks: tasksToSave }).unwrap();
+      setIsEvaluationPopupOpen(true);
       toast.success('Selected tasks saved successfully!');
       refetchWorkItems();
-      onClose();
     } catch (error) {
       toast.error('Error saving tasks: ' + (error as any)?.data?.message || 'Unknown error');
     }
+  };
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
   };
 
   if (!isOpen) return null;
@@ -197,6 +210,19 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
           )}
         </div>
       </div>
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={() => {
+            setIsEvaluationPopupOpen(false);
+            onClose(); 
+          }}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='TASK_FROM_PROJECT_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
     </div>
   );
 };

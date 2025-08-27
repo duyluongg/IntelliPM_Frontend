@@ -65,12 +65,31 @@ import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/Mileston
 import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
 import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
+
 import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
+
+import Register from '../components/Register';  
+import VerifySuccess from '../components/VerifySuccess';
+import VerifyFail from '../components/VerifyFail';
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
+
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
+  },
+    {
+    path: '/verify-success',
+    element: <VerifySuccess />,
+  },
+    {
+    path: '/verify-fail',
+    element: <VerifyFail />,
   },
   {
     path: '/Guest',
@@ -335,6 +354,10 @@ export const router = createBrowserRouter([
            {
         path: 'ai-responses',
         element: <AiResponsePage />,
+      },
+          {
+        path: 'register-members',
+        element: <DynamicBulkRegister />,
       },
       {
         path: 'projects',

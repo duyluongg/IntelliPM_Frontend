@@ -142,6 +142,15 @@ export interface CheckOverdueTasksResponse {
   message: string;
 }
 
+export interface RiskStatisticsResponse {
+  totalRisks: number;
+  overdueRisks: number;
+  risksByStatus: Record<string, number>;
+  risksByType: Record<string, number>;
+  risksBySeverity: Record<string, number>;
+  risksByResponsible: Record<string, number>;
+}
+
 export const riskApi = createApi({
   reducerPath: 'riskApi',
   baseQuery: fetchBaseQuery({
@@ -240,7 +249,7 @@ export const riskApi = createApi({
     }),
 
     getRiskByKey: builder.query<CreateRiskResponse, string>({
-      query: (riskKey) => `/risk/by-risk-key?key=${riskKey}`,
+      query: (riskKey) => `risk/by-risk-key?key=${riskKey}`,
     }),
 
     checkOverdueTasks: builder.mutation<CheckOverdueTasksResponse, string>({
@@ -248,6 +257,10 @@ export const riskApi = createApi({
         url: `risk/check-overdue-tasks/${projectKey}`,
         method: 'POST',
       }),
+    }),
+
+    getRiskStatisticsByProjectKey: builder.query({
+      query: (projectKey) => `/risk/statistics/${projectKey}`,
     }),
   }),
 });
@@ -267,4 +280,5 @@ export const {
   useLazyGetAiSuggestedRisksQuery,
   useGetRiskByKeyQuery,
   useCheckOverdueTasksMutation,
+  useGetRiskStatisticsByProjectKeyQuery,
 } = riskApi;

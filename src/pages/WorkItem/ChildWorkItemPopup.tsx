@@ -40,6 +40,7 @@ import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi'
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 
 interface SubtaskDetail {
   id: string;
@@ -110,6 +111,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [updateSubtask] = useUpdateSubtaskMutation();
+  const [fileError, setFileError] = useState('');
+
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
   );
@@ -126,6 +129,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+
+  const { data: assignees = [], isLoading: isAssigneeLoading } =
+    useGetTaskAssignmentsByTaskIdQuery(subtaskDetail?.taskId ?? '');
+
   const {
     data: subtaskStatus,
     isLoading: loadSubtaskStatus,
@@ -390,7 +397,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !subtaskDetail) return;
-
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('File size exceeds 10MB limit');
+      setIsAddDropdownOpen(false);
+      return;
+    }
     try {
       await uploadSubtaskFile({
         subtaskId: subtaskDetail.id,
@@ -555,7 +566,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
           }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '500px',
+            width: '600px',
             fontWeight: 'bold',
           }}
         />
@@ -573,7 +584,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                 {isAddDropdownOpen && (
                   <div className='add-dropdown'>
                     <div className='add-item' onClick={() => fileInputRef.current?.click()}>
-                      📎 Attachment
+                      📁 Attachment
                     </div>
                   </div>
                 )}
@@ -583,6 +594,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   style={{ display: 'none' }}
                   onChange={handleFileUpload}
                 />
+                {fileError && (
+                  <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                    {fileError}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -925,17 +941,17 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     style={{ minWidth: '150px' }}
                   >
                     <option value='0'>Unassigned</option>
-                    {projectMembers?.map((m) => (
+                    {assignees?.map((m) => (
                       <option key={m.accountId} value={m.accountId}>
-                        {m.accountName}
+                        {m.accountFullname}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <span>
-                    {projectMembers?.find(
+                    {assignees?.find(
                       (m) => m.accountId === (selectedAssignee ?? subtaskDetail?.assignedBy)
-                    )?.accountName || 'Unassigned'}
+                    )?.accountFullname || 'Unassigned'}
                   </span>
                 )}
               </div>
@@ -1031,8 +1047,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1119,8 +1135,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isPriorityLoading
                       ? 'Loading...'
                       : isPriorityError
-                      ? 'Error loading priorities'
-                      : priorityOptions?.data.find(
+                        ? 'Error loading priorities'
+                        : priorityOptions?.data.find(
                           (p) => p.name === (newPriority ?? subtaskDetail?.priority)
                         )?.label || 'NONE'}
                   </span>
@@ -1134,11 +1150,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
                     min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={
-                      newEndDate
-                        ? newEndDate.slice(0, 10)
-                        : projectData?.data?.endDate?.slice(0, 10)
-                    }
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
                     onChange={(e) => {
                       const value = e.target.value;
                       if (newEndDate && new Date(value) >= new Date(newEndDate)) {
@@ -1165,11 +1177,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Due Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                             is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                             <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Start Date must be between project <strong>${projectData.data.name}</strong> 
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
@@ -1199,12 +1209,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={
-                      newStartDate
-                        ? newStartDate.slice(0, 10)
-                        : projectData?.data?.endDate?.slice(0, 10)
-                    }
+                    min={newStartDate ?? projectData?.data?.startDate?.slice(0, 10)} // Use newStartDate if available
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
                     onChange={(e) => {
                       const value = e.target.value;
                       if (newStartDate && new Date(value) <= new Date(newStartDate)) {
@@ -1212,7 +1218,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           icon: 'error',
                           title: 'Invalid Due Date',
                           html: 'Due Date must be greater than Start Date!',
-                          width: '500px', // nhỏ lại
+                          width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',
@@ -1231,12 +1237,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Due Date',
-                            html: `Due Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                             is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                             <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                            width: '500px', // nhỏ lại
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',
@@ -1248,7 +1252,6 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           return;
                         }
                       }
-
                       setNewEndDate(value);
                     }}
                     onBlur={handleUpdateSubtask}

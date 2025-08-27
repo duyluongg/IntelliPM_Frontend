@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { API_BASE_URL} from '../../../constants/api'
 
 const COLORS = ['#40d454ff', '#007fd3ff', '#8d8c8dff'];
 
@@ -46,7 +47,7 @@ const ProjectDashboard: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const workItemsResponse = await axios.get(`https://localhost:7128/api/project/${projectId}/workitems`, {
+        const workItemsResponse = await axios.get(`${API_BASE_URL}project/${projectId}/workitems`, {
           headers: { accept: '*/*' },
         });
         if (workItemsResponse.data.isSuccess) {
@@ -55,7 +56,7 @@ const ProjectDashboard: React.FC = () => {
           throw new Error('Failed to load work items');
         }
 
-        const projectResponse = await axios.get(`https://localhost:7128/api/project/${projectId}`, {
+        const projectResponse = await axios.get(`${API_BASE_URL}project/${projectId}`, {
           headers: { accept: '*/*' },
         });
         if (projectResponse.data.isSuccess) {

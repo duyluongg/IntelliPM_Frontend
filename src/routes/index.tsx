@@ -71,6 +71,7 @@ import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
 import Register from '../components/Register';  
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
 
 
 export const router = createBrowserRouter([
@@ -353,6 +354,10 @@ export const router = createBrowserRouter([
            {
         path: 'ai-responses',
         element: <AiResponsePage />,
+      },
+          {
+        path: 'register-members',
+        element: <DynamicBulkRegister />,
       },
       {
         path: 'projects',

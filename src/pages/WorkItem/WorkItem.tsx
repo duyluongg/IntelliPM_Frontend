@@ -124,7 +124,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updatePlannedStartDate] = useUpdatePlannedStartDateMutation();
   const [updatePlannedEndDate] = useUpdatePlannedEndDateMutation();
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
-  const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<[string, number][]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
@@ -829,7 +829,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       console.error('❌ Upload failed:', err);
                     }
                   }
-                  
+
                 }}
               />
 
@@ -1014,17 +1014,22 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
-                                        type='checkbox'
-                                        checked={selectedSuggestions.includes(item.title)}
+                                        type="checkbox"
+                                        checked={selectedSuggestions.some(([t, r]) => t === item.title && r === Number(item.reporterId))}
                                         onChange={(e) => {
                                           const checked = e.target.checked;
+                                          const numericReporterId = Number(item.reporterId);
+                                          if (checked && isNaN(numericReporterId)) {
+                                            console.error(`Invalid reporterId: ${item.reporterId}`);
+                                            return;
+                                          }
                                           setSelectedSuggestions((prev) =>
                                             checked
-                                              ? [...prev, item.title]
-                                              : prev.filter((t) => t !== item.title)
+                                              ? [...prev, [item.title, numericReporterId]]
+                                              : prev.filter(([t]) => t !== item.title)
                                           );
                                         }}
-                                        className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
+                                        className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
                                       />
                                     </td>
                                     <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
@@ -1049,11 +1054,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             onClick={async () => {
                               setLoadingCreate(true);
                               try {
-                                for (const title of selectedSuggestions) {
+                                for (const [title, reporterId] of selectedSuggestions) {
                                   await createAISubtask({
                                     taskId,
                                     title,
                                     createdBy: accountId,
+                                    reporterId,
                                   }).unwrap();
                                 }
                                 setShowSuggestionList(false);

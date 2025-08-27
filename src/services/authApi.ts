@@ -26,7 +26,7 @@ interface RegisterRequest {
   email: string;
   gender: 'MALE' | 'FEMALE' | 'OTHER';
   position: string;
-  dateOfBirth: string;
+
 }
 
 interface RegisterResponse {

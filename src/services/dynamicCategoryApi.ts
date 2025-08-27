@@ -30,7 +30,12 @@ export interface DynamicCategoryResponse {
   data: DynamicCategory[];
   message: string;
 }
-
+export interface DistinctCategoryGroupsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: string[];
+  message: string;
+}
 export const dynamicCategoryApi = createApi({
   reducerPath: 'dynamicCategoryApi',
   baseQuery: fetchBaseQuery({
@@ -61,6 +66,9 @@ export const dynamicCategoryApi = createApi({
         if (categoryGroup) params.append('categoryGroup', categoryGroup);
         return `dynamiccategory/by-name-or-category-group?${params.toString()}`;
       },
+    }),
+       getDistinctCategoryGroups: builder.query<DistinctCategoryGroupsResponse, void>({
+      query: () => 'dynamiccategory/category-groups',
     }),
     create: builder.mutation<DynamicCategoryResponse, DynamicCategoryRequest>({
       query: (request) => ({
@@ -104,4 +112,5 @@ export const {
   useUpdateMutation,
   useDeleteMutation,
   useUpdateStatusMutation,
+  useGetDistinctCategoryGroupsQuery,
 } = dynamicCategoryApi;

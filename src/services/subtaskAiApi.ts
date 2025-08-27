@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../constants/api';
 export interface AiSuggestedSubtask {
   taskId: string;
   title: string;
+  reporterId: number;
 }
 
 interface ApiResponse<T> {
@@ -15,7 +16,16 @@ interface ApiResponse<T> {
 
 export const subtaskAiApi = createApi({
   reducerPath: 'subtaskAiApi',
-  baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   endpoints: (builder) => ({
     generateSubtasksByAI: builder.mutation<AiSuggestedSubtask[], string>({
       query: (taskId) => ({

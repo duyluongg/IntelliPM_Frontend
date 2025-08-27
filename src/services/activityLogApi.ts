@@ -10,7 +10,7 @@ export interface ActivityLogResponseDTO {
   riskKey: string;
   createdBy: number;
   createdByName: string;
-  createdAt: string; 
+  createdAt: string; // ISO string
   message: string;
 }
 

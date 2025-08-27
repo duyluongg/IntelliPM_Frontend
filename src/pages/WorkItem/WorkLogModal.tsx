@@ -339,22 +339,1134 @@
 //   );
 // };
 
+
+//v1
+// import { useEffect, useState } from 'react';
+// import {
+//   useChangeMultipleWorklogHoursMutation,
+//   useGetWorkLogsBySubtaskIdQuery,
+//   useUpdateWorkLogByAccountsMutation,
+// } from '../../services/workLogApi';
+// import { useGetTaskWithSubtasksQuery, useUpdatePlannedHoursMutation } from '../../services/taskApi';
+// import {
+//   useGetSubtaskFullDetailedByIdQuery,
+//   useUpdateSubtaskPlannedHoursMutation,
+//   useUpdateSubtaskActualHoursMutation,
+// } from '../../services/subtaskApi';
+// import {
+//   useGetTaskAssignmentHoursByTaskIdQuery,
+//   useUpdateActualHoursByTaskIdMutation,
+// } from '../../services/taskAssignmentApi';
+
+// type Props = {
+//   open: boolean;
+//   onClose: () => void;
+//   workItemId: string;
+//   type: 'task' | 'subtask';
+//   onRefetchActivityLogs?: () => void;
+// };
+
+// export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivityLogs }: Props) => {
+//   const userJson = localStorage.getItem('user');
+//   const userId = userJson ? JSON.parse(userJson).id : null;
+//   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
+//     { id: string; hours: number }[]
+//   >([]);
+//   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
+//     { accountId: number; hours: number }[]
+//   >([]);
+//   const [plannedSubtaskHours, setPlannedSubtaskHours] = useState<number>(0);
+//   const [actualSubtaskHours, setActualSubtaskHours] = useState<number>(0);
+//   const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
+
+//   const [changeSubtaskPlannedHours, { isLoading: isUpdating }] = useUpdateSubtaskPlannedHoursMutation();
+//   const [changeSubtaskActualHours, { isLoading: isChanging }] = useUpdateSubtaskActualHoursMutation();
+//   const [changeTaskPlannedHours] = useUpdatePlannedHoursMutation();
+//   const [updateActualHours, { isLoading: isUpdatingActual }] =
+//     useUpdateActualHoursByTaskIdMutation();
+
+//   const { data: subtaskData, refetch: refetchSubtask } = useGetWorkLogsBySubtaskIdQuery(
+//     workItemId,
+//     {
+//       skip: type !== 'subtask',
+//     }
+//   );
+
+//   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
+//     workItemId,
+//     {
+//       // skip: type !== 'task',
+//     }
+//   );
+
+//   const { data: subtaskDetailData, refetch: refetchSubtaskDetail } =
+//     useGetSubtaskFullDetailedByIdQuery(workItemId, {
+//       skip: type !== 'subtask',
+//     });
+
+//   const { data: taskAssignments, refetch: refetchAssignments } =
+//     useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
+//       skip: type !== 'task' || (taskWithSubtasks?.subtasks?.length ?? 0) > 0,
+//     });
+
+//   const hasSubtasks = (taskWithSubtasks?.subtasks?.length ?? 0) > 0;
+
+//   useEffect(() => {
+//     if (open) {
+//       if (type === 'subtask') {
+//         refetchSubtask();
+//         refetchSubtaskDetail();
+//       }
+//       refetchTaskSubTask();
+//       if (type === 'task' && !hasSubtasks) {
+//         refetchAssignments();
+//       }
+//     }
+//   }, [
+//     open,
+//     type,
+//     hasSubtasks,
+//     refetchSubtask,
+//     refetchSubtaskDetail,
+//     refetchTaskSubTask,
+//     refetchAssignments,
+//   ]);
+
+//   useEffect(() => {
+//     if (!open) return;
+
+//     if (type === 'subtask' && subtaskDetailData) {
+//       const mapped = [
+//         {
+//           id: subtaskDetailData.id,
+//           hours: subtaskDetailData.actualHours ?? 0,
+//         },
+//       ];
+//       setEditableSubtaskEntries(mapped);
+//       const totalPlanned = subtaskDetailData?.plannedHours ?? 0;
+//       setPlannedSubtaskHours(totalPlanned);
+//     } else if (type === 'task' && !hasSubtasks && taskAssignments) {
+//       const mapped = taskAssignments.map((a) => ({
+//         accountId: a.accountId,
+//         hours: a.actualHours ?? 0,
+//       }));
+//       setEditableTaskAssignments(mapped);
+//       setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
+//     } else if (type === 'task' && !hasSubtasks) {
+//       setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
+//     }
+//   }, [open, subtaskData, taskAssignments, taskWithSubtasks, type, hasSubtasks]);
+
+//   const handleHourChangeSubtask = (id: string, hours: number) => {
+//     setEditableSubtaskEntries((prev) => prev.map((e) => (e.id === id ? { ...e, hours } : e)));
+//   };
+
+//   const handleHourChangeTask = (accountId: number, hours: number) => {
+//     setEditableTaskAssignments((prev) =>
+//       prev.map((e) => (e.accountId === accountId ? { ...e, hours } : e))
+//     );
+//   };
+
+//   const actual =
+//     type === 'subtask'
+//       ? editableSubtaskEntries.reduce((sum, e) => sum + e.hours, 0)
+//       : editableTaskAssignments.reduce((sum, e) => sum + e.hours, 0);
+
+//   const planned = type === 'subtask' ? plannedSubtaskHours : plannedTaskHours;
+//   const remaining = Math.max(0, planned - actual);
+
+//   const handleDone = async () => {
+//     try {
+//       if (type === 'task' && hasSubtasks) {
+//         onClose();
+//         return;
+//       }
+
+//       if (type === 'task' && !hasSubtasks) {
+//         await changeTaskPlannedHours({
+//           id: workItemId,
+//           plannedHours: plannedTaskHours,
+//           createdBy: userId,
+//         }).unwrap();
+
+//         if (editableTaskAssignments.length > 0 && taskAssignments) {
+//           const actualPayload = editableTaskAssignments
+//             .map((item) => ({
+//               id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
+//               actualHours: item.hours,
+//             }))
+//             .filter((item) => item.id);
+
+//           if (actualPayload.length > 0) {
+//             await updateActualHours({
+//               taskId: workItemId,
+//               data: actualPayload,
+//               createdBy: userId,
+//             }).unwrap();
+//           }
+//         }
+
+//         await refetchAssignments();
+//         await refetchTaskSubTask();
+//         onRefetchActivityLogs?.();
+//         onClose();
+//         return;
+//       }
+//       console.log('change subtask plannedHours: ', userId);
+//       // subtask case
+//       await changeSubtaskPlannedHours({
+//         id: workItemId,
+//         hours: plannedSubtaskHours,
+//         createdBy: userId,
+//       }).unwrap();
+//       if (editableSubtaskEntries.length > 0) {
+//         const hours = editableSubtaskEntries[0].hours;
+
+//         await changeSubtaskActualHours({ id: workItemId, hours, createdBy: userId }).unwrap();
+//       }
+
+//       await refetchSubtask();
+//       await refetchSubtaskDetail();
+//       await refetchTaskSubTask();
+//       onRefetchActivityLogs?.();
+//       onClose();
+//     } catch (err) {
+//       console.error('❌ Failed to update hours:', err);
+//       alert('Update failed');
+//     }
+//   };
+
+//   if (!open) return null;
+
+//   return (
+//     <div className='fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50'>
+//       <div className='bg-white rounded-md p-6 w-[500px] shadow-lg'>
+//         <div className='flex justify-between items-center mb-4'>
+//           <h2 className='text-xl font-semibold'>Work Log</h2>
+//           <button
+//             onClick={onClose}
+//             className='text-gray-400 hover:text-black text-lg font-bold px-2'
+//           >
+//             ✖
+//           </button>
+//         </div>
+//         <p className='text-sm text-gray-500 mb-4'>
+//           {type === 'subtask' ? 'Subtask ID' : 'Task ID'}:{' '}
+//           <span className='font-mono'>{workItemId}</span>
+//         </p>
+
+//         {/* Display Work Logs */}
+//         {type === 'task' && taskWithSubtasks ? (
+//           hasSubtasks ? (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Subtask ID</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {taskWithSubtasks.subtasks.map((sub) => (
+//                     <tr key={sub.id}>
+//                       <td>{sub.id}</td>
+//                       <td>{sub.actualHours ?? 0}</td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           ) : (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Person</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {editableTaskAssignments.map((item) => {
+//                     const account = taskAssignments?.find((a) => a.accountId === item.accountId);
+//                     return (
+//                       <tr key={item.accountId}>
+//                         <td>
+//                           {account?.accountFullname || account?.accountUsername || 'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[70px]'
+//                             min={0}
+//                             value={item.hours}
+//                             onChange={(e) =>
+//                               handleHourChangeTask(item.accountId, Number(e.target.value))
+//                             }
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )
+//         ) : type === 'subtask' ? (
+//           // type === 'subtask' ? (
+//           <div className='max-h-[300px] overflow-y-auto mb-4'>
+//             <table className='w-full text-sm mb-4'>
+//               <thead>
+//                 <tr className='text-left font-semibold'>
+//                   <th>Person</th>
+//                   {/* <th>Date</th> */}
+//                   <th>Hours</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {subtaskDetailData &&
+//                   (() => {
+//                     const editable = editableSubtaskEntries.find(
+//                       (e) => e.id === subtaskDetailData.id
+//                     );
+//                     return (
+//                       <tr key={subtaskDetailData.id}>
+//                         <td>
+//                           {subtaskDetailData.assignedFullName ||
+//                             subtaskDetailData.assignedUsername ||
+//                             'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[60px]'
+//                             value={editable?.hours ?? 0}
+//                             min={0}
+//                             onChange={(e) =>
+//                               handleHourChangeSubtask(subtaskDetailData.id, Number(e.target.value))
+//                             }
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })()}
+//               </tbody>
+//             </table>
+//           </div>
+//         ) : null}
+
+//         {/* Footer Summary */}
+//         <div className='mb-4'>
+//           {type === 'subtask' ? (
+//             <>
+//               <div className='flex items-center gap-2'>
+//                 <span>Planned:</span>
+//                 <input
+//                   type='number'
+//                   min={0}
+//                   className='border px-1 py-0.5 rounded w-[70px]'
+//                   value={plannedSubtaskHours}
+//                   onChange={(e) => setPlannedSubtaskHours(Math.max(0, Number(e.target.value)))}
+//                 />
+//                 <span>hrs</span>
+//               </div>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           ) : hasSubtasks ? (
+//             <>
+//               <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
+//               <p>Actual: {taskWithSubtasks?.actualHours ?? 0} hrs</p>
+//               <p>Remaining: {taskWithSubtasks?.remainingHours ?? 0} hrs</p>
+//             </>
+//           ) : (
+//             <>
+//               <div className='flex items-center gap-2'>
+//                 <span>Planned:</span>
+//                 <input
+//                   type='number'
+//                   min={0}
+//                   className='border px-1 py-0.5 rounded w-[70px]'
+//                   value={plannedTaskHours}
+//                   onChange={(e) => setPlannedTaskHours(Math.max(0, Number(e.target.value)))}
+//                 />
+//                 <span>hrs</span>
+//               </div>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           )}
+//         </div>
+
+//         <div className='text-right'>
+//           <button
+//             onClick={handleDone}
+//             className='bg-lime-500 text-white px-4 py-2 rounded hover:bg-lime-600 disabled:opacity-50'
+//             disabled={isChanging || isUpdating || isUpdatingActual}
+//           >
+//             {isChanging || isUpdating ? 'Saving...' : 'Done'}
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+
+//teamMember ko update plannedHours
+// import { useEffect, useState } from 'react';
+// import {
+//   useChangeMultipleWorklogHoursMutation,
+//   useGetWorkLogsBySubtaskIdQuery,
+//   useUpdateWorkLogByAccountsMutation,
+// } from '../../services/workLogApi';
+// import { useGetTaskWithSubtasksQuery, useUpdatePlannedHoursMutation } from '../../services/taskApi';
+// import {
+//   useGetSubtaskFullDetailedByIdQuery,
+//   useUpdateSubtaskPlannedHoursMutation,
+//   useUpdateSubtaskActualHoursMutation,
+// } from '../../services/subtaskApi';
+// import {
+//   useGetTaskAssignmentHoursByTaskIdQuery,
+//   useUpdateActualHoursByTaskIdMutation,
+// } from '../../services/taskAssignmentApi';
+
+// type Props = {
+//   open: boolean;
+//   onClose: () => void;
+//   workItemId: string;
+//   type: 'task' | 'subtask';
+//   onRefetchActivityLogs?: () => void;
+// };
+
+// export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivityLogs }: Props) => {
+//   const userJson = localStorage.getItem('user');
+//   const userData = userJson ? JSON.parse(userJson) : null;
+//   const userId = userData?.id || null;
+//   const userRole = userData?.role?.toUpperCase() || ''; // Lấy role từ userJson, mặc định rỗng nếu không có
+//   const isTeamMember = userRole === 'TEAM_MEMBER'; // Kiểm tra vai trò
+
+//   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
+//     { id: string; hours: number }[]
+//   >([]);
+//   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
+//     { accountId: number; hours: number }[]
+//   >([]);
+//   const [plannedSubtaskHours, setPlannedSubtaskHours] = useState<number>(0);
+//   const [actualSubtaskHours, setActualSubtaskHours] = useState<number>(0);
+//   const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
+
+//   const [changeSubtaskPlannedHours, { isLoading: isUpdating }] = useUpdateSubtaskPlannedHoursMutation();
+//   const [changeSubtaskActualHours, { isLoading: isChanging }] = useUpdateSubtaskActualHoursMutation();
+//   const [changeTaskPlannedHours] = useUpdatePlannedHoursMutation();
+//   const [updateActualHours, { isLoading: isUpdatingActual }] =
+//     useUpdateActualHoursByTaskIdMutation();
+
+//   const { data: subtaskData, refetch: refetchSubtask } = useGetWorkLogsBySubtaskIdQuery(
+//     workItemId,
+//     {
+//       skip: type !== 'subtask',
+//     }
+//   );
+
+//   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
+//     workItemId,
+//     {
+//       // skip: type !== 'task',
+//     }
+//   );
+
+//   const { data: subtaskDetailData, refetch: refetchSubtaskDetail } =
+//     useGetSubtaskFullDetailedByIdQuery(workItemId, {
+//       skip: type !== 'subtask',
+//     });
+
+//   const { data: taskAssignments, refetch: refetchAssignments } =
+//     useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
+//       skip: type !== 'task' || (taskWithSubtasks?.subtasks?.length ?? 0) > 0,
+//     });
+
+//   const hasSubtasks = (taskWithSubtasks?.subtasks?.length ?? 0) > 0;
+
+//   useEffect(() => {
+//     if (open) {
+//       if (type === 'subtask') {
+//         refetchSubtask();
+//         refetchSubtaskDetail();
+//       }
+//       refetchTaskSubTask();
+//       if (type === 'task' && !hasSubtasks) {
+//         refetchAssignments();
+//       }
+//     }
+//   }, [
+//     open,
+//     type,
+//     hasSubtasks,
+//     refetchSubtask,
+//     refetchSubtaskDetail,
+//     refetchTaskSubTask,
+//     refetchAssignments,
+//   ]);
+
+//   useEffect(() => {
+//     if (!open) return;
+
+//     if (type === 'subtask' && subtaskDetailData) {
+//       const mapped = [
+//         {
+//           id: subtaskDetailData.id,
+//           hours: subtaskDetailData.actualHours ?? 0,
+//         },
+//       ];
+//       setEditableSubtaskEntries(mapped);
+//       const totalPlanned = subtaskDetailData?.plannedHours ?? 0;
+//       setPlannedSubtaskHours(totalPlanned);
+//     } else if (type === 'task' && !hasSubtasks && taskAssignments) {
+//       const mapped = taskAssignments.map((a) => ({
+//         accountId: a.accountId,
+//         hours: a.actualHours ?? 0,
+//       }));
+//       setEditableTaskAssignments(mapped);
+//       setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
+//     } else if (type === 'task' && !hasSubtasks) {
+//       setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
+//     }
+//   }, [open, subtaskData, taskAssignments, taskWithSubtasks, type, hasSubtasks]);
+
+//   const handleHourChangeSubtask = (id: string, hours: number) => {
+//     setEditableSubtaskEntries((prev) => prev.map((e) => (e.id === id ? { ...e, hours } : e)));
+//   };
+
+//   const handleHourChangeTask = (accountId: number, hours: number) => {
+//     setEditableTaskAssignments((prev) =>
+//       prev.map((e) => (e.accountId === accountId ? { ...e, hours } : e))
+//     );
+//   };
+
+//   const actual =
+//     type === 'subtask'
+//       ? editableSubtaskEntries.reduce((sum, e) => sum + e.hours, 0)
+//       : editableTaskAssignments.reduce((sum, e) => sum + e.hours, 0);
+
+//   const planned = type === 'subtask' ? plannedSubtaskHours : plannedTaskHours;
+//   const remaining = Math.max(0, planned - actual);
+
+//   const handleDone = async () => {
+//     try {
+//       if (type === 'task' && hasSubtasks) {
+//         onClose();
+//         return;
+//       }
+
+//       if (type === 'task' && !hasSubtasks) {
+//         await changeTaskPlannedHours({
+//           id: workItemId,
+//           plannedHours: plannedTaskHours,
+//           createdBy: userId,
+//         }).unwrap();
+
+//         if (editableTaskAssignments.length > 0 && taskAssignments) {
+//           const actualPayload = editableTaskAssignments
+//             .map((item) => ({
+//               id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
+//               actualHours: item.hours,
+//             }))
+//             .filter((item) => item.id);
+
+//           if (actualPayload.length > 0) {
+//             await updateActualHours({
+//               taskId: workItemId,
+//               data: actualPayload,
+//               createdBy: userId,
+//             }).unwrap();
+//           }
+//         }
+
+//         await refetchAssignments();
+//         await refetchTaskSubTask();
+//         onRefetchActivityLogs?.();
+//         onClose();
+//         return;
+//       }
+
+//       // subtask case
+//       await changeSubtaskPlannedHours({
+//         id: workItemId,
+//         hours: plannedSubtaskHours,
+//         createdBy: userId,
+//       }).unwrap();
+//       if (editableSubtaskEntries.length > 0) {
+//         const hours = editableSubtaskEntries[0].hours;
+
+//         await changeSubtaskActualHours({ id: workItemId, hours, createdBy: userId }).unwrap();
+//       }
+
+//       await refetchSubtask();
+//       await refetchSubtaskDetail();
+//       await refetchTaskSubTask();
+//       onRefetchActivityLogs?.();
+//       onClose();
+//     } catch (err) {
+//       console.error('❌ Failed to update hours:', err);
+//       alert('Update failed');
+//     }
+//   };
+
+//   if (!open) return null;
+
+//   return (
+//     <div className='fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50'>
+//       <div className='bg-white rounded-md p-6 w-[500px] shadow-lg'>
+//         <div className='flex justify-between items-center mb-4'>
+//           <h2 className='text-xl font-semibold'>Work Log</h2>
+//           <button
+//             onClick={onClose}
+//             className='text-gray-400 hover:text-black text-lg font-bold px-2'
+//           >
+//             ✖
+//           </button>
+//         </div>
+//         <p className='text-sm text-gray-500 mb-4'>
+//           {type === 'subtask' ? 'Subtask ID' : 'Task ID'}:{' '}
+//           <span className='font-mono'>{workItemId}</span>
+//         </p>
+
+//         {/* Display Work Logs */}
+//         {type === 'task' && taskWithSubtasks ? (
+//           hasSubtasks ? (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Subtask ID</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {taskWithSubtasks.subtasks.map((sub) => (
+//                     <tr key={sub.id}>
+//                       <td>{sub.id}</td>
+//                       <td>{sub.actualHours ?? 0}</td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           ) : (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Person</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {editableTaskAssignments.map((item) => {
+//                     const account = taskAssignments?.find((a) => a.accountId === item.accountId);
+//                     return (
+//                       <tr key={item.accountId}>
+//                         <td>
+//                           {account?.accountFullname || account?.accountUsername || 'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[70px]'
+//                             min={0}
+//                             value={item.hours}
+//                             onChange={(e) =>
+//                               handleHourChangeTask(item.accountId, Number(e.target.value))
+//                             }
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )
+//         ) : type === 'subtask' ? (
+//           <div className='max-h-[300px] overflow-y-auto mb-4'>
+//             <table className='w-full text-sm mb-4'>
+//               <thead>
+//                 <tr className='text-left font-semibold'>
+//                   <th>Person</th>
+//                   <th>Hours</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {subtaskDetailData &&
+//                   (() => {
+//                     const editable = editableSubtaskEntries.find(
+//                       (e) => e.id === subtaskDetailData.id
+//                     );
+//                     return (
+//                       <tr key={subtaskDetailData.id}>
+//                         <td>
+//                           {subtaskDetailData.assignedFullName ||
+//                             subtaskDetailData.assignedUsername ||
+//                             'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[60px]'
+//                             value={editable?.hours ?? 0}
+//                             min={0}
+//                             onChange={(e) =>
+//                               handleHourChangeSubtask(subtaskDetailData.id, Number(e.target.value))
+//                             }
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })()}
+//               </tbody>
+//             </table>
+//           </div>
+//         ) : null}
+
+//         {/* Footer Summary */}
+//         <div className='mb-4'>
+//           {type === 'subtask' ? (
+//             <>
+//               <div className='flex items-center gap-2'>
+//                 <span>Planned:</span>
+//                 <input
+//                   type='number'
+//                   min={0}
+//                   className='border px-1 py-0.5 rounded w-[70px]'
+//                   value={plannedSubtaskHours}
+//                   onChange={(e) => setPlannedSubtaskHours(Math.max(0, Number(e.target.value)))}
+//                   disabled={isTeamMember} // Vô hiệu hóa nếu là TEAM_MEMBER
+//                 />
+//                 <span>hrs</span>
+//               </div>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           ) : hasSubtasks ? (
+//             <>
+//               <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
+//               <p>Actual: {taskWithSubtasks?.actualHours ?? 0} hrs</p>
+//               <p>Remaining: {taskWithSubtasks?.remainingHours ?? 0} hrs</p>
+//             </>
+//           ) : (
+//             <>
+//               <div className='flex items-center gap-2'>
+//                 <span>Planned:</span>
+//                 <input
+//                   type='number'
+//                   min={0}
+//                   className='border px-1 py-0.5 rounded w-[70px]'
+//                   value={plannedTaskHours}
+//                   onChange={(e) => setPlannedTaskHours(Math.max(0, Number(e.target.value)))}
+//                   disabled={isTeamMember} // Vô hiệu hóa nếu là TEAM_MEMBER
+//                 />
+//                 <span>hrs</span>
+//               </div>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           )}
+//         </div>
+
+//         <div className='text-right'>
+//           <button
+//             onClick={handleDone}
+//             className='bg-lime-500 text-white px-4 py-2 rounded hover:bg-lime-600 disabled:opacity-50'
+//             disabled={isChanging || isUpdating || isUpdatingActual}
+//           >
+//             {isChanging || isUpdating ? 'Saving...' : 'Done'}
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+//validate đầy đủ
+// import { useEffect, useState } from 'react';
+// import {
+//   useChangeMultipleWorklogHoursMutation,
+//   useGetWorkLogsBySubtaskIdQuery,
+//   useUpdateWorkLogByAccountsMutation,
+// } from '../../services/workLogApi';
+// import { useGetTaskWithSubtasksQuery } from '../../services/taskApi';
+// import {
+//   useGetSubtaskFullDetailedByIdQuery,
+//   useUpdateSubtaskActualHoursMutation,
+// } from '../../services/subtaskApi';
+// import {
+//   useGetTaskAssignmentHoursByTaskIdQuery,
+//   useUpdateActualHoursByTaskIdMutation,
+// } from '../../services/taskAssignmentApi';
+// import { useAuth } from '../../services/AuthContext'; // Giả định sử dụng useAuth để lấy vai trò
+
+// type Props = {
+//   open: boolean;
+//   onClose: () => void;
+//   workItemId: string;
+//   type: 'task' | 'subtask';
+//   onRefetchActivityLogs?: () => void;
+// };
+
+// export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivityLogs }: Props) => {
+//   const userJson = localStorage.getItem('user');
+//   const userData = userJson ? JSON.parse(userJson) : null;
+//   const userId = userData?.id || null;
+//   const { user } = useAuth(); // Lấy thông tin user từ useAuth
+//   const userRole = user?.role?.toUpperCase() || ''; // Lấy vai trò từ useAuth
+//   const isTeamLeaderOrManager = ['TEAM_LEADER', 'PROJECT_MANAGER'].includes(userRole);
+
+//   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
+//     { id: string; hours: number }[]
+//   >([]);
+//   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
+//     { accountId: number; hours: number }[]
+//   >([]);
+
+//   const [changeSubtaskActualHours, { isLoading: isChanging }] = useUpdateSubtaskActualHoursMutation();
+//   const [updateActualHours, { isLoading: isUpdatingActual }] =
+//     useUpdateActualHoursByTaskIdMutation();
+
+//   const { data: subtaskData, refetch: refetchSubtask } = useGetWorkLogsBySubtaskIdQuery(
+//     workItemId,
+//     {
+//       skip: type !== 'subtask',
+//     }
+//   );
+
+//   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
+//     workItemId,
+//     {
+//       // skip: type !== 'task',
+//     }
+//   );
+
+//   const { data: subtaskDetailData, refetch: refetchSubtaskDetail } =
+//     useGetSubtaskFullDetailedByIdQuery(workItemId, {
+//       skip: type !== 'subtask',
+//     });
+
+//   const { data: taskAssignments, refetch: refetchAssignments } =
+//     useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
+//       skip: type !== 'task' || (taskWithSubtasks?.subtasks?.length ?? 0) > 0,
+//     });
+
+//   const hasSubtasks = (taskWithSubtasks?.subtasks?.length ?? 0) > 0;
+
+//   // Kiểm tra xem có assignee không
+//   const hasAssignee =
+//     (type === 'subtask' && subtaskDetailData?.assignedBy) ||
+//     (type === 'task' && !hasSubtasks && taskAssignments && taskAssignments.length > 0);
+
+//   // Kiểm tra xem user có phải assignee không
+//   const isAssignee =
+//     (type === 'subtask' && subtaskDetailData?.assignedBy === userId) ||
+//     (type === 'task' &&
+//       !hasSubtasks &&
+//       taskAssignments?.some((assignment) => assignment.accountId === userId));
+
+//   useEffect(() => {
+//     if (open) {
+//       if (type === 'subtask') {
+//         refetchSubtask();
+//         refetchSubtaskDetail();
+//       }
+//       refetchTaskSubTask();
+//       if (type === 'task' && !hasSubtasks) {
+//         refetchAssignments();
+//       }
+//     }
+//   }, [
+//     open,
+//     type,
+//     hasSubtasks,
+//     refetchSubtask,
+//     refetchSubtaskDetail,
+//     refetchTaskSubTask,
+//     refetchAssignments,
+//   ]);
+
+//   useEffect(() => {
+//     if (!open) return;
+
+//     if (type === 'subtask' && subtaskDetailData) {
+//       const mapped = [
+//         {
+//           id: subtaskDetailData.id,
+//           hours: subtaskDetailData.actualHours ?? 0,
+//         },
+//       ];
+//       setEditableSubtaskEntries(mapped);
+//     } else if (type === 'task' && !hasSubtasks && taskAssignments) {
+//       const mapped = taskAssignments.map((a) => ({
+//         accountId: a.accountId,
+//         hours: a.actualHours ?? 0,
+//       }));
+//       setEditableTaskAssignments(mapped);
+//     }
+//   }, [open, subtaskData, taskAssignments, taskWithSubtasks, type, hasSubtasks]);
+
+//   const handleHourChangeSubtask = (id: string, hours: number) => {
+//     setEditableSubtaskEntries((prev) => prev.map((e) => (e.id === id ? { ...e, hours } : e)));
+//   };
+
+//   const handleHourChangeTask = (accountId: number, hours: number) => {
+//     setEditableTaskAssignments((prev) =>
+//       prev.map((e) => (e.accountId === accountId ? { ...e, hours } : e))
+//     );
+//   };
+
+//   const actual =
+//     type === 'subtask'
+//       ? editableSubtaskEntries.reduce((sum, e) => sum + e.hours, 0)
+//       : editableTaskAssignments.reduce((sum, e) => sum + e.hours, 0);
+
+//   const planned = type === 'subtask' ? (subtaskDetailData?.plannedHours ?? 0) : (taskWithSubtasks?.plannedHours ?? 0);
+//   const remaining = Math.max(0, planned - actual);
+
+//   const handleDone = async () => {
+//     try {
+//       if (type === 'task' && hasSubtasks) {
+//         onClose();
+//         return;
+//       }
+
+//       if (!hasAssignee) {
+//         alert('Cannot update actual hours: No assignee assigned to this task/subtask.');
+//         return;
+//       }
+
+//       if (type === 'task' && !hasSubtasks) {
+//         if (!(isAssignee || isTeamLeaderOrManager)) {
+//           alert('Only assignees, Team Leaders, or Project Managers can update actual hours.');
+//           return;
+//         }
+
+//         if (editableTaskAssignments.length > 0 && taskAssignments) {
+//           const actualPayload = editableTaskAssignments
+//             .map((item) => ({
+//               id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
+//               actualHours: item.hours,
+//             }))
+//             .filter((item) => item.id);
+
+//           if (actualPayload.length > 0) {
+//             await updateActualHours({
+//               taskId: workItemId,
+//               data: actualPayload,
+//               createdBy: userId,
+//             }).unwrap();
+//           }
+//         }
+
+//         await refetchAssignments();
+//         await refetchTaskSubTask();
+//         onRefetchActivityLogs?.();
+//         onClose();
+//         return;
+//       }
+
+//       // subtask case
+//       if (!(isAssignee || isTeamLeaderOrManager)) {
+//         alert('Only assignees, Team Leaders, or Project Managers can update actual hours.');
+//         return;
+//       }
+
+//       if (editableSubtaskEntries.length > 0) {
+//         const hours = editableSubtaskEntries[0].hours;
+
+//         await changeSubtaskActualHours({ id: workItemId, hours, createdBy: userId }).unwrap();
+//       }
+
+//       await refetchSubtask();
+//       await refetchSubtaskDetail();
+//       await refetchTaskSubTask();
+//       onRefetchActivityLogs?.();
+//       onClose();
+//     } catch (err) {
+//       console.error('❌ Failed to update hours:', err);
+//       alert('Update failed');
+//     }
+//   };
+
+//   if (!open) return null;
+
+//   return (
+//     <div className='fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50'>
+//       <div className='bg-white rounded-md p-6 w-[500px] shadow-lg'>
+//         <div className='flex justify-between items-center mb-4'>
+//           <h2 className='text-xl font-semibold'>Work Log</h2>
+//           <button
+//             onClick={onClose}
+//             className='text-gray-400 hover:text-black text-lg font-bold px-2'
+//           >
+//             ✖
+//           </button>
+//         </div>
+//         <p className='text-sm text-gray-500 mb-4'>
+//           {type === 'subtask' ? 'Subtask ID' : 'Task ID'}:{' '}
+//           <span className='font-mono'>{workItemId}</span>
+//         </p>
+
+//         {/* Display Work Logs */}
+//         {type === 'task' && taskWithSubtasks ? (
+//           hasSubtasks ? (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Subtask ID</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {taskWithSubtasks.subtasks.map((sub) => (
+//                     <tr key={sub.id}>
+//                       <td>{sub.id}</td>
+//                       <td>{sub.actualHours ?? 0}</td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           ) : (
+//             <div className='max-h-[300px] overflow-y-auto mb-4'>
+//               <table className='w-full text-sm mb-4'>
+//                 <thead>
+//                   <tr className='text-left font-semibold'>
+//                     <th>Person</th>
+//                     <th>Actual Hours</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {editableTaskAssignments.map((item) => {
+//                     const account = taskAssignments?.find((a) => a.accountId === item.accountId);
+//                     return (
+//                       <tr key={item.accountId}>
+//                         <td>
+//                           {account?.accountFullname || account?.accountUsername || 'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[70px]'
+//                             min={0}
+//                             value={item.hours}
+//                             onChange={(e) =>
+//                               handleHourChangeTask(item.accountId, Number(e.target.value))
+//                             }
+//                             disabled={!hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )
+//         ) : type === 'subtask' ? (
+//           <div className='max-h-[300px] overflow-y-auto mb-4'>
+//             <table className='w-full text-sm mb-4'>
+//               <thead>
+//                 <tr className='text-left font-semibold'>
+//                   <th>Person</th>
+//                   <th>Hours</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 {subtaskDetailData &&
+//                   (() => {
+//                     const editable = editableSubtaskEntries.find(
+//                       (e) => e.id === subtaskDetailData.id
+//                     );
+//                     return (
+//                       <tr key={subtaskDetailData.id}>
+//                         <td>
+//                           {subtaskDetailData.assignedFullName ||
+//                             subtaskDetailData.assignedUsername ||
+//                             'No Assignee'}
+//                         </td>
+//                         <td>
+//                           <input
+//                             type='number'
+//                             className='border px-1 py-0.5 rounded w-[60px]'
+//                             value={editable?.hours ?? 0}
+//                             min={0}
+//                             onChange={(e) =>
+//                               handleHourChangeSubtask(subtaskDetailData.id, Number(e.target.value))
+//                             }
+//                             disabled={!hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
+//                           />
+//                         </td>
+//                       </tr>
+//                     );
+//                   })()}
+//               </tbody>
+//             </table>
+//           </div>
+//         ) : null}
+
+//         {/* Footer Summary */}
+//         <div className='mb-4'>
+//           {type === 'subtask' ? (
+//             <>
+//               <p>Planned: {subtaskDetailData?.plannedHours ?? 0} hrs</p>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           ) : hasSubtasks ? (
+//             <>
+//               <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
+//               <p>Actual: {taskWithSubtasks?.actualHours ?? 0} hrs</p>
+//               <p>Remaining: {taskWithSubtasks?.remainingHours ?? 0} hrs</p>
+//             </>
+//           ) : (
+//             <>
+//               <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
+//               <p>Actual: {actual} hrs</p>
+//               <p>Remaining: {remaining} hrs</p>
+//             </>
+//           )}
+//         </div>
+
+//         <div className='text-right'>
+//           <button
+//             onClick={handleDone}
+//             className='bg-lime-500 text-white px-4 py-2 rounded hover:bg-lime-600 disabled:opacity-50'
+//             disabled={isChanging || isUpdatingActual || !hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
+//           >
+//             {isChanging || isUpdatingActual ? 'Saving...' : 'Done'}
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+
 import { useEffect, useState } from 'react';
 import {
   useChangeMultipleWorklogHoursMutation,
   useGetWorkLogsBySubtaskIdQuery,
   useUpdateWorkLogByAccountsMutation,
 } from '../../services/workLogApi';
-import { useGetTaskWithSubtasksQuery, useUpdatePlannedHoursMutation } from '../../services/taskApi';
+import { useGetTaskWithSubtasksQuery } from '../../services/taskApi';
 import {
   useGetSubtaskFullDetailedByIdQuery,
-  useUpdateSubtaskPlannedHoursMutation,
   useUpdateSubtaskActualHoursMutation,
 } from '../../services/subtaskApi';
 import {
   useGetTaskAssignmentHoursByTaskIdQuery,
   useUpdateActualHoursByTaskIdMutation,
 } from '../../services/taskAssignmentApi';
+import { useAuth } from '../../services/AuthContext';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
 
 type Props = {
   open: boolean;
@@ -366,50 +1478,60 @@ type Props = {
 
 export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivityLogs }: Props) => {
   const userJson = localStorage.getItem('user');
-  const userId = userJson ? JSON.parse(userJson).id : null;
+  const userData = userJson ? JSON.parse(userJson) : null;
+  const userId = userData?.id || null;
+  const { user } = useAuth();
+  const userRole = user?.role?.toUpperCase() || '';
+  const isTeamLeaderOrManager = ['TEAM_LEADER', 'PROJECT_MANAGER'].includes(userRole);
+
   const [editableSubtaskEntries, setEditableSubtaskEntries] = useState<
     { id: string; hours: number }[]
   >([]);
   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
     { accountId: number; hours: number }[]
   >([]);
-  const [plannedSubtaskHours, setPlannedSubtaskHours] = useState<number>(0);
-  const [actualSubtaskHours, setActualSubtaskHours] = useState<number>(0);
-  const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
 
-  // const [changeWorklogHours, { isLoading: isChanging }] = useChangeMultipleWorklogHoursMutation();
-  // const [updateWorkLogByAccounts, { isLoading: isUpdating }] = useUpdateWorkLogByAccountsMutation();
-  const [changeSubtaskPlannedHours, { isLoading: isUpdating }] = useUpdateSubtaskPlannedHoursMutation();
   const [changeSubtaskActualHours, { isLoading: isChanging }] = useUpdateSubtaskActualHoursMutation();
-  const [changeTaskPlannedHours] = useUpdatePlannedHoursMutation();
   const [updateActualHours, { isLoading: isUpdatingActual }] =
     useUpdateActualHoursByTaskIdMutation();
 
   const { data: subtaskData, refetch: refetchSubtask } = useGetWorkLogsBySubtaskIdQuery(
     workItemId,
-    {
-      skip: type !== 'subtask',
-    }
+    { skip: type !== 'subtask' }
   );
 
   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
-    workItemId,
-    {
-      // skip: type !== 'task',
-    }
+    workItemId
   );
 
   const { data: subtaskDetailData, refetch: refetchSubtaskDetail } =
-    useGetSubtaskFullDetailedByIdQuery(workItemId, {
-      skip: type !== 'subtask',
-    });
+    useGetSubtaskFullDetailedByIdQuery(workItemId, { skip: type !== 'subtask' });
 
   const { data: taskAssignments, refetch: refetchAssignments } =
     useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
       skip: type !== 'task' || (taskWithSubtasks?.subtasks?.length ?? 0) > 0,
     });
 
+  const { data: config, isLoading: configLoading, isError: configError } = useGetByConfigKeyQuery("actual_hours_limit");
+
   const hasSubtasks = (taskWithSubtasks?.subtasks?.length ?? 0) > 0;
+
+  const hasAssignee =
+    (type === 'subtask' && subtaskDetailData?.assignedBy) ||
+    (type === 'task' && !hasSubtasks && taskAssignments && taskAssignments.length > 0);
+
+  const isAssignee =
+    (type === 'subtask' && subtaskDetailData?.assignedBy === userId) ||
+    (type === 'task' &&
+      !hasSubtasks &&
+      taskAssignments?.some((assignment) => assignment.accountId === userId));
+
+  const maxActualHours = configLoading
+    ? 24 // Giá trị mặc định khi đang tải
+    : configError || !config?.data?.maxValue
+    ? 100000 // Giá trị mặc định khi lỗi hoặc không có dữ liệu
+    : parseInt(config.data.maxValue, 10);
+    console.log("maxActualHours: ", maxActualHours);
 
   useEffect(() => {
     if (open) {
@@ -422,15 +1544,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
         refetchAssignments();
       }
     }
-  }, [
-    open,
-    type,
-    hasSubtasks,
-    refetchSubtask,
-    refetchSubtaskDetail,
-    refetchTaskSubTask,
-    refetchAssignments,
-  ]);
+  }, [open, type, hasSubtasks, refetchSubtask, refetchSubtaskDetail, refetchTaskSubTask, refetchAssignments]);
 
   useEffect(() => {
     if (!open) return;
@@ -443,25 +1557,28 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
         },
       ];
       setEditableSubtaskEntries(mapped);
-      const totalPlanned = subtaskDetailData?.plannedHours ?? 0;
-      setPlannedSubtaskHours(totalPlanned);
     } else if (type === 'task' && !hasSubtasks && taskAssignments) {
       const mapped = taskAssignments.map((a) => ({
         accountId: a.accountId,
         hours: a.actualHours ?? 0,
       }));
       setEditableTaskAssignments(mapped);
-      setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
-    } else if (type === 'task' && !hasSubtasks) {
-      setPlannedTaskHours(taskWithSubtasks?.plannedHours ?? 0);
     }
   }, [open, subtaskData, taskAssignments, taskWithSubtasks, type, hasSubtasks]);
 
   const handleHourChangeSubtask = (id: string, hours: number) => {
+    if (hours > maxActualHours) {
+      alert(`Actual hours cannot exceed ${maxActualHours} hours.`);
+      return;
+    }
     setEditableSubtaskEntries((prev) => prev.map((e) => (e.id === id ? { ...e, hours } : e)));
   };
 
   const handleHourChangeTask = (accountId: number, hours: number) => {
+    if (hours > maxActualHours) {
+      alert(`Actual hours cannot exceed ${maxActualHours} hours.`);
+      return;
+    }
     setEditableTaskAssignments((prev) =>
       prev.map((e) => (e.accountId === accountId ? { ...e, hours } : e))
     );
@@ -472,7 +1589,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
       ? editableSubtaskEntries.reduce((sum, e) => sum + e.hours, 0)
       : editableTaskAssignments.reduce((sum, e) => sum + e.hours, 0);
 
-  const planned = type === 'subtask' ? plannedSubtaskHours : plannedTaskHours;
+  const planned = type === 'subtask' ? (subtaskDetailData?.plannedHours ?? 0) : (taskWithSubtasks?.plannedHours ?? 0);
   const remaining = Math.max(0, planned - actual);
 
   const handleDone = async () => {
@@ -482,22 +1599,17 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
         return;
       }
 
-      if (type === 'task' && !hasSubtasks) {
-        await changeTaskPlannedHours({
-          id: workItemId,
-          plannedHours: plannedTaskHours,
-          createdBy: userId,
-        }).unwrap();
+      if (!hasAssignee) {
+        alert('Cannot update actual hours: No assignee assigned to this task/subtask.');
+        return;
+      }
 
-        // const actualPayload = editableTaskAssignments.map((item) => ({
-        //   id: taskAssignments?.find((a) => a.accountId === item.accountId)?.id!,
-        //   actualHours: item.hours,
-        // }));
-        // await updateActualHours({
-        //   taskId: workItemId,
-        //   data: actualPayload,
-        //   createdBy: userId
-        // }).unwrap();
+      if (type === 'task' && !hasSubtasks) {
+        if (!(isAssignee || isTeamLeaderOrManager)) {
+          alert('Only assignees, Team Leaders, or Project Managers can update actual hours.');
+          return;
+        }
+
         if (editableTaskAssignments.length > 0 && taskAssignments) {
           const actualPayload = editableTaskAssignments
             .map((item) => ({
@@ -521,25 +1633,18 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
         onClose();
         return;
       }
-      console.log('change subtask plannedHours: ', userId);
-      // subtask case
-      await changeSubtaskPlannedHours({
-        id: workItemId,
-        hours: plannedSubtaskHours,
-        createdBy: userId,
-      }).unwrap();
+
+      if (!(isAssignee || isTeamLeaderOrManager)) {
+        alert('Only assignees, Team Leaders, or Project Managers can update actual hours.');
+        return;
+      }
+
       if (editableSubtaskEntries.length > 0) {
         const hours = editableSubtaskEntries[0].hours;
 
         await changeSubtaskActualHours({ id: workItemId, hours, createdBy: userId }).unwrap();
       }
-      // await changeSubtaskActualHours({ id: workItemId, hours: actualSubtaskHours }).unwrap();
-      // const payload: Record<string, number> = {};
-      // //const payload = new Map<string, number>();
-      // editableSubtaskEntries.forEach((e) => {
-      //   payload[e.id] = e.hours;
-      // });
-      // await changeWorklogHours(payload).unwrap();
+
       await refetchSubtask();
       await refetchSubtaskDetail();
       await refetchTaskSubTask();
@@ -558,19 +1663,14 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
       <div className='bg-white rounded-md p-6 w-[500px] shadow-lg'>
         <div className='flex justify-between items-center mb-4'>
           <h2 className='text-xl font-semibold'>Work Log</h2>
-          <button
-            onClick={onClose}
-            className='text-gray-400 hover:text-black text-lg font-bold px-2'
-          >
+          <button onClick={onClose} className='text-gray-400 hover:text-black text-lg font-bold px-2'>
             ✖
           </button>
         </div>
         <p className='text-sm text-gray-500 mb-4'>
-          {type === 'subtask' ? 'Subtask ID' : 'Task ID'}:{' '}
-          <span className='font-mono'>{workItemId}</span>
+          {type === 'subtask' ? 'Subtask ID' : 'Task ID'}: <span className='font-mono'>{workItemId}</span>
         </p>
 
-        {/* Display Work Logs */}
         {type === 'task' && taskWithSubtasks ? (
           hasSubtasks ? (
             <div className='max-h-[300px] overflow-y-auto mb-4'>
@@ -605,18 +1705,18 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
                     const account = taskAssignments?.find((a) => a.accountId === item.accountId);
                     return (
                       <tr key={item.accountId}>
-                        <td>
-                          {account?.accountFullname || account?.accountUsername || 'No Assignee'}
-                        </td>
+                        <td>{account?.accountFullname || account?.accountUsername || 'No Assignee'}</td>
                         <td>
                           <input
                             type='number'
                             className='border px-1 py-0.5 rounded w-[70px]'
                             min={0}
+                            max={maxActualHours}
                             value={item.hours}
                             onChange={(e) =>
                               handleHourChangeTask(item.accountId, Number(e.target.value))
                             }
+                            disabled={!hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
                           />
                         </td>
                       </tr>
@@ -627,44 +1727,18 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
             </div>
           )
         ) : type === 'subtask' ? (
-          // type === 'subtask' ? (
           <div className='max-h-[300px] overflow-y-auto mb-4'>
             <table className='w-full text-sm mb-4'>
               <thead>
                 <tr className='text-left font-semibold'>
                   <th>Person</th>
-                  {/* <th>Date</th> */}
                   <th>Hours</th>
                 </tr>
               </thead>
               <tbody>
-                {/* {subtaskData?.data?.map((entry) => {
-                  const editable = editableSubtaskEntries.find((e) => e.id === entry.id);
-                  return (
-                    <tr key={entry.id}>
-                      <td>
-                        {entry.accounts?.[0]?.fullName || entry.accounts?.[0]?.username || 'N/A'}
-                      </td>
-                      <td>{entry.logDate.split('T')[0]}</td>
-                      <td>
-                        <input
-                          type='number'
-                          className='border px-1 py-0.5 rounded w-[60px]'
-                          value={editable?.hours ?? 0}
-                          min={0}
-                          onChange={(e) =>
-                            handleHourChangeSubtask(entry.id, Number(e.target.value))
-                          }
-                        />
-                      </td>
-                    </tr>
-                  );
-                })} */}
                 {subtaskDetailData &&
                   (() => {
-                    const editable = editableSubtaskEntries.find(
-                      (e) => e.id === subtaskDetailData.id
-                    );
+                    const editable = editableSubtaskEntries.find((e) => e.id === subtaskDetailData.id);
                     return (
                       <tr key={subtaskDetailData.id}>
                         <td>
@@ -678,9 +1752,11 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
                             className='border px-1 py-0.5 rounded w-[60px]'
                             value={editable?.hours ?? 0}
                             min={0}
+                            max={maxActualHours}
                             onChange={(e) =>
                               handleHourChangeSubtask(subtaskDetailData.id, Number(e.target.value))
                             }
+                            disabled={!hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
                           />
                         </td>
                       </tr>
@@ -691,21 +1767,10 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
           </div>
         ) : null}
 
-        {/* Footer Summary */}
         <div className='mb-4'>
           {type === 'subtask' ? (
             <>
-              <div className='flex items-center gap-2'>
-                <span>Planned:</span>
-                <input
-                  type='number'
-                  min={0}
-                  className='border px-1 py-0.5 rounded w-[70px]'
-                  value={plannedSubtaskHours}
-                  onChange={(e) => setPlannedSubtaskHours(Math.max(0, Number(e.target.value)))}
-                />
-                <span>hrs</span>
-              </div>
+              <p>Planned: {subtaskDetailData?.plannedHours ?? 0} hrs</p>
               <p>Actual: {actual} hrs</p>
               <p>Remaining: {remaining} hrs</p>
             </>
@@ -717,17 +1782,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
             </>
           ) : (
             <>
-              <div className='flex items-center gap-2'>
-                <span>Planned:</span>
-                <input
-                  type='number'
-                  min={0}
-                  className='border px-1 py-0.5 rounded w-[70px]'
-                  value={plannedTaskHours}
-                  onChange={(e) => setPlannedTaskHours(Math.max(0, Number(e.target.value)))}
-                />
-                <span>hrs</span>
-              </div>
+              <p>Planned: {taskWithSubtasks?.plannedHours ?? 0} hrs</p>
               <p>Actual: {actual} hrs</p>
               <p>Remaining: {remaining} hrs</p>
             </>
@@ -738,9 +1793,9 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetchActivit
           <button
             onClick={handleDone}
             className='bg-lime-500 text-white px-4 py-2 rounded hover:bg-lime-600 disabled:opacity-50'
-            disabled={isChanging || isUpdating || isUpdatingActual}
+            disabled={isChanging || isUpdatingActual || !hasAssignee || !(isAssignee || isTeamLeaderOrManager)}
           >
-            {isChanging || isUpdating ? 'Saving...' : 'Done'}
+            {isChanging || isUpdatingActual ? 'Saving...' : 'Done'}
           </button>
         </div>
       </div>

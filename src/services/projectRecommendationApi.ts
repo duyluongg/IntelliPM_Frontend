@@ -81,12 +81,16 @@ export const projectRecommendationApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ['ProjectRecommendation'],
   endpoints: (builder) => ({
     getAIRecommendationsByProjectKey: builder.query<AIRecommendationsResponse, string>({
       query: (projectKey) => ({
         url: `projectrecommendation/ai-recommendations?projectKey=${projectKey}`,
         method: 'GET',
       }),
+      providesTags: (result, error, projectKey) => [
+        { type: 'ProjectRecommendation', id: projectKey },
+      ],
     }),
 
     createProjectRecommendation: builder.mutation<BaseResponse, CreateRecommendationRequest>({

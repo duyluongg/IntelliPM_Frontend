@@ -7,13 +7,21 @@ import 'chart.js/auto';
 const RiskStatistics = () => {
   const { projectKey } = useParams();
   const { data: projectData } = useGetProjectDetailsByKeyQuery(projectKey || 'NotFound');
-  const { data: statsData, isLoading, error } = useGetRiskStatisticsByProjectKeyQuery(projectKey || 'NotFound');
+  const {
+    data: statsData,
+    isLoading,
+    error,
+  } = useGetRiskStatisticsByProjectKeyQuery(projectKey || 'NotFound');
 
   // Log data for debugging
   console.log('Stats Data:', statsData, 'Error:', error);
 
   if (isLoading) {
-    return <div className='flex items-center justify-center h-full text-gray-500 text-sm'>Loading statistics...</div>;
+    return (
+      <div className='flex items-center justify-center h-full text-gray-500 text-sm'>
+        Loading statistics...
+      </div>
+    );
   }
 
   if (error || !statsData) {
@@ -75,7 +83,9 @@ const RiskStatistics = () => {
 
   return (
     <div className='p-6 min-h-screen'>
-      <h1 className='text-2xl font-bold text-gray-800 mb-6'>Risk Statistics for Project {projectKey}</h1>
+      <h1 className='text-2xl font-bold text-gray-800 mb-6'>
+        Risk Statistics for Project {projectKey}
+      </h1>
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
         <div className='bg-white p-4 rounded-lg shadow-md'>
           <h2 className='text-lg font-semibold mb-4'>Total Risks: {stats.totalRisks}</h2>
@@ -89,9 +99,17 @@ const RiskStatistics = () => {
           <h2 className='text-lg font-semibold mb-4'>Risks by Type</h2>
           <Bar data={typeChartData} />
         </div>
-        <div className='bg-white p-4 rounded-lg shadow-md'>
+        {/* <div className='bg-white p-4 rounded-lg shadow-md'>
           <h2 className='text-lg font-semibold mb-4'>Risks by Severity</h2>
           <Pie data={severityChartData} />
+        </div> */}
+        <div className='bg-white p-4 rounded-lg shadow-md'>
+          <h2 className='text-lg font-semibold mb-4'>Risks by Severity</h2>
+          <div className='w-64 h-64 mx-auto'>
+            {' '}
+            {/* Giới hạn kích thước vòng tròn */}
+            <Pie data={severityChartData} />
+          </div>
         </div>
         <div className='bg-white p-4 rounded-lg shadow-md'>
           <h2 className='text-lg font-semibold mb-4'>Risks by Responsible</h2>

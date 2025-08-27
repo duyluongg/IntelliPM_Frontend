@@ -143,3 +143,31 @@ smart-menu {
 .bg-opacity-40 { 
   background: none !important;
 }
+
+.smart-gantt-chart .smart-task-tree-header,
+.smart-gantt-chart .smart-timeline-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Ensure the content areas are scrollable */
+.smart-gantt-chart .smart-task-tree-content,
+.smart-gantt-chart .smart-timeline {
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Ensure the splitter bar is visible and functional */
+/* .smart-gantt-chart .smart-task-tree-splitter {
+  cursor: col-resize;
+  background: #ddd;
+  width: 5px;
+} */
+
+/* .smart-gantt-chart .smart-timeline {
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
+} */

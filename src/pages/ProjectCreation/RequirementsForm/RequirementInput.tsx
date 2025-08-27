@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, Trash2, FileText, Tag } from 'lucide-react';
 import type { RequirementRequest } from '../../../services/requirementApi';
 import type { DynamicCategoryResponse } from '../../../services/dynamicCategoryApi';
@@ -23,7 +23,7 @@ interface RequirementInputProps {
   updateRequirement: (id: string, field: keyof RequirementRequest, value: string) => void;
   toggleExpand: (id: string) => void;
   removeRequirement: (id: string) => void;
-  onSave: () => Promise<boolean>;
+  onSave: () => Promise<boolean>; // Chỉ để lưu dữ liệu, không submit
 }
 
 const RequirementInput: React.FC<RequirementInputProps> = ({
@@ -40,16 +40,32 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   const projectId = useSelector(selectProjectId);
   const { data: titleLengthConfig, isLoading: isTitleLengthLoading } = useGetByConfigKeyQuery('title_length');
   const { data: descriptionLengthConfig, isLoading: isDescriptionLengthLoading } = useGetByConfigKeyQuery('description_length');
+  const [touched, setTouched] = useState(false); // Track if the title input has been blurred
+  const [showValidMessage, setShowValidMessage] = useState(false); // Track visibility of "Title is valid" message
 
   const selectedPriority = prioritiesResponse?.data?.find((p) => p.name === req.priority);
 
   const isTitleValid = !req.titleError && req.title.trim().length > 0;
   const isDescriptionValid = !req.descriptionError;
 
+  // Handle showing and hiding the "Title is valid" message
+  useEffect(() => {
+    if (!req.titleError && req.title && isTitleValid) {
+      setShowValidMessage(true);
+      const timer = setTimeout(() => {
+        setShowValidMessage(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowValidMessage(false);
+    }
+  }, [req.title, req.titleError, isTitleValid]);
+
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      await onSave();
+      // Không gọi onSave ở đây nữa để tránh submit form
+      // await onSave();
     }
   };
 
@@ -57,36 +73,44 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
     <div className="bg-white border-2 border-gray-200 p-5 rounded-xl shadow-sm hover:shadow-md transition space-y-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <input
-            type="text"
-            value={req.title}
-            onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Requirement title"
-            maxLength={Number(titleLengthConfig?.data?.maxValue || 255)}
-            className={`flex-1 border-2 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10 ${
-              req.titleError || !isTitleValid ? 'border-red-400' : 'border-gray-200'
-            }`}
-            required
-          />
-          {isTitleLengthLoading && <p className="text-gray-500 text-xs mt-1">Loading title constraints...</p>}
-          {req.titleError && <p className="text-red-600 text-xs mt-1">{req.titleError}</p>}
-          {!req.titleError && !req.title && <p className="text-red-600 text-xs mt-1">Title is required.</p>}
-          {!req.titleError && req.title && isTitleValid && (
-            <p className="text-green-600 text-xs mt-1">Title is valid.</p>
-          )}
-          {!req.expanded && req.priority && selectedPriority?.iconLink && (
-            <div
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
-              style={{ borderColor: selectedPriority.color || '#1c73fd' }}
-            >
-              <img
-                src={selectedPriority.iconLink}
-                alt={`${selectedPriority.label} icon`}
-                className="w-4 h-4"
-              />
+          {/* Wrap input and validation messages in a container */}
+          <div className="relative min-h-[60px]">
+            <input
+              type="text"
+              value={req.title}
+              onChange={(e) => updateRequirement(req.uiId, 'title', e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => setTouched(true)}
+              placeholder="Requirement title"
+              maxLength={Number(titleLengthConfig?.data?.maxValue || 255)}
+              className={`flex-1 border-2 px-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-[#1c73fd]/20 focus:border-[#1c73fd] pr-10 ${
+                (req.titleError || (touched && !isTitleValid)) ? 'border-red-400' : 'border-gray-200'
+              }`}
+              required
+            />
+            {/* Priority icon shifted upward */}
+            {!req.expanded && req.priority && selectedPriority?.iconLink && (
+              <div
+                className="absolute right-3 top-2 w-6 h-6 rounded-sm border-2 flex items-center justify-center"
+                style={{ borderColor: selectedPriority.color || '#1c73fd' }}
+              >
+                <img
+                  src={selectedPriority.iconLink}
+                  alt={`${selectedPriority.label} icon`}
+                  className="w-4 h-4"
+                />
+              </div>
+            )}
+            {/* Validation messages in a separate div */}
+            <div className="mt-1">
+              {isTitleLengthLoading && <p className="text-gray-500 text-xs">Loading title constraints...</p>}
+              {req.titleError && <p className="text-red-600 text-xs">{req.titleError}</p>}
+              {!req.titleError && touched && !req.title && <p className="text-red-600 text-xs">Title is required.</p>}
+              {showValidMessage && (
+                <p className="text-green-600 text-xs">Title is valid.</p>
+              )}
             </div>
-          )}
+          </div>
         </div>
         <button
           onClick={() => toggleExpand(req.uiId)}
@@ -148,7 +172,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
                       onClick={() => {
                         updateRequirement(req.uiId, 'priority', p.name);
                         setDropdownOpen((prev) => ({ ...prev, [req.uiId]: false }));
-                        onSave();
+                        // Bỏ onSave() ở đây để không tự động submit
                       }}
                       className="flex items-center px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                     >

@@ -169,6 +169,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
       const extendedTasks: ExtendedStoryTaskResponse[] = response.data.map((item: StoryTaskResponse) => ({
         ...item,
         type: createType,
+        aiGenerated: true,
         epicId: selectedEpic.epicId,
         data: {
           ...item.data,
@@ -339,7 +340,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
       data: {
         itemId: `${createType.toLowerCase()}-${Date.now()}`,
         title: newTask.title.trim(),
-        description: newTask.description.trim(),
+        description: newTask.description.trim() || 'No description',
         startDate: newTask.startDate,
         endDate: newTask.endDate,
         suggestedRole: newTask.suggestedRole,
@@ -348,12 +349,12 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
       },
     };
 
+    // Pass the new task to the parent to update TaskList
+    onStoryTasksGenerated([item]);
+
     // Set evaluation payload and show popup for manual creation
     setEvaluationPayload(JSON.stringify({ storyTasks: [item] }));
     setIsEvaluationPopupOpen(true);
-    
-    // Pass to parent immediately for manual items
-    onStoryTasksGenerated([item]);
 
     // Reset form
     setNewTask({
@@ -405,12 +406,12 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
         epicId: selectedEpic!.epicId,
       }));
 
+      // Pass the selected tasks to the parent to update TaskList
+      onStoryTasksGenerated(tasksWithEpicId);
+
       // Set evaluation payload and show popup
       setEvaluationPayload(JSON.stringify({ storyTasks: tasksWithEpicId }));
       setIsEvaluationPopupOpen(true);
-      
-      // Pass to parent
-      onStoryTasksGenerated(tasksWithEpicId);
     } catch (err: any) {
       console.error('Submit error:', err);
       setError(err.message || `Failed to process ${createType.toLowerCase()}s`);
@@ -422,14 +423,20 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
   const handleEvaluationPopupClose = () => {
     setIsEvaluationPopupOpen(false);
     setEvaluationPayload('');
-    onClose();
+    setStoryTasks([]); // Clear storyTasks to reset the generated tasks section
+    setSelectedStoryTasks([]); // Clear selected tasks
+    // Do not call onClose to keep the popup open
+    setIsEpicTasksVisible(true); // Show the updated task list
   };
 
   const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
     console.log('AI response evaluation submitted with ID:', aiResponseId);
     setIsEvaluationPopupOpen(false);
     setEvaluationPayload('');
-    onClose();
+    setStoryTasks([]); // Clear storyTasks to reset the generated tasks section
+    setSelectedStoryTasks([]); // Clear selected tasks
+    // Do not call onClose to keep the popup open
+    setIsEpicTasksVisible(true); // Show the updated task list
   };
 
   const formatDate = (dateStr: string) => {
@@ -970,54 +977,190 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
               </div>
             )}
 
-            <div className='flex justify-end gap-4 mt-8'>
+            {manualMode && (
+              <div className='border border-gray-200 rounded-xl p-6 bg-gray-50'>
+                <h3 className='text-lg font-semibold text-gray-800 mb-4'>Create New {createType}</h3>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                  {createType === 'TASK' && selectedEpic && (
+                    <div className='md:col-span-2'>
+                      <label className='block text-sm font-medium text-gray-700 mb-1'>Story *</label>
+                      <select
+                        value={newTask.storyTitle}
+                        onChange={(e) => handleStoryChange(e)}
+                        className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                      >
+                        <option value=''>Select a story</option>
+                        {selectedEpic.tasks
+                          .filter((task) => task.type === 'STORY')
+                          .map((story) => (
+                            <option key={story.id} value={story.title}>
+                              {story.title}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  )}
+                  <div className='md:col-span-2'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>{createType} Title *</label>
+                    <input
+                      type='text'
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                      placeholder={`Enter ${createType.toLowerCase()} title`}
+                    />
+                  </div>
+                  <div className='md:col-span-2'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Description</label>
+                    <textarea
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      rows={3}
+                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd] resize-none'
+                      placeholder={`Enter ${createType.toLowerCase()} description`}
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Start Date</label>
+                    <input
+                      type='date'
+                      value={newTask.startDate}
+                      onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                    />
+                  </div>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>End Date</label>
+                    <input
+                      type='date'
+                      value={newTask.endDate}
+                      onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
+                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                    />
+                  </div>
+                  <div className='md:col-span-2'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Suggested Role</label>
+                    <select
+                      value={newTask.suggestedRole}
+                      onChange={(e) => setNewTask({ ...newTask, suggestedRole: e.target.value })}
+                      className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
+                    >
+                      <option value='Developer'>Developer</option>
+                      <option value='Designer'>Designer</option>
+                      <option value='Tester'>Tester</option>
+                      <option value='Manager'>Manager</option>
+                    </select>
+                  </div>
+                  <div className='md:col-span-2 relative'>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Assign Members</label>
+                    <div className='flex flex-wrap gap-2 mb-2'>
+                      {newTask.assignedMembers.map((member) => (
+                        <div
+                          key={member.accountId}
+                          className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
+                        >
+                          <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
+                          <span>{member.fullName}</span>
+                          <button
+                            onClick={() => handleRemoveTaskMember(member.accountId)}
+                            className='text-red-600 hover:text-red-800'
+                          >
+                            <X className='w-4 h-4' />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        ref={dropdownButtonRef}
+                        onClick={() => setIsMemberDropdownOpen(!isMemberDropdownOpen)}
+                        className='flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium'
+                      >
+                        <Plus className='w-4 h-4' />
+                        Add Member
+                      </button>
+                    </div>
+                    {isMemberDropdownOpen && (
+                      <div
+                        className='absolute z-50 w-64 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg p-2'
+                        style={{
+                          top: dropdownButtonRef.current
+                            ? dropdownButtonRef.current.getBoundingClientRect().bottom + window.scrollY + 4
+                            : 0,
+                          left: dropdownButtonRef.current
+                            ? dropdownButtonRef.current.getBoundingClientRect().left + window.scrollX
+                            : 0,
+                        }}
+                      >
+                        {membersData?.data && membersData.data.length > 0 ? (
+                          membersData.data.map((member) => (
+                            <div
+                              key={member.accountId}
+                              onClick={() => handleAddTaskMember(member)}
+                              className='flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 cursor-pointer rounded'
+                            >
+                              <img src={member.picture} alt={member.fullName} className='w-6 h-6 rounded-full' />
+                              <span className='text-sm'>{member.fullName}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className='px-2 py-1.5 text-sm text-gray-500'>No members available</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className='flex justify-end gap-2 mt-4'>
+                  <button
+                    onClick={() => setManualMode(false)}
+                    className='px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors'
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateItem}
+                    className='px-4 py-2 text-sm bg-[#1c73fd] text-white rounded-lg hover:bg-[#155ac7] transition-colors'
+                  >
+                    Create {createType}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {storyTasks.length > 0 && (
+            <div className='flex justify-end gap-2'>
               <button
                 onClick={onClose}
-                className='px-6 py-3 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200'
+                className='px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors'
                 disabled={isSubmitting}
               >
                 Cancel
               </button>
-              {manualMode && selectedEpic ? (
-                <button
-                  onClick={handleCreateItem}
-                  className={`px-6 py-3 text-sm font-semibold text-white rounded-xl transition-all duration-300 ${
-                    isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)
-                      ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
-                  }`}
-                  disabled={isSubmitting || !selectedEpic || !newTask.title || (createType === 'TASK' && !newTask.storyTitle)}
-                >
-                  Create {createType}
-                </button>
-              ) : (
-                storyTasks.length > 0 && (
-                  <button
-                    onClick={handleSubmit}
-                    className={`px-6 py-3 text-sm font-semibold text-white rounded-xl transition-all duration-300 ${
-                      isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0
-                        ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
-                    }`}
-                    disabled={isSubmitting || storyTasks.length === 0 || selectedStoryTasks.length === 0}
-                  >
-                    {isSubmitting ? 'Adding...' : `Add Selected ${createType}s (${selectedStoryTasks.length})`}
-                  </button>
-                )
-              )}
+              <button
+                onClick={handleSubmit}
+                className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
+                  isSubmitting || selectedStoryTasks.length === 0
+                    ? 'bg-gray-400 text-white cursor-not-allowed'
+                    : 'bg-[#1c73fd] text-white hover:bg-[#155ac7]'
+                }`}
+                disabled={isSubmitting || selectedStoryTasks.length === 0}
+              >
+                {isSubmitting ? `Submitting ${createType}s...` : `Save ${createType}s`}
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
-      <AiResponseEvaluationPopup
-        isOpen={isEvaluationPopupOpen}
-        onClose={handleEvaluationPopupClose}
-        aiResponseJson={evaluationPayload}
-        projectId={projectId}
-        aiFeature='STORY_TASK_GENERATION'
-        onSubmitSuccess={handleEvaluationSubmitSuccess}
-      />
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleEvaluationPopupClose}
+          aiResponseJson={evaluationPayload}
+          projectId={projectId}
+          aiFeature='TASK_PLANNING'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
     </>
   );
 };

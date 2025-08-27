@@ -609,6 +609,17 @@
   }
 }
 
+/* .error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #fee2e2;
+  width: fit-content;
+  max-width: 100%;
+} */
+
 
 /* .risk-detail-panel {
   @apply relative;

@@ -15,6 +15,7 @@ import GenerateEpicsPopup from '../GenerateEpicsPopup';
 import GenerateStoryTaskPopup from '../GenerateStoryTaskPopup';
 import AiResponseEvaluationPopup from '../../../../components/AiResponse/AiResponseEvaluationPopup';
 import taskIcon from '../../../../assets/icon/type_task.svg';
+import storyIcon from '../../../../assets/icon/type_story.svg';
 import epicIcon from '../../../../assets/icon/type_epic.svg';
 import galaxyaiIcon from '../../../../assets/galaxyai.gif';
 import aiIcon from '../../../../assets/icon/ai.png';
@@ -752,7 +753,6 @@ const TaskList: React.FC<TaskListProps> = ({
                               title='Generate Story/Task'
                             >
                               <img src={aiIcon} alt='AI Icon' className='w-4 h-4' />
-                         
                             </button>
 
                             <button
@@ -781,7 +781,7 @@ const TaskList: React.FC<TaskListProps> = ({
                                 <td className='p-2'>{taskIndex + 1}</td>
                                 <td className='p-2'>
                                   <img
-                                    src={taskIcon}
+                                    src={item.type === 'STORY' ? storyIcon : taskIcon}
                                     alt={item.type}
                                     className='w-5 h-5 rounded p-0.5'
                                   />

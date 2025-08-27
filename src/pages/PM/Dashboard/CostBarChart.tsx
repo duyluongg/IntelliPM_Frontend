@@ -36,6 +36,8 @@ const CostBarChart = ({
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (!data?.data) return <div>Failed to load cost data</div>;
 
+  console.log('CostDashboard data:', data);
+  
   const { actualCost, plannedCost, budget } = data.data;
 
   const chartData = [

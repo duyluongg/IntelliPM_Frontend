@@ -62,11 +62,33 @@ import ProfilePage from '../pages/Account/ProfilePage';
 import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
 import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete';
 import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/MilestoneFeedbackPanel';
+import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
+import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
+import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
+
+import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
+
+import Register from '../components/Register';  
+import VerifySuccess from '../components/VerifySuccess';
+import VerifyFail from '../components/VerifyFail';
+
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
+  },
+    {
+    path: '/verify-success',
+    element: <VerifySuccess />,
+  },
+    {
+    path: '/verify-fail',
+    element: <VerifyFail />,
   },
   {
     path: '/Guest',
@@ -113,10 +135,10 @@ export const router = createBrowserRouter([
         path: 'meeting-feedback',
         element: <MeetingFeedbackPage />,
       },
-          {
-      path: 'meeting-feedback/:transcriptId',
-      element: <MilestoneFeedbackPanel />,
-    },
+      {
+        path: 'meeting-feedback/:transcriptId',
+        element: <MilestoneFeedbackPanel />,
+      },
 
       {
         path: 'account/profile',
@@ -149,7 +171,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER','CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -284,6 +306,10 @@ export const router = createBrowserRouter([
         path: 'projects/form/recent_form',
         element: <RecentForm />,
       },
+      {
+        path: ':projectKey/risk-statistics',
+        element: <RiskStatistics />,
+      },
     ],
   },
 
@@ -317,12 +343,22 @@ export const router = createBrowserRouter([
         element: <Analytics />,
       },
       {
+        path: 'categories',
+        element: <DynamicCategoryPage />,
+      },
+      {
+        path: 'configurations',
+        element: <SystemConfigPage />,
+      },
+           {
+        path: 'ai-responses',
+        element: <AiResponsePage />,
+      },
+      {
         path: 'projects',
         element: <AdminProjectPage />,
       },
-      { path:'projects/:projectId/dashboard' ,
-        element: <ProjectDashboard />
-      },
+      { path: 'projects/:projectId/dashboard', element: <ProjectDashboard /> },
     ],
   },
 

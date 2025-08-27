@@ -68,6 +68,7 @@ import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage'
 import Register from '../components/Register';  
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
 
 export const router = createBrowserRouter([
   {
@@ -345,6 +346,10 @@ export const router = createBrowserRouter([
            {
         path: 'ai-responses',
         element: <AiResponsePage />,
+      },
+          {
+        path: 'dynamic-bulk-register',
+        element: <DynamicBulkRegister />,
       },
       {
         path: 'projects',

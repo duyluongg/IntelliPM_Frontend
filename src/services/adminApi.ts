@@ -5,7 +5,7 @@ export interface Account {
   id: number;
   username: string;
   fullName: string;
-  email: string;
+  email: string | null;
   gender: string;
   position: string;
   dateOfBirth: string | null;
@@ -13,7 +13,26 @@ export interface Account {
   role: string;
   picture: string;
 }
+export interface AdminAccountRequest {
+  email: string;
+  position: string;
+  role: string;
+}
+export interface ApiResponse<T> {
+  isSuccess: boolean;
+  code: number;
+  data: T;
+  message: string;
+}
+export interface RegistrationError {
+  email: string;
+  errorMessage: string;
+}
 
+export interface AdminRegisterResponse {
+  successful: string[];
+  failed: RegistrationError[];
+}
 export interface GetAccountsResponse {
   isSuccess: boolean;
   code: number;
@@ -119,8 +138,17 @@ export const adminApi = createApi({
     getProjectManagerReports: builder.query<ProjectManagerReport[], void>({
       query: () => 'admin/project-managers',
     }),
+
+    registerAccounts: builder.mutation<ApiResponse<AdminRegisterResponse>, AdminAccountRequest[]>({
+      query: (accounts) => ({
+        url: 'admin/register-account',
+        method: 'POST',
+        body: accounts,
+      }),
+    }),
+
   }),
 });
 
-export const { useGetAccountsQuery, useGetProjectStatusQuery, useGetProjectManagerReportsQuery } =
+export const { useGetAccountsQuery, useGetProjectStatusQuery, useGetProjectManagerReportsQuery,useRegisterAccountsMutation, } =
   adminApi;

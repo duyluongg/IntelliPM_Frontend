@@ -99,14 +99,14 @@ export const subtaskApi = createApi({
       }),
     }),
 
-    createSubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number }>({
-      query: ({ taskId, title, createdBy }) => ({
+    createSubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number; reporterId: number }>({
+      query: ({ taskId, title, createdBy, reporterId }) => ({
         url: 'subtask/create2',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: { taskId, title, createdBy },
+        body: { taskId, title, createdBy, reporterId },
       }),
     }),
     

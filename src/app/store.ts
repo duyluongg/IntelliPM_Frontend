@@ -119,6 +119,8 @@ const rootReducer = combineReducers({
   [adminApi.reducerPath]: adminApi.reducer,
   [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
   [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
+  
+
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,

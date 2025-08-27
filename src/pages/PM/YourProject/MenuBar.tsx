@@ -58,17 +58,32 @@ interface Props {
   onToggleChatbot?: () => void;
   onAddComment?: () => void;
   exportTargetRef?: React.RefObject<HTMLElement | null>;
+  createdBy?: number;
 }
 
 // Lớp CSS dùng chung cho các item trong dropdown
 const dropdownItemClass =
   'flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50';
 
-const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, exportTargetRef }) => {
+const MenuBar: React.FC<Props> = ({
+  editor,
+  onToggleChatbot,
+  onAddComment,
+  exportTargetRef,
+  createdBy,
+}) => {
   if (!editor) {
     return null;
   }
   const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
+  const isOwner = !!user && typeof createdBy === 'number' && Number(user.id) === Number(createdBy);
+
+  const canEdit = !isClient;
+  const canShare = isOwner;
+  const canExport = !isClient;
+
   const {
     data: profileRes,
     isLoading: isProfileLoading,
@@ -244,49 +259,106 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
   //   }
   // };
 
+  // const handleExportPDF = async () => {
+  //   const el = exportTargetRef?.current ?? document.querySelector<HTMLElement>('.tiptap-content');
+  //   if (!el || !(el instanceof HTMLElement) || !documentId) return;
+  //   setIsExporting('pdf');
+  //   try {
+  //     const canvas = await html2canvas(el, {
+  //       scale: 1.5,
+  //       useCORS: true,
+  //       backgroundColor: '#fff',
+  //       windowWidth: el.scrollWidth,
+  //     });
+
+  //     const imgData = canvas.toDataURL('image/png');
+  //     const pdf = new jsPDF('p', 'mm', 'a4');
+  //     const pageW = pdf.internal.pageSize.getWidth();
+  //     const pageH = pdf.internal.pageSize.getHeight();
+
+  //     const imgW = pageW;
+  //     const imgH = (canvas.height * imgW) / canvas.width;
+
+  //     let heightLeft = imgH;
+  //     let position = 0;
+
+  //     pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+  //     heightLeft -= pageH;
+
+  //     while (heightLeft > 0) {
+  //       position = heightLeft - imgH;
+  //       pdf.addPage();
+  //       pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
+  //       heightLeft -= pageH;
+  //     }
+
+  //     // ✨ Xuất blob để upload
+  //     const pdfBlob = pdf.output('blob');
+  //     const file = new File([pdfBlob], `document-${documentId}.pdf`, {
+  //       type: 'application/pdf',
+  //     });
+
+  //     await exportDocument({ documentId, file }).unwrap();
+  //     toast.success('🎉 Export file successfully!');
+
+  //     const blobUrl = URL.createObjectURL(pdfBlob);
+  //     const a = document.createElement('a');
+  //     a.href = blobUrl;
+  //     a.download = `document-${documentId}.pdf`;
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     document.body.removeChild(a);
+  //     URL.revokeObjectURL(blobUrl);
+  //   } catch (err) {
+  //     console.error('Export error:', err);
+  //     toast.error('❌ Export PDF thất bại!');
+  //   } finally {
+  //     setIsExporting(null);
+  //   }
+  // };
+
   const handleExportPDF = async () => {
     const el = exportTargetRef?.current ?? document.querySelector<HTMLElement>('.tiptap-content');
     if (!el || !(el instanceof HTMLElement) || !documentId) return;
+
     setIsExporting('pdf');
+
     try {
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#fff',
-        windowWidth: el.scrollWidth,
-      });
+      // --- Step 1: Generate PDF file from HTML and return a File object ---
+      const generatePdfAsFile = () => {
+        // Thay đổi ở đây: Thêm <File> để TypeScript biết Promise sẽ trả về một đối tượng File
+        return new Promise<File>((resolve, reject) => {
+          try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            pdf.html(el, {
+              callback: function (pdf) {
+                const pdfBlob = pdf.output('blob');
+                const file = new File([pdfBlob], `document-${documentId}.pdf`, {
+                  type: 'application/pdf',
+                });
+                resolve(file); // Trả về đối tượng File khi thành công
+              },
+              margin: [15, 15, 15, 15],
+              autoPaging: 'text',
+              width: pdf.internal.pageSize.getWidth() - 30,
+              windowWidth: el.scrollWidth,
+            });
+          } catch (error) {
+            reject(error); // Reject nếu có lỗi
+          }
+        });
+      };
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
+      const fileToUpload = await generatePdfAsFile();
 
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
+      // --- Step 2: Call API to upload the file ---
+      await exportDocument({ documentId, file: fileToUpload }).unwrap();
 
-      let heightLeft = imgH;
-      let position = 0;
+      // Notify user only after successful upload
+      toast.success('🎉 PDF exported and uploaded successfully!');
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
-      heightLeft -= pageH;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgW, imgH);
-        heightLeft -= pageH;
-      }
-
-      // ✨ Xuất blob để upload
-      const pdfBlob = pdf.output('blob');
-      const file = new File([pdfBlob], `document-${documentId}.pdf`, {
-        type: 'application/pdf',
-      });
-
-      await exportDocument({ documentId, file }).unwrap();
-      toast.success('🎉 Export file successfully!');
-
-      const blobUrl = URL.createObjectURL(pdfBlob);
+      // --- (Optional) Step 3: Download file to user's machine ---
+      const blobUrl = URL.createObjectURL(fileToUpload);
       const a = document.createElement('a');
       a.href = blobUrl;
       a.download = `document-${documentId}.pdf`;
@@ -295,8 +367,8 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error('Export error:', err);
-      toast.error('❌ Export PDF thất bại!');
+      console.error('Error while exporting or uploading PDF:', err);
+      toast.error('❌ Something went wrong, please try again!');
     } finally {
       setIsExporting(null);
     }
@@ -368,6 +440,7 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
   };
 
   const handleShareDocument = async () => {
+    if (!canShare) return;
     if (!emails.length) {
       toast.error('Please enter at least one email');
       return;
@@ -407,76 +480,80 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
     <Fragment>
       {/* Nút Undo/Redo */}
       <div className='sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-2'>
-        <div className='flex items-center'>
-          <button
-            title='Undo'
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
-            className='p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40'
-          >
-            <Undo className='w-5 h-5' />
-          </button>
-          <button
-            title='Redo'
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
-            className='p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40'
-          >
-            <Redo className='w-5 h-5' />
-          </button>
-        </div>
-        <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-        <Menu as='div' className='relative'>
-          <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
-            <CaseSensitive className='w-5 h-5 text-blue-600' />
-            <span className='text-sm font-medium'>{getActiveTextStyle()}</span>
-            <ChevronDown className='w-4 h-4' />
-          </Menu.Button>
-          <Transition
-            as={Fragment}
-            enter='transition ease-out duration-100'
-            enterFrom='transform opacity-0 scale-95'
-            enterTo='transform opacity-100 scale-100'
-            leave='transition ease-in duration-75'
-            leaveFrom='transform opacity-100 scale-100'
-            leaveTo='transform opacity-0 scale-95'
-          >
-            <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().setParagraph().run()}
-                  className={dropdownItemClass}
-                >
-                  Normal text
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className={dropdownItemClass}
-                >
-                  Heading 1
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className={dropdownItemClass}
-                >
-                  Heading 2
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                  className={dropdownItemClass}
-                >
-                  Heading 3
-                </button>
-              </Menu.Item>
-            </Menu.Items>
-          </Transition>
-        </Menu>
+        {canEdit && (
+          <div className='flex items-center'>
+            <button
+              title='Undo'
+              onClick={() => editor.chain().focus().undo().run()}
+              disabled={!editor.can().undo()}
+              className='p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40'
+            >
+              <Undo className='w-5 h-5' />
+            </button>
+            <button
+              title='Redo'
+              onClick={() => editor.chain().focus().redo().run()}
+              disabled={!editor.can().redo()}
+              className='p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40'
+            >
+              <Redo className='w-5 h-5' />
+            </button>
+          </div>
+        )}
+        {canEdit && <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />}
+        {canEdit && (
+          <Menu as='div' className='relative'>
+            <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
+              <CaseSensitive className='w-5 h-5 text-blue-600' />
+              <span className='text-sm font-medium'>{getActiveTextStyle()}</span>
+              <ChevronDown className='w-4 h-4' />
+            </Menu.Button>
+            <Transition
+              as={Fragment}
+              enter='transition ease-out duration-100'
+              enterFrom='transform opacity-0 scale-95'
+              enterTo='transform opacity-100 scale-100'
+              leave='transition ease-in duration-75'
+              leaveFrom='transform opacity-100 scale-100'
+              leaveTo='transform opacity-0 scale-95'
+            >
+              <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().setParagraph().run()}
+                    className={dropdownItemClass}
+                  >
+                    Normal text
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    className={dropdownItemClass}
+                  >
+                    Heading 1
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    className={dropdownItemClass}
+                  >
+                    Heading 2
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    className={dropdownItemClass}
+                  >
+                    Heading 3
+                  </button>
+                </Menu.Item>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+        )}
         <button
           title='Add Comment'
           onClick={onAddComment}
@@ -485,176 +562,183 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
         >
           <MessageSquarePlus className='w-5 h-5' />
         </button>
-        <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
-        {/* Dropdown Căn lề */}
-        <Menu as='div' className='relative'>
-          <Menu.Button className='flex items-center gap-1 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
-            {editor.isActive({ textAlign: 'left' }) && <AlignLeft className='w-5 h-5' />}
-            {editor.isActive({ textAlign: 'center' }) && <AlignCenter className='w-5 h-5' />}
-            {editor.isActive({ textAlign: 'right' }) && <AlignRight className='w-5 h-5' />}
-            {editor.isActive({ textAlign: 'justify' }) && <AlignJustify className='w-5 h-5' />}
-            {!editor.isActive({ textAlign: 'center' }) &&
-              !editor.isActive({ textAlign: 'right' }) &&
-              !editor.isActive({ textAlign: 'justify' }) && <AlignLeft className='w-5 h-5' />}
-            <ChevronDown className='w-4 h-4' />
-          </Menu.Button>
-          <Transition
-            as={Fragment}
-            enter='transition ease-out duration-100'
-            enterFrom='transform opacity-0 scale-95'
-            enterTo='transform opacity-100 scale-100'
-            leave='transition ease-in duration-75'
-            leaveFrom='transform opacity-100 scale-100'
-            leaveTo='transform opacity-0 scale-95'
-          >
-            <Menu.Items className='absolute z-10 mt-2 w-40 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                  className={dropdownItemClass}
-                >
-                  <AlignLeft className='w-5 h-5' />
-                  <span>Left</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                  className={dropdownItemClass}
-                >
-                  <AlignCenter className='w-5 h-5' />
-                  <span>Center</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                  className={dropdownItemClass}
-                >
-                  <AlignRight className='w-5 h-5' />
-                  <span>Right</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-                  className={dropdownItemClass}
-                >
-                  <AlignJustify className='w-5 h-5' />
-                  <span>Justify</span>
-                </button>
-              </Menu.Item>
-            </Menu.Items>
-          </Transition>
-        </Menu>
-        <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
+        {canEdit && <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />}
+        {canEdit && (
+          <Menu as='div' className='relative'>
+            <Menu.Button className='flex items-center gap-1 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
+              {editor.isActive({ textAlign: 'left' }) && <AlignLeft className='w-5 h-5' />}
+              {editor.isActive({ textAlign: 'center' }) && <AlignCenter className='w-5 h-5' />}
+              {editor.isActive({ textAlign: 'right' }) && <AlignRight className='w-5 h-5' />}
+              {editor.isActive({ textAlign: 'justify' }) && <AlignJustify className='w-5 h-5' />}
+              {!editor.isActive({ textAlign: 'center' }) &&
+                !editor.isActive({ textAlign: 'right' }) &&
+                !editor.isActive({ textAlign: 'justify' }) && <AlignLeft className='w-5 h-5' />}
+              <ChevronDown className='w-4 h-4' />
+            </Menu.Button>
+            <Transition
+              as={Fragment}
+              enter='transition ease-out duration-100'
+              enterFrom='transform opacity-0 scale-95'
+              enterTo='transform opacity-100 scale-100'
+              leave='transition ease-in duration-75'
+              leaveFrom='transform opacity-100 scale-100'
+              leaveTo='transform opacity-0 scale-95'
+            >
+              <Menu.Items className='absolute z-10 mt-2 w-40 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
+                    className={dropdownItemClass}
+                  >
+                    <AlignLeft className='w-5 h-5' />
+                    <span>Left</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
+                    className={dropdownItemClass}
+                  >
+                    <AlignCenter className='w-5 h-5' />
+                    <span>Center</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
+                    className={dropdownItemClass}
+                  >
+                    <AlignRight className='w-5 h-5' />
+                    <span>Right</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().setTextAlign('justify').run()}
+                    className={dropdownItemClass}
+                  >
+                    <AlignJustify className='w-5 h-5' />
+                    <span>Justify</span>
+                  </button>
+                </Menu.Item>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+        )}
+        {canEdit && <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />}
         {/* Các nút List */}
-        <div className='flex items-center'>
-          <button
-            title='Bullet List'
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-1.5 rounded ${
-              editor.isActive('bulletList')
-                ? 'bg-gray-200 dark:bg-gray-700'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <List className='w-5 h-5' />
-          </button>
-          <button
-            title='Ordered List'
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`p-1.5 rounded ${
-              editor.isActive('orderedList')
-                ? 'bg-gray-200 dark:bg-gray-700'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <ListOrdered className='w-5 h-5' />
-          </button>
-          <button
-            title='Task List'
-            onClick={() => editor.chain().focus().toggleTaskList().run()}
-            className={`p-1.5 rounded ${
-              editor.isActive('taskList')
-                ? 'bg-gray-200 dark:bg-gray-700'
-                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <ListTodo className='w-5 h-5' />
-          </button>
-        </div>
-        <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />
+        {canEdit && (
+          <div className='flex items-center'>
+            <button
+              title='Bullet List'
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              className={`p-1.5 rounded ${
+                editor.isActive('bulletList')
+                  ? 'bg-gray-200 dark:bg-gray-700'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <List className='w-5 h-5' />
+            </button>
+            <button
+              title='Ordered List'
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              className={`p-1.5 rounded ${
+                editor.isActive('orderedList')
+                  ? 'bg-gray-200 dark:bg-gray-700'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <ListOrdered className='w-5 h-5' />
+            </button>
+            <button
+              title='Task List'
+              onClick={() => editor.chain().focus().toggleTaskList().run()}
+              className={`p-1.5 rounded ${
+                editor.isActive('taskList')
+                  ? 'bg-gray-200 dark:bg-gray-700'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              <ListTodo className='w-5 h-5' />
+            </button>
+          </div>
+        )}
+        {canEdit && <div className='w-[1px] h-6 bg-gray-200 dark:bg-gray-700 mx-1' />}
         {/* Dropdown Style (Bold, Italic,...) */}
-        <Menu as='div' className='relative'>
-          <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
-            <span className='text-sm font-medium'>Style</span>
-            <ChevronDown className='w-4 h-4' />
-          </Menu.Button>
-          <Transition
-            as={Fragment}
-            enter='transition ease-out duration-100'
-            enterFrom='transform opacity-0 scale-95'
-            enterTo='transform opacity-100 scale-100'
-            leave='transition ease-in duration-75'
-            leaveFrom='transform opacity-100 scale-100'
-            leaveTo='transform opacity-0 scale-95'
+        {canEdit && (
+          <Menu as='div' className='relative'>
+            <Menu.Button className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700'>
+              <span className='text-sm font-medium'>Style</span>
+              <ChevronDown className='w-4 h-4' />
+            </Menu.Button>
+            <Transition
+              as={Fragment}
+              enter='transition ease-out duration-100'
+              enterFrom='transform opacity-0 scale-95'
+              enterTo='transform opacity-100 scale-100'
+              leave='transition ease-in duration-75'
+              leaveFrom='transform opacity-100 scale-100'
+              leaveTo='transform opacity-0 scale-95'
+            >
+              <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleBold().run()}
+                    className={`${dropdownItemClass} ${
+                      editor.isActive('bold') ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                  >
+                    <Bold className='w-5 h-5' />
+                    <span>Bold</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                    className={`${dropdownItemClass} ${
+                      editor.isActive('italic') ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                  >
+                    <Italic className='w-5 h-5' />
+                    <span>Italic</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleStrike().run()}
+                    className={`${dropdownItemClass} ${
+                      editor.isActive('strike') ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                  >
+                    <Strikethrough className='w-5 h-5' />
+                    <span>Strikethrough</span>
+                  </button>
+                </Menu.Item>
+                <Menu.Item>
+                  <button
+                    onClick={() => editor.chain().focus().toggleCode().run()}
+                    className={`${dropdownItemClass} ${
+                      editor.isActive('code') ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                  >
+                    <Code className='w-5 h-5' />
+                    <span>Code</span>
+                  </button>
+                </Menu.Item>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+        )}
+        {canEdit && (
+          <button
+            onClick={onToggleChatbot}
+            className='flex items-center gap-2 px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900'
           >
-            <Menu.Items className='absolute z-10 mt-2 w-48 origin-top-left rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-1'>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleBold().run()}
-                  className={`${dropdownItemClass} ${
-                    editor.isActive('bold') ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
-                >
-                  <Bold className='w-5 h-5' />
-                  <span>Bold</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleItalic().run()}
-                  className={`${dropdownItemClass} ${
-                    editor.isActive('italic') ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
-                >
-                  <Italic className='w-5 h-5' />
-                  <span>Italic</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleStrike().run()}
-                  className={`${dropdownItemClass} ${
-                    editor.isActive('strike') ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
-                >
-                  <Strikethrough className='w-5 h-5' />
-                  <span>Strikethrough</span>
-                </button>
-              </Menu.Item>
-              <Menu.Item>
-                <button
-                  onClick={() => editor.chain().focus().toggleCode().run()}
-                  className={`${dropdownItemClass} ${
-                    editor.isActive('code') ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
-                >
-                  <Code className='w-5 h-5' />
-                  <span>Code</span>
-                </button>
-              </Menu.Item>
-            </Menu.Items>
-          </Transition>
-        </Menu>
-        <button
-          onClick={onToggleChatbot}
-          className='flex items-center gap-2 px-3 py-1.5 rounded bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900'
-        >
-          <Sparkles className='w-5 h-5' />
-          <span className='text-sm font-semibold'>AI Assistant</span>
-        </button>
+            <Sparkles className='w-5 h-5' />
+            <span className='text-sm font-semibold'>AI Assistant</span>
+          </button>
+        )}
         <Menu as='div' className='relative'>
           <Menu.Button
             className='flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-wait' // ✨ Added disabled styles
@@ -709,15 +793,17 @@ const MenuBar: React.FC<Props> = ({ editor, onToggleChatbot, onAddComment, expor
             </Menu.Items>
           </Transition>
         </Menu>
-        <div className='ml-auto flex items-center gap-2'>
-          <button
-            onClick={openShareModal}
-            className='flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors'
-          >
-            <Share2 className='w-4 h-4' />
-            <span className='text-sm font-medium'>Share</span>
-          </button>
-        </div>
+        {canShare && (
+          <div className='ml-auto flex items-center gap-2'>
+            <button
+              onClick={openShareModal}
+              className='flex items-center gap-2 px-4 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors'
+            >
+              <Share2 className='w-4 h-4' />
+              <span className='text-sm font-medium'>Share</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <Transition appear show={isShareModalOpen} as={Fragment}>

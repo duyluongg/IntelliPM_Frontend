@@ -65,9 +65,13 @@ import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/Mileston
 import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
 import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
+
+import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
+
 import Register from '../components/Register';  
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
+
 
 export const router = createBrowserRouter([
   {
@@ -301,6 +305,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects/form/recent_form',
         element: <RecentForm />,
+      },
+      {
+        path: ':projectKey/risk-statistics',
+        element: <RiskStatistics />,
       },
     ],
   },

@@ -9,6 +9,7 @@ import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import flagIcon from '../../assets/icon/type_story.svg';
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import ChildWorkItemPopup from './ChildWorkItemPopup';
@@ -32,7 +33,7 @@ import {
   useUpdateTaskSprintMutation,
   useUpdatePercentCompleteMutation,
 } from '../../services/taskApi';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, useParams } from 'react-router-dom';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -82,6 +83,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
   const [plannedStartDate, setPlannedStartDate] = React.useState('');
   const [plannedEndDate, setPlannedEndDate] = React.useState('');
   const [status, setStatus] = React.useState('');
@@ -148,6 +151,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [loadingSuggest, setLoadingSuggest] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
+  const [fileError, setFileError] = useState('');
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
   const {
     data: taskStatus,
@@ -664,8 +668,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     setIsDropdownOpen(!isDropdownOpen);
   };
 
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
+  };
+
   const currentType = taskTypes?.data.find((t) => t.name === workType);
-  const currentIcon = currentType?.iconLink || ''; // fallback nếu thiếu icon
+  const currentIcon = currentType?.iconLink || '';
 
   const navigate = useNavigate();
 
@@ -794,25 +807,37 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  setFileError(''); // Reset error message
                   if (file) {
+                    // Check file size (10MB = 10 * 1024 * 1024 bytes)
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadTaskFile({
                         taskId,
                         title: file.name,
                         file: file,
                         createdBy: accountId,
                       }).unwrap();
-                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      //alert('❌ Upload failed.');
                     }
                   }
-                  setIsAddDropdownOpen(false);
+                  
                 }}
               />
+
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
             <div className='field-group'>
               <label>Description</label>
@@ -910,6 +935,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       setLoadingSuggest(true);
                       try {
                         const result = await generateSubtasksByAI(taskId).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
@@ -983,9 +1009,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${
-                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -1035,6 +1060,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 setSelectedSuggestions([]);
                                 await refetch();
                                 await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
                               } catch (err) {
                                 console.error('❌ Failed to create subtasks', err);
                               } finally {
@@ -1042,11 +1068,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
-                              selectedSuggestions.length === 0 || loadingCreate
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                            }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1080,7 +1105,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             Only Team Leader, Project Manager, or assignees can create subtasks.
                           </div>
                         )}
+
                       </div>
+
                     </div>
                   </div>
                 )}
@@ -1382,6 +1409,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         taskId,
                                         title: newSubtaskTitle,
                                         createdBy: accountId,
+                                        reporterId: accountId,
                                       }).unwrap();
                                       console.log('✅ Create successfully');
                                     } catch (err) {
@@ -1753,8 +1781,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1882,8 +1910,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2139,6 +2167,16 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
           item={selectedChild}
           onClose={() => setSelectedChild(null)}
           taskId={taskId}
+        />
+      )}
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='SUBTASK_FROM_TASK_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
         />
       )}
       <DeleteConfirmModal

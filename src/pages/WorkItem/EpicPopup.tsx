@@ -60,6 +60,7 @@ import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { Tooltip } from 'react-tooltip';
 import aiIcon from '../../assets/icon/ai.png';
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 
 interface EpicPopupProps {
   id: string;
@@ -132,6 +133,9 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedTask[]>([]);
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = useState<AiSuggestedTask[]>([]);
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const [fileError, setFileError] = useState('');
   const {
     data: taskTypeOptions,
     isLoading: isTaskTypeLoading,
@@ -472,6 +476,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     );
   }
 
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
+  };
+
   return (
     <div className='modal-overlay' onClick={onClose}>
       <div className='work-item-modal' onClick={(e) => e.stopPropagation()}>
@@ -556,7 +569,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadEpicFile({
                         epicId: id,
                         title: file.name,
@@ -565,14 +584,19 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                       }).unwrap();
                       //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                       //alert('❌ Upload failed.');
                     }
                   }
-                  setIsAddDropdownOpen(false);
                 }}
               />
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
 
             <div className='field-group'>
@@ -673,6 +697,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     onClick={async () => {
                       try {
                         const result = await generateTasksByEpicByAI(epicId).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
@@ -811,6 +836,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 setSelectedSuggestions([]);
                                 await refetch();
                                 await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
                               } catch (err) {
                                 console.error('❌ Failed to create tasks', err);
                               } finally {
@@ -1794,6 +1820,16 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
           title='Delete this attachment?'
           message="Once you delete, it's gone for good."
         />
+        {isEvaluationPopupOpen && (
+          <AiResponseEvaluationPopup
+            isOpen={isEvaluationPopupOpen}
+            onClose={handleCloseEvaluationPopup}
+            aiResponseJson={aiResponseJson}
+            projectId={Number(projectId)}
+            aiFeature='TASK_FROM_EPIC_CREATION'
+            onSubmitSuccess={handleEvaluationSubmitSuccess}
+          />
+        )}
       </div>
     </div>
   );

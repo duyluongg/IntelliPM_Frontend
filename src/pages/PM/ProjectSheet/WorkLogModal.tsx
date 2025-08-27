@@ -188,7 +188,11 @@
 
 import { useEffect, useState } from 'react';
 import { useGetTaskWithSubtasksQuery } from '../../../services/taskApi';
-import { useGetTaskAssignmentHoursByTaskIdQuery, useUpdateActualHoursByTaskIdMutation } from '../../../services/taskAssignmentApi';
+import {
+  useGetTaskAssignmentHoursByTaskIdQuery,
+  useUpdateActualHoursByTaskIdMutation,
+} from '../../../services/taskAssignmentApi';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 
 type Props = {
   open: boolean;
@@ -199,7 +203,14 @@ type Props = {
   onRefetchActivityLogs?: () => void;
 };
 
-export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRefetchActivityLogs }: Props) => {
+export const WorkLogModal = ({
+  open,
+  onClose,
+  workItemId,
+  type,
+  onRefetch,
+  onRefetchActivityLogs,
+}: Props) => {
   const userJson = localStorage.getItem('user');
   const userId = userJson ? JSON.parse(userJson).id : null;
   const [editableTaskAssignments, setEditableTaskAssignments] = useState<
@@ -207,7 +218,8 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
   >([]);
   const [plannedTaskHours, setPlannedTaskHours] = useState<number>(0);
 
-  const [updateActualHours, { isLoading: isUpdatingActual }] = useUpdateActualHoursByTaskIdMutation();
+  const [updateActualHours, { isLoading: isUpdatingActual }] =
+    useUpdateActualHoursByTaskIdMutation();
 
   const { data: taskWithSubtasks, refetch: refetchTaskSubTask } = useGetTaskWithSubtasksQuery(
     workItemId,
@@ -216,9 +228,16 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
     }
   );
 
-  const { data: taskAssignments, refetch: refetchAssignments } = useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
-    skip: type !== 'task',
-  });
+  const { data: taskAssignments, refetch: refetchAssignments } =
+    useGetTaskAssignmentHoursByTaskIdQuery(workItemId, {
+      skip: type !== 'task',
+    });
+
+  const {
+    data: config,
+    isLoading: configLoading,
+    isError: configError,
+  } = useGetByConfigKeyQuery('actual_hours_limit');
 
   useEffect(() => {
     if (open) {
@@ -240,7 +259,18 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
     }
   }, [open, taskAssignments, taskWithSubtasks, type]);
 
+  const maxActualHours = configLoading
+    ? 24 // Giá trị mặc định khi đang tải
+    : configError || !config?.data?.maxValue
+    ? 100000 // Giá trị mặc định khi lỗi hoặc không có dữ liệu
+    : parseInt(config.data.maxValue, 10);
+  console.log('maxActualHours: ', maxActualHours);
+
   const handleHourChangeTask = (accountId: number, hours: number) => {
+    if (hours > maxActualHours) {
+      alert(`Actual hours cannot exceed ${maxActualHours} hours.`);
+      return;
+    }
     setEditableTaskAssignments((prev) =>
       prev.map((e) => (e.accountId === accountId ? { ...e, hours } : e))
     );
@@ -251,6 +281,11 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
 
   const handleDone = async () => {
     try {
+      if (!taskAssignments || taskAssignments.length === 0) {
+        alert('Cannot update actual hours: No assignees found for this task.');
+        return;
+      }
+
       if (editableTaskAssignments.length > 0 && taskAssignments) {
         const actualPayload = editableTaskAssignments
           .map((item) => ({
@@ -267,11 +302,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
           }).unwrap();
         }
       }
-      await Promise.all([
-        refetchAssignments(),
-        refetchTaskSubTask(),
-        onRefetch(),
-      ]);
+      await Promise.all([refetchAssignments(), refetchTaskSubTask(), onRefetch()]);
 
       onRefetchActivityLogs?.();
       onClose();
@@ -312,9 +343,7 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
                 const account = taskAssignments?.find((a) => a.accountId === item.accountId);
                 return (
                   <tr key={item.accountId}>
-                    <td>
-                      {account?.accountFullname || account?.accountUsername || 'No Assignee'}
-                    </td>
+                    <td>{account?.accountFullname || account?.accountUsername || 'No Assignee'}</td>
                     <td>
                       <input
                         type='number'
@@ -334,11 +363,6 @@ export const WorkLogModal = ({ open, onClose, workItemId, type, onRefetch, onRef
         </div>
 
         <div className='mb-4'>
-          {/* <div className='flex items-center gap-2'>
-            <span>Planned:</span>
-            <span className='border px-1 py-0.5 rounded w-[70px] bg-gray-100'>{plannedTaskHours}</span>
-            <span>hrs</span>
-          </div> */}
           <p>Planned: {plannedTaskHours} hrs</p>
           <p>Actual: {actual} hrs</p>
           <p>Remaining: {remaining} hrs</p>

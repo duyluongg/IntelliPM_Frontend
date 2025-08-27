@@ -18,6 +18,9 @@ import {
   useUpdateTranscriptMutation,
   useGetTranscriptHistoryQuery,
   useRestoreTranscriptMutation,
+    useUpdateSummaryMutation,
+  useGetSummaryHistoryQuery,
+  useRestoreSummaryMutation,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingTranscriptSnapService';
 import { useGetMeetingsManagedByQuery } from '../../../../services/ProjectManagement/MeetingServices/MeetingLogServices';
 import { API_BASE_URL } from '../../../../constants/api';
@@ -47,6 +50,9 @@ const TranscriptEditorPanel: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(initialText ?? '');
   const [saving, setSaving] = useState(false);
+
+
+  
 
 const { data: rawHistory = [], refetch: refetchHistory } = useGetTranscriptHistoryQuery(meetingId, {
   skip: !meetingId,
@@ -166,6 +172,151 @@ const history = React.useMemo(
   🕒 {h.takenAtUtc && !isNaN(new Date(h.takenAtUtc).getTime())
         ? new Date(h.takenAtUtc).toLocaleString()
         : '—'}
+                  </span>
+                </div>
+                <button
+                  className="rounded bg-gray-800 text-white px-3 py-1 text-xs hover:bg-black"
+                  onClick={() => onRestore(h.fileName)}
+                >
+                  Restore
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// + NEW: subcomponent cho update + history + restore Summary
+const SummaryEditorPanel: React.FC<{
+  meetingTranscriptId: number;
+  initialText: string;
+  canEdit: boolean;
+}> = ({ meetingTranscriptId, initialText, canEdit }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [text, setText] = useState(initialText ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const { data: rawHistory = [], refetch: refetchHistory } = useGetSummaryHistoryQuery(
+    meetingTranscriptId,
+    { skip: !meetingTranscriptId }
+  );
+  // normalize tuple { item1, item2 } -> { fileName, takenAtUtc }
+  const history = React.useMemo(
+    () =>
+      (rawHistory as any[]).map((h) => {
+        const taken = h?.takenAtUtc ?? h?.Item2 ?? h?.item2 ?? null;
+        return {
+          fileName: h?.fileName ?? h?.Item1 ?? h?.item1 ?? '',
+          takenAtUtc: taken && new Date(taken).toString() !== 'Invalid Date' ? taken : null,
+        };
+      }),
+    [rawHistory]
+  );
+
+  const [updateSummary] = useUpdateSummaryMutation();
+  const [restoreSummary] = useRestoreSummaryMutation();
+
+  useEffect(() => setText(initialText ?? ''), [initialText]);
+
+  const onSave = async () => {
+    try {
+      setSaving(true);
+      await updateSummary({
+        meetingTranscriptId,
+        summaryText: text,
+        editReason: 'manual edit',
+      }).unwrap();
+      toast.success('Summary updated (snapshot saved).');
+      setIsEditing(false);
+      await refetchHistory();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.data?.message || 'Update failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onRestore = async (fileName: string) => {
+    if (!confirm(`Restore snapshot "${fileName}"?`)) return;
+    try {
+      await restoreSummary({ meetingTranscriptId, fileName, reason: 'manual restore' }).unwrap();
+      toast.success('Restored from snapshot.');
+      await refetchHistory();
+      // NOTE: Parent component sẽ tự động refetch qua useGetMeetingFeedbackByTranscriptIdQuery
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.data?.message || 'Restore failed.');
+    }
+  };
+
+  if (!canEdit) return null;
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 p-4 bg-white">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-800">✍️ Edit Summary / Snapshots</h3>
+        {!isEditing ? (
+          <button
+            className="rounded bg-blue-600 text-white px-3 py-1 text-sm hover:bg-blue-700"
+            onClick={() => setIsEditing(true)}
+          >
+            Edit
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              className="rounded bg-gray-200 px-3 py-1 text-sm"
+              onClick={() => {
+                setIsEditing(false);
+                setText(initialText ?? '');
+              }}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+            <button
+              className={`rounded px-3 py-1 text-sm text-white ${saving ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+              onClick={onSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isEditing && (
+        <textarea
+          className="mt-3 w-full rounded-md border border-gray-300 p-2 text-sm focus:ring-2 focus:ring-blue-400"
+          rows={10}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+      )}
+
+      {/* History */}
+      <div className="mt-5">
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">Snapshot History</h4>
+        {history.length === 0 ? (
+          <p className="text-xs text-gray-500">No snapshots yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {history.map((h) => (
+              <li
+                key={h.fileName}
+                className="flex items-center justify-between rounded border p-2 text-sm"
+              >
+                <div className="flex flex-col">
+                  <span className="font-mono">{h.fileName}</span>
+                  <span className="text-[11px] text-gray-500">
+                    🕒{' '}
+                    {h.takenAtUtc && !isNaN(new Date(h.takenAtUtc).getTime())
+                      ? new Date(h.takenAtUtc).toLocaleString()
+                      : '—'}
                   </span>
                 </div>
                 <button
@@ -564,6 +715,11 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
       <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-4 shadow">
         <h2 className="text-lg font-semibold text-gray-800 mb-2">Summary</h2>
         <pre className="whitespace-pre-wrap text-gray-700 text-sm">{feedback.summaryText}</pre>
+          <SummaryEditorPanel
+    meetingTranscriptId={id}
+    initialText={feedback.summaryText}
+ canEdit={canPMControl && !feedback.isApproved}
+  />
       </div>
 
       {/* Transcript + upload */}
@@ -573,7 +729,8 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
 <TranscriptEditorPanel
     meetingId={id}
     initialText={feedback.transcriptText}
-    canEdit={canEditTranscript}
+     canEdit={canEditTranscript && !feedback.isApproved}
+    
   />
         {isWaiting && canPMControl && (
           <div className="mt-4 rounded-lg bg-gray-50 p-4">

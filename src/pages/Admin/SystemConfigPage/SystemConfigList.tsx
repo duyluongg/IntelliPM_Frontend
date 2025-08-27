@@ -1,4 +1,3 @@
-// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\components\Admin\SystemConfigList.tsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -11,9 +10,10 @@ interface SystemConfigListProps {
   configurations: SystemConfiguration[];
   isLoading: boolean;
   error: any;
+  onOpenDetail?: (config: SystemConfiguration) => void;
 }
 
-const SystemConfigList: React.FC<SystemConfigListProps> = ({ configurations, isLoading, error }) => {
+const SystemConfigList: React.FC<SystemConfigListProps> = ({ configurations, isLoading, error, onOpenDetail }) => {
   const navigate = useNavigate();
   const [deleteConfig] = useDeleteMutation();
 
@@ -86,7 +86,7 @@ const SystemConfigList: React.FC<SystemConfigListProps> = ({ configurations, isL
                 <td className="py-3 px-4 text-sm text-gray-900 font-medium">
                   <button
                     className="text-blue-600 hover:text-blue-800 transition-colors"
-                    onClick={() => navigate(`/admin/configurations/${config.id}/edit`)}
+                    onClick={() => onOpenDetail?.(config)}
                   >
                     {config.configKey}
                   </button>

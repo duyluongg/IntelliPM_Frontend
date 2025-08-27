@@ -97,7 +97,10 @@ export const Document: React.FC = () => {
   } = documentData || {};
 
   const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
   const isOwner = !!user && !!createdBy && user.id === createdBy;
+
   const permissionType = permResp?.permissionType ?? 'VIEW';
 
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
@@ -111,7 +114,8 @@ export const Document: React.FC = () => {
     projectId !== undefined &&
     documentData.projectId === projectId;
 
-  const canEdit = isOwner || isInProject || permissionType === 'EDIT';
+  const canEdit = !isClient && (isOwner || isInProject || permissionType === 'EDIT');
+
   console.log(isInProject, 'isInProject');
   console.log(canEdit, 'canEdit');
 
@@ -525,17 +529,18 @@ export const Document: React.FC = () => {
         />
       )}
 
-      {editor && canEdit && isHydratedRef.current && (
+      {editor && isHydratedRef.current && (
         <MenuBar
           editor={editor}
           onToggleChatbot={handleToggleChatbot}
           onAddComment={handleAddComment}
           exportTargetRef={contentRef}
+          createdBy={createdBy}
         />
       )}
 
       <div className='flex'>
-        <div className='max-w-4xl mx-auto px-4 py-6 '>
+        <div className=' mx-auto max-w-4xl'>
           <div className='mb-6'>
             <div className='flex items-center justify-between'>
               {isEditingTitle ? (

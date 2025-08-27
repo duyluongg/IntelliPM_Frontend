@@ -36,6 +36,13 @@ export type ApiResponse<T> = {
   message: string;
 };
 
+interface GetSharedDocumentsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: DocumentType[];
+  message: string;
+}
+
 type GenerateAIContentReq = { id: number; prompt: string };
 type GenerateAIContentResp = { content: string };
 
@@ -244,6 +251,10 @@ export const documentApi = createApi({
       }),
       invalidatesTags: ['Documents'],
     }),
+
+    getDocumentsSharedToMeInProject: builder.query<GetSharedDocumentsResponse, number>({
+      query: (projectId) => `documents/shared-to-me/project/${projectId}`,
+    }),
   }),
 });
 
@@ -268,4 +279,5 @@ export const {
   useGetDocumentsByProjectIdQuery,
   useDeleteDocumentMutation,
   useUpdateVisibilityMutation,
+  useGetDocumentsSharedToMeInProjectQuery,
 } = documentApi;

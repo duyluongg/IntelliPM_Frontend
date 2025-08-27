@@ -73,14 +73,13 @@ export const subtaskApi = createApi({
   reducerPath: 'subtaskApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
-    // Uncomment below if you want to include auth headers
-    // prepareHeaders: (headers) => {
-    //   const token = localStorage.getItem('accessToken');
-    //   if (token) {
-    //     headers.set('Authorization', `Bearer ${token}`);
-    //   }
-    //   return headers;
-    // },
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   endpoints: (builder) => ({
     getSubtasksByTaskId: builder.query<SubtaskResponseDTO[], string>({
@@ -110,14 +109,14 @@ export const subtaskApi = createApi({
       }),
     }),
     
-    createAISubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number }>({
-      query: ({ taskId, title, createdBy }) => ({
+    createAISubtask: builder.mutation<void, { taskId: string; title: string; createdBy: number; reporterId: number }>({
+      query: ({ taskId, title, createdBy, reporterId }) => ({
         url: 'subtask',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: { taskId, title, createdBy },
+        body: { taskId, title, createdBy, reporterId },
       }),
     }),
 

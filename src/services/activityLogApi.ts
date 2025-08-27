@@ -25,15 +25,13 @@ export const activityLogApi = createApi({
   reducerPath: 'activityLogApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
-    
-    // Uncomment nếu cần auth token
-    // prepareHeaders: (headers) => {
-    //   const token = localStorage.getItem('accessToken');
-    //   if (token) {
-    //     headers.set('Authorization', `Bearer ${token}`);
-    //   }
-    //   return headers;
-    // },
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
   }),
   tagTypes: ['ActivityLogs'],
   endpoints: (builder) => ({

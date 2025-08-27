@@ -508,3 +508,60 @@
   font-weight: bold;
   color: #dc2626;
 } */
+
+/* Định dạng ban đầu cho nút Filters */
+.filter-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 120px; /* Độ dài ban đầu ngắn */
+  height: 40px;
+  padding: 0 12px;
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: width 0.3s ease;
+}
+
+/* Khi filter được mở rộng */
+.filter-button.expanded {
+  width: 100%; /* Mở rộng toàn bộ chiều rộng container cha, tùy chỉnh nếu cần */
+}
+
+/* Container chứa filter và các nút */
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap; /* Ngăn không cho xuống dòng */
+}
+
+/* Nội dung filter khi mở rộng */
+.filter-content {
+  display: none;
+  width: 100%; /* Chiếm toàn bộ chiều rộng container */
+  margin-top: 8px; /* Khoảng cách nhẹ khi mở */
+}
+
+.filter-content.expanded {
+  display: flex;
+  gap: 16px; /* Khoảng cách giữa các dropdown */
+  align-items: center;
+}
+
+/* Định dạng cho các dropdown trong filter */
+.filter-content select {
+  width: 180px; /* Độ rộng cố định cho mỗi dropdown */
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Hover effect */
+.filter-button:hover {
+  background-color: #f9fafb;
+}

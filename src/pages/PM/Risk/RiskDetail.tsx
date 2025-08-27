@@ -3991,6 +3991,29 @@ import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryA
 import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 import Swal from 'sweetalert2';
 
+// export interface Risk {
+//   id: number;
+//   riskKey: string;
+//   title: string;
+//   description?: string;
+//   impactLevel?: string;
+//   probability?: string;
+//   severityLevel?: string;
+//   status?: string;
+//   type?: string;
+//   createdAt?: string;
+//   updatedAt?: string;
+//   dueDate?: string;
+//   responsibleId?: number | null;
+//   responsibleFullName?: string;
+//   responsibleUserName?: string;
+//   responsiblePicture?: string;
+//   creatorFullName?: string;
+//   creatorUserName?: string;
+//   creatorPicture?: string;
+//   resolution?: string;
+// }
+
 export interface Risk {
   id: number;
   riskKey: string;
@@ -4005,13 +4028,21 @@ export interface Risk {
   updatedAt?: string;
   dueDate?: string;
   responsibleId?: number | null;
-  responsibleFullName?: string;
-  responsibleUserName?: string;
-  responsiblePicture?: string;
-  creatorFullName?: string;
-  creatorUserName?: string;
-  creatorPicture?: string;
+  responsibleFullName?: string | null; // Updated to match RiskItem
+  responsibleUserName?: string | null; // Updated to match RiskItem
+  responsiblePicture?: string | null; // Updated to match RiskItem
+  creatorFullName?: string | null; // Updated to match RiskItem
+  creatorUserName?: string | null; // Updated to match RiskItem
+  creatorPicture?: string | null; // Updated to match RiskItem
   resolution?: string;
+  // Additional fields from RiskItem that might be relevant
+  projectId?: number; // Added from RiskItem
+  taskId?: string | null; // Added from RiskItem
+  taskTitle?: string | null; // Added from RiskItem
+  riskScope?: string; // Added from RiskItem
+  createdBy?: number; // Added from RiskItem
+  generatedBy?: string; // Added from RiskItem
+  isApproved?: boolean; // Added from RiskItem
 }
 
 interface RiskDetailProps {
@@ -4050,7 +4081,11 @@ type Assignee = {
   picture?: string | null;
 };
 
-const RiskDetail: React.FC<RiskDetailProps> = ({ risk, onClose, isPage }) => {
+const RiskDetail: React.FC<RiskDetailProps> = ({
+  risk,
+  onClose,
+  isPage,
+}) => {
   const navigate = useNavigate();
   const userJson = localStorage.getItem('user');
   const accountId = userJson ? JSON.parse(userJson).id : null;

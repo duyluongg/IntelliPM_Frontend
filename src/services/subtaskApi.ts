@@ -24,6 +24,7 @@ export interface SubtaskResponseDTO {
   createdBy: number;
   warnings?: string[];
   percentComplete: number;
+  actualCost: number;
 }
 
 export interface SubtaskFullResponseDTO {

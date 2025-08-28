@@ -33,7 +33,7 @@ import {
   useUpdateTaskSprintMutation,
   useUpdatePercentCompleteMutation,
 } from '../../services/taskApi';
-import { useNavigate, useSearchParams, Link, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -70,6 +70,7 @@ import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import aiIcon from '../../assets/icon/ai.png';
+import { useGetEpicByIdQuery } from '../../services/epicApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -425,16 +426,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const {
-    data: activityLogs = [],
-    isLoading: isActivityLogsLoading,
-    refetch: refetchActivityLogs,
-  } = useGetActivityLogsByTaskIdQuery(taskId, {
+  const { data: epicData, isLoading: isEpicLoading } = useGetEpicByIdQuery(taskData?.epicId || '', {
+    skip: !taskData?.epicId,
+  });
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs, } = useGetActivityLogsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
 
-  const {
-    data: workItemLabels = [],
+  const { data: workItemLabels = [],
     isLoading: isLabelLoading,
     refetch: refetchWorkItemLabels,
   } = useGetWorkItemLabelsByTaskQuery(taskId, {
@@ -2013,22 +2013,66 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)} // Giới hạn ngày nhỏ nhất
+                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
                     max={
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
-                        : projectData?.data?.endDate?.slice(0, 10)
-                    } // Giới hạn ngày lớn nhất
+                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                    }
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedStartDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
-                      // Compare với Due date
+                      // Validate against epic's startDate
+                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Epic Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project startDate (fallback)
+                      if (
+                        !epicData?.startDate &&
+                        projectData?.data?.startDate &&
+                        new Date(fullDate) < new Date(projectData.data.startDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Project Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedEndDate
                       if (plannedEndDate && new Date(fullDate) >= new Date(plannedEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
-                          html: 'Start Date must be smaller than Due Date!',
+                          html: 'Start Date must be before Due Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2045,6 +2089,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2060,18 +2105,63 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     min={
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
-                        : projectData?.data.startDate.slice(0, 10)
+                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
                     }
-                    max={projectData?.data.endDate.slice(0, 10)}
+                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedEndDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
+                      // Validate against epic's endDate
+                      if (epicData?.endDate && new Date(fullDate) > new Date(epicData.endDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Epic Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project endDate (fallback)
+                      if (
+                        !epicData?.endDate &&
+                        projectData?.data?.endDate &&
+                        new Date(fullDate) > new Date(projectData.data.endDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Project End Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedStartDate
                       if (plannedStartDate && new Date(fullDate) <= new Date(plannedStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',
-                          html: 'Due Date must be greater than Start Date!',
+                          html: 'Due Date must be after Start Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2088,6 +2178,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>

@@ -26,7 +26,8 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
-  useUpdateTaskSprintMutation
+  useUpdateTaskSprintMutation,
+  useUpdatePercentCompleteMutation,
 } from '../../services/taskApi';
 import {
   useGetTaskFilesByTaskIdQuery,
@@ -64,7 +65,7 @@ import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 import aiIcon from '../../assets/icon/ai.png';
-
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -113,11 +114,13 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
+  const [updatePercentComplete] = useUpdatePercentCompleteMutation();
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
     Record<string, TaskAssignmentDTO[]>
@@ -146,6 +149,9 @@ const WorkItemDetail: React.FC = () => {
   const currentIcon = currentType?.iconLink || '';
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const [fileError, setFileError] = useState('');
 
   const { data: assignees = [], isLoading: isAssigneeLoading } =
     useGetTaskAssignmentsByTaskIdQuery(taskId);
@@ -198,6 +204,54 @@ const WorkItemDetail: React.FC = () => {
       console.log('✅ End date updated');
     } catch (err) {
       console.error('❌ Failed to update end date', err);
+    }
+  };
+
+  const handlePercentCompleteChange = async () => {
+    if (!taskData || newPercentComplete === taskData.percentComplete) return;
+
+    if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Percent Complete',
+        text: 'Percent complete must be between 0 and 100.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewPercentComplete(taskData.percentComplete);
+      return;
+    }
+
+    try {
+      await updatePercentComplete({
+        id: taskId,
+        percentComplete: newPercentComplete ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update task percent complete', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
     }
   };
 
@@ -346,6 +400,7 @@ const WorkItemDetail: React.FC = () => {
       setProjectId(String(taskData.projectId));
       setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
+      setNewPercentComplete(taskData.percentComplete ?? 0);
     }
   }, [taskData]);
 
@@ -454,6 +509,15 @@ const WorkItemDetail: React.FC = () => {
 
     return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
   });
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
+  };
 
   const handleSave = async (id: number, originalContent: string) => {
     const newContent = editedContent[id];
@@ -575,15 +639,6 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
-  // const handleAddSubtask = () => {
-  //   setShowSubtaskInput(true);
-  //   setIsAddDropdownOpen(false);
-  // };
-
-  // const handleKeyClick = () => {
-  //   navigate(`/work-item-detail?taskId=${taskId}`);
-  // };
-
   return (
     <div className='work-item-detail-page'>
       <div className='work-item-detail-container'>
@@ -687,25 +742,38 @@ const WorkItemDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  setFileError(''); // Reset error message
                   if (file) {
+                    // Check file size (10MB = 10 * 1024 * 1024 bytes)
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadTaskFile({
                         taskId,
                         title: file.name,
                         file: file,
                         createdBy: accountId,
                       }).unwrap();
-                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
+
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      //alert('❌ Upload failed.');
                     }
                   }
-                  setIsAddDropdownOpen(false);
+
                 }}
               />
+
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
 
             <div className='field-group'>
@@ -812,6 +880,7 @@ const WorkItemDetail: React.FC = () => {
                       setLoadingSuggest(true);
                       try {
                         const result = await generateSubtasksByAI(taskId).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
@@ -970,12 +1039,14 @@ const WorkItemDetail: React.FC = () => {
                                     taskId,
                                     title,
                                     createdBy: accountId,
+                                    reporterId: accountId,
                                   }).unwrap();
                                 }
                                 setShowSuggestionList(false);
                                 setSelectedSuggestions([]);
                                 await refetchSubtask();
                                 await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
                               } catch (err) {
                                 console.error('❌ Failed to create subtasks', err);
                               } finally {
@@ -1318,6 +1389,7 @@ const WorkItemDetail: React.FC = () => {
                                         taskId,
                                         title: newSubtaskTitle,
                                         createdBy: accountId,
+                                        reporterId: accountId,
                                       }).unwrap();
                                       console.log('✅ Create successfully');
                                     } catch (err) {
@@ -1685,6 +1757,35 @@ const WorkItemDetail: React.FC = () => {
                 )}
               </div>
 
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        max='100'
+                        step='0.01'
+                        value={newPercentComplete ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewPercentComplete(value);
+                        }}
+                        onBlur={handlePercentCompleteChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.percentComplete ?? '0'}% (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
               {isEditingLabel ? (
                 <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
                   <div className='flex flex-col gap-2 w-full relative'>
@@ -2006,6 +2107,16 @@ const WorkItemDetail: React.FC = () => {
         title="Delete this attachment?"
         message="Once you delete, it's gone for good."
       />
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='SUBTASK_FROM_TASK_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
       {/* <DeleteConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

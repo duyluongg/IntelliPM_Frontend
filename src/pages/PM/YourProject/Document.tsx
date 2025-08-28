@@ -49,6 +49,7 @@ import DocumentRealtimeBridge from './DocumentRealtimeBridge';
 import toast from 'react-hot-toast';
 import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/documentPermissionAPI';
 import type { DocumentVisibility } from '../../../types/DocumentType';
+import Swal from 'sweetalert2';
 
 interface CommentItem {
   id: number | string;
@@ -81,13 +82,10 @@ export const Document: React.FC = () => {
   // thêm ref:
   const isHydratedRef = useRef(false);
 
-  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(
-    numericDocId!,
-    {
-      skip: !numericDocId,
-      refetchOnMountOrArgChange: true,
-    }
-  );
+  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(numericDocId!, {
+    skip: !numericDocId,
+    refetchOnMountOrArgChange: true,
+  });
 
   const {
     content: initialContent,
@@ -99,10 +97,11 @@ export const Document: React.FC = () => {
   } = documentData || {};
 
   const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
   const isOwner = !!user && !!createdBy && user.id === createdBy;
-  const permissionType = permResp?.permissionType ?? 'VIEW';
 
-  const canEdit = isOwner ? true : permissionType === 'EDIT';
+  const permissionType = permResp?.permissionType ?? 'VIEW';
 
   // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
   const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);
@@ -110,6 +109,15 @@ export const Document: React.FC = () => {
   const { data, isSuccess } = useGetProjectByIdQuery(projectId as number, {
     skip: !projectId,
   });
+  const isInProject =
+    documentData?.projectId !== undefined &&
+    projectId !== undefined &&
+    documentData.projectId === projectId;
+
+  const canEdit = !isClient && (isOwner || isInProject || permissionType === 'EDIT');
+
+  console.log(isInProject, 'isInProject');
+  console.log(canEdit, 'canEdit');
 
   const projectKey = data?.data?.projectKey;
 
@@ -363,41 +371,64 @@ export const Document: React.FC = () => {
     const { from, to } = editor.state.selection;
 
     if (from === to) {
-      alert('Vui lòng chọn đoạn văn bản để comment!');
+      // Translated to English
+      toast.error('Please select text to comment on!');
       return;
     }
 
     const selectedText = editor.state.doc.textBetween(from, to);
-    const commentContent = prompt(`Viết comment cho đoạn: "${selectedText}"`);
 
-    if (!commentContent?.trim()) return;
+    const { value: commentContent } = await Swal.fire({
+      // Translated to English
+      title: 'Add your comment',
+      html: `For the selected text: "<b>${selectedText}</b>"`,
+      input: 'textarea',
+      inputPlaceholder: 'Type your comment here...',
+      showCancelButton: true,
+      confirmButtonText: 'Comment',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'swal-confirm-button',
+        cancelButton: 'swal-cancel-button',
+      },
+      // Translated to English
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'You need to write something!';
+        }
+      },
+    });
 
-    try {
-      const res = await createComment({
-        documentId: Number(documentId),
-        fromPos: from,
-        toPos: to,
-        content: selectedText,
-        comment: commentContent,
-      }).unwrap(); // 👉 Bắt lỗi nếu có
+    // If the user entered text and clicked "Comment"
+    if (commentContent) {
+      try {
+        const res = await createComment({
+          documentId: Number(documentId),
+          fromPos: from,
+          toPos: to,
+          content: selectedText,
+          comment: commentContent,
+        }).unwrap();
 
-      const commentId = res?.id ?? 'tạm-thời';
+        const commentId = res?.id ?? 'temporary-id';
 
-      // Gắn mark để highlight đoạn comment
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from, to })
-        .setMark('commentMark', { commentId })
-        .run();
-      await refetchComments();
-      alert('✅ Comment đã được tạo!');
-    } catch (error) {
-      console.error('❌ Tạo comment thất bại:', error);
-      alert('Tạo comment thất bại');
+        editor
+          .chain()
+          .focus()
+          .setTextSelection({ from, to })
+          .setMark('commentMark', { commentId })
+          .run();
+
+        await refetchComments();
+        // Translated to English
+        toast.success('Comment created successfully!');
+      } catch (error) {
+        // Translated to English
+        console.error('❌ Failed to create comment:', error);
+        toast.error('Failed to create comment.');
+      }
     }
   };
-
   // Document.tsx
 
   const handleUpdateComment = async (commentToUpdate: CommentItem, newCommentText: string) => {
@@ -429,11 +460,30 @@ export const Document: React.FC = () => {
   };
 
   const handleDeleteComment = async (commentId: number | string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+    // Sử dụng Swal.fire để xác nhận
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'swal-confirm-button', // Sử dụng class đã có
+        cancelButton: 'swal-cancel-button', // Sử dụng class đã có
+      },
+    });
 
+    // Nếu người dùng không xác nhận, thì dừng hàm
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Phần logic còn lại giữ nguyên
     const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
     if (!commentToDelete) {
       console.error('Không tìm thấy comment để xóa trong danh sách.');
+      toast.error('Could not find comment to delete.'); // Thay thế alert bằng toast
       return;
     }
 
@@ -453,12 +503,14 @@ export const Document: React.FC = () => {
         documentId: Number(documentId),
       }).unwrap();
 
+      toast.success(' Comment deleted successfully!'); // Thêm thông báo thành công
       if (activeCommentId === commentId.toString()) setActiveCommentId(null);
     } catch (error) {
       console.error('Xóa bình luận thất bại:', error);
-      alert('Đã xảy ra lỗi khi xóa bình luận.');
+      toast.error('Failed to delete comment.'); // Thay thế alert bằng toast
     }
   };
+
   const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>
@@ -477,17 +529,18 @@ export const Document: React.FC = () => {
         />
       )}
 
-      {editor && canEdit && isHydratedRef.current && (
+      {editor && isHydratedRef.current && (
         <MenuBar
           editor={editor}
           onToggleChatbot={handleToggleChatbot}
           onAddComment={handleAddComment}
           exportTargetRef={contentRef}
+          createdBy={createdBy}
         />
       )}
 
       <div className='flex'>
-        <div className='max-w-4xl mx-auto px-4 py-6 '>
+        <div className=' mx-auto max-w-4xl'>
           <div className='mb-6'>
             <div className='flex items-center justify-between'>
               {isEditingTitle ? (

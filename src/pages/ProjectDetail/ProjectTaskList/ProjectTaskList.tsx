@@ -52,6 +52,7 @@ import type { RootState } from '../../../app/store';
 import { useSelector } from 'react-redux';
 import type { CreateDocumentRequest } from '../../../types/DocumentType';
 import aiIcon from '../../../assets/icon/ai.png';
+import { useCheckOverdueTasksMutation } from '../../../services/riskApi';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -682,6 +683,7 @@ const ProjectTaskList: React.FC = () => {
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const { data: projectDetails } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectId = projectDetails?.data?.id;
+  const [checkOverdueTasks] = useCheckOverdueTasksMutation();
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedStatus, setSelectedStatus] = useState<string>('');
   const [selectedType, setSelectedType] = useState<string>('');
@@ -695,11 +697,15 @@ const ProjectTaskList: React.FC = () => {
     isLoading: isPriorityLoading,
     isError: isPriorityError,
   } = useGetCategoriesByGroupQuery('task_priority');
-  useEffect(() => {
-    if (projectDetails?.data?.id) {
-      dispatch(setCurrentProjectId(projectDetails.data.id));
-    }
-  }, [projectDetails, dispatch]);
+
+  // useEffect(() => {
+  //   if (projectKey && projectKey !== 'NotFound') {
+  //     checkOverdueTasks(projectKey)
+  //       .unwrap()
+  //       .then(() => refetchWorkItems())
+  //       .catch((err: any) => console.error('Failed to check overdue tasks:', err));
+  //   }
+  // }, []);
 
   const {
     data: workItemsData,
@@ -707,6 +713,21 @@ const ProjectTaskList: React.FC = () => {
     error,
     refetch: refetchWorkItems,
   } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
+
+    useEffect(() => {
+    if (projectKey && projectKey !== 'NotFound') {
+      checkOverdueTasks(projectKey)
+        .unwrap()
+        .then(() => refetchWorkItems())
+        .catch((err) => console.error('Failed to check overdue tasks:', err));
+    }
+  }, [projectKey, checkOverdueTasks, refetchWorkItems]);
+  useEffect(() => {
+    if (projectDetails?.data?.id) {
+      dispatch(setCurrentProjectId(projectDetails.data.id));
+    }
+  }, [projectDetails, dispatch]);
+
   const {
     data: projectMembersResponse,
     isLoading: isMembersLoading,

@@ -7,6 +7,7 @@ import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
   useGetSubtaskByIdQuery,
+  useUpdateSubtaskPercentCompleteMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import {
@@ -30,11 +31,15 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
-import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 
 interface SubtaskDetail {
   id: string;
@@ -50,6 +55,7 @@ interface SubtaskDetail {
   reporterId: number;
   sprintId: number;
   sprintName: string;
+  percentComplete: number | null;
 }
 
 const ChildWorkItem: React.FC = () => {
@@ -65,6 +71,7 @@ const ChildWorkItem: React.FC = () => {
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
+  const [updateSubtaskPercentComplete] = useUpdateSubtaskPercentCompleteMutation();
   const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
@@ -91,9 +98,12 @@ const ChildWorkItem: React.FC = () => {
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [updateSubtask] = useUpdateSubtaskMutation();
+  const [fileError, setFileError] = useState('');
+
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
   );
@@ -108,8 +118,16 @@ const ChildWorkItem: React.FC = () => {
   const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
     skip: !subtaskDetail?.taskId,
   });
-  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
-  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('subtask_priority');
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
@@ -126,6 +144,7 @@ const ChildWorkItem: React.FC = () => {
       setSprintName(subtaskDetail.sprintName || '');
       setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
+      setNewPercentComplete(subtaskDetail.percentComplete ?? 0);
     }
   }, [subtaskDetail]);
 
@@ -133,6 +152,9 @@ const ChildWorkItem: React.FC = () => {
     useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
       skip: !subtaskDetail?.id,
     });
+
+  const { data: assignees = [], isLoading: isAssigneeLoading } =
+    useGetTaskAssignmentsByTaskIdQuery(subtaskDetail?.taskId ?? '');
 
   const {
     data: comments = [],
@@ -187,16 +209,22 @@ const ChildWorkItem: React.FC = () => {
     skip: !projectId,
   });
 
-  const { data: projectData,
+  const {
+    data: projectData,
     isLoading: isProjectDataLoading,
-    refetch: refetchProjectData, } = useGetProjectByIdQuery(projectId!, {
-      skip: !projectId,
-    });
+    refetch: refetchProjectData,
+  } = useGetProjectByIdQuery(projectId!, {
+    skip: !projectId,
+  });
 
-  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
-    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(projectId!, {
-      skip: !projectId,
-    });
+  const {
+    data: projectSprints = [],
+    isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints,
+    isError: isProjectSprintsError,
+  } = useGetSprintsByProjectIdQuery(projectId!, {
+    skip: !projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -306,10 +334,65 @@ const ChildWorkItem: React.FC = () => {
     }
   };
 
+  const handlePercentCompleteChange = async () => {
+    if (!subtaskDetail || newPercentComplete === subtaskDetail.percentComplete) return;
+
+    if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Percent Complete',
+        text: 'Percent complete must be between 0 and 100.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewPercentComplete(subtaskDetail.percentComplete);
+      return;
+    }
+
+    try {
+      await updateSubtaskPercentComplete({
+        id: subtaskDetail.id,
+        percentComplete: newPercentComplete ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(
+        `✅ Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
+      );
+      await refetchSubtask();
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update subtask percent complete', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !subtaskDetail) return;
-
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('File size exceeds 10MB limit');
+      setIsAddDropdownOpen(false);
+      return;
+    }
     try {
       await uploadSubtaskFile({
         subtaskId: subtaskDetail.id,
@@ -347,7 +430,7 @@ const ChildWorkItem: React.FC = () => {
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error(" Error delete file:", error);
+      console.error(' Error delete file:', error);
       //alert(" Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
@@ -409,7 +492,7 @@ const ChildWorkItem: React.FC = () => {
           </>
         )}
       </div>
-    ))
+    ));
   }
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -450,7 +533,7 @@ const ChildWorkItem: React.FC = () => {
 
         <input
           className='subtask-input'
-          placeholder="Enter subtask title"
+          placeholder='Enter subtask title'
           defaultValue={subtaskDetail?.title}
           onChange={(e) => {
             if (e.target.value.length <= 65) {
@@ -461,7 +544,7 @@ const ChildWorkItem: React.FC = () => {
           }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '500px',
+            width: '600px',
             fontWeight: 'bold',
           }}
         />
@@ -479,7 +562,7 @@ const ChildWorkItem: React.FC = () => {
                 {isAddDropdownOpen && (
                   <div className='add-dropdown'>
                     <div className='add-item' onClick={() => fileInputRef.current?.click()}>
-                      📎 Attachment
+                      📁 Attachment
                     </div>
                   </div>
                 )}
@@ -489,6 +572,11 @@ const ChildWorkItem: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={handleFileUpload}
                 />
+                {fileError && (
+                  <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                    {fileError}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -504,47 +592,44 @@ const ChildWorkItem: React.FC = () => {
             </div>
 
             {attachments.length > 0 && (
-              <div className="attachments-section">
-                <label className="block font-semibold mb-2">
+              <div className='attachments-section'>
+                <label className='block font-semibold mb-2'>
                   Attachments <span>({attachments.length})</span>
                 </label>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+                <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100'>
                   {attachments.map((file) => (
                     <div
-                      className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
+                      className='relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200'
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
                     >
                       <a
                         href={file.urlFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-gray-800 no-underline"
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='block text-gray-800 no-underline'
                       >
-                        <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
+                        <div className='h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden'>
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                             <img
                               src={file.urlFile}
                               alt={file.title}
-                              className="w-[100%] h-[100%] object-cover rounded-lg"
+                              className='w-[100%] h-[100%] object-cover rounded-lg'
                             />
                           ) : (
-                            <div className="flex items-center justify-center h-full w-full bg-gray-200">
-                              <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                            <div className='flex items-center justify-center h-full w-full bg-gray-200'>
+                              <span className='text-xs font-medium text-gray-600 px-2 text-center'>
                                 {file.title.slice(0, 15)}...
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className="p-1">
-                          <div
-                            className="truncate text-sm font-medium"
-                            title={file.title}
-                          >
+                        <div className='p-1'>
+                          <div className='truncate text-sm font-medium' title={file.title}>
                             {file.title}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className='text-xs text-gray-500'>
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -553,14 +638,10 @@ const ChildWorkItem: React.FC = () => {
                       {hoveredFileId === file.id && (
                         <button
                           onClick={() => openDeleteModal(file.id, file.createdBy)}
-                          className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
-                          title="Delete file"
+                          className='absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200'
+                          title='Delete file'
                         >
-                          <img
-                            src={deleteIcon}
-                            alt="Delete"
-                            className="w-5 h-5"
-                          />
+                          <img src={deleteIcon} alt='Delete' className='w-5 h-5' />
                         </button>
                       )}
                     </div>
@@ -615,14 +696,14 @@ const ChildWorkItem: React.FC = () => {
               {activeTab === 'COMMENTS' ? (
                 <>
                   {comments.map((comment) => (
-                    <div key={comment.id} className="simple-comment">
-                      <div className="avatar-circle">
-                        <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                    <div key={comment.id} className='simple-comment'>
+                      <div className='avatar-circle'>
+                        <img src={comment.accountPicture || accountIcon} alt='avatar' />
                       </div>
-                      <div className="comment-content">
-                        <div className="comment-header">
+                      <div className='comment-content'>
+                        <div className='comment-header'>
                           <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
-                          <span className="comment-time">
+                          <span className='comment-time'>
                             {new Date(comment.createdAt).toLocaleString('vi-VN')}
                           </span>
                         </div>
@@ -633,19 +714,19 @@ const ChildWorkItem: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className="border rounded p-2 w-full"
+                              className='border rounded p-2 w-full'
                               autoFocus
                             />
-                            <div className="flex gap-2 mt-2">
+                            <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
-                                className="px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6"
+                                className='px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6'
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditCommentId(null)}
-                                className="px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6"
+                                className='px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6'
                               >
                                 Cancel
                               </button>
@@ -653,17 +734,17 @@ const ChildWorkItem: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <div className="comment-text">{comment.content}</div>
+                            <div className='comment-text'>{comment.content}</div>
                             {comment.accountId === accountId && (
-                              <div className="comment-actions">
+                              <div className='comment-actions'>
                                 <button
-                                  className="edit-btn"
+                                  className='edit-btn'
                                   onClick={() => setEditCommentId(comment.id)}
                                 >
                                   ✏ Edit
                                 </button>
                                 <button
-                                  className="delete-btn"
+                                  className='delete-btn'
                                   onClick={async () => {
                                     const confirmed = await Swal.fire({
                                       title: 'Delete Comment',
@@ -676,12 +757,17 @@ const ChildWorkItem: React.FC = () => {
                                         title: 'small-title',
                                         popup: 'small-popup',
                                         icon: 'small-icon',
-                                        htmlContainer: 'small-html'
-                                      }
+                                        htmlContainer: 'small-html',
+                                      },
                                     });
                                     if (confirmed.isConfirmed) {
                                       try {
-                                        console.log('Deleting comment:', comment.id, 'for subtask:', subtaskDetail.id);
+                                        console.log(
+                                          'Deleting comment:',
+                                          comment.id,
+                                          'for subtask:',
+                                          subtaskDetail.id
+                                        );
                                         await deleteSubtaskComment({
                                           id: comment.id,
                                           subtaskId: subtaskDetail.id!,
@@ -699,8 +785,8 @@ const ChildWorkItem: React.FC = () => {
                                             title: 'small-title',
                                             popup: 'small-popup',
                                             icon: 'small-icon',
-                                            htmlContainer: 'small-html'
-                                          }
+                                            htmlContainer: 'small-html',
+                                          },
                                         });
                                       }
                                     }
@@ -738,7 +824,7 @@ const ChildWorkItem: React.FC = () => {
                             createdBy: accountId,
                           }).unwrap();
                           //alert('✅ Comment posted');
-                          console.log('Comment posted')
+                          console.log('Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
@@ -805,7 +891,7 @@ const ChildWorkItem: React.FC = () => {
               <div className='detail-item'>
                 <label>Assignee</label>
 
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedAssignee ?? subtaskDetail?.assignedBy}
                     onChange={async (e) => {
@@ -835,39 +921,65 @@ const ChildWorkItem: React.FC = () => {
                     style={{ minWidth: '150px' }}
                   >
                     <option value='0'>Unassigned</option>
-                    {projectMembers?.map((m) => (
+                    {assignees?.map((m) => (
                       <option key={m.accountId} value={m.accountId}>
-                        {m.accountName}
+                        {m.accountFullname}
                       </option>
                     ))}
                   </select>
                 ) : (
                   <span>
-                    {projectMembers?.find(m => m.accountId === (selectedAssignee ?? subtaskDetail?.assignedBy))?.accountName
-                      || 'Unassigned'}
+                    {assignees?.find(
+                      (m) => m.accountId === (selectedAssignee ?? subtaskDetail?.assignedBy)
+                    )?.accountFullname || 'Unassigned'}
                   </span>
                 )}
               </div>
 
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <div className='flex items-center gap-1'>
+                    <input
+                      type='number'
+                      min='0'
+                      max='100'
+                      step='1'
+                      value={newPercentComplete ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setNewPercentComplete(value);
+                      }}
+                      onBlur={handlePercentCompleteChange}
+                      style={{ width: '100px' }}
+                      className='border rounded p-1'
+                    />
+                    <span>%</span>
+                  </div>
+                ) : (
+                  <span>{subtaskDetail.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
               {isEditingLabel ? (
-                <div ref={labelRef} className="flex flex-col gap-2 w-full relative">
-                  <div className="flex flex-col gap-2 w-full relative">
-                    <label className="font-semibold">Labels</label>
+                <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
+                  <div className='flex flex-col gap-2 w-full relative'>
+                    <label className='font-semibold'>Labels</label>
 
                     {/* Tag list + input */}
                     <div
-                      className="border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400"
+                      className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
                     >
                       {workItemLabels.map((label) => (
                         <span
                           key={label.id}
-                          className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1"
+                          className='bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm flex items-center gap-1'
                         >
                           {label.labelName}
                           <button
                             onClick={() => handleDeleteWorkItemLabel(label.id)}
-                            className="text-red-500 hover:text-red-700 font-bold text-sm"
+                            className='text-red-500 hover:text-red-700 font-bold text-sm'
                           >
                             ×
                           </button>
@@ -883,21 +995,23 @@ const ChildWorkItem: React.FC = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleCreateLabelAndAssign();
                         }}
-                        placeholder="Type to search or add"
-                        className="flex-1 min-w-[100px] border-none outline-none py-1"
+                        placeholder='Type to search or add'
+                        className='flex-1 min-w-[100px] border-none outline-none py-1'
                         autoFocus
                       />
                     </div>
 
                     {/* Dropdown suggestion */}
                     {dropdownOpen && filteredLabels.length > 0 && (
-                      <ul className="absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto">
-                        <li className="px-3 py-1 font-semibold text-gray-600 border-b">All labels</li>
+                      <ul className='absolute top-full mt-1 w-full bg-white border rounded shadow z-10 max-h-48 overflow-auto'>
+                        <li className='px-3 py-1 font-semibold text-gray-600 border-b'>
+                          All labels
+                        </li>
                         {filteredLabels.map((label) => (
                           <li
                             key={label.id}
                             onClick={() => handleCreateLabelAndAssign(label.name)}
-                            className="px-3 py-1 hover:bg-blue-100 cursor-pointer"
+                            className='px-3 py-1 hover:bg-blue-100 cursor-pointer'
                           >
                             {label.name}
                           </li>
@@ -907,8 +1021,8 @@ const ChildWorkItem: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div className="detail-item" onClick={() => setIsEditingLabel(true)}>
-                  <label className="font-semibold">Labels</label>
+                <div className='detail-item' onClick={() => setIsEditingLabel(true)}>
+                  <label className='font-semibold'>Labels</label>
                   <span>
                     {isLabelLoading
                       ? 'Loading...'
@@ -924,7 +1038,7 @@ const ChildWorkItem: React.FC = () => {
                 {subtaskDetail.taskId ? (
                   <Link
                     to={`/project/${projectKey}/work-item-detail?taskId=${subtaskDetail.taskId}`}
-                    className="text no-underline hover:underline cursor-pointer"
+                    className='text no-underline hover:underline cursor-pointer'
                   >
                     Task [{subtaskDetail.taskId}]
                   </Link>
@@ -938,10 +1052,10 @@ const ChildWorkItem: React.FC = () => {
                   <span>Task [{subtaskDetail.taskId ?? 'None'}]</span>
               </div> */}
 
-              <div className='detail-item'>
+              {/* <div className='detail-item'>
                 <label>Sprint</label>
 
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     style={{ width: '150px' }}
                     value={newSprintId ?? subtaskDetail?.sprintId}
@@ -968,18 +1082,18 @@ const ChildWorkItem: React.FC = () => {
                     {isProjectSprintsLoading
                       ? 'Loading...'
                       : isProjectSprintsError
-                        ? 'Error loading Sprint'
-                        : projectSprints?.find(s => s.id === (newSprintId ?? subtaskDetail?.sprintId))?.name || 'No Sprint'
-                    }
+                      ? 'Error loading Sprint'
+                      : projectSprints?.find(
+                          (s) => s.id === (newSprintId ?? subtaskDetail?.sprintId)
+                        )?.name || 'No Sprint'}
                   </span>
                 )}
-              </div>
-
+              </div> */}
 
               <div className='detail-item'>
                 <label>Priority</label>
 
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     style={{ width: '150px' }}
                     value={newPriority ?? subtaskDetail?.priority}
@@ -1004,20 +1118,21 @@ const ChildWorkItem: React.FC = () => {
                       ? 'Loading...'
                       : isPriorityError
                         ? 'Error loading priorities'
-                        : priorityOptions?.data.find(p => p.name === (newPriority ?? subtaskDetail?.priority))?.label || 'NONE'
-                    }
+                        : priorityOptions?.data.find(
+                          (p) => p.name === (newPriority ?? subtaskDetail?.priority)
+                        )?.label || 'NONE'}
                   </span>
                 )}
               </div>
 
               <div className='detail-item'>
                 <label>Start Date</label>
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <input
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
                     min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
                     onChange={(e) => {
                       const value = e.target.value;
                       if (newEndDate && new Date(value) >= new Date(newEndDate)) {
@@ -1031,8 +1146,8 @@ const ChildWorkItem: React.FC = () => {
                             title: 'small-title',
                             popup: 'small-popup',
                             icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
+                            htmlContainer: 'small-html',
+                          },
                         });
                         return;
                       }
@@ -1044,17 +1159,17 @@ const ChildWorkItem: React.FC = () => {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
-                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Start Date must be between project <strong>${projectData.data.name}</strong> 
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',
                               popup: 'small-popup',
                               icon: 'small-icon',
-                              htmlContainer: 'small-html'
-                            }
+                              htmlContainer: 'small-html',
+                            },
                           });
                           return;
                         }
@@ -1072,12 +1187,12 @@ const ChildWorkItem: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Due Date</label>
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={newStartDate ? newStartDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}
+                    min={newStartDate ?? projectData?.data?.startDate?.slice(0, 10)} // Use newStartDate if available
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
                     onChange={(e) => {
                       const value = e.target.value;
                       if (newStartDate && new Date(value) <= new Date(newStartDate)) {
@@ -1085,14 +1200,14 @@ const ChildWorkItem: React.FC = () => {
                           icon: 'error',
                           title: 'Invalid Due Date',
                           html: 'Due Date must be greater than Start Date!',
-                          width: '500px', // nhỏ lại
+                          width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',
                             popup: 'small-popup',
                             icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
+                            htmlContainer: 'small-html',
+                          },
                         });
                         return;
                       }
@@ -1105,16 +1220,16 @@ const ChildWorkItem: React.FC = () => {
                             icon: 'error',
                             title: 'Invalid Due Date',
                             html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
-                                           is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                                           <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                            width: '500px', // nhỏ lại
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',
                               popup: 'small-popup',
                               icon: 'small-icon',
-                              htmlContainer: 'small-html'
-                            }
+                              htmlContainer: 'small-html',
+                            },
                           });
                           return;
                         }
@@ -1133,7 +1248,7 @@ const ChildWorkItem: React.FC = () => {
               <div className='detail-item'>
                 <label>Reporter</label>
 
-                {(isUserAssignee(subtaskDetail.assignedBy) || canEdit) ? (
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}
                     onChange={async (e) => {
@@ -1171,8 +1286,9 @@ const ChildWorkItem: React.FC = () => {
                   </select>
                 ) : (
                   <span>
-                    {projectMembers?.find(m => m.accountId === (selectedReporter ?? subtaskDetail?.reporterId))?.accountName
-                      || 'Unassigned'}
+                    {projectMembers?.find(
+                      (m) => m.accountId === (selectedReporter ?? subtaskDetail?.reporterId)
+                    )?.accountName || 'Unassigned'}
                   </span>
                 )}
               </div>
@@ -1217,7 +1333,7 @@ const ChildWorkItem: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDeleteFile}
-        title="Delete this attachment?"
+        title='Delete this attachment?'
         message="Once you delete, it's gone for good."
       />
     </div>

@@ -154,8 +154,13 @@ export const accountApi = createApi({
         method: 'GET',
       }),
     }),
-
+getProfileByAccountId: builder.query<GetProfileResponse, number>({
+      query: (accountId) => ({
+        url: `account/${accountId}/profile`,
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery,useGetTeamsByAccountIdQuery, } = accountApi;
+export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery,useGetTeamsByAccountIdQuery,useGetProfileByAccountIdQuery, } = accountApi;

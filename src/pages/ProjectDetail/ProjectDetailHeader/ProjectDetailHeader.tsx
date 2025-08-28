@@ -3,8 +3,8 @@ import { useSearchParams, useLocation, Link, useNavigate } from 'react-router-do
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
-import { AlertTriangle } from 'lucide-react';
-import { useGetHealthDashboardQuery } from '../../../services/projectMetricApi';
+import { AlertTriangle, Proportions } from 'lucide-react';
+import { useGetHealthDashboardQuery, useCalculateMetricsBySystemMutation } from '../../../services/projectMetricApi';
 
 import {
   Users2,
@@ -30,7 +30,7 @@ const navItems = [
   { label: 'Board', icon: <ClipboardCheck className='w-4 h-4' />, path: 'board' },
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
-  { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
+  { label: 'Documents', icon: <FileText className='w-4 h-4' />, path: 'documents' },
   { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
@@ -43,9 +43,10 @@ const navItems = [
   { label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   { label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
   { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
+  { label: 'Document Report', icon: <Proportions className='w-4 h-4' />, path: 'document-report' },
 ];
 
-const CLIENT_ALLOWED = ['timeline'];
+const CLIENT_ALLOWED = ['timeline', 'document-report'];
 const RESTRICTED_TABS_FOR_TEAM = ['dashboard', 'sheet'];
 
 const ProjectDetailHeader: React.FC = () => {
@@ -68,7 +69,12 @@ const ProjectDetailHeader: React.FC = () => {
   const isClient = rawRole.toUpperCase() === 'CLIENT';
   const isTeamLeaderOrMember = ['TEAM_LEADER', 'TEAM_MEMBER'].includes(rawRole.toUpperCase());
 
-  const { data: healthData } = useGetHealthDashboardQuery(projectKey);
+  //const { data: healthData } = useGetHealthDashboardQuery(projectKey);
+
+  const [calculate, { isLoading: isCalculating, error: calculateError }] = useCalculateMetricsBySystemMutation();
+  const { data: healthData, isLoading: isHealthLoading, error: healthError } = useGetHealthDashboardQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
+  });
 
   // Lọc nav theo role
   // const allowedNav = useMemo(() => {
@@ -131,7 +137,7 @@ const ProjectDetailHeader: React.FC = () => {
   // }, [isClient, activeTab, navigate, projectKey]);
 
   useEffect(() => {
-    if (isClient && activeTab !== 'timeline') {
+    if (isClient && !CLIENT_ALLOWED.includes(activeTab)) {
       navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
     } else if (isTeamLeaderOrMember && RESTRICTED_TABS_FOR_TEAM.includes(activeTab)) {
       navigate(`?projectKey=${projectKey}#list`, { replace: true });

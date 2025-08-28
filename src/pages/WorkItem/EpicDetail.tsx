@@ -29,6 +29,7 @@ import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../
 import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 import { Tooltip } from 'react-tooltip';
 import aiIcon from '../../assets/icon/ai.png';
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -105,6 +106,9 @@ const EpicDetail: React.FC = () => {
   const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const [fileError, setFileError] = useState('');
 
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
@@ -417,6 +421,15 @@ const EpicDetail: React.FC = () => {
     }
   };
 
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'TASK': return taskIcon;
@@ -493,7 +506,13 @@ const EpicDetail: React.FC = () => {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadEpicFile({
                         epicId: epicIdFromUrl!,
                         title: file.name,
@@ -505,12 +524,16 @@ const EpicDetail: React.FC = () => {
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      //alert('❌ Upload failed.');
+                     
                     }
                   }
-                  setIsAddDropdownOpen(false);
                 }}
               />
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
 
             <div className="field-group">
@@ -618,6 +641,7 @@ const EpicDetail: React.FC = () => {
                     onClick={async () => {
                       try {
                         const result = await generateTasksByEpicByAI(epicIdFromUrl!).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
@@ -796,6 +820,7 @@ const EpicDetail: React.FC = () => {
                                 setSelectedSuggestions([]);
                                 await refetch();
                                 await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
                               } catch (err) {
                                 console.error('❌ Failed to create tasks', err);
                               } finally {
@@ -1762,6 +1787,16 @@ const EpicDetail: React.FC = () => {
         title="Delete this attachment?"
         message="Once you delete, it's gone for good."
       />
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='TASK_FROM_EPIC_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
     </div>
   );
 };

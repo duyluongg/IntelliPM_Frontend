@@ -169,7 +169,20 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, server
     setErrorMessage('');
   };
 
-  const handleSave = async () => {
+  // Hàm này chỉ để lưu dữ liệu, không submit form
+  const handleSaveData = async () => {
+    // Chỉ validate và lưu dữ liệu local, không gọi onNext
+    const cleaned = requirements
+      .filter((req) => req.title.trim().length > 0)
+      .map(({ uiId, expanded, titleError, ...req }) => req);
+
+    // Có thể thêm validation ở đây nếu cần
+    setErrorMessage('');
+    return true;
+  };
+
+  // Hàm này để submit form và chuyển sang bước tiếp theo
+  const handleSubmitAndNext = async () => {
     const cleaned = requirements
       .filter((req) => req.title.trim().length > 0)
       .map(({ uiId, expanded, titleError, ...req }) => req);
@@ -241,10 +254,6 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, server
     }
   };
 
-  const handleSubmit = async () => {
-    await handleSave();
-  };
-
   const functional = requirements.filter((r) => r.type === 'FUNCTIONAL');
   const nonFunctional = requirements.filter((r) => r.type === 'NON_FUNCTIONAL');
 
@@ -277,7 +286,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, server
               updateRequirement={updateLocalRequirement}
               toggleExpand={toggleExpand}
               removeRequirement={removeRequirement}
-              onSave={handleSave}
+              onSave={handleSaveData} // Chỉ lưu dữ liệu, không submit
             />
           ))}
         </div>
@@ -304,7 +313,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, server
               updateRequirement={updateLocalRequirement}
               toggleExpand={toggleExpand}
               removeRequirement={removeRequirement}
-              onSave={handleSave}
+              onSave={handleSaveData} // Chỉ lưu dữ liệu, không submit
             />
           ))}
         </div>
@@ -327,7 +336,7 @@ const RequirementsForm: React.FC<RequirementsFormProps> = ({ initialData, server
         </button>
         <button
           type="button"
-          onClick={handleSubmit}
+          onClick={handleSubmitAndNext} // Chỉ khi bấm Next mới submit
           className="px-16 py-4 bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] text-white rounded-xl hover:from-[#1a68e0] hover:to-[#3e7ed1] transition-all shadow-lg hover:shadow-xl text-sm"
         >
           Next

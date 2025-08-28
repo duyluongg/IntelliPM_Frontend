@@ -533,6 +533,51 @@ export const taskApi = createApi({
       transformResponse: (response: AITaskListResponse) => response,
       invalidatesTags: ['Task'],
     }),
+
+    updatePercentComplete: builder.mutation<
+      void,
+      { id: string; percentComplete: number; createdBy: number }
+    >({
+      query: ({ id, percentComplete, createdBy }) => ({
+        url: `task/${id}/percent-complete?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(percentComplete),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updatePlannedCost: builder.mutation<
+      void,
+      { id: string; plannedCost: number; createdBy: number }
+    >({
+      query: ({ id, plannedCost, createdBy }) => ({
+        url: `task/${id}/planned-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(plannedCost),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updateActualCost: builder.mutation<
+      void,
+      { id: string; actualCost: number; createdBy: number }
+    >({
+      query: ({ id, actualCost, createdBy }) => ({
+        url: `task/${id}/actual-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(actualCost),
+      }),
+      invalidatesTags: ['Task'],
+    }),
   }),
 });
 
@@ -561,4 +606,7 @@ export const {
   useCreateTasksMutation,
   useUpdateTaskEpicMutation,
   useGenerateAITasksMutation,
+  useUpdatePercentCompleteMutation,
+  useUpdatePlannedCostMutation,
+  useUpdateActualCostMutation,
 } = taskApi;

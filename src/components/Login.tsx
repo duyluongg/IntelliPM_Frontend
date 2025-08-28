@@ -13,7 +13,12 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, user } = useAuth();
 
-  const { data: projectData, isSuccess: hasProjects } = useGetProjectsByAccountQuery(
+  const { 
+    data: projectData, 
+    isSuccess: projectsQuerySuccess,
+    isError: projectsQueryError,
+    isLoading: projectsLoading 
+  } = useGetProjectsByAccountQuery(
     user?.accessToken || '',
     {
       skip: !user?.accessToken,
@@ -50,18 +55,33 @@ const Login: React.FC = () => {
   };
 
   useEffect(() => {
-    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
-    const hasData = hasProjects && projectData?.data?.length > 0;
-    const firstProject = hasData ? projectData.data[0] : null;
+    if (!user?.accessToken) return;
 
-    if (isAccessRole && hasData && firstProject) {
-      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
-    } else if (user?.role === 'ADMIN') {
+    if (user.role === 'ADMIN') {
       navigate('/admin');
-    } else if (user?.role === 'CLIENT') {
-      navigate('/meeting');
+      return;
     }
-  }, [user, hasProjects, projectData, navigate]);
+    
+    if (user.role === 'CLIENT') {
+      navigate('/meeting');
+      return;
+    }
+
+    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user.role ?? '');
+    
+    if (isAccessRole) {
+      if (projectsLoading) return;
+      if (projectsQuerySuccess && projectData?.data?.length > 0) {
+        const firstProject = projectData.data[0];
+        navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+        return;
+      }
+      if (projectsQuerySuccess || projectsQueryError) {
+        navigate('/'); 
+        return;
+      }
+    }
+  }, [user, projectsQuerySuccess, projectsQueryError, projectsLoading, projectData, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-white to-cyan-100 px-4">

@@ -68,11 +68,11 @@ import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage'
 
 import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
 
-import Register from '../components/Register';  
+import Register from '../components/Register';
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
-import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
-
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister';
+import ShareVerificationPage from '../pages/PM/YourProject/ShareVerificationPage';
 
 export const router = createBrowserRouter([
   {
@@ -83,13 +83,17 @@ export const router = createBrowserRouter([
     path: '/register',
     element: <Register />,
   },
-    {
+  {
     path: '/verify-success',
     element: <VerifySuccess />,
   },
-    {
+  {
     path: '/verify-fail',
     element: <VerifyFail />,
+  },
+  {
+    path: '/share/verify',
+    element: <ShareVerificationPage />,
   },
   {
     path: '/Guest',
@@ -351,11 +355,11 @@ export const router = createBrowserRouter([
         path: 'configurations',
         element: <SystemConfigPage />,
       },
-           {
+      {
         path: 'ai-responses',
         element: <AiResponsePage />,
       },
-          {
+      {
         path: 'register-members',
         element: <DynamicBulkRegister />,
       },

@@ -524,7 +524,7 @@ const EpicDetail: React.FC = () => {
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                     
+
                     }
                   }
                 }}
@@ -654,44 +654,13 @@ const EpicDetail: React.FC = () => {
                     data-tooltip-content="Generate tasks using AI"
                   >
                     {loadingSuggest ? (
-                      <div className="flex items-center gap-2">
-                        <svg
-                          className="animate-spin w-5 h-5 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                          />
-                        </svg>
+                      <div className='flex items-center gap-2'>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                         <span>Suggesting...</span>
                       </div>
                     ) : (
                       <>
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                         <span>Suggest</span>
                       </>
                     )}
@@ -711,20 +680,10 @@ const EpicDetail: React.FC = () => {
                     >
                       <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <svg
-                            className="w-8 h-8 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                            />
-                          </svg>
+                          <div className='flex items-center gap-3'>
+                            <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
+                            <h2 className='text-2xl font-bold text-white'>AI-Suggested Tasks</h2>
+                          </div>
                           <h2 className="text-2xl font-bold text-white">AI-Suggested Tasks</h2>
                         </div>
                         <button

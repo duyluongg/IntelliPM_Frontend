@@ -351,6 +351,15 @@ export interface GetProjectItemsResponse {
   data: ProjectItem[];
 }
 
+export interface GetWorkItemByKeyResponse {
+  isSuccess: boolean;
+  code: number;
+  data: WorkItemList;
+  message: string;
+  error?: string;
+}
+
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -400,9 +409,8 @@ export const projectApi = createApi({
       { projectKey: string; projectId?: number }
     >({
       query: ({ projectKey, projectId }) => ({
-        url: `project/check-project-key?projectKey=${projectKey}${
-          projectId ? `&projectId=${projectId}` : ''
-        }`,
+        url: `project/check-project-key?projectKey=${projectKey}${projectId ? `&projectId=${projectId}` : ''
+          }`,
         method: 'GET',
       }),
     }),
@@ -411,9 +419,8 @@ export const projectApi = createApi({
       { projectName: string; projectId?: number }
     >({
       query: ({ projectName, projectId }) => ({
-        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${
-          projectId ? `&projectId=${projectId}` : ''
-        }`,
+        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${projectId ? `&projectId=${projectId}` : ''
+          }`,
         method: 'GET',
       }),
     }),
@@ -504,6 +511,16 @@ export const projectApi = createApi({
       }),
       invalidatesTags: ['Project'],
     }),
+    getWorkItemByKey: builder.query<GetWorkItemByKeyResponse, string>({
+      query: (projectKey) => ({
+        url: `project/${projectKey}/allworkitems`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectKey) => [
+        { type: 'WorkItem', id: projectKey },
+      ],
+    }),
+
   }),
 });
 
@@ -526,4 +543,5 @@ export const {
   useGetProjectItemsByKeyQuery,
   useLazyCheckProjectKeyQuery,
   useUpdateProjectStatusMutation,
+  useLazyGetWorkItemByKeyQuery,
 } = projectApi;

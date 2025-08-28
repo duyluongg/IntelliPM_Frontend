@@ -70,6 +70,7 @@ import Register from '../components/Register';
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
 import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister';
+import ShareVerificationPage from '../pages/PM/YourProject/ShareVerificationPage';
 import ForgotPassword from '../components/ForgotPassword';
 import ResetPassword from '../components/ResetPassword';
 import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
@@ -90,6 +91,10 @@ export const router = createBrowserRouter([
   {
     path: '/verify-fail',
     element: <VerifyFail />,
+  },
+  {
+    path: '/share/verify',
+    element: <ShareVerificationPage />,
   },
   {
     path: '/forgot-password',

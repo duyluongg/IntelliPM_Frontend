@@ -4,7 +4,10 @@ import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
 import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
 import { AlertTriangle, Proportions } from 'lucide-react';
-import { useGetHealthDashboardQuery, useCalculateMetricsBySystemMutation } from '../../../services/projectMetricApi';
+import {
+  useGetHealthDashboardQuery,
+  useCalculateMetricsBySystemMutation,
+} from '../../../services/projectMetricApi';
 
 import {
   Users2,
@@ -71,8 +74,13 @@ const ProjectDetailHeader: React.FC = () => {
 
   //const { data: healthData } = useGetHealthDashboardQuery(projectKey);
 
-  const [calculate, { isLoading: isCalculating, error: calculateError }] = useCalculateMetricsBySystemMutation();
-  const { data: healthData, isLoading: isHealthLoading, error: healthError } = useGetHealthDashboardQuery(projectKey, {
+  const [calculate, { isLoading: isCalculating, error: calculateError }] =
+    useCalculateMetricsBySystemMutation();
+  const {
+    data: healthData,
+    isLoading: isHealthLoading,
+    error: healthError,
+  } = useGetHealthDashboardQuery(projectKey, {
     skip: !projectKey || projectKey === 'NotFound',
   });
 
@@ -85,9 +93,12 @@ const ProjectDetailHeader: React.FC = () => {
       return navItems.filter((i) => CLIENT_ALLOWED.includes(i.path));
     }
     if (isTeamLeaderOrMember) {
-      return navItems.filter((i) => !RESTRICTED_TABS_FOR_TEAM.includes(i.path));
+      return navItems.filter(
+        (i) => !RESTRICTED_TABS_FOR_TEAM.includes(i.path) && i.path !== 'document-report'
+      );
     }
-    return navItems;
+
+    return navItems.filter((i) => i.path !== 'document-report');
   }, [isClient, isTeamLeaderOrMember]);
 
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);

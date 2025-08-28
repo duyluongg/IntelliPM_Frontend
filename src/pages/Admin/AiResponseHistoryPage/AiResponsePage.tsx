@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, RefreshCw, Search, X, ChevronDown } from 'lucide-react';
+import { Filter, RefreshCw, X, ChevronDown } from 'lucide-react';
 import {
   useGetAllAiResponseHistoriesQuery,
 } from '../../../services/aiResponseHistoryApi';
@@ -8,6 +8,23 @@ import { useGetAllAiResponseEvaluationsQuery } from '../../../services/aiRespons
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi'; // Adjust import path
 import AiResponseHistoryList from './AiResponseHistoryList';
 import AiResponseEvaluationList from './AiResponseEvaluationList';
+
+const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    fill='none'
+    viewBox='0 0 16 16'
+    role='presentation'
+    {...props}
+    style={{ color: 'var(--ds-icon, #44546F)' }}
+  >
+    <path
+      fill='currentColor'
+      fillRule='evenodd'
+      d='M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9M1 7a6 6 0 1 1 10.74 3.68l3.29 3.29-1.06 1.06-3.29-3.29A6 6 0 0 1 1 7'
+      clipRule='evenodd'
+    />
+  </svg>
+);
 
 const AiResponsePage: React.FC = () => {
   const [selectedAiFeature, setSelectedAiFeature] = useState<string>('');
@@ -89,7 +106,7 @@ const AiResponsePage: React.FC = () => {
                   AI Response Management
                 </h1>
                 <p className="text-gray-600 mt-2">
-                  Monitor and analyze AI response histories and evaluations
+                  Manage and analyze AI response histories and evaluations
                 </p>
               </div>
               <button
@@ -130,19 +147,20 @@ const AiResponsePage: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Search Input */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <div className='flex items-center border border-gray-300 rounded-md px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
+                  <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
                   <input
-                    type="text"
-                    placeholder="Search by name, feature, or status..."
+                    type='text'
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    placeholder='Search by name, feature, or status...'
+                    className='flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
+                    style={{ all: 'unset', width: '100%' }}
                   />
                   {searchTerm && (
                     <button
                       onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 ml-2"
                     >
                       <X className="w-4 h-4" />
                     </button>

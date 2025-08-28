@@ -141,7 +141,7 @@ const handleLogout = () => {
                 </div>
                 <ul className='text-sm space-y-2'>
                   <li
-                    onClick={() => navigate('/account/profile')}
+                    onClick={() => navigate('account/profile')}
                     className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded'
                   >
                     <User className='w-4 h-4 text-gray-600' /> Profile

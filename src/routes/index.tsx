@@ -370,6 +370,10 @@ export const router = createBrowserRouter([
         path: 'projects',
         element: <AdminProjectPage />,
       },
+       {
+        path: 'account/profile',
+        element: <ProfilePage />,
+      },
       { path: 'projects/:projectId/dashboard', element: <ProjectDashboard /> },
     ],
   },

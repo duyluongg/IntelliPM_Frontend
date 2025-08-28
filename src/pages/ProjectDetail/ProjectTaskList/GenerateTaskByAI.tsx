@@ -5,6 +5,7 @@ import type { AITaskResponseDTO, CreateTaskRequest } from '../../../services/tas
 import { useAuth } from '../../../services/AuthContext';
 import aiIcon from '../../../assets/icon/ai.png';
 import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 
 interface GenerateTaskByAIProps {
   isOpen: boolean;
@@ -63,7 +64,7 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
         projectId: task.projectId,
         epicId: task.epicId || null,
         sprintId: task.sprintId || null,
-        type: task.type.toUpperCase() as 'TASK' | 'STORY' | 'BUG' | 'SUBTASK' | 'EPIC',
+        type: task.type,
         title: task.title,
         description: task.description,
         priority: task.priority || 'MEDIUM',
@@ -146,9 +147,9 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                     <th className='p-4 text-left text-sm font-semibold text-gray-700'>
                       Description
                     </th>
-                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>
+                    {/* <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>
                       Status
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -175,9 +176,9 @@ const GenerateTaskByAI: React.FC<GenerateTaskByAIProps> = ({
                       <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.description}
                       </td>
-                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
+                      {/* <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {task.status}
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>

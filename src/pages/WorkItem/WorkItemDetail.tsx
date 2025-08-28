@@ -68,6 +68,7 @@ import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import aiIcon from '../../assets/icon/ai.png';
 import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import { useGetEpicByIdQuery } from '../../services/epicApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -515,6 +516,10 @@ const WorkItemDetail: React.FC = () => {
     description: item.description,
     sprintId: item.sprintId ?? null,
   }));
+
+  const { data: epicData, isLoading: isEpicLoading } = useGetEpicByIdQuery(taskData?.epicId || '', {
+    skip: !taskData?.epicId,
+  });
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
@@ -997,43 +1002,12 @@ const WorkItemDetail: React.FC = () => {
                   >
                     {loadingSuggest ? (
                       <div className='flex items-center gap-2'>
-                        <svg
-                          className='animate-spin w-5 h-5 text-white'
-                          fill='none'
-                          viewBox='0 0 24 24'
-                        >
-                          <circle
-                            className='opacity-25'
-                            cx='12'
-                            cy='12'
-                            r='10'
-                            stroke='currentColor'
-                            strokeWidth='4'
-                          />
-                          <path
-                            className='opacity-75'
-                            fill='currentColor'
-                            d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
-                          />
-                        </svg>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                         <span>Suggesting...</span>
                       </div>
                     ) : (
                       <>
-                        <svg
-                          className='w-5 h-5'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'
-                          xmlns='http://www.w3.org/2000/svg'
-                        >
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
-                          />
-                        </svg>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                         <span>Suggest</span>
                       </>
                     )}
@@ -1051,22 +1025,9 @@ const WorkItemDetail: React.FC = () => {
                       className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3'>
+                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
                         <div className='flex items-center gap-3'>
-                          <svg
-                            className='w-8 h-8 text-white'
-                            fill='none'
-                            stroke='currentColor'
-                            viewBox='0 0 24 24'
-                            xmlns='http://www.w3.org/2000/svg'
-                          >
-                            <path
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth={2}
-                              d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
-                            />
-                          </svg>
+                          <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
                           <h2 className='text-2xl font-bold text-white'>AI-Suggested Subtasks</h2>
                         </div>
                         <button
@@ -2103,22 +2064,66 @@ const WorkItemDetail: React.FC = () => {
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)} // Giới hạn ngày nhỏ nhất
+                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
                     max={
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
-                        : projectData?.data?.endDate?.slice(0, 10)
-                    } // Giới hạn ngày lớn nhất
+                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                    }
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedStartDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
-                      // Compare với Due date
+                      // Validate against epic's startDate
+                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Epic Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project startDate (fallback)
+                      if (
+                        !epicData?.startDate &&
+                        projectData?.data?.startDate &&
+                        new Date(fullDate) < new Date(projectData.data.startDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Project Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedEndDate
                       if (plannedEndDate && new Date(fullDate) >= new Date(plannedEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
-                          html: 'Start Date must be smaller than Due Date!',
+                          html: 'Start Date must be before Due Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2135,6 +2140,7 @@ const WorkItemDetail: React.FC = () => {
                     }}
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2150,18 +2156,63 @@ const WorkItemDetail: React.FC = () => {
                     min={
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
-                        : projectData?.data.startDate.slice(0, 10)
+                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
                     }
-                    max={projectData?.data.endDate.slice(0, 10)}
+                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedEndDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
+                      // Validate against epic's endDate
+                      if (epicData?.endDate && new Date(fullDate) > new Date(epicData.endDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Epic Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project endDate (fallback)
+                      if (
+                        !epicData?.endDate &&
+                        projectData?.data?.endDate &&
+                        new Date(fullDate) > new Date(projectData.data.endDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Project End Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedStartDate
                       if (plannedStartDate && new Date(fullDate) <= new Date(plannedStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',
-                          html: 'Due Date must be greater than Start Date!',
+                          html: 'Due Date must be after Start Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2178,6 +2229,7 @@ const WorkItemDetail: React.FC = () => {
                     }}
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>

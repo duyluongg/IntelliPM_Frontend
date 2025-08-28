@@ -5,6 +5,8 @@ import type { EpicResponseDTO } from '../../../services/epicApi';
 import aiIcon from '../../../assets/icon/ai.png';
 import { useAuth, type Role } from '../../../services/AuthContext';
 import AiResponseEvaluationPopup from '../../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
+import { useGetProjectMembersQuery } from '../../../services/projectMemberApi';
 
 interface CreateEpicRequest {
   projectId: number;
@@ -82,7 +84,7 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
           startDate: epic.startDate || new Date().toISOString(),
           endDate: epic.endDate || new Date().toISOString(),
           reporterId: accountId,
-          assignedBy: accountId,
+          assignedBy: epic.assignedBy ?? accountId,
           createdBy: accountId,
         };
       });
@@ -104,10 +106,20 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
     }
   };
 
-  const handleCloseEvaluationPopup = () => {
-    setIsEvaluationPopupOpen(false);
-    setAiResponseJson('');
-  };
+  const { data: statusResponse } = useGetCategoriesByGroupQuery("epic_status");
+  const statusCategories = statusResponse?.data ?? [];
+
+  // const { data: membersResponse } = useGetProjectMembersQuery(projectId);
+  // const members = membersResponse?.data ?? [];
+
+  const { data: membersResponse = [] } = useGetProjectMembersQuery(projectId);
+
+  const members = membersResponse ?? [];
+
+  // const handleCloseEvaluationPopup = () => {
+  //   setIsEvaluationPopupOpen(false);
+  //   setAiResponseJson('');
+  // };
 
   const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
     console.log('AI Response ID:', aiResponseId);
@@ -162,7 +174,10 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
                     <th className='p-4 text-left text-sm font-semibold text-gray-700'>
                       Description
                     </th>
-                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-24'>
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-40'>
+                      Assign
+                    </th>
+                    <th className='p-4 text-left text-sm font-semibold text-gray-700 w-40'>
                       Status
                     </th>
                   </tr>
@@ -188,9 +203,50 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
                       <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                         {epic.description}
                       </td>
-                      <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
-                        {epic.status}
+                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                        <select
+                          value={epic.assignedBy ?? ''}
+                          onChange={(e) => {
+                            const newAssignee = Number(e.target.value);
+                            setAIEpics((prev) =>
+                              prev.map((ep) =>
+                                ep.name === epic.name ? { ...ep, assignedBy: newAssignee } : ep
+                              )
+                            );
+                          }}
+                          className="border rounded p-1 text-sm w-full"
+                        >
+                          <option value="">-- Select member --</option>
+                          {members.map((m: any) => (
+                            <option key={m.accountId} value={m.accountId}>
+                              {m.accountName}
+                            </option>
+                          ))}
+                        </select>
+
                       </td>
+
+                      <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                        <select
+                          value={epic.status}
+                          onChange={(e) => {
+                            const newStatus = e.target.value;
+                            setAIEpics((prev) =>
+                              prev.map((ep) =>
+                                ep.name === epic.name ? { ...ep, status: newStatus } : ep
+                              )
+                            );
+                          }}
+                          className="border rounded p-1 text-sm w-full"
+                        >
+                          {statusCategories.map((cat: any) => (
+                            <option key={cat.id} value={cat.name}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+
                     </tr>
                   ))}
                 </tbody>

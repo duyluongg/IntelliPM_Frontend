@@ -33,6 +33,105 @@ interface ChatbotProps {
   editor: Editor | null;
 }
 
+function transformProjectSummaryHtml(
+  html: string,
+  opts?: {
+    locale?: string;
+    currency?: string;
+    timeZone?: string;
+  }
+) {
+  const { locale = 'vi-VN', currency = 'VND', timeZone = 'Asia/Ho_Chi_Minh' } = opts || {};
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Map cấu hình format theo nhãn (thẻ <th>)
+  const moneyFields = new Set([
+    'Planned Value (PV)',
+    'Earned Value (EV)',
+    'Actual Cost (AC)',
+    'Budget At Completion (BAC)',
+    'Estimate At Completion (EAC)',
+    'Estimate To Complete (ETC)',
+    'Variance At Completion (VAC)',
+  ]);
+  const indexFields = new Set(['Cost Performance Index (CPI)', 'Schedule Performance Index (SPI)']);
+  const dateFields = new Set(['Created At (UTC)', 'Updated At (UTC)']);
+
+  const nfMoney = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  });
+  const nfNumber = new Intl.NumberFormat(locale); // cho các số lớn không phải tiền
+  const nfIndex = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const df = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    timeZone,
+  });
+
+  const isIsoUtc = (s: string) => /^\d{4}-\d{2}-\d{2}T.*Z$/.test(s);
+
+  doc.querySelectorAll('tr').forEach((tr) => {
+    const th = tr.querySelector('th');
+    const td = tr.querySelector('td');
+    if (!th || !td) return;
+
+    const label = th.textContent?.trim() || '';
+    const raw = td.textContent?.trim() || '';
+
+    // Datetime: ISO UTC -> local + hiển thị cả UTC nhỏ phía dưới (nếu muốn)
+    if (dateFields.has(label) && isIsoUtc(raw)) {
+      const d = new Date(raw);
+      td.textContent = df.format(d); // only show local formatted date/time
+      th.textContent = label.replace('(UTC)', '').trim();
+      return;
+    }
+
+    // Tiền tệ (số lớn)
+    if (moneyFields.has(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = nfMoney.format(val);
+      return;
+    }
+
+    // Chỉ số CPI/SPI
+    if (indexFields.has(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = nfIndex.format(val);
+      return;
+    }
+
+    // Duration (days): thêm "ngày"
+    if (/Duration.*\(days\)/i.test(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = `${nfNumber.format(val)} day`;
+      th.textContent = label.replace(/\s*\(days\)\s*/i, '');
+      return;
+    }
+
+    // Số lớn khác -> thêm dấu phân cách
+    const asNum = Number(raw);
+    if (!isNaN(asNum) && raw !== '') {
+      td.textContent = nfNumber.format(asNum);
+    }
+  });
+
+  return doc.body.innerHTML;
+}
+
+function stripMarkdownCodeBlock(input: string): string {
+  if (typeof input !== 'string') return '';
+  // Xóa code fence ```html ... ``` hoặc ```...```
+  return input
+    .replace(/^```(?:html)?\s*([\s\S]*?)\s*```$/i, '$1') // match block có html
+    .trim();
+}
+
 const suggestions = [
   {
     icon: FileSignature,
@@ -74,89 +173,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
   const docId = Number(documentId);
   const busy = isLoading || isGenLoading || isProjectLoading;
 
-  console.log(documentId, 'documentId in Chatbot');
-
-  // const handleSendMessage = async (messageText?: string) => {
-  //   let textToSend = messageText || inputText;
-
-  //   if (textToSend === 'Summarize this doc') {
-  //     const docText = editor?.getText().trim();
-  //     if (!docText) {
-  //       setMessages((prev) => [
-  //         ...prev,
-  //         {
-  //           id: Date.now(),
-  //           text: '⚠️ Không có nội dung nào trong tài liệu để tóm tắt.',
-  //           sender: 'ai',
-  //         },
-  //       ]);
-  //       return;
-  //     }
-  //     textToSend = `Tóm tắt nội dung sau thành 3-5 gạch đầu dòng dễ hiểu:\n\n${docText}`;
-  //   }
-
-  //   if (textToSend === 'Make this doc more clear and concise') {
-  //     const docText = editor?.getText().trim();
-  //     if (!docText) {
-  //       setMessages((prev) => [
-  //         ...prev,
-  //         {
-  //           id: Date.now(),
-  //           text: '⚠️ Không có nội dung nào trong tài liệu để cải thiện.',
-  //           sender: 'ai',
-  //         },
-  //       ]);
-  //       return;
-  //     }
-  //     textToSend = `Hãy cải thiện độ rõ ràng và súc tích cho nội dung sau đây:\n\n${docText}`;
-  //   }
-
-  //   if (textToSend === 'Extract action items from this doc') {
-  //     const docText = editor?.getText().trim();
-  //     if (!docText) {
-  //       setMessages((prev) => [
-  //         ...prev,
-  //         {
-  //           id: Date.now(),
-  //           text: '⚠️ Không có nội dung nào trong tài liệu để trích xuất.',
-  //           sender: 'ai',
-  //         },
-  //       ]);
-  //       return;
-  //     }
-  //     textToSend = `Hãy trích xuất các công việc hành động (action items) cụ thể từ nội dung sau:\n\n${docText}`;
-  //   }
-
-  //   if (textToSend.trim() === '') return;
-
-  //   const userMessage: Message = {
-  //     id: Date.now(),
-  //     text: messageText || inputText,
-  //     sender: 'user',
-  //   };
-  //   setMessages((prev) => [...prev, userMessage]);
-  //   setInputText('');
-
-  //   try {
-  //     const result = await askAI(textToSend).unwrap();
-  //     const aiMessage: Message = {
-  //       id: Date.now() + 1,
-  //       text: result.content,
-  //       sender: 'ai',
-  //     };
-  //     setMessages((prev) => [...prev, aiMessage]);
-  //   } catch (err) {
-  //     console.error('AI request failed:', err);
-  //     setMessages((prev) => [
-  //       ...prev,
-  //       {
-  //         id: Date.now() + 1,
-  //         text: '❌ Đã xảy ra lỗi khi gọi AI. Vui lòng thử lại.',
-  //         sender: 'ai',
-  //       },
-  //     ]);
-  //   }
-  // };
   const handleSendMessage = async (messageText?: string) => {
     let textToSend = messageText || inputText;
 
@@ -227,15 +243,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
       }
 
       if (messageText === 'Project summary') {
-        const result = await generateFromProject(docId).unwrap();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            text: result,
-            sender: 'ai',
-          },
-        ]);
+        const result = await generateFromProject(docId).unwrap(); // { content: "```html ... ```" }
+        const clean = stripMarkdownCodeBlock(result);
+        const transformed = transformProjectSummaryHtml(clean, {
+          locale: 'vi-VN',
+          currency: 'VND',
+          timeZone: 'Asia/Ho_Chi_Minh',
+        });
+        setMessages((prev) => [...prev, { id: Date.now() + 1, text: transformed, sender: 'ai' }]);
         return;
       }
 

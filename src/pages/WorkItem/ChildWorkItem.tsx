@@ -42,6 +42,7 @@ import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import aiIcon from '../../assets/icon/ai.png';
 
 interface SubtaskDetail {
   id: string;

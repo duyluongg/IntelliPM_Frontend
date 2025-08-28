@@ -66,12 +66,13 @@ import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
 import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
 import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
-import Register from '../components/Register';  
+import Register from '../components/Register';
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
-import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister';
 import ForgotPassword from '../components/ForgotPassword';
 import ResetPassword from '../components/ResetPassword';
+import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
 
 export const router = createBrowserRouter([
   {
@@ -82,19 +83,19 @@ export const router = createBrowserRouter([
     path: '/register',
     element: <Register />,
   },
-    {
+  {
     path: '/verify-success',
     element: <VerifySuccess />,
   },
-    {
+  {
     path: '/verify-fail',
     element: <VerifyFail />,
   },
-     {
+  {
     path: '/forgot-password',
     element: <ForgotPassword />,
   },
-     {
+  {
     path: '/reset-password',
     element: <ResetPassword />,
   },
@@ -351,6 +352,10 @@ export const router = createBrowserRouter([
         element: <Analytics />,
       },
       {
+        path: 'ai-responses/history/:id',
+        element: <AiResponseHistoryDetail />,
+      },
+      {
         path: 'categories',
         element: <DynamicCategoryPage />,
       },
@@ -358,17 +363,21 @@ export const router = createBrowserRouter([
         path: 'configurations',
         element: <SystemConfigPage />,
       },
-           {
+      {
         path: 'ai-responses',
         element: <AiResponsePage />,
       },
-          {
+      {
         path: 'register-members',
         element: <DynamicBulkRegister />,
       },
       {
         path: 'projects',
         element: <AdminProjectPage />,
+      },
+      {
+        path: 'account/profile',
+        element: <ProfilePage />,
       },
       { path: 'projects/:projectId/dashboard', element: <ProjectDashboard /> },
     ],

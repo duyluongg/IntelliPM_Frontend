@@ -18,7 +18,7 @@ interface CompleteSprintPopupProps {
   workItem: number;
   workItemCompleted: number;
   workItemOpen: number;
-  onTaskUpdated?: () => void; // Made optional
+  onTaskUpdated?: () => void; 
 }
 
 const CompleteSprintPopup: React.FC<CompleteSprintPopupProps> = ({

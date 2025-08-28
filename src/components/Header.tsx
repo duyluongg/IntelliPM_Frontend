@@ -13,7 +13,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/Logo_IntelliPM/Logo_NoText_NoBackgroud.png';
 import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
 import { useAuth } from '../services/AuthContext';
-import { useGetAccountByEmailQuery } from '../services/accountApi';
+import { useGetAccountByEmailQuery, useGetProjectsByAccountQuery } from '../services/accountApi';
 import NotificationBell from '../components/NotificationBell';
 
 export default function Header() {
@@ -22,12 +22,36 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  
   const { data: accountResponse } = useGetAccountByEmailQuery(user?.email ?? '', {
     skip: !user?.email,
   });
+
+  const { data: projectData } = useGetProjectsByAccountQuery(
+    user?.accessToken || '',
+    {
+      skip: !user?.accessToken,
+    }
+  );
+
   const handleLogout = () => {
     logout();
     navigate('/Guest');
+  };
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // Kiểm tra nếu user có project
+    const hasProjects = projectData?.data && projectData.data.length > 0;
+    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
+    
+    if (isAccessRole && hasProjects) {
+      const firstProject = projectData.data[0];
+      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+    } else {
+      navigate('/');
+    }
   };
 
   const isRole = accountResponse?.data?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -52,10 +76,13 @@ export default function Header() {
         <button className='p-1 rounded hover:bg-gray-200'>
           <AppWindow className='w-5 h-5 text-gray-700' />
         </button>
-        <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
+        <button 
+          onClick={handleLogoClick}
+          className='flex items-center gap-0 hover:opacity-80 cursor-pointer'
+        >
           <img src={logo} className='h-10 w-auto scale-[1.2] -mr-20' />
           <img src={textLogo} className='h-9 w-auto scale-[0.36]' />
-        </Link>
+        </button>
       </div>
 
       <div className='flex-1 mx-4 flex items-center justify-center space-x-2'>

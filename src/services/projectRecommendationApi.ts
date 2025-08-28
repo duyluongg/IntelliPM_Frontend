@@ -84,14 +84,26 @@ export const projectRecommendationApi = createApi({
   tagTypes: ['ProjectRecommendation'],
   endpoints: (builder) => ({
     getAIRecommendationsByProjectKey: builder.query<AIRecommendationsResponse, string>({
-      query: (projectKey) => ({
-        url: `projectrecommendation/ai-recommendations?projectKey=${projectKey}`,
-        method: 'GET',
-      }),
-      providesTags: (result, error, projectKey) => [
-        { type: 'ProjectRecommendation', id: projectKey },
+      query: (queryKey) => {
+        const projectKey = queryKey.split('_')[0]; // Extract base projectKey (e.g., 'ECOMMERCE')
+        return {
+          url: `projectrecommendation/ai-recommendations?projectKey=${projectKey}`,
+          method: 'GET',
+        };
+      },
+      providesTags: (result, error, queryKey) => [
+        { type: 'ProjectRecommendation', id: queryKey.split('_')[0] },
       ],
     }),
+    // getAIRecommendationsByProjectKey: builder.query<AIRecommendationsResponse, string>({
+    //   query: (projectKey) => ({
+    //     url: `projectrecommendation/ai-recommendations?projectKey=${projectKey}`,
+    //     method: 'GET',
+    //   }),
+    //   providesTags: (result, error, projectKey) => [
+    //     { type: 'ProjectRecommendation', id: projectKey },
+    //   ],
+    // }),
 
     createProjectRecommendation: builder.mutation<BaseResponse, CreateRecommendationRequest>({
       query: (body) => ({

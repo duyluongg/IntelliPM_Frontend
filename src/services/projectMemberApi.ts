@@ -75,6 +75,7 @@ export interface ProjectMemberWithTasksResponse {
   phone: string | null; 
   hourlyRate: number;
   workingHoursPerDay: number;
+  status: string;
   tasks: TaskSummary[];
   positions: string[];
 }

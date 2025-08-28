@@ -1,5 +1,4 @@
-smart-gantt-chart {
-  /* height: auto; */
+/* smart-gantt-chart {
   --smart-gantt-chart-task-default-height: 40px;
   --smart-gantt-chart-task-fill-border-radius: 2.5px;
 
@@ -153,21 +152,191 @@ smart-menu {
   border-bottom: 1px solid #ddd;
 }
 
-/* Ensure the content areas are scrollable */
 .smart-gantt-chart .smart-task-tree-content,
 .smart-gantt-chart .smart-timeline {
   overflow-y: auto;
   height: 100%;
-}
-
-/* Ensure the splitter bar is visible and functional */
-/* .smart-gantt-chart .smart-task-tree-splitter {
-  cursor: col-resize;
-  background: #ddd;
-  width: 5px;
 } */
 
-/* .smart-gantt-chart .smart-timeline {
+
+smart-gantt-chart {
+  --smart-gantt-chart-task-default-height: 40px;
+  --smart-gantt-chart-task-fill-border-radius: 2.5px;
+
+  --smart-gantt-chart-project-color: linear-gradient(-45deg, #11998e, #38ef7d);
+  --smart-gantt-chart-task-color: linear-gradient(-45deg, #36d1dc, #5b86e5);
+  --smart-gantt-chart-task-color-selected: linear-gradient(-45deg, #f7971e, #ffd200);
+
+  --smart-gantt-chart-task-label-color: white;
+  --smart-gantt-chart-task-label-color-selected: white;
+  --smart-gantt-chart-project-label-color: white;
+  --smart-gantt-chart-project-label-color-selected: white;
+
+  --smart-gantt-chart-task-tree-splitter-bar-fit-size: var(--smart-gantt-chart-task-default-height);
+  height: 100%;
   overflow-y: auto;
-  max-height: calc(100vh - 100px);
+}
+
+.gantt-container {
+  height: calc(100vh - 64px); /* Adjust based on your header height */
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #60a5fa #f1f1f1;
+}
+
+.gantt-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gantt-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.gantt-container::-webkit-scrollbar-thumb {
+  background: #60a5fa;
+  border-radius: 4px;
+}
+
+.gantt-container::-webkit-scrollbar-thumb:hover {
+  background: #3b82f6;
+}
+
+.smart-gantt-chart .smart-task-connection:after {
+  border-width: 0 !important;
+}
+
+#watermark {
+  display: none !important;
+}
+
+smart-menu {
+  --smart-menu-vertical-default-width: 100px;
+  --smart-menu-vertical-default-height: auto;
+}
+
+.smart-menu .smart-menu-item-label-container {
+  padding: 10px 20px 10px 20px;
+}
+
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src: url(https://fonts.gstatic.com/s/materialicons/v31/2fcrYFNaTjcS6g4U3t-Y5ZjZjT5FdEJ140U2DJYC3mY.woff2)
+    format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  margin-right: 5px;
+  font-size: 16px;
+}
+
+.no-smart-style {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.smart-content {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.smart-window[smart-id] {
+  position: fixed !important;
+  top: 50% !important;
+  left: 55% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999 !important;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.smart-window .smart-content-container {
+  display: block !important;
+}
+
+.smart-window.no-smart-style {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+}
+
+.smart-window .smart-content-container {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.smart-window .smart-header-section {
+  display: none !important;
+}
+
+.smart-window .smart-footer {
+  display: none !important;
+}
+
+.modal-overlay {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.smart-window[header="Delete Dependency"],
+.smart-window[header="Delete connection"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+.custom-window-content-section.buttons {
+  display: none !important;
+}
+
+.bg-opacity-50 { 
+  background: none !important;
+}
+
+.bg-opacity-40 { 
+  background: none !important;
+}
+
+.smart-gantt-chart .smart-task-tree-header,
+.smart-gantt-chart .smart-timeline-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+/* .smart-gantt-chart .smart-task-tree-content,
+.smart-gantt-chart .smart-timeline {
+  overflow-y: auto;
+  height: calc(100vh - 64px - 40px); 
 } */

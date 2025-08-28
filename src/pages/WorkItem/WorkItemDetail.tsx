@@ -28,6 +28,7 @@ import {
   useUpdateTaskReporterMutation,
   useUpdateTaskSprintMutation,
   useUpdatePercentCompleteMutation,
+  useUpdateActualCostMutation,
 } from '../../services/taskApi';
 import {
   useGetTaskFilesByTaskIdQuery,
@@ -63,9 +64,10 @@ import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi'
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
-import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import aiIcon from '../../assets/icon/ai.png';
 import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -115,6 +117,8 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
   const [updatePercentComplete] = useUpdatePercentCompleteMutation();
+  const [updateActualCost] = useUpdateActualCostMutation();
+  const [newActualCost, setNewActualCost] = useState<number | null>(null);
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
@@ -139,12 +143,33 @@ const WorkItemDetail: React.FC = () => {
   const [loadingSuggest, setLoadingSuggest] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
-  const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
-  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
-  const taskStatusLabel = taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
-  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } = useGetCategoriesByGroupQuery('task_type');
-  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
-  const { data: priorityTaskOptions, isLoading: isPriorityTaskLoading, isError: isPriorityTaskError } = useGetCategoriesByGroupQuery('task_priority');
+  const {
+    data: taskStatus,
+    isLoading: loadTaskStatus,
+    isError: taskStatusError,
+  } = useGetCategoriesByGroupQuery('task_status');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const taskStatusLabel =
+    taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
+  const {
+    data: taskTypes,
+    isLoading: isLoadingTaskType,
+    isError: isTaskTypeError,
+  } = useGetCategoriesByGroupQuery('task_type');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('subtask_priority');
+  const {
+    data: priorityTaskOptions,
+    isLoading: isPriorityTaskLoading,
+    isError: isPriorityTaskError,
+  } = useGetCategoriesByGroupQuery('task_priority');
   const currentType = taskTypes?.data.find((t) => t.name === workType);
   const currentIcon = currentType?.iconLink || '';
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
@@ -171,6 +196,17 @@ const WorkItemDetail: React.FC = () => {
   } = useGetCommentsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
+
+  const {
+    data: actualCostConfig,
+    isLoading: actualCostConfigLoading,
+    isError: actualCostConfigError,
+  } = useGetByConfigKeyQuery('actual_cost_limit');
+  const maxActualCost = actualCostConfigLoading
+    ? 1000000
+    : actualCostConfigError || !actualCostConfig?.data?.maxValue
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -255,6 +291,68 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
+  const handleActualCostChange = async () => {
+    if (!taskData || newActualCost === taskData.actualCost) return;
+
+    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Actual Cost',
+        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewActualCost(taskData.actualCost ?? 0);
+      return;
+    }
+
+    try {
+      await updateActualCost({
+        id: taskId,
+        actualCost: newActualCost ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} actual cost to ${newActualCost}`);
+      await refetchTask();
+      await refetchActivityLogs();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Actual cost updated successfully!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    } catch (err) {
+      console.error('❌ Failed to update task actual cost', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update actual cost.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
@@ -295,7 +393,7 @@ const WorkItemDetail: React.FC = () => {
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error("❌ Error delete file:", error);
+      console.error('❌ Error delete file:', error);
       //alert("❌ Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
@@ -353,9 +451,7 @@ const WorkItemDetail: React.FC = () => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
         // Kiểm tra nếu assignees không thay đổi
-        if (
-          JSON.stringify(prev[taskId]) === JSON.stringify(assignees)
-        ) {
+        if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
           return prev; // Không cập nhật nếu giống nhau
         }
         return { ...prev, [taskId]: assignees };
@@ -401,6 +497,7 @@ const WorkItemDetail: React.FC = () => {
       setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
       setNewPercentComplete(taskData.percentComplete ?? 0);
+      setNewActualCost(taskData.actualCost ?? 0);
     }
   }, [taskData]);
 
@@ -416,7 +513,7 @@ const WorkItemDetail: React.FC = () => {
     reporterId: item.reporterId,
     reporterName: item.reporterName,
     description: item.description,
-    sprintId: item.sprintId ?? null
+    sprintId: item.sprintId ?? null,
   }));
 
   const handleTaskStatusChange = async (newStatus: string) => {
@@ -462,7 +559,7 @@ const WorkItemDetail: React.FC = () => {
       await updateTaskSprint({
         id: taskId,
         sprintId: newSprintId,
-        createdBy: accountId
+        createdBy: accountId,
       }).unwrap();
       setSprintId(newSprintId);
       await Promise.all([refetchActivityLogs(), refetchTask()]);
@@ -481,24 +578,38 @@ const WorkItemDetail: React.FC = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels, } = useGetWorkItemLabelsByTaskQuery(taskId, {
+  const {
+    data: workItemLabels = [],
+    isLoading: isLabelLoading,
+    refetch: refetchWorkItemLabels,
+  } = useGetWorkItemLabelsByTaskQuery(taskId, {
     skip: !taskId,
   });
 
-  const { data: projectLabels = [], isLoading: isProjectLabelsLoading, refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+  const {
+    data: projectLabels = [],
+    isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels,
+  } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
 
-  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
-    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
-      skip: !taskData?.projectId,
-    });
+  const {
+    data: projectSprints = [],
+    isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints,
+    isError: isProjectSprintsError,
+  } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
 
-  const { data: projectData,
+  const {
+    data: projectData,
     isLoading: isProjectDataLoading,
-    refetch: refetchProjectData, } = useGetProjectByIdQuery(taskData?.projectId!, {
-      skip: !taskData?.projectId,
-    });
+    refetch: refetchProjectData,
+  } = useGetProjectByIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -559,7 +670,7 @@ const WorkItemDetail: React.FC = () => {
           </>
         )}
       </div>
-    ))
+    ));
   }
 
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
@@ -676,7 +787,6 @@ const WorkItemDetail: React.FC = () => {
                       {workType === type.name && <span style={{ fontSize: '16px' }}>✔</span>}
                     </div>
                   ))}
-
                 </div>
               )}
             </span>
@@ -760,12 +870,10 @@ const WorkItemDetail: React.FC = () => {
                       }).unwrap();
                       await refetchAttachments();
                       await refetchActivityLogs();
-
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
                     }
                   }
-
                 }}
               />
 
@@ -787,47 +895,44 @@ const WorkItemDetail: React.FC = () => {
               />
 
               {attachments.length > 0 && (
-                <div className="attachments-section">
-                  <label className="block font-semibold mb-2">
+                <div className='attachments-section'>
+                  <label className='block font-semibold mb-2'>
                     Attachments <span>({attachments.length})</span>
                   </label>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+                  <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100'>
                     {attachments.map((file) => (
                       <div
-                        className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
+                        className='relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200'
                         key={file.id}
                         onMouseEnter={() => setHoveredFileId(file.id)}
                         onMouseLeave={() => setHoveredFileId(null)}
                       >
                         <a
                           href={file.urlFile}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block text-gray-800 no-underline"
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='block text-gray-800 no-underline'
                         >
-                          <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
+                          <div className='h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden'>
                             {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                               <img
                                 src={file.urlFile}
                                 alt={file.title}
-                                className="w-[100%] h-[100%] object-cover rounded-lg"
+                                className='w-[100%] h-[100%] object-cover rounded-lg'
                               />
                             ) : (
-                              <div className="flex items-center justify-center h-full w-full bg-gray-200">
-                                <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                              <div className='flex items-center justify-center h-full w-full bg-gray-200'>
+                                <span className='text-xs font-medium text-gray-600 px-2 text-center'>
                                   {file.title.slice(0, 15)}...
                                 </span>
                               </div>
                             )}
                           </div>
-                          <div className="p-1">
-                            <div
-                              className="truncate text-sm font-medium"
-                              title={file.title}
-                            >
+                          <div className='p-1'>
+                            <div className='truncate text-sm font-medium' title={file.title}>
                               {file.title}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className='text-xs text-gray-500'>
                               {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                             </div>
                           </div>
@@ -836,14 +941,10 @@ const WorkItemDetail: React.FC = () => {
                         {hoveredFileId === file.id && (
                           <button
                             onClick={() => openDeleteModal(file.id, file.createdBy)}
-                            className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
-                            title="Delete file"
+                            className='absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200'
+                            title='Delete file'
                           >
-                            <img
-                              src={deleteIcon}
-                              alt="Delete"
-                              className="w-5 h-5"
-                            />
+                            <img src={deleteIcon} alt='Delete' className='w-5 h-5' />
                           </button>
                         )}
                       </div>
@@ -855,22 +956,22 @@ const WorkItemDetail: React.FC = () => {
 
             <div className='field-group'>
               <label>Subtasks</label>
-              <div className="bg-white rounded-lg shadow-md p-4 mb-4">
+              <div className='bg-white rounded-lg shadow-md p-4 mb-4'>
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2 text-base font-semibold text-gray-700">
+                <div className='flex justify-between items-center'>
+                  <div className='flex items-center gap-2 text-base font-semibold text-gray-700'>
                     <svg
-                      className="w-5 h-5 text-blue-500"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
+                      className='w-5 h-5 text-blue-500'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                      xmlns='http://www.w3.org/2000/svg'
                     >
                       <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
                         strokeWidth={2}
-                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
                       />
                     </svg>
                     <span>Create suggested subtasks</span>
@@ -890,29 +991,29 @@ const WorkItemDetail: React.FC = () => {
                         setLoadingSuggest(false);
                       }
                     }}
-                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
-                    data-tooltip-id="suggest-subtask-tooltip"
-                    data-tooltip-content="Generate subtasks using AI"
+                    className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105'
+                    data-tooltip-id='suggest-subtask-tooltip'
+                    data-tooltip-content='Generate subtasks using AI'
                   >
                     {loadingSuggest ? (
-                      <div className="flex items-center gap-2">
+                      <div className='flex items-center gap-2'>
                         <svg
-                          className="animate-spin w-5 h-5 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
+                          className='animate-spin w-5 h-5 text-white'
+                          fill='none'
+                          viewBox='0 0 24 24'
                         >
                           <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
+                            className='opacity-25'
+                            cx='12'
+                            cy='12'
+                            r='10'
+                            stroke='currentColor'
+                            strokeWidth='4'
                           />
                           <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                            className='opacity-75'
+                            fill='currentColor'
+                            d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
                           />
                         </svg>
                         <span>Suggesting...</span>
@@ -920,99 +1021,104 @@ const WorkItemDetail: React.FC = () => {
                     ) : (
                       <>
                         <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
+                          className='w-5 h-5'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'
+                          xmlns='http://www.w3.org/2000/svg'
                         >
                           <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
                             strokeWidth={2}
-                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                            d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
                           />
                         </svg>
                         <span>Suggest</span>
                       </>
                     )}
-                    <Tooltip id="suggest-subtask-tooltip" />
+                    <Tooltip id='suggest-subtask-tooltip' />
                   </button>
                 </div>
 
                 {/* Suggestions */}
                 {showSuggestionList && (
                   <div
-                    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in"
+                    className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in'
                     onClick={() => setShowSuggestionList(false)}
                   >
                     <div
-                      className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up"
+                      className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                      <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3'>
+                        <div className='flex items-center gap-3'>
                           <svg
-                            className="w-8 h-8 text-white"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
+                            className='w-8 h-8 text-white'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'
+                            xmlns='http://www.w3.org/2000/svg'
                           >
                             <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
                               strokeWidth={2}
-                              d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
                             />
                           </svg>
-                          <h2 className="text-2xl font-bold text-white">AI-Suggested Subtasks</h2>
+                          <h2 className='text-2xl font-bold text-white'>AI-Suggested Subtasks</h2>
                         </div>
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          className="text-white text-xl font-semibold hover:text-gray-200 transition-colors duration-200"
-                          title="Close"
+                          className='text-white text-xl font-semibold hover:text-gray-200 transition-colors duration-200'
+                          title='Close'
                         >
                           ✕
                         </button>
                       </div>
-                      <div className="p-6 overflow-y-auto max-h-[60vh]">
+                      <div className='p-6 overflow-y-auto max-h-[60vh]'>
                         {aiSuggestions.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500 text-lg">
+                          <div className='text-center py-8 text-gray-500 text-lg'>
                             No AI-suggested subtasks available. Try again later!
                           </div>
                         ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full border-separate border-spacing-0">
-                              <thead className="sticky top-0 bg-gray-50 shadow-sm">
+                          <div className='overflow-x-auto'>
+                            <table className='w-full border-separate border-spacing-0'>
+                              <thead className='sticky top-0 bg-gray-50 shadow-sm'>
                                 <tr>
-                                  <th className="p-4 text-left text-sm font-semibold text-gray-700 w-16">
+                                  <th className='p-4 text-left text-sm font-semibold text-gray-700 w-16'>
                                     Select
                                   </th>
-                                  <th className="p-4 text-left text-sm font-semibold text-gray-700">Title</th>
+                                  <th className='p-4 text-left text-sm font-semibold text-gray-700'>
+                                    Title
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                      } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${
+                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                    } hover:bg-purple-50 transition-colors duration-200`}
                                   >
-                                    <td className="p-4 border-b border-gray-200">
+                                    <td className='p-4 border-b border-gray-200'>
                                       <input
-                                        type="checkbox"
+                                        type='checkbox'
                                         checked={selectedSuggestions.includes(item.title)}
                                         onChange={(e) => {
                                           const checked = e.target.checked;
                                           setSelectedSuggestions((prev) =>
-                                            checked ? [...prev, item.title] : prev.filter((t) => t !== item.title)
+                                            checked
+                                              ? [...prev, item.title]
+                                              : prev.filter((t) => t !== item.title)
                                           );
                                         }}
-                                        className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                                        className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
                                       />
                                     </td>
-                                    <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                                    <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
                                       {item.title}
                                     </td>
                                   </tr>
@@ -1022,10 +1128,10 @@ const WorkItemDetail: React.FC = () => {
                           </div>
                         )}
                       </div>
-                      <div className="p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200">
+                      <div className='p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200'>
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          className="px-6 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105"
+                          className='px-6 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105'
                         >
                           Cancel
                         </button>
@@ -1054,30 +1160,31 @@ const WorkItemDetail: React.FC = () => {
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
-                              ? 'bg-gray-400 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                              }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
+                              selectedSuggestions.length === 0 || loadingCreate
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                            }`}
                           >
                             {loadingCreate ? (
-                              <div className="flex items-center gap-2">
+                              <div className='flex items-center gap-2'>
                                 <svg
-                                  className="animate-spin w-5 h-5 text-white"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
+                                  className='animate-spin w-5 h-5 text-white'
+                                  fill='none'
+                                  viewBox='0 0 24 24'
                                 >
                                   <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
+                                    className='opacity-25'
+                                    cx='12'
+                                    cy='12'
+                                    r='10'
+                                    stroke='currentColor'
+                                    strokeWidth='4'
                                   />
                                   <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                    className='opacity-75'
+                                    fill='currentColor'
+                                    d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
                                   />
                                 </svg>
                                 <span>Creating...</span>
@@ -1241,7 +1348,9 @@ const WorkItemDetail: React.FC = () => {
                                   try {
                                     await updateSubtask({
                                       id: item.key,
-                                      assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
+                                      assignedBy: parseInt(
+                                        selectedAssignees[item.key] ?? item.assigneeId
+                                      ),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
                                       sprintId: item.sprintId ?? null,
@@ -1354,9 +1463,13 @@ const WorkItemDetail: React.FC = () => {
                                   )}
                                 </select>
                               ) : (
-                                <span className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}>
-                                  {subtaskStatus?.data.find((status) => status.name === item.status)?.label ||
-                                    item.status.replace('_', ' ')}
+                                <span
+                                  className={`custom-status-select status-${item.status
+                                    .toLowerCase()
+                                    .replace('_', '-')}`}
+                                >
+                                  {subtaskStatus?.data.find((status) => status.name === item.status)
+                                    ?.label || item.status.replace('_', ' ')}
                                 </span>
                               )}
                             </td>
@@ -1486,14 +1599,14 @@ const WorkItemDetail: React.FC = () => {
               {activeTab === 'COMMENTS' ? (
                 <>
                   {comments.map((comment) => (
-                    <div key={comment.id} className="simple-comment">
-                      <div className="avatar-circle">
-                        <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                    <div key={comment.id} className='simple-comment'>
+                      <div className='avatar-circle'>
+                        <img src={comment.accountPicture || accountIcon} alt='avatar' />
                       </div>
-                      <div className="comment-content">
-                        <div className="comment-header">
+                      <div className='comment-content'>
+                        <div className='comment-header'>
                           <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
-                          <span className="comment-time">
+                          <span className='comment-time'>
                             {new Date(comment.createdAt).toLocaleString('vi-VN')}
                           </span>
                         </div>
@@ -1504,19 +1617,19 @@ const WorkItemDetail: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className="border rounded p-2 w-full"
+                              className='border rounded p-2 w-full'
                               autoFocus
                             />
-                            <div className="flex gap-2 mt-2">
+                            <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
-                                className="px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6"
+                                className='px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6'
                               >
                                 Save
                               </button>
                               <button
                                 onClick={() => setEditCommentId(null)}
-                                className="px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6"
+                                className='px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6'
                               >
                                 Cancel
                               </button>
@@ -1524,17 +1637,17 @@ const WorkItemDetail: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <div className="comment-text">{comment.content}</div>
+                            <div className='comment-text'>{comment.content}</div>
                             {comment.accountId === accountId && (
-                              <div className="comment-actions">
+                              <div className='comment-actions'>
                                 <button
-                                  className="edit-btn"
+                                  className='edit-btn'
                                   onClick={() => setEditCommentId(comment.id)}
                                 >
                                   ✏ Edit
                                 </button>
                                 <button
-                                  className="delete-btn"
+                                  className='delete-btn'
                                   onClick={async () => {
                                     const confirmed = await Swal.fire({
                                       title: 'Delete Comment',
@@ -1547,12 +1660,17 @@ const WorkItemDetail: React.FC = () => {
                                         title: 'small-title',
                                         popup: 'small-popup',
                                         icon: 'small-icon',
-                                        htmlContainer: 'small-html'
-                                      }
+                                        htmlContainer: 'small-html',
+                                      },
                                     });
                                     if (confirmed.isConfirmed) {
                                       try {
-                                        console.log('Deleting comment:', comment.id, 'for task:', taskId);
+                                        console.log(
+                                          'Deleting comment:',
+                                          comment.id,
+                                          'for task:',
+                                          taskId
+                                        );
                                         await deleteTaskComment({
                                           id: comment.id,
                                           taskId,
@@ -1570,8 +1688,8 @@ const WorkItemDetail: React.FC = () => {
                                             title: 'small-title',
                                             popup: 'small-popup',
                                             icon: 'small-icon',
-                                            htmlContainer: 'small-html'
-                                          }
+                                            htmlContainer: 'small-html',
+                                          },
                                         });
                                       }
                                     }
@@ -1636,7 +1754,9 @@ const WorkItemDetail: React.FC = () => {
                   <select
                     value={status}
                     onChange={(e) => handleTaskStatusChange(e.target.value)}
-                    className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                    className={`custom-status-select status-${status
+                      .toLowerCase()
+                      .replace('_', '-')}`}
                   >
                     {loadTaskStatus ? (
                       <option>Loading...</option>
@@ -1651,7 +1771,11 @@ const WorkItemDetail: React.FC = () => {
                     )}
                   </select>
                 ) : (
-                  <span className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}>
+                  <span
+                    className={`custom-status-select status-${status
+                      .toLowerCase()
+                      .replace('_', '-')}`}
+                  >
                     {taskStatusLabel}
                   </span>
                 )}
@@ -1747,8 +1871,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1783,6 +1907,35 @@ const WorkItemDetail: React.FC = () => {
                   )
                 ) : (
                   <span>{taskData?.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Actual Cost (Equipment, Licenses, etc.)</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        step='1'
+                        value={newActualCost ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewActualCost(value);
+                        }}
+                        onBlur={handleActualCostChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                        placeholder='Enter cost (e.g., equipment)'
+                      />
+                      <span>VND</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.actualCost ?? '0'} VND</span>
                 )}
               </div>
 
@@ -1852,8 +2005,8 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1863,7 +2016,7 @@ const WorkItemDetail: React.FC = () => {
                 {taskData?.epicId ? (
                   <Link
                     to={`/project/epic/${taskData.epicId}`}
-                    className="text no-underline hover:underline cursor-pointer"
+                    className='text no-underline hover:underline cursor-pointer'
                   >
                     Epic [{taskData.epicId}]
                   </Link>
@@ -1875,7 +2028,7 @@ const WorkItemDetail: React.FC = () => {
               <div className='detail-item'>
                 <label>Sprint</label>
 
-                {(isUserAssignee(taskId) || canEdit) ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   isProjectSprintsLoading ? (
                     <span>Loading sprints...</span>
                   ) : isProjectSprintsError ? (
@@ -1894,7 +2047,7 @@ const WorkItemDetail: React.FC = () => {
                         }
                       }}
                     >
-                      <option value="none">No Sprint</option>
+                      <option value='none'>No Sprint</option>
                       {projectSprints.map((sprint) => (
                         <option key={sprint.id} value={sprint.id}>
                           {sprint.name}
@@ -1903,16 +2056,14 @@ const WorkItemDetail: React.FC = () => {
                     </select>
                   )
                 ) : (
-                  <span>
-                    {projectSprints.find(s => s.id === sprintId)?.name || 'No Sprint'}
-                  </span>
+                  <span>{projectSprints.find((s) => s.id === sprintId)?.name || 'No Sprint'}</span>
                 )}
               </div>
 
               <div className='detail-item'>
                 <label>Priority</label>
 
-                {(isUserAssignee(taskId) || canEdit) ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   <select
                     value={taskData?.priority}
                     onChange={async (e) => {
@@ -1948,12 +2099,16 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Start date</label>
-                {(isUserAssignee(taskId) || canEdit) ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   <input
-                    type="date"
+                    type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
                     min={projectData?.data?.startDate?.slice(0, 10)} // Giới hạn ngày nhỏ nhất
-                    max={plannedEndDate ? plannedEndDate.slice(0, 10) : projectData?.data?.endDate?.slice(0, 10)}   // Giới hạn ngày lớn nhất
+                    max={
+                      plannedEndDate
+                        ? plannedEndDate.slice(0, 10)
+                        : projectData?.data?.endDate?.slice(0, 10)
+                    } // Giới hạn ngày lớn nhất
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
@@ -1970,8 +2125,8 @@ const WorkItemDetail: React.FC = () => {
                             title: 'small-title',
                             popup: 'small-popup',
                             icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
+                            htmlContainer: 'small-html',
+                          },
                         });
                         return;
                       }
@@ -1981,7 +2136,6 @@ const WorkItemDetail: React.FC = () => {
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
                   />
-
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
                 )}
@@ -1989,11 +2143,15 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Due date</label>
-                {(isUserAssignee(taskId) || canEdit) ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   <input
-                    type="date"
+                    type='date'
                     value={plannedEndDate?.slice(0, 10) ?? ''}
-                    min={plannedStartDate ? plannedStartDate.slice(0, 10) : projectData?.data.startDate.slice(0, 10)}
+                    min={
+                      plannedStartDate
+                        ? plannedStartDate.slice(0, 10)
+                        : projectData?.data.startDate.slice(0, 10)
+                    }
                     max={projectData?.data.endDate.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
@@ -2010,8 +2168,8 @@ const WorkItemDetail: React.FC = () => {
                             title: 'small-title',
                             popup: 'small-popup',
                             icon: 'small-icon',
-                            htmlContainer: 'small-html'
-                          }
+                            htmlContainer: 'small-html',
+                          },
                         });
                         return;
                       }
@@ -2021,7 +2179,6 @@ const WorkItemDetail: React.FC = () => {
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
                   />
-
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
                 )}
@@ -2104,7 +2261,7 @@ const WorkItemDetail: React.FC = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDeleteFile}
-        title="Delete this attachment?"
+        title='Delete this attachment?'
         message="Once you delete, it's gone for good."
       />
       {isEvaluationPopupOpen && (

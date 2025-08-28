@@ -30,6 +30,36 @@ export interface RestoreTranscriptPayload {
   editedByAccountId?: number;
 }
 
+export interface MeetingSummaryResponse {
+  meetingTranscriptId: number;
+  summaryText: string;
+  createdAt: string;
+  transcriptText?: string;
+  isApproved: boolean;
+  meetingTopic?: string;
+  meetingStatus: string;
+}
+
+export interface SummaryHistoryItem {
+  fileName: string;
+  takenAtUtc: string;
+}
+
+export interface UpdateSummaryPayload {
+  meetingTranscriptId: number;
+  summaryText: string;
+  editReason?: string;
+  editedByAccountId?: number;
+  ifMatchHash?: string;
+}
+
+export interface RestoreSummaryPayload {
+  meetingTranscriptId: number;
+  fileName: string;
+  reason?: string;
+  editedByAccountId?: number;
+}
+
 export const meetingTranscriptSnapApi = createApi({
   reducerPath: 'meetingTranscriptSnapApi',
   baseQuery: fetchBaseQuery({
@@ -63,6 +93,28 @@ export const meetingTranscriptSnapApi = createApi({
         body: { fileName, reason, editedByAccountId },
       }),
     }),
+
+     updateSummary: builder.mutation<MeetingSummaryResponse, UpdateSummaryPayload>({
+      query: ({ meetingTranscriptId, summaryText, editReason, editedByAccountId, ifMatchHash }) => ({
+        url: `meeting-summaries/${meetingTranscriptId}`,
+        method: 'PUT',
+        body: { summaryText, editReason, editedByAccountId, ifMatchHash },
+      }),
+    }),
+
+    /** GET /api/meeting-summaries/{meetingTranscriptId}/history */
+    getSummaryHistory: builder.query<SummaryHistoryItem[], number>({
+      query: (meetingTranscriptId) => `meeting-summaries/${meetingTranscriptId}/history`,
+    }),
+
+    /** POST /api/meeting-summaries/{meetingTranscriptId}/restore */
+    restoreSummary: builder.mutation<MeetingSummaryResponse, RestoreSummaryPayload>({
+      query: ({ meetingTranscriptId, fileName, reason, editedByAccountId }) => ({
+        url: `meeting-summaries/${meetingTranscriptId}/restore`,
+        method: 'POST',
+        body: { fileName, reason, editedByAccountId },
+      }),
+    }),
   }),
 });
 
@@ -70,4 +122,7 @@ export const {
   useUpdateTranscriptMutation,
   useGetTranscriptHistoryQuery,
   useRestoreTranscriptMutation,
+    useUpdateSummaryMutation,
+  useGetSummaryHistoryQuery,
+  useRestoreSummaryMutation,
 } = meetingTranscriptSnapApi;

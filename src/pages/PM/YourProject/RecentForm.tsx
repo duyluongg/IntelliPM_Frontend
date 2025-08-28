@@ -234,7 +234,7 @@ export default function RecentForm() {
           <h1 className='text-2xl font-bold text-slate-900 dark:text-white'>Recent Documents</h1>
           <div className='flex items-center gap-4 mt-4 md:mt-0'>
             <div className='relative'>
-              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400' />
+              {/* <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400' /> */}
               <input
                 type='text'
                 placeholder='Search documents...'

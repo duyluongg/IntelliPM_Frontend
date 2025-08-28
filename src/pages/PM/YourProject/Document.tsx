@@ -50,6 +50,7 @@ import toast from 'react-hot-toast';
 import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/documentPermissionAPI';
 import type { DocumentVisibility } from '../../../types/DocumentType';
 import Swal from 'sweetalert2';
+import { useGetProfileByAccountIdQuery } from '../../../services/accountApi';
 
 interface CommentItem {
   id: number | string;
@@ -95,6 +96,14 @@ export const Document: React.FC = () => {
     createdBy,
     title,
   } = documentData || {};
+
+  const {
+    data: dataProfile,
+    isLoading,
+    isError,
+  } = useGetProfileByAccountIdQuery(createdBy!, {
+    skip: !createdBy,
+  });
 
   const { user } = useAuth();
   const rawRole = (user?.role ?? '').toString().trim();
@@ -165,10 +174,13 @@ export const Document: React.FC = () => {
   const debouncedSave = useCallback(
     debounce((html: string) => {
       if (documentId) {
-        updateDocument({ id: Number(documentId), data: { content: html, visibility } });
+        updateDocument({
+          id: Number(documentId),
+          data: { content: html, visibility, title: currentTitle },
+        });
       }
     }, 500),
-    [documentId, visibility]
+    [documentId, visibility, currentTitle]
   );
 
   const debouncedSaveRef = useRef(
@@ -183,17 +195,38 @@ export const Document: React.FC = () => {
   );
 
   const handleTitleSave = async () => {
-    if (!canEdit) return;
-    if (currentTitle.trim() && currentTitle !== title) {
+    // Nếu không có quyền chỉnh sửa, chỉ cần thoát khỏi chế độ chỉnh sửa
+    if (!canEdit) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    const trimmedTitle = currentTitle.trim();
+
+    // Kiểm tra xem tiêu đề có bị bỏ trống không
+    if (trimmedTitle === '') {
+      toast.error('Tiêu đề không được để trống.');
+      setCurrentTitle(title ?? ''); // Hoàn nguyên về tiêu đề ban đầu
+      setIsEditingTitle(false);
+      return; // Dừng hàm tại đây
+    }
+
+    // Chỉ gọi API nếu tiêu đề thực sự thay đổi
+    if (trimmedTitle !== title) {
       try {
         await updateDocument({
           id: Number(documentId),
-          data: { title: currentTitle, visibility },
-        });
+          data: { title: trimmedTitle, visibility }, // Lưu tiêu đề đã được trim
+        }).unwrap(); // Sử dụng unwrap để bắt lỗi từ RTK Query
+        toast.success('Cập nhật tiêu đề thành công!');
       } catch (err) {
-        console.error('Failed to update title', err);
+        console.error('Cập nhật tiêu đề thất bại', err);
+        toast.error('Không thể cập nhật tiêu đề.');
+        setCurrentTitle(title ?? ''); // Hoàn nguyên tiêu đề nếu có lỗi
       }
     }
+
+    // Thoát khỏi chế độ chỉnh sửa sau khi lưu hoặc không có gì thay đổi
     setIsEditingTitle(false);
   };
 
@@ -275,10 +308,19 @@ export const Document: React.FC = () => {
         return false; // Để Tiptap xử lý tiếp
       },
     },
+    // onUpdate: ({ editor }) => {
+    //   if (!canEdit || !isHydratedRef.current) return;
+    //   const html = editor.getHTML();
+    //   debouncedSaveRef.current(html, visibility);
+    // },
+
     onUpdate: ({ editor }) => {
       if (!canEdit || !isHydratedRef.current) return;
-      const html = editor.getHTML();
-      debouncedSaveRef.current(html, visibility);
+
+      const raw = editor.getHTML().trim();
+      const normalized = raw === '<p></p>' ? '' : raw; // 👈 chuẩn hóa rỗng
+
+      debouncedSaveRef.current(normalized, visibility);
     },
   });
 
@@ -571,9 +613,11 @@ export const Document: React.FC = () => {
             <div className='mt-2 flex flex-wrap items-center text-sm text-gray-600 gap-x-4 gap-y-2'>
               <div className='flex items-center gap-1'>
                 <User2 className='w-4 h-4' />
-                <span>
-                  Creator <strong>{createdBy}</strong>
-                </span>
+                {dataProfile?.data && (
+                  <span>
+                    Creator <strong>{dataProfile.data.fullName}</strong>
+                  </span>
+                )}
               </div>
               <div className='flex items-center gap-1'>
                 <Clock3 className='w-4 h-4' />

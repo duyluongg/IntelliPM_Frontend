@@ -65,14 +65,13 @@ import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/Mileston
 import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
 import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
 import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
-
 import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
-
 import Register from '../components/Register';  
 import VerifySuccess from '../components/VerifySuccess';
 import VerifyFail from '../components/VerifyFail';
 import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister'
-
+import ForgotPassword from '../components/ForgotPassword';
+import ResetPassword from '../components/ResetPassword';
 
 export const router = createBrowserRouter([
   {
@@ -90,6 +89,14 @@ export const router = createBrowserRouter([
     {
     path: '/verify-fail',
     element: <VerifyFail />,
+  },
+     {
+    path: '/forgot-password',
+    element: <ForgotPassword />,
+  },
+     {
+    path: '/reset-password',
+    element: <ResetPassword />,
   },
   {
     path: '/Guest',

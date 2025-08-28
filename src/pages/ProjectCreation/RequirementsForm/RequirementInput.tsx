@@ -64,8 +64,7 @@ const RequirementInput: React.FC<RequirementInputProps> = ({
   const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      // Không gọi onSave ở đây nữa để tránh submit form
-      // await onSave();
+   
     }
   };
 

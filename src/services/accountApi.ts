@@ -26,7 +26,6 @@ export interface ProjectPosition {
   assignedAt: string;
 }
 
-
 export interface Profile {
   id: number;
   username: string;
@@ -57,7 +56,7 @@ export interface GetProfileResponse {
   message: string;
 }
 
-interface Account {
+export interface Account {
   id: number;
   username: string;
   fullName: string;
@@ -70,13 +69,12 @@ interface Account {
   picture: string;
 }
 
-interface GetAccountResponse {
+export interface GetAccountResponse {
   isSuccess: boolean;
   code: number;
   data: Account | null;
   message: string;
 }
-
 
 export interface TeamMember {
   id: number;
@@ -110,13 +108,36 @@ export interface GetTeamsResponse {
   message: string;
 }
 
+export interface ChangeAccountStatusRequest {
+  newStatus: string;
+}
+
+export interface ChangeAccountRoleRequest {
+  newRole: string;
+}
+
+export interface ChangeAccountPositionRequest {
+  newPosition: string;
+}
+
+export interface ChangeAccountResponse {
+  isSuccess: boolean;
+  code: number;
+  data: Account;
+  message: string;
+}
 
 export const accountApi = createApi({
   reducerPath: 'accountApi',
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       headers.set('accept', '*/*');
+      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
@@ -148,19 +169,52 @@ export const accountApi = createApi({
         method: 'GET',
       }),
     }),
-   getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
+    getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
       query: (accountId) => ({
         url: `account/${accountId}/teams`,
         method: 'GET',
       }),
     }),
-getProfileByAccountId: builder.query<GetProfileResponse, number>({
+    getProfileByAccountId: builder.query<GetProfileResponse, number>({
       query: (accountId) => ({
         url: `account/${accountId}/profile`,
         method: 'GET',
       }),
     }),
+    changeAccountStatus: builder.mutation<ChangeAccountResponse, { accountId: number; newStatus: string }>({
+      query: ({ accountId, newStatus }) => ({
+        url: `account/${accountId}/status`,
+        method: 'PATCH',
+        body: { newStatus },
+      }),
+    }),
+    changeAccountRole: builder.mutation<ChangeAccountResponse, { accountId: number; newRole: string }>({
+      query: ({ accountId, newRole }) => ({
+        url: `account/${accountId}/role`,
+        method: 'PATCH',
+        body: { newRole },
+      }),
+         
+    }),
+    changeAccountPosition: builder.mutation<ChangeAccountResponse, { accountId: number; newPosition: string }>({
+      query: ({ accountId, newPosition }) => ({
+        url: `account/${accountId}/position`,
+        method: 'PATCH',
+        body: { newPosition },
+      }),
+    }),
   }),
 });
 
-export const { useGetProjectsByAccountIdQuery, useGetProjectsByAccountQuery, useGetAccountByEmailQuery,useLazyGetAccountByEmailQuery, useGetProfileByEmailQuery,useGetTeamsByAccountIdQuery,useGetProfileByAccountIdQuery, } = accountApi;
+export const {
+  useGetProjectsByAccountIdQuery,
+  useGetProjectsByAccountQuery,
+  useGetAccountByEmailQuery,
+  useLazyGetAccountByEmailQuery,
+  useGetProfileByEmailQuery,
+  useGetTeamsByAccountIdQuery,
+  useGetProfileByAccountIdQuery,
+  useChangeAccountStatusMutation,
+  useChangeAccountRoleMutation,
+  useChangeAccountPositionMutation,
+} = accountApi;

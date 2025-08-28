@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLoginMutation } from '../services/authApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth, type Role } from '../services/AuthContext';
 import { useGetProjectsByAccountQuery } from '../services/accountApi';
 import { Eye, EyeOff } from 'lucide-react';
@@ -57,6 +57,7 @@ const Login: React.FC = () => {
   useEffect(() => {
     if (!user?.accessToken) return;
 
+    // Đối với ADMIN và CLIENT, không cần chờ project data
     if (user.role === 'ADMIN') {
       navigate('/admin');
       return;
@@ -66,7 +67,6 @@ const Login: React.FC = () => {
       navigate('/meeting');
       return;
     }
-
     const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user.role ?? '');
     
     if (isAccessRole) {
@@ -76,6 +76,7 @@ const Login: React.FC = () => {
         navigate(`/project?projectKey=${firstProject.projectKey}#list`);
         return;
       }
+      
       if (projectsQuerySuccess || projectsQueryError) {
         navigate('/'); 
         return;
@@ -138,6 +139,12 @@ const Login: React.FC = () => {
             Login failed! Please try again.
           </div>
         )}
+
+        <div className="text-center text-sm">
+          <Link to="/forgot-password" className="text-blue-600 hover:underline">
+            Forgot your password?
+          </Link>
+        </div>
 
         <div className="text-center text-sm">
           <span className="text-gray-600">Don't have an account? </span>

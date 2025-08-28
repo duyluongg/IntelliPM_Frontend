@@ -36,11 +36,32 @@ interface RegisterResponse {
   message: string;
 }
 
+
+interface ForgotPasswordRequest {
+  email: string;
+}
+
+interface ForgotPasswordResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+interface ResetPasswordRequest {
+  otp: string;
+  newPassword: string;
+  confirmNewPassword: string;
+  email: string;
+}
+interface ResetPasswordResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+
 // ... existing code ...
 interface LogoutRequest {
   refreshToken: string;
 }
-
 interface LogoutResponse {
   isSuccess: boolean;
   code: number;
@@ -77,7 +98,31 @@ register: builder.mutation<RegisterResponse, RegisterRequest>({
       }),
     }),
 
+forgotPassword: builder.mutation<ForgotPasswordResponse, ForgotPasswordRequest>({
+      query: (body) => ({
+        url: 'auth/forgot-password',
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+    resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordRequest>({
+      query: (body) => ({
+        url: 'auth/reset-password',
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+    
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation, useRegisterMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation, useRegisterMutation, useForgotPasswordMutation, 
+  useResetPasswordMutation } = authApi;

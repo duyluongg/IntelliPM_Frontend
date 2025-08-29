@@ -8,26 +8,88 @@ import {
   User,
   Palette,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useRef, useState, useEffect } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import logo from '../assets/Logo_IntelliPM/Logo_NoText_NoBackgroud.png';
 import textLogo from '../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
 import { useAuth } from '../services/AuthContext';
-import { useGetAccountByEmailQuery } from '../services/accountApi';
+import { useGetAccountByEmailQuery, useGetProjectsByAccountQuery } from '../services/accountApi';
 import NotificationBell from '../components/NotificationBell';
+import { useLazyGetWorkItemByKeyQuery } from '../services/projectApi';
+import { useDebounce } from 'use-debounce';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
+  const [triggerSearch, { data: searchResult, isFetching }] = useLazyGetWorkItemByKeyQuery();
+  const [searchKey, setSearchKey] = useState('');
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
+  const [debouncedKey] = useDebounce(searchKey, 300);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    if (debouncedKey.trim()) {
+      triggerSearch(debouncedKey);
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  }, [debouncedKey]);
+
+  const handleNavigate = (item: any) => {
+    const { key, type } = item;
+    if (type === "EPIC") {
+      navigate(`/project/epic/${key}`);
+    } else if (["TASK", "BUG", "STORY"].includes(type)) {
+      navigate(`/project/${projectKey}/work-item-detail?taskId=${key}`);
+    } else if (type === "SUBTASK") {
+      navigate(`/project/${projectKey}/child-work/${key}`);
+    }
+    setShowDropdown(false);
+    setSearchKey('');
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchResult?.data) {
+      handleNavigate(searchResult.data);
+    }
+  };
   const { data: accountResponse } = useGetAccountByEmailQuery(user?.email ?? '', {
     skip: !user?.email,
   });
+
+  const { data: projectData } = useGetProjectsByAccountQuery(
+    user?.accessToken || '',
+    {
+      skip: !user?.accessToken,
+    }
+  );
+
   const handleLogout = () => {
     logout();
     navigate('/Guest');
+  };
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // Kiểm tra nếu user có project
+    const hasProjects = projectData?.data && projectData.data.length > 0;
+    const isAccessRole = ['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER'].includes(user?.role ?? '');
+
+    if (isAccessRole && hasProjects) {
+      const firstProject = projectData.data[0];
+      navigate(`/project?projectKey=${firstProject.projectKey}#list`);
+    } else {
+      navigate('/');
+    }
   };
 
   const isRole = accountResponse?.data?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -52,22 +114,52 @@ export default function Header() {
         <button className='p-1 rounded hover:bg-gray-200'>
           <AppWindow className='w-5 h-5 text-gray-700' />
         </button>
-        <Link to='/' className='flex items-center gap-0 hover:opacity-80'>
+        <button
+          onClick={handleLogoClick}
+          className='flex items-center gap-0 hover:opacity-80 cursor-pointer'
+        >
           <img src={logo} className='h-10 w-auto scale-[1.2] -mr-20' />
           <img src={textLogo} className='h-9 w-auto scale-[0.36]' />
-        </Link>
+        </button>
       </div>
 
       <div className='flex-1 mx-4 flex items-center justify-center space-x-2'>
-        <div className='flex items-center border border-gray-300 rounded-md w-80 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
-          <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
-          <input
-            type='text'
-            placeholder='Search'
-            className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
-            style={{ all: 'unset', width: '100%' }}
-          />
+        <div className="relative w-80">
+          <form
+            onSubmit={handleSearch}
+            className="flex items-center "
+          >
+            <input
+              type="text"
+              value={searchKey}
+              onChange={(e) => setSearchKey(e.target.value)}
+              placeholder="Search by key..."
+              className="flex-1 text-sm outline-none"
+            />
+          </form>
+
+          {showDropdown && searchResult?.data && (
+            <div className="absolute top-full left-0 w-full mt-1 bg-white border rounded-md shadow-lg z-50">
+              <div
+                className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                onClick={() => handleNavigate(searchResult.data)}
+              >
+
+                <div className="font-medium text-sm">
+                  {searchResult.data.key} — {searchResult.data.summary}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Type: {searchResult.data.type}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Status: {searchResult.data.status}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+
         {isRole && (
           <Link to='/project/introduction'>
             <button className='bg-blue-500 text-white flex items-center px-3 py-1.5 rounded-md text-sm hover:bg-blue-600'>

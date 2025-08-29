@@ -53,6 +53,7 @@ import { useSelector } from 'react-redux';
 import type { CreateDocumentRequest } from '../../../types/DocumentType';
 import aiIcon from '../../../assets/icon/ai.png';
 import { useCheckOverdueTasksMutation } from '../../../services/riskApi';
+import ChartComponent from './ChartComponent';
 
 interface UpdateTaskRequestDTO {
   reporterId: number | null;
@@ -523,11 +524,10 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                     <img
                       src={member.avatar}
                       alt={`${member.name} avatar`}
-                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
-                        selectedMemberId === member.id
-                          ? 'border-blue-500 ring-2 ring-blue-200'
-                          : 'border-gray-300'
-                      }`}
+                      className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === member.id
+                        ? 'border-blue-500 ring-2 ring-blue-200'
+                        : 'border-gray-300'
+                        }`}
                       onClick={() => handleMemberClick(member.id)}
                     />
                     <span
@@ -546,11 +546,10 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
                 <img
                   src={members[0].avatar}
                   alt={`${members[0].name} avatar`}
-                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${
-                    selectedMemberId === members[0].id
-                      ? 'border-blue-500 ring-2 ring-blue-200'
-                      : 'border-gray-300'
-                  }`}
+                  className={`w-8 h-8 rounded-full object-cover border cursor-pointer ${selectedMemberId === members[0].id
+                    ? 'border-blue-500 ring-2 ring-blue-200'
+                    : 'border-gray-300'
+                    }`}
                   onClick={() => handleMemberClick(members[0].id)}
                 />
                 <span
@@ -654,6 +653,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
         </div>
       </div>
+
       <CreateWorkItemModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
@@ -692,6 +692,7 @@ const ProjectTaskList: React.FC = () => {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [selectedStartDate, setSelectedStartDate] = useState<string>(''); // New state
   const [selectedDueDate, setSelectedDueDate] = useState<string>('');
+  const [isChartVisible, setIsChartVisible] = useState(false);
   const {
     data: priorityOptions,
     isLoading: isPriorityLoading,
@@ -707,6 +708,9 @@ const ProjectTaskList: React.FC = () => {
   //   }
   // }, []);
 
+  const handleViewAsChart = () => {
+    setIsChartVisible(!isChartVisible); // Toggle chart visibility
+  };
   const {
     data: workItemsData,
     isLoading,
@@ -714,7 +718,7 @@ const ProjectTaskList: React.FC = () => {
     refetch: refetchWorkItems,
   } = useGetWorkItemsByProjectIdQuery(projectId || 0, { skip: !projectId });
 
-    useEffect(() => {
+  useEffect(() => {
     if (projectKey && projectKey !== 'NotFound') {
       checkOverdueTasks(projectKey)
         .unwrap()
@@ -1191,62 +1195,62 @@ const ProjectTaskList: React.FC = () => {
     isLoading || error || !workItemsData?.data
       ? []
       : workItemsData.data.map((item: WorkItemList) => {
-          const uniqueAssignees = Array.from(
-            new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
-          );
+        const uniqueAssignees = Array.from(
+          new Map(item.assignees.map((assignee) => [assignee.accountId, assignee])).values()
+        );
 
-          const assignments: TaskAssignee[] = uniqueAssignees
-            .filter(
-              (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
-            )
-            .map((assignee: ApiAssignee) => ({
-              id: assignee.accountId,
-              fullName: assignee.fullname || 'Unknown',
-              initials:
-                assignee.fullname
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .substring(0, 2) || '',
-              avatarColor: '#f3eded',
-              picture: assignee.picture || undefined,
-            }));
+        const assignments: TaskAssignee[] = uniqueAssignees
+          .filter(
+            (assignee: ApiAssignee) => assignee.accountId !== 0 && assignee.fullname !== 'Unknown'
+          )
+          .map((assignee: ApiAssignee) => ({
+            id: assignee.accountId,
+            fullName: assignee.fullname || 'Unknown',
+            initials:
+              assignee.fullname
+                ?.split(' ')
+                .map((n: string) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: assignee.picture || undefined,
+          }));
 
-          return {
-            id: item.key || '',
-            type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
-            key: item.key || '',
-            taskId: item.taskId || null,
-            summary: item.summary || '',
+        return {
+          id: item.key || '',
+          type: item.type.toLowerCase() as 'epic' | 'task' | 'bug' | 'subtask' | 'story',
+          key: item.key || '',
+          taskId: item.taskId || null,
+          summary: item.summary || '',
 
-            status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
-            comments: item.commentCount || 0,
-            sprint: item.sprintId || null,
-            priority: item.priority || '',
-            sprintName: item.sprintName || null,
-            assignees: assignments,
-            dueDate: item.dueDate || null,
-            labels: item.labels || [],
-            created: item.createdAt || '',
-            updated: item.updatedAt || '',
-            reporter: {
-              id: item.reporterId || null,
-              fullName: item.reporterFullname || 'Unknown',
-              initials:
-                item.reporterFullname
-                  ?.split(' ')
-                  .map((n: string) => n[0])
-                  .join('')
-                  .substring(0, 2) || '',
-              avatarColor: '#f3eded',
-              picture: item.reporterPicture || undefined,
-            },
-            reporterId: item.reporterId || null,
-            projectId: item.projectId || projectId,
-            epicId: item.taskId || null,
-            description: '',
-          };
-        });
+          status: item.status ? item.status.replace(' ', '_').toLowerCase() : '',
+          comments: item.commentCount || 0,
+          sprint: item.sprintId || null,
+          priority: item.priority || '',
+          sprintName: item.sprintName || null,
+          assignees: assignments,
+          dueDate: item.dueDate || null,
+          labels: item.labels || [],
+          created: item.createdAt || '',
+          updated: item.updatedAt || '',
+          reporter: {
+            id: item.reporterId || null,
+            fullName: item.reporterFullname || 'Unknown',
+            initials:
+              item.reporterFullname
+                ?.split(' ')
+                .map((n: string) => n[0])
+                .join('')
+                .substring(0, 2) || '',
+            avatarColor: '#f3eded',
+            picture: item.reporterPicture || undefined,
+          },
+          reporterId: item.reporterId || null,
+          projectId: item.projectId || projectId,
+          epicId: item.taskId || null,
+          description: '',
+        };
+      });
   if (isLoading || isMembersLoading || isLoadingMapping) {
     return (
       <div className='text-center py-10 text-gray-600'>
@@ -1354,12 +1358,12 @@ const ProjectTaskList: React.FC = () => {
       !selectedStartDate && !selectedDueDate // Không có khoảng thời gian, chấp nhận tất cả
         ? true
         : !startDate && dueDate // Chỉ có Due Date, kiểm tra task.created <= dueDate
-        ? !dueDate || new Date(taskCreatedDate) <= dueDate
-        : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.created >= startDate
-        ? !startDate || new Date(taskCreatedDate) >= startDate
-        : startDate && dueDate // Có cả hai, kiểm tra task.created nằm trong khoảng
-        ? new Date(taskCreatedDate) >= startDate && new Date(taskCreatedDate) <= dueDate
-        : true;
+          ? !dueDate || new Date(taskCreatedDate) <= dueDate
+          : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.created >= startDate
+            ? !startDate || new Date(taskCreatedDate) >= startDate
+            : startDate && dueDate // Có cả hai, kiểm tra task.created nằm trong khoảng
+              ? new Date(taskCreatedDate) >= startDate && new Date(taskCreatedDate) <= dueDate
+              : true;
 
     // Lọc theo khoảng thời gian Due Date (nếu có)
     const taskDueDate = task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : null;
@@ -1367,12 +1371,12 @@ const ProjectTaskList: React.FC = () => {
       !selectedStartDate && !selectedDueDate // Không có khoảng thời gian, chấp nhận tất cả
         ? true
         : !startDate && dueDate // Chỉ có Due Date, kiểm tra task.dueDate <= dueDate
-        ? !taskDueDate || !dueDate || new Date(taskDueDate) <= dueDate
-        : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.dueDate >= startDate
-        ? !taskDueDate || !startDate || new Date(taskDueDate) >= startDate
-        : startDate && dueDate // Có cả hai, kiểm tra task.dueDate nằm trong khoảng
-        ? !taskDueDate || (new Date(taskDueDate) >= startDate && new Date(taskDueDate) <= dueDate)
-        : true;
+          ? !taskDueDate || !dueDate || new Date(taskDueDate) <= dueDate
+          : !dueDate && startDate // Chỉ có Start Date, kiểm tra task.dueDate >= startDate
+            ? !taskDueDate || !startDate || new Date(taskDueDate) >= startDate
+            : startDate && dueDate // Có cả hai, kiểm tra task.dueDate nằm trong khoảng
+              ? !taskDueDate || (new Date(taskDueDate) >= startDate && new Date(taskDueDate) <= dueDate)
+              : true;
 
     return (
       matchesSearch &&
@@ -1392,9 +1396,9 @@ const ProjectTaskList: React.FC = () => {
     setIsPopupOpen(true);
   };
 
-  const handleViewAsChart = () => {
-    setViewMode(viewMode === 'table' ? 'chart' : 'table');
-  };
+  // const handleViewAsChart = () => {
+  //   setViewMode(viewMode === 'table' ? 'chart' : 'table');
+  // };
 
   return (
     <section className='p-3 font-sans bg-white w-full block relative left-0'>
@@ -1427,220 +1431,235 @@ const ProjectTaskList: React.FC = () => {
         isUpdatingSubtask ||
         isCreatingAssignment ||
         isDeletingAssignment) && (
-        <div className='text-center py-4 text-blue-500'>Processing...</div>
-      )}
-      <div className='overflow-x-auto bg-white w-full block'>
-        <table
-          className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
-          ref={tableRef}
-        >
-          <thead>
-            <tr>
-              <th
-                style={{ width: `${columnWidths.type}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Type
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'type')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.key}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Key
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'key')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.summary}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Summary
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'summary')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.status}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Status
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'status')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.comments}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Comments
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'comments')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.sprint}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Sprint
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.priority}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Priority
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'sprint')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.assignee}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Assignees
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'assignee')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.dueDate}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Due Date
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'dueDate')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.labels}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Labels
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'labels')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.created}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Created
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'created')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.updated}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Updated
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'updated')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.reporter}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Reporter
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'reporter')}
-                />
-              </th>
-              <th
-                style={{ width: `${columnWidths.document}px` }}
-                className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
-              >
-                Document
-                <div
-                  className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
-                  onMouseDown={(e) => handleMouseDown(e, 'document')}
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTasks.length > 0 ? (
-              filteredTasks.map((task) => (
-                <tr key={task.id} className='hover:bg-gray-100'>
-                  <td
-                    style={{ width: `${columnWidths.type}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.type === 'task' && (
-                      <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
-                    )}
-                    {task.type === 'subtask' && (
-                      <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
-                    )}
-                    {task.type === 'bug' && (
-                      <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
-                    )}
-                    {task.type === 'epic' && (
-                      <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
-                    )}
-                    {task.type === 'story' && (
-                      <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.key}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
-                      <div className='flex flex-col items-start w-full'>
-                        <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
-                        <div className='flex items-center gap-1'>
-                          <svg
-                            role='presentation'
-                            width='16'
-                            height='16'
-                            viewBox='0 0 16 16'
-                            fill='none'
-                            className='w-3.5 h-3.5'
-                          >
-                            <circle
-                              cx='5.33333'
-                              cy='5.33333'
-                              r='1.33333'
-                              stroke='#42526E'
-                              strokeWidth='1.33333'
+          <div className='text-center py-4 text-blue-500'>Processing...</div>
+        )}
+
+      <div className="flex w-full max-h-[620px] ">
+        {/* Task List Column (Left) */}
+        <div className="w-full md:w-1 p-2 overflow-auto border-r border-gray-200"></div>
+
+        <div className='overflow-x-auto bg-white w-full block max-h-[620px] overflow-y-auto'>
+          <table
+            className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
+            ref={tableRef}
+          >
+            <thead>
+              <tr>
+                <th
+                  style={{ width: `${columnWidths.type}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Type
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'type')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.key}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Key
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'key')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.summary}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Summary
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'summary')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.status}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Status
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'status')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.comments}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Comments
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'comments')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.sprint}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Sprint
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.priority}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Priority
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'sprint')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.assignee}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Assignees
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'assignee')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.dueDate}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Due Date
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'dueDate')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.labels}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Labels
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'labels')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.created}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Created
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'created')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.updated}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Updated
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'updated')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.reporter}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Reporter
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'reporter')}
+                  />
+                </th>
+                <th
+                  style={{ width: `${columnWidths.document}px` }}
+                  className='bg-gray-100 text-gray-700 font-semibold uppercase text-[0.7rem] p-3 relative border-b border-l border-r border-gray-200'
+                >
+                  Document
+                  <div
+                    className='absolute right-0 top-0 w-[1px] h-full cursor-col-resize bg-transparent z-10 hover:bg-blue-500'
+                    onMouseDown={(e) => handleMouseDown(e, 'document')}
+                  />
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.length > 0 ? (
+                filteredTasks.map((task) => (
+                  <tr key={task.id} className='hover:bg-gray-100'>
+                    <td
+                      style={{ width: `${columnWidths.type}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.type === 'task' && (
+                        <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
+                      )}
+                      {task.type === 'subtask' && (
+                        <img src={subtaskIcon} alt='Subtask' className='w-5 h-5 rounded p-0.5' />
+                      )}
+                      {task.type === 'bug' && (
+                        <img src={bugIcon} alt='Bug' className='w-5 h-5 rounded p-0.5' />
+                      )}
+                      {task.type === 'epic' && (
+                        <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />
+                      )}
+                      {task.type === 'story' && (
+                        <img src={storyIcon} alt='Story' className='w-5 h-5 rounded p-0.5' />
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.key}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.type === 'subtask' && task.taskId && task.taskId !== 'Unknown' ? (
+                        <div className='flex flex-col items-start w-full'>
+                          <span className='text-[0.68rem] text-gray-600 mb-0.5'>{task.taskId}</span>
+                          <div className='flex items-center gap-1'>
+                            <svg
+                              role='presentation'
+                              width='16'
+                              height='16'
+                              viewBox='0 0 16 16'
                               fill='none'
-                            />
-                            <circle
-                              cx='10.6667'
-                              cy='10.6666'
-                              r='1.33333'
-                              stroke='#42526E'
-                              strokeWidth='1.33333'
-                              fill='none'
-                            />
-                            <path
-                              d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
-                              stroke='#42526E'
-                              strokeWidth='1.33333'
-                              fill='none'
-                            />
-                          </svg>
+                              className='w-3.5 h-3.5'
+                            >
+                              <circle
+                                cx='5.33333'
+                                cy='5.33333'
+                                r='1.33333'
+                                stroke='#42526E'
+                                strokeWidth='1.33333'
+                                fill='none'
+                              />
+                              <circle
+                                cx='10.6667'
+                                cy='10.6666'
+                                r='1.33333'
+                                stroke='#42526E'
+                                strokeWidth='1.33333'
+                                fill='none'
+                              />
+                              <path
+                                d='M5.33337 6.66669V9.33335C5.33337 10.0697 5.93033 10.6667 6.66671 10.6667H9.33337'
+                                stroke='#42526E'
+                                strokeWidth='1.33333'
+                                fill='none'
+                              />
+                            </svg>
+                            <span
+                              className='text-xs text-black cursor-pointer hover:underline'
+                              onClick={() => handleOpenPopup(task.key, task.type)}
+                            >
+                              {task.key}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className='flex flex-col items-start w-full'>
                           <span
                             className='text-xs text-black cursor-pointer hover:underline'
                             onClick={() => handleOpenPopup(task.key, task.type)}
@@ -1648,101 +1667,91 @@ const ProjectTaskList: React.FC = () => {
                             {task.key}
                           </span>
                         </div>
-                      </div>
-                    ) : (
-                      <div className='flex flex-col items-start w-full'>
-                        <span
-                          className='text-xs text-black cursor-pointer hover:underline'
-                          onClick={() => handleOpenPopup(task.key, task.type)}
-                        >
-                          {task.key}
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.summary}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
+                        <input
+                          type='text'
+                          value={editValue}
+                          onChange={handleInputChange}
+                          onBlur={() => handleInputBlur(task)}
+                          autoFocus
+                          className='w-full p-1 border border-gray-300 rounded'
+                        />
+                      ) : (
+                        <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
+                          {task.summary}
                         </span>
-                      </div>
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.summary}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {editingCell?.id === task.id && editingCell?.field === 'summary' ? (
-                      <input
-                        type='text'
-                        value={editValue}
-                        onChange={handleInputChange}
-                        onBlur={() => handleInputBlur(task)}
-                        autoFocus
-                        className='w-full p-1 border border-gray-300 rounded'
-                      />
-                    ) : (
-                      <span onClick={() => handleEditClick(task.id, 'summary', task.summary)}>
-                        {task.summary}
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.status}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    <Status status={task.status} />
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.comments}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.comments > 0 ? (
-                      <div className='flex items-center gap-1 text-xs text-gray-700'>
-                        <svg
-                          fill='none'
-                          viewBox='0 0 16 16'
-                          role='presentation'
-                          className='w-4 h-4'
-                        >
-                          <path
-                            fill='currentColor'
-                            fillRule='evenodd'
-                            d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                            clipRule='evenodd'
-                          />
-                        </svg>
-                        <span>{task.comments} comment</span>
-                      </div>
-                    ) : (
-                      <div className='flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5'>
-                        <svg
-                          fill='none'
-                          viewBox='0 0 16 16'
-                          role='presentation'
-                          className='w-4 h-4 min-w-[16px] min-h-[16px]'
-                        >
-                          <path
-                            fill='currentColor'
-                            fillRule='evenodd'
-                            d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
-                            clipRule='evenodd'
-                          />
-                        </svg>
-                        <span>Add comment</span>
-                      </div>
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.sprint}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.sprint && task.sprint !== 0 ? (
-                      <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
-                        {task.sprintName}
-                      </span>
-                    ) : (
-                      ''
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.priority}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.priority
-                      ? (() => {
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.status}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      <Status status={task.status} />
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.comments}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.comments > 0 ? (
+                        <div className='flex items-center gap-1 text-xs text-gray-700'>
+                          <svg
+                            fill='none'
+                            viewBox='0 0 16 16'
+                            role='presentation'
+                            className='w-4 h-4'
+                          >
+                            <path
+                              fill='currentColor'
+                              fillRule='evenodd'
+                              d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                              clipRule='evenodd'
+                            />
+                          </svg>
+                          <span>{task.comments} comment</span>
+                        </div>
+                      ) : (
+                        <div className='flex items-center gap-1 text-xs text-gray-500 bg-transparent rounded p-0.5'>
+                          <svg
+                            fill='none'
+                            viewBox='0 0 16 16'
+                            role='presentation'
+                            className='w-4 h-4 min-w-[16px] min-h-[16px]'
+                          >
+                            <path
+                              fill='currentColor'
+                              fillRule='evenodd'
+                              d='M0 3.125A2.625 2.625 0 0 1 2.625.5h10.75A2.625 2.625 0 0 1 16 3.125v8.25A2.625 2.625 0 0 1 13.375 14H4.449l-3.327 1.901A.75.75 0 0 1 0 15.25zM2.625 2C2.004 2 1.5 2.504 1.5 3.125v10.833L4.05 12.5h9.325c.621 0 1.125-.504 1.125-1.125v-8.25C14.5 2.504 13.996 2 13.375 2zM12 6.5H4V5h8zm-3 3H4V8h5z'
+                              clipRule='evenodd'
+                            />
+                          </svg>
+                          <span>Add comment</span>
+                        </div>
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.sprint}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.sprint && task.sprint !== 0 ? (
+                        <span className='inline-block px-2 py-0.5 border border-gray-300 rounded text-[0.7rem] text-gray-800'>
+                          {task.sprintName}
+                        </span>
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.priority}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.priority
+                        ? (() => {
                           const priorityInfo = priorityOptions?.data?.find(
                             (p) =>
                               task.priority != null &&
@@ -1763,34 +1772,172 @@ const ProjectTaskList: React.FC = () => {
                             <span className='text-xs'>{task.priority}</span>
                           );
                         })()
-                      : null}
-                  </td>
+                        : null}
+                    </td>
 
-                  <td
-                    style={{ width: `${columnWidths.assignee}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
-                  >
-                    {showMemberDropdown?.id === task.id &&
-                    showMemberDropdown?.field === 'assignees' ? (
-                      <div
-                        ref={dropdownRef}
-                        className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
-                      >
-                        {projectMembers.length ? (
-                          projectMembers.map((member: ProjectMember) => {
-                            const isDisabled =
-                              task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
-                              task.reporter.id === member.accountId;
+                    <td
+                      style={{ width: `${columnWidths.assignee}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                    >
+                      {showMemberDropdown?.id === task.id &&
+                        showMemberDropdown?.field === 'assignees' ? (
+                        <div
+                          ref={dropdownRef}
+                          className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                        >
+                          {projectMembers.length ? (
+                            projectMembers.map((member: ProjectMember) => {
+                              const isDisabled =
+                                task.assignees.some((a: TaskAssignee) => a.id === member.accountId) ||
+                                task.reporter.id === member.accountId;
+                              return (
+                                <div
+                                  key={member.accountId}
+                                  className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                    }`}
+                                  onClick={() =>
+                                    !isDisabled && handleMemberSelect(task, 'assignees', member)
+                                  }
+                                >
+                                  <div className='relative'>
+                                    {member.picture ? (
+                                      <img
+                                        src={member.picture}
+                                        alt={`${member.fullName}'s avatar`}
+                                        className='w-8 h-8 rounded-full object-cover border border-gray-200'
+                                      />
+                                    ) : (
+                                      <div
+                                        className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
+                                        style={{ backgroundColor: '#6b7280' }}
+                                      >
+                                        {member.fullName
+                                          .split(' ')
+                                          .map((n: string) => n[0])
+                                          .join('')
+                                          .substring(0, 2)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className='text-gray-900 font-medium truncate'>
+                                    {member.fullName}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span className='text-gray-500 text-xs'>No members available</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
+                          className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
+                        >
+                          {task.assignees.length ? (
+                            task.assignees.map((assignee: TaskAssignee, index: number) => (
+                              <Avatar
+                                key={assignee.id ?? index}
+                                person={assignee}
+                                onDelete={
+                                  assignee.id != null && assignee.id !== 0
+                                    ? () =>
+                                      handleDeleteAssignment(
+                                        task.key,
+                                        assignee.id as number,
+                                        task.type
+                                      )
+                                    : undefined
+                                }
+                              />
+                            ))
+                          ) : (
+                            <span className='text-gray-500 text-xs'>No assignees</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.dueDate}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
+                        <input
+                          type='date'
+                          value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
+                          onChange={handleInputChange}
+                          onBlur={() => handleInputBlur(task)}
+                          autoFocus
+                          className='w-full p-1 border border-gray-300 rounded'
+                        />
+                      ) : (
+                        <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
+                          {task.dueDate && task.dueDate !== 'Unknown' ? (
+                            <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
+                          ) : (
+                            ''
+                          )}
+                        </span>
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.labels}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
+                        ? task.labels.map((label, index) => (
+                          <span
+                            key={index}
+                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
+                          >
+                            {label}
+                          </span>
+                        ))
+                        : ''}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.created}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.created !== 'Unknown' ? (
+                        <DateWithIcon date={task.created} status={task.status} />
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.updated}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
+                    >
+                      {task.updated !== 'Unknown' ? (
+                        <DateWithIcon date={task.updated} status={task.status} />
+                      ) : (
+                        ''
+                      )}
+                    </td>
+                    <td
+                      style={{ width: `${columnWidths.reporter}px` }}
+                      className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
+                    >
+                      {showMemberDropdown?.id === task.id &&
+                        showMemberDropdown?.field === 'reporter' ? (
+                        <div
+                          ref={dropdownRef}
+                          className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                        >
+                          {projectMembers.map((member: ProjectMember) => {
+                            const isDisabled = task.reporter.id === member.accountId;
                             return (
                               <div
                                 key={member.accountId}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                  isDisabled
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                                }`}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${isDisabled
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
+                                  }`}
                                 onClick={() =>
-                                  !isDisabled && handleMemberSelect(task, 'assignees', member)
+                                  !isDisabled && handleMemberSelect(task, 'reporter', member)
                                 }
                               >
                                 <div className='relative'>
@@ -1818,196 +1965,75 @@ const ProjectTaskList: React.FC = () => {
                                 </span>
                               </div>
                             );
-                          })
-                        ) : (
-                          <span className='text-gray-500 text-xs'>No members available</span>
-                        )}
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => handleShowMemberDropdown(task.id, 'assignees', task.type)}
-                        className='flex flex-wrap gap-2 p-1 rounded hover:bg-gray-200 cursor-pointer'
-                      >
-                        {task.assignees.length ? (
-                          task.assignees.map((assignee: TaskAssignee, index: number) => (
-                            <Avatar
-                              key={assignee.id ?? index}
-                              person={assignee}
-                              onDelete={
-                                assignee.id != null && assignee.id !== 0
-                                  ? () =>
-                                      handleDeleteAssignment(
-                                        task.key,
-                                        assignee.id as number,
-                                        task.type
-                                      )
-                                  : undefined
-                              }
-                            />
-                          ))
-                        ) : (
-                          <span className='text-gray-500 text-xs'>No assignees</span>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.dueDate}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {editingCell?.id === task.id && editingCell?.field === 'dueDate' ? (
-                      <input
-                        type='date'
-                        value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
-                        onChange={handleInputChange}
-                        onBlur={() => handleInputBlur(task)}
-                        autoFocus
-                        className='w-full p-1 border border-gray-300 rounded'
-                      />
-                    ) : (
-                      <span onClick={() => handleEditClick(task.id, 'dueDate', task.dueDate || '')}>
-                        {task.dueDate && task.dueDate !== 'Unknown' ? (
-                          <DateWithIcon date={task.dueDate} status={task.status} isDueDate={true} />
-                        ) : (
-                          ''
-                        )}
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.labels}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.labels && task.labels.length > 0 && task.labels[0] !== 'Unknown'
-                      ? task.labels.map((label, index) => (
-                          <span
-                            key={index}
-                            className='inline-block px-2 py-0.5 mr-1 border border-gray-300 rounded text-[0.7rem] text-gray-800'
-                          >
-                            {label}
-                          </span>
-                        ))
-                      : ''}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.created}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.created !== 'Unknown' ? (
-                      <DateWithIcon date={task.created} status={task.status} />
-                    ) : (
-                      ''
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.updated}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
-                  >
-                    {task.updated !== 'Unknown' ? (
-                      <DateWithIcon date={task.updated} status={task.status} />
-                    ) : (
-                      ''
-                    )}
-                  </td>
-                  <td
-                    style={{ width: `${columnWidths.reporter}px` }}
-                    className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-visible relative'
-                  >
-                    {showMemberDropdown?.id === task.id &&
-                    showMemberDropdown?.field === 'reporter' ? (
-                      <div
-                        ref={dropdownRef}
-                        className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
-                      >
-                        {projectMembers.map((member: ProjectMember) => {
-                          const isDisabled = task.reporter.id === member.accountId;
-                          return (
-                            <div
-                              key={member.accountId}
-                              className={`flex items-center gap-3 px-3 py-2 rounded-md transition-all duration-200 ${
-                                isDisabled
-                                  ? 'opacity-50 cursor-not-allowed'
-                                  : 'hover:bg-gray-100 cursor-pointer hover:shadow-sm'
-                              }`}
-                              onClick={() =>
-                                !isDisabled && handleMemberSelect(task, 'reporter', member)
-                              }
-                            >
-                              <div className='relative'>
-                                {member.picture ? (
-                                  <img
-                                    src={member.picture}
-                                    alt={`${member.fullName}'s avatar`}
-                                    className='w-8 h-8 rounded-full object-cover border border-gray-200'
-                                  />
-                                ) : (
-                                  <div
-                                    className='w-8 h-8 rounded-full flex justify-center items-center text-white text-sm font-bold'
-                                    style={{ backgroundColor: '#6b7280' }}
-                                  >
-                                    {member.fullName
-                                      .split(' ')
-                                      .map((n: string) => n[0])
-                                      .join('')
-                                      .substring(0, 2)}
-                                  </div>
-                                )}
-                              </div>
-                              <span className='text-gray-900 font-medium truncate'>
-                                {member.fullName}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
-                        className='hover:bg-gray-200 cursor-pointer p-1 rounded'
-                      >
-                        <Avatar person={task.reporter} />
-                      </div>
-                    )}
-                  </td>
+                          })}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => handleShowMemberDropdown(task.id, 'reporter', task.type)}
+                          className='hover:bg-gray-200 cursor-pointer p-1 rounded'
+                        >
+                          <Avatar person={task.reporter} />
+                        </div>
+                      )}
+                    </td>
 
-                  <td
-                    className='p-2.5 border-b border-l border-r border-gray-200 text-sm'
-                    style={{ width: `${columnWidths.document}px` }}
-                  >
-                    {createdDocIds[task.key] ? (
-                      <button
-                        onClick={() => handleViewDocument(createdDocIds[task.key])}
-                        className='flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200'
-                        data-tooltip-id={`doc-tooltip-${task.id}`}
-                        data-tooltip-content='View document'
-                      >
-                        <FcDocument className='w-5 h-5' />
-                        <span className='text-xs font-medium'>View Document</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleCreateDocument(task)}
-                        className='flex items-center gap-2 text-gray-500 border border-gray-300 rounded-md px-3 py-1 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200'
-                        data-tooltip-id={`doc-tooltip-${task.id}`}
-                        data-tooltip-content='Create a document for this task'
-                      >
-                        <HiDocumentAdd className='w-5 h-5' />
-                        <span className='text-xs font-medium'>Add Document</span>
-                      </button>
-                    )}
-                    <Tooltip id={`doc-tooltip-${task.id}`} />
+                    <td
+                      className='p-2.5 border-b border-l border-r border-gray-200 text-sm'
+                      style={{ width: `${columnWidths.document}px` }}
+                    >
+                      {createdDocIds[task.key] ? (
+                        <button
+                          onClick={() => handleViewDocument(createdDocIds[task.key])}
+                          className='flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors duration-200'
+                          data-tooltip-id={`doc-tooltip-${task.id}`}
+                          data-tooltip-content='View document'
+                        >
+                          <FcDocument className='w-5 h-5' />
+                          <span className='text-xs font-medium'>View Document</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleCreateDocument(task)}
+                          className='flex items-center gap-2 text-gray-500 border border-gray-300 rounded-md px-3 py-1 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200'
+                          data-tooltip-id={`doc-tooltip-${task.id}`}
+                          data-tooltip-content='Create a document for this task'
+                        >
+                          <HiDocumentAdd className='w-5 h-5' />
+                          <span className='text-xs font-medium'>Add Document</span>
+                        </button>
+                      )}
+                      <Tooltip id={`doc-tooltip-${task.id}`} />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={13} className='text-center py-4 text-gray-500'>
+                    No tasks match your search.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={13} className='text-center py-4 text-gray-500'>
-                  No tasks match your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Chart Column (Right) - Visible only when isChartVisible is true */}
+        {isChartVisible && (
+          <div className="w-1/3 p-2 overflow-auto border-l border-gray-200 min-w-[300px]">
+            <div className="bg-white p-4 rounded-lg h-full">
+              <h2 className="text-lg font-semibold mb-2">View this list as a chart</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Select the data you'd like to see in a chart.
+              </p>
+
+              <ChartComponent
+                projectId={projectId || 0}
+                onClose={() => setIsChartVisible(false)} 
+              />
+            </div>
+          </div>
+        )}
+
       </div>
 
       {isPopupOpen && selectedTaskId && selectedTaskType === 'epic' && (

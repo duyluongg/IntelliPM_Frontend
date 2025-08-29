@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGetProfileByAccountIdQuery } from '../../../services/accountApi';
 
-const getUserNameById = (id: number) => `${id}`;
+const getUserNameByIdFallback = (id: number) => `#${id}`;
 
 interface Document {
   id: number;
@@ -18,13 +19,29 @@ interface DocumentCardProps {
 export default function DocumentCard({ doc }: DocumentCardProps) {
   const navigate = useNavigate();
 
+  const {
+    data: profileRes,
+    isLoading,
+    isError,
+  } = useGetProfileByAccountIdQuery(doc.createdBy, {
+    skip: !doc.createdBy,
+  });
+
+  const fullName =
+    profileRes?.data?.fullName ??
+    (isLoading
+      ? 'Loading…'
+      : isError
+      ? getUserNameByIdFallback(doc.createdBy)
+      : getUserNameByIdFallback(doc.createdBy));
+
   const formattedDate = new Date(doc.createdAt).toLocaleDateString('vi-VN', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
 
-   const handleView = () => {
+  const handleView = () => {
     navigate(`/project/projects/form/document/${doc.id}`);
   };
 
@@ -51,7 +68,7 @@ export default function DocumentCard({ doc }: DocumentCardProps) {
           {doc.title}
         </h3>
         <p className='text-sm text-slate-500'>
-          Created by: <strong>{getUserNameById(doc.createdBy)}</strong>
+          Created by: <strong>{fullName}</strong>
         </p>
         <p className='text-sm text-slate-500'>Date: {formattedDate}</p>
       </div>

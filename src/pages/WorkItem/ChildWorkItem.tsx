@@ -8,6 +8,7 @@ import {
   useUpdateSubtaskMutation,
   useGetSubtaskByIdQuery,
   useUpdateSubtaskPercentCompleteMutation,
+  useUpdateSubtaskActualCostMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import {
@@ -40,6 +41,8 @@ import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import aiIcon from '../../assets/icon/ai.png';
 
 interface SubtaskDetail {
   id: string;
@@ -56,6 +59,7 @@ interface SubtaskDetail {
   sprintId: number;
   sprintName: string;
   percentComplete: number | null;
+  actualCost: number;
 }
 
 const ChildWorkItem: React.FC = () => {
@@ -72,6 +76,8 @@ const ChildWorkItem: React.FC = () => {
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
   const [updateSubtaskPercentComplete] = useUpdateSubtaskPercentCompleteMutation();
+  const [updateSubtaskActualCost] = useUpdateSubtaskActualCostMutation();
+  const [newActualCost, setNewActualCost] = useState<number | null>(null);
   const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
@@ -133,6 +139,17 @@ const ChildWorkItem: React.FC = () => {
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
 
+  const {
+    data: actualCostConfig,
+    isLoading: actualCostConfigLoading,
+    isError: actualCostConfigError,
+  } = useGetByConfigKeyQuery('actual_cost_limit');
+  const maxActualCost = actualCostConfigLoading
+    ? 1000000
+    : actualCostConfigError || !actualCostConfig?.data?.maxValue
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
+
   React.useEffect(() => {
     if (subtaskDetail) {
       setDescription(subtaskDetail.description || '');
@@ -145,6 +162,7 @@ const ChildWorkItem: React.FC = () => {
       setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
       setNewPercentComplete(subtaskDetail.percentComplete ?? 0);
+      setNewActualCost(subtaskDetail.actualCost ?? 0);
     }
   }, [subtaskDetail]);
 
@@ -153,8 +171,9 @@ const ChildWorkItem: React.FC = () => {
       skip: !subtaskDetail?.id,
     });
 
-  const { data: assignees = [], isLoading: isAssigneeLoading } =
-    useGetTaskAssignmentsByTaskIdQuery(subtaskDetail?.taskId ?? '');
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(
+    subtaskDetail?.taskId ?? ''
+  );
 
   const {
     data: comments = [],
@@ -373,6 +392,68 @@ const ChildWorkItem: React.FC = () => {
         icon: 'error',
         title: 'Update Failed',
         text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
+  const handleActualCostChange = async () => {
+    if (!subtaskDetail || newActualCost === subtaskDetail.actualCost) return;
+
+    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Actual Cost',
+        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewActualCost(subtaskDetail.actualCost ?? 0);
+      return;
+    }
+
+    try {
+      await updateSubtaskActualCost({
+        id: subtaskDetail.id,
+        actualCost: newActualCost ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
+      await refetchSubtask();
+      await refetchActivityLogs();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Actual cost updated successfully!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    } catch (err) {
+      console.error('❌ Failed to update subtask actual cost', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update actual cost.',
         width: '500px',
         confirmButtonColor: 'rgba(44, 104, 194, 1)',
         customClass: {
@@ -961,6 +1042,31 @@ const ChildWorkItem: React.FC = () => {
                 )}
               </div>
 
+              <div className='detail-item'>
+                <label>Actual Cost (Equipment, Licenses, etc.)</label>
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <div className='flex items-center gap-1'>
+                    <input
+                      type='number'
+                      min='0'
+                      step='1'
+                      value={newActualCost ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setNewActualCost(value);
+                      }}
+                      onBlur={handleActualCostChange}
+                      style={{ width: '150px' }}
+                      className='border rounded p-1'
+                      placeholder='Enter cost (e.g., equipment)'
+                    />
+                    <span>VND</span>
+                  </div>
+                ) : (
+                  <span>{subtaskDetail.actualCost ?? '0'} $</span>
+                )}
+              </div>
+
               {isEditingLabel ? (
                 <div ref={labelRef} className='flex flex-col gap-2 w-full relative'>
                   <div className='flex flex-col gap-2 w-full relative'>
@@ -1027,8 +1133,8 @@ const ChildWorkItem: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1117,8 +1223,8 @@ const ChildWorkItem: React.FC = () => {
                     {isPriorityLoading
                       ? 'Loading...'
                       : isPriorityError
-                        ? 'Error loading priorities'
-                        : priorityOptions?.data.find(
+                      ? 'Error loading priorities'
+                      : priorityOptions?.data.find(
                           (p) => p.name === (newPriority ?? subtaskDetail?.priority)
                         )?.label || 'NONE'}
                   </span>
@@ -1159,7 +1265,9 @@ const ChildWorkItem: React.FC = () => {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Start Date must be between project <strong>${projectData.data.name}</strong> 
+                            html: `Start Date must be between project <strong>${
+                              projectData.data.name
+                            }</strong> 
                      is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                      <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
                             width: '500px',
@@ -1219,7 +1327,9 @@ const ChildWorkItem: React.FC = () => {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Due Date',
-                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                            html: `Due Date must be between project <strong>${
+                              projectData.data.name
+                            }</strong> 
                      is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                      <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
                             width: '500px',

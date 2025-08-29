@@ -14,7 +14,16 @@ export interface TaskComment {
 
 export const taskCommentApi = createApi({
   reducerPath: 'taskCommentApi',
-  baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   tagTypes: ['Comments', 'ActivityLogs'],
   endpoints: (builder) => ({
     getCommentsByTaskId: builder.query<TaskComment[], string>({

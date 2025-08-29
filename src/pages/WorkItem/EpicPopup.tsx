@@ -68,7 +68,7 @@ interface EpicPopupProps {
 }
 
 const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
-  const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
+  const { data: epic, isLoading, isError, refetch: refetchEpic } = useGetEpicByIdQuery(id);
   const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -1079,7 +1079,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <td>
                               {canEdit ? (
                                 <div className='multi-select-dropdown'>
-                                  {/* Hiển thị danh sách đã chọn */}
                                   <div
                                     className='selected-list'
                                     style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1113,7 +1112,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     ))}
                                   </div>
 
-                                  {/* Dropdown chọn thêm */}
                                   <div className='dropdown-select-wrapper'>
                                     <select
                                       onChange={async (e) => {
@@ -1194,6 +1192,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                       }).unwrap();
                                       await refetch();
                                       await refetchActivityLogs();
+                                      await refetchEpic();
                                     } catch (err) {
                                       console.error('❌ Error updating status:', err);
                                     }

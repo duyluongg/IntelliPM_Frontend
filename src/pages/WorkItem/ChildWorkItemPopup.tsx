@@ -160,8 +160,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-    ? 10000000000
-    : parseInt(actualCostConfig.data.maxValue, 10);
+      ? 10000000000
+      : parseInt(actualCostConfig.data.maxValue, 10);
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -1152,8 +1152,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1240,8 +1240,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isPriorityLoading
                       ? 'Loading...'
                       : isPriorityError
-                      ? 'Error loading priorities'
-                      : priorityOptions?.data.find(
+                        ? 'Error loading priorities'
+                        : priorityOptions?.data.find(
                           (p) => p.name === (newPriority ?? subtaskDetail?.priority)
                         )?.label || 'NONE'}
                   </span>
@@ -1254,39 +1254,24 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   <input
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    min={parentTask?.plannedStartDate?.slice(0, 10)} // Restrict to parent task start date
+                    max={parentTask?.plannedEndDate?.slice(0, 10)} // Restrict to parent task end date
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (newEndDate && new Date(value) >= new Date(newEndDate)) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Start Date',
-                          html: 'Start Date must be smaller than Due Date!',
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html',
-                          },
-                        });
-                        return;
-                      }
+                      const selectedDate = new Date(value);
+                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
+                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
 
-                      if (projectData?.data.startDate && projectData?.data.endDate) {
-                        const projectStart = new Date(projectData.data.startDate);
-                        const projectEnd = new Date(projectData.data.endDate);
-                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                      // Validate against parent task dates
+                      if (parentStartDate && parentEndDate) {
+                        if (selectedDate < parentStartDate || selectedDate > parentEndDate) {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Start Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Start Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                              0,
+                              10
+                            )}</b> and <b>${parentTask?.plannedStartDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
@@ -1298,6 +1283,24 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           });
                           return;
                         }
+                      }
+
+                      // Validate against due date
+                      if (newEndDate && selectedDate >= new Date(newEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be earlier than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
                       }
 
                       setNewStartDate(value);
@@ -1316,39 +1319,24 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                    min={newStartDate ?? projectData?.data?.startDate?.slice(0, 10)} // Use newStartDate if available
-                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    min={newStartDate ?? parentTask?.plannedStartDate?.slice(0, 10)} // Use newStartDate or parent task start date
+                    max={parentTask?.plannedEndDate?.slice(0, 10)} // Restrict to parent task end date
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (newStartDate && new Date(value) <= new Date(newStartDate)) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Due Date',
-                          html: 'Due Date must be greater than Start Date!',
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html',
-                          },
-                        });
-                        return;
-                      }
+                      const selectedDate = new Date(value);
+                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
+                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
 
-                      if (projectData?.data.startDate && projectData?.data.endDate) {
-                        const projectStart = new Date(projectData.data.startDate);
-                        const projectEnd = new Date(projectData.data.endDate);
-                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                      // Validate against parent task dates
+                      if (parentStartDate && parentEndDate) {
+                        if (selectedDate < parentStartDate || selectedDate > parentEndDate) {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Due Date',
-                            html: `Due Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Due Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                              0,
+                              10
+                            )}</b> and <b>${parentTask?.plannedEndDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
@@ -1361,6 +1349,25 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           return;
                         }
                       }
+
+                      // Validate against start date
+                      if (newStartDate && selectedDate <= new Date(newStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be later than Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
                       setNewEndDate(value);
                     }}
                     onBlur={handleUpdateSubtask}
@@ -1373,7 +1380,6 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Reporter</label>
-
                 {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}

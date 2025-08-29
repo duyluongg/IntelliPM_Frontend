@@ -20,7 +20,6 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
   const [chartType, setChartType] = useState<"bar" | "horizontal-bar" | "donut">("horizontal-bar");
   const [chartData, setChartData] = useState<{ label: string; value: number }[]>([]);
 
-  // 🔹 Tính toán chartData từ API data
   useEffect(() => {
     if (!data?.data) return;
 
@@ -33,11 +32,9 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
       else if (selectedField === "priority") key = item.priority || "";
       else key = item.assignees.map((a) => a.fullname).join(", ") || "Unassigned";
 
-      // cộng dồn
       map.set(key, (map.get(key) || 0) + 1);
     });
 
-    // lọc bỏ giá trị rỗng và Unassigned
     const filtered = Array.from(map.entries())
       .filter(([label]) => label.trim() !== "" && label !== "Unassigned" && label !== "Unknown")
       .map(([label, value]) => ({ label, value }));
@@ -50,7 +47,7 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
 
   return (
     <div className="w-full relative border rounded-lg shadow p-4 bg-white">
-      {/* Nút X */}
+
       {onClose && (
         <button
           onClick={onClose}
@@ -59,8 +56,6 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
           ✕
         </button>
       )}
-
-      {/* Dropdown Field */}
       <div className="mb-3">
         <label className="block text-sm font-medium text-gray-700 mb-1">Field</label>
         <select
@@ -71,11 +66,9 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
           <option value="type">Issue Type</option>
           <option value="status">Status</option>
           <option value="priority">Priority</option>
-          {/* <option value="assignee">Assignee</option> */}
         </select>
       </div>
 
-      {/* Dropdown Chart Type */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">Chart type</label>
         <select
@@ -89,11 +82,10 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
         </select>
       </div>
 
-      {/* Chart */}
       <div className="w-full h-72">
         <ResponsiveContainer>
           {chartType === "horizontal-bar" ? (
-            <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 20, left: 50, bottom: 10 }}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 0, left: -50, bottom: 10 }}>
               <XAxis type="number" />
               <YAxis type="category" dataKey="label" width={120} />
               <Tooltip />
@@ -102,7 +94,7 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
               </Bar>
             </BarChart>
           ) : chartType === "bar" ? (
-            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 20, bottom: 40 }}>
+            <BarChart data={chartData} margin={{ top: 15, right: 0, left: -32, bottom: 20 }}>
               <XAxis dataKey="label" angle={-30} textAnchor="end" interval={0} />
               <YAxis />
               <Tooltip />
@@ -121,7 +113,26 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
                 innerRadius={60}
                 outerRadius={100}
                 paddingAngle={5}
-                label
+                labelLine={false}
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
+                  if (!midAngle) return null; // Return null if midAngle is undefined
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="#000"
+                      textAnchor={x > cx ? "start" : "end"}
+                      dominantBaseline="central"
+                    >
+                      {value}
+                    </text>
+                  );
+                }}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -129,6 +140,18 @@ const ChartComponent: React.FC<ChartComponentProps> = ({ projectId, onClose }) =
               </Pie>
               <Tooltip />
               <Legend />
+              <text
+                x="50%"
+                y="50%"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                style={{ fontSize: 20, fontWeight: "bold" }}
+              >
+                {chartData.reduce((sum, entry) => sum + entry.value, 0)}
+                <tspan x="50%" dy="1.4em" style={{ fontSize: 12, fontWeight: "normal" }}>
+                  Total
+                </tspan>
+              </text>
             </PieChart>
           )}
         </ResponsiveContainer>

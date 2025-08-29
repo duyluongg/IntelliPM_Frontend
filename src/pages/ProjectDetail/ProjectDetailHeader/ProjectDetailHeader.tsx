@@ -1,48 +1,56 @@
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { useSearchParams, useLocation, Link } from 'react-router-dom';
+import { useSearchParams, useLocation, Link, useNavigate } from 'react-router-dom';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
+import { useAuth } from '../../../services/AuthContext';
 import projectIcon from '../../../assets/projectManagement.png';
+import { AlertTriangle, Proportions } from 'lucide-react';
+import {
+  useGetHealthDashboardQuery,
+  useCalculateMetricsBySystemMutation,
+} from '../../../services/projectMetricApi';
 
 import {
-  Users2,  
+  Users2,
   Globe,
   CalendarDays,
   List as ListIcon,
   ClipboardList,
   ClipboardCheck,
   Flag,
-  Code2,
   Archive,
   FileText,
   PackagePlus,
   ChartNoAxesGantt,
   ChartNoAxesCombined,
   FileWarning,
+  Sheet,
   Link as LucideLink,
 } from 'lucide-react';
 
 const navItems = [
-  { label: 'Summary', icon: <Globe className='w-4 h-4' />, path: 'summary' },
   { label: 'Timeline', icon: <CalendarDays className='w-4 h-4' />, path: 'timeline' },
   { label: 'Backlog', icon: <ClipboardList className='w-4 h-4' />, path: 'backlog' },
   { label: 'Board', icon: <ClipboardCheck className='w-4 h-4' />, path: 'board' },
   { label: 'Calendar', icon: <CalendarDays className='w-4 h-4' />, path: 'calendar' },
   { label: 'List', icon: <ListIcon className='w-4 h-4' />, path: 'list' },
-  { label: 'Forms', icon: <FileText className='w-4 h-4' />, path: 'forms' },
+  { label: 'Documents', icon: <FileText className='w-4 h-4' />, path: 'documents' },
   { label: 'Risk', icon: <FileWarning className='w-4 h-4' />, path: 'risk' },
   { label: 'Dashboard', icon: <ChartNoAxesCombined className='w-4 h-4' />, path: 'dashboard' },
   { label: 'Gantt', icon: <ChartNoAxesGantt className='w-4 h-4' />, path: 'gantt-chart' },
-  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
+  { label: 'Sheet', icon: <Sheet className='w-4 h-4' />, path: 'sheet' },
   { label: 'All work', icon: <Users2 className='w-4 h-4' />, path: 'all-work' },
-  { label: 'Code', icon: <Code2 className='w-4 h-4' />, path: 'code' },
+  { label: 'Goals', icon: <Flag className='w-4 h-4' />, path: 'goals' },
+  { label: 'Summary', icon: <Globe className='w-4 h-4' />, path: 'summary' },
   { label: 'Archived work items', icon: <Archive className='w-4 h-4' />, path: 'archived' },
   { label: 'Pages', icon: <FileText className='w-4 h-4' />, path: 'pages' },
   { label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   { label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
   { label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
-
+  { label: 'Document Report', icon: <Proportions className='w-4 h-4' />, path: 'document-report' },
 ];
+
+const CLIENT_ALLOWED = ['timeline', 'document-report'];
+const RESTRICTED_TABS_FOR_TEAM = ['dashboard', 'sheet'];
 
 const ProjectDetailHeader: React.FC = () => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -50,29 +58,64 @@ const ProjectDetailHeader: React.FC = () => {
   const [hiddenTabs, setHiddenTabs] = useState<typeof navItems>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLLIElement>(null);
+
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const navigate = useNavigate();
 
-  const activeTab = useMemo(() => {
-    return location.hash.replace('#', '') || 'list';
-  }, [location.hash]);
+  const projectKey = searchParams.get('projectKey') || 'NotFound';
+  const activeTab = useMemo(() => location.hash.replace('#', '') || 'list', [location.hash]);
+
+  // Lấy role từ AuthContext giống Sidebar
+  const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
+  const isTeamLeaderOrMember = ['TEAM_LEADER', 'TEAM_MEMBER'].includes(rawRole.toUpperCase());
+
+  //const { data: healthData } = useGetHealthDashboardQuery(projectKey);
+
+  const [calculate, { isLoading: isCalculating, error: calculateError }] =
+    useCalculateMetricsBySystemMutation();
+  const {
+    data: healthData,
+    isLoading: isHealthLoading,
+    error: healthError,
+  } = useGetHealthDashboardQuery(projectKey, {
+    skip: !projectKey || projectKey === 'NotFound',
+  });
+
+  // Lọc nav theo role
+  // const allowedNav = useMemo(() => {
+  //   return isClient ? navItems.filter((i) => CLIENT_ALLOWED.includes(i.path)) : navItems;
+  // }, [isClient]);
+  const allowedNav = useMemo(() => {
+    if (isClient) {
+      return navItems.filter((i) => CLIENT_ALLOWED.includes(i.path));
+    }
+    if (isTeamLeaderOrMember) {
+      return navItems.filter(
+        (i) => !RESTRICTED_TABS_FOR_TEAM.includes(i.path) && i.path !== 'document-report'
+      );
+    }
+
+    return navItems.filter((i) => i.path !== 'document-report');
+  }, [isClient, isTeamLeaderOrMember]);
 
   const { data: projectDetails, isLoading, error } = useGetProjectDetailsByKeyQuery(projectKey);
   const projectIconUrl = projectDetails?.data?.iconUrl || projectIcon;
 
   const updateTabs = () => {
-    if (containerRef.current) {
-      const containerWidth = containerRef.current.offsetWidth;
-      const tabWidth = 100;
-      const maxVisible = Math.floor(containerWidth / tabWidth);
-      if (maxVisible < navItems.length) {
-        setVisibleTabs(navItems.slice(0, maxVisible));
-        setHiddenTabs(navItems.slice(maxVisible));
-      } else {
-        setVisibleTabs(navItems);
-        setHiddenTabs([]);
-      }
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.offsetWidth;
+    const tabWidth = 100;
+    const maxVisible = Math.floor(containerWidth / tabWidth);
+
+    if (maxVisible < allowedNav.length) {
+      setVisibleTabs(allowedNav.slice(0, maxVisible));
+      setHiddenTabs(allowedNav.slice(maxVisible));
+    } else {
+      setVisibleTabs(allowedNav);
+      setHiddenTabs([]);
     }
   };
 
@@ -80,7 +123,7 @@ const ProjectDetailHeader: React.FC = () => {
     updateTabs();
     window.addEventListener('resize', updateTabs);
     return () => window.removeEventListener('resize', updateTabs);
-  }, []);
+  }, [allowedNav]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -97,6 +140,21 @@ const ProjectDetailHeader: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Chặn truy cập tab khác: CLIENT ⇒ ép về timeline
+  // useEffect(() => {
+  //   if (isClient && activeTab !== 'timeline') {
+  //     navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
+  //   }
+  // }, [isClient, activeTab, navigate, projectKey]);
+
+  useEffect(() => {
+    if (isClient && !CLIENT_ALLOWED.includes(activeTab)) {
+      navigate(`?projectKey=${projectKey}#timeline`, { replace: true });
+    } else if (isTeamLeaderOrMember && RESTRICTED_TABS_FOR_TEAM.includes(activeTab)) {
+      navigate(`?projectKey=${projectKey}#list`, { replace: true });
+    }
+  }, [isClient, isTeamLeaderOrMember, activeTab, navigate, projectKey]);
+
   return (
     <div className='mx-6 pt-6 relative'>
       <nav aria-label='Breadcrumbs' className='mb-4'>
@@ -112,7 +170,11 @@ const ProjectDetailHeader: React.FC = () => {
       <div className='flex items-center gap-2'>
         <img src={projectIconUrl} alt='Project Icon' className='w-6 h-6 rounded' />
         <h1 className='text-lg font-semibold'>
-          {isLoading ? 'Loading...' : error ? 'Error loading project' : projectDetails?.data?.name || 'Not Found'}
+          {isLoading
+            ? 'Loading...'
+            : error
+            ? 'Error loading project'
+            : projectDetails?.data?.name || 'Not Found'}
         </h1>
       </div>
 
@@ -130,11 +192,15 @@ const ProjectDetailHeader: React.FC = () => {
               >
                 <span>{item.icon}</span>
                 <span>{item.label}</span>
+                {item.path === 'dashboard' && healthData?.data?.showAlert && (
+                  <AlertTriangle className='w-4 h-4 text-red-500 ml-1' />
+                )}
               </Link>
             </li>
           ))}
 
-          {hiddenTabs.length > 0 && (
+          {/* CLIENT thì không hiển thị nút More luôn */}
+          {!isClient && hiddenTabs.length > 0 && (
             <li className='relative' ref={moreButtonRef}>
               <button
                 onClick={() => setIsPopupOpen(!isPopupOpen)}
@@ -160,6 +226,9 @@ const ProjectDetailHeader: React.FC = () => {
                         >
                           {item.icon}
                           <span className='truncate'>{item.label}</span>
+                          {item.path === 'dashboard' && healthData?.data?.showAlert && (
+                            <AlertTriangle className='w-4 h-4 text-red-500 ml-1' />
+                          )}
                         </Link>
                       </li>
                     ))}

@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './ChildWorkItem.css';
+import Swal from 'sweetalert2';
 import { useAuth, type Role } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
   useGetSubtaskByIdQuery,
+  useUpdateSubtaskPercentCompleteMutation,
+  useUpdateSubtaskActualCostMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import {
@@ -29,9 +32,17 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
+import { useGetProjectByIdQuery } from '../../services/projectApi';
+import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import aiIcon from '../../assets/icon/ai.png';
 
 interface SubtaskDetail {
   id: string;
@@ -47,17 +58,26 @@ interface SubtaskDetail {
   reporterId: number;
   sprintId: number;
   sprintName: string;
+  percentComplete: number | null;
+  actualCost: number;
 }
 
 const ChildWorkItem: React.FC = () => {
   const { key: subtaskId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { projectKey: paramProjectKey } = useParams();
+  const queryProjectKey = searchParams.get('projectKey');
+  const projectKey = paramProjectKey || queryProjectKey || 'NotFound';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
   const [subtaskDetail, setSubtaskDetail] = useState<SubtaskDetail | null>(null);
   const [updateSubtaskStatus] = useUpdateSubtaskStatusMutation();
   const [uploadSubtaskFile] = useUploadSubtaskFileMutation();
   const [deleteSubtaskFile] = useDeleteSubtaskFileMutation();
+  const [updateSubtaskPercentComplete] = useUpdateSubtaskPercentCompleteMutation();
+  const [updateSubtaskActualCost] = useUpdateSubtaskActualCostMutation();
+  const [newActualCost, setNewActualCost] = useState<number | null>(null);
   const [hoveredFileId, setHoveredFileId] = useState<number | null>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const [updateSubtaskComment] = useUpdateSubtaskCommentMutation();
@@ -84,9 +104,12 @@ const ChildWorkItem: React.FC = () => {
   const [newAssignedBy, setNewAssignedBy] = useState<number>();
   const [isWorklogOpen, setIsWorklogOpen] = React.useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [updateSubtask] = useUpdateSubtaskMutation();
+  const [fileError, setFileError] = useState('');
+
   const [selectedAssignee, setSelectedAssignee] = useState<number | undefined>(
     subtaskDetail?.assignedBy
   );
@@ -101,10 +124,31 @@ const ChildWorkItem: React.FC = () => {
   const { data: taskDetail } = useGetTaskByIdQuery(subtaskDetail?.taskId ?? '', {
     skip: !subtaskDetail?.taskId,
   });
-  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
-  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('subtask_priority');
   const projectId = taskDetail?.projectId;
   const { data: projectMembers } = useGetProjectMembersQuery(projectId!, { skip: !projectId });
+  const [editCommentId, setEditCommentId] = useState<number | null>(null);
+  const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+
+  const {
+    data: actualCostConfig,
+    isLoading: actualCostConfigLoading,
+    isError: actualCostConfigError,
+  } = useGetByConfigKeyQuery('actual_cost_limit');
+  const maxActualCost = actualCostConfigLoading
+    ? 1000000
+    : actualCostConfigError || !actualCostConfig?.data?.maxValue
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -117,6 +161,8 @@ const ChildWorkItem: React.FC = () => {
       setSprintName(subtaskDetail.sprintName || '');
       setSprintId(String(subtaskDetail.sprintId) || '');
       setReporterId(String(subtaskDetail.reporterId) || '');
+      setNewPercentComplete(subtaskDetail.percentComplete ?? 0);
+      setNewActualCost(subtaskDetail.actualCost ?? 0);
     }
   }, [subtaskDetail]);
 
@@ -124,6 +170,10 @@ const ChildWorkItem: React.FC = () => {
     useGetSubtaskFilesBySubtaskIdQuery(subtaskDetail?.id ?? '', {
       skip: !subtaskDetail?.id,
     });
+
+  const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(
+    subtaskDetail?.taskId ?? ''
+  );
 
   const {
     data: comments = [],
@@ -178,10 +228,22 @@ const ChildWorkItem: React.FC = () => {
     skip: !projectId,
   });
 
-  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
-    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(projectId!, {
-      skip: !projectId,
-    });
+  const {
+    data: projectData,
+    isLoading: isProjectDataLoading,
+    refetch: refetchProjectData,
+  } = useGetProjectByIdQuery(projectId!, {
+    skip: !projectId,
+  });
+
+  const {
+    data: projectSprints = [],
+    isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints,
+    isError: isProjectSprintsError,
+  } = useGetSprintsByProjectIdQuery(projectId!, {
+    skip: !projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -212,13 +274,13 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail?.id,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -281,20 +343,137 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      alert('✅ Subtask updated');
-      console.log('✅ Subtask updated');
+      //alert(' Subtask updated');
+      console.log('Subtask updated');
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask', err);
-      alert('❌ Update failed');
+      console.error('Failed to update subtask', err);
+      //alert('Update failed');
+    }
+  };
+
+  const handlePercentCompleteChange = async () => {
+    if (!subtaskDetail || newPercentComplete === subtaskDetail.percentComplete) return;
+
+    if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Percent Complete',
+        text: 'Percent complete must be between 0 and 100.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewPercentComplete(subtaskDetail.percentComplete);
+      return;
+    }
+
+    try {
+      await updateSubtaskPercentComplete({
+        id: subtaskDetail.id,
+        percentComplete: newPercentComplete ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(
+        `✅ Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
+      );
+      await refetchSubtask();
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update subtask percent complete', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
+  const handleActualCostChange = async () => {
+    if (!subtaskDetail || newActualCost === subtaskDetail.actualCost) return;
+
+    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Actual Cost',
+        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewActualCost(subtaskDetail.actualCost ?? 0);
+      return;
+    }
+
+    try {
+      await updateSubtaskActualCost({
+        id: subtaskDetail.id,
+        actualCost: newActualCost ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
+      await refetchSubtask();
+      await refetchActivityLogs();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Actual cost updated successfully!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    } catch (err) {
+      console.error('❌ Failed to update subtask actual cost', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update actual cost.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !subtaskDetail) return;
-
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('File size exceeds 10MB limit');
+      setIsAddDropdownOpen(false);
+      return;
+    }
     try {
       await uploadSubtaskFile({
         subtaskId: subtaskDetail.id,
@@ -303,28 +482,99 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      alert(`✅ Uploaded file "${file.name}" successfully!`);
+      //alert(`Uploaded file "${file.name}" successfully!`);
+      console.log('Uploaded file');
       refetchAttachments();
     } catch (error) {
-      console.error('❌ Upload failed:', error);
-      alert('❌ Upload failed!');
+      console.error('Upload failed:', error);
+      //alert('Upload failed!');
     } finally {
       setIsAddDropdownOpen(false);
     }
   };
 
-  const handleDeleteFile = async (id: number, createdBy: number) => {
-    if (!window.confirm('Are you sure you want to delete this file?')) return;
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ id: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (id: number, createdBy: number) => {
+    setDeleteInfo({ id, createdBy });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
     try {
-      await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
-      alert('✅ File deleted!');
+      await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
+
+      // alert("Delete file successfully!");
+      console.log('Deleted file');
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Delete failed:', error);
-      alert('❌ Delete failed!');
+      console.error(' Error delete file:', error);
+      //alert(" Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
     }
   };
+
+  // const handleDeleteFile = async (id: number, createdBy: number) => {
+  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
+  //   try {
+  //     await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
+  //     alert('✅ File deleted!');
+  //     await refetchAttachments();
+  //     await refetchActivityLogs();
+  //   } catch (error) {
+  //     console.error('Delete failed:', error);
+  //     alert('Delete failed!');
+  //   }
+  // };
+
+  const handleSave = async (id: number, originalContent: string) => {
+    const newContent = editedContent[id];
+    if (newContent && newContent !== originalContent) {
+      try {
+        await updateSubtaskComment({
+          id,
+          subtaskId: subtaskDetail?.id!,
+          accountId,
+          content: newContent,
+          createdBy: accountId,
+        }).unwrap();
+        await Promise.all([refetchComments(), refetchActivityLogs()]);
+        setEditCommentId(null);
+      } catch (err) {
+        console.error('❌ Failed to update comment', err);
+      }
+    } else {
+      setEditCommentId(null);
+    }
+  };
+
+  // Trong render comment
+  {
+    comments.map((comment) => (
+      <div key={comment.id}>
+        {editCommentId === comment.id ? (
+          <>
+            <textarea
+              value={editedContent[comment.id] || comment.content}
+              onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+            />
+            <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
+            <button onClick={() => setEditCommentId(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <span>{comment.content}</span>
+            <button onClick={() => setEditCommentId(comment.id)}>✏ Edit</button>
+          </>
+        )}
+      </div>
+    ));
+  }
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
@@ -337,11 +587,11 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      setSubtaskDetail({ ...subtaskDetail, status: newStatus }); // ✅ Cập nhật UI
-      console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      setSubtaskDetail({ ...subtaskDetail, status: newStatus });
+      console.log(`Updated subtask ${subtaskDetail.id} to ${newStatus}`);
       await refetchSubtask();
     } catch (err) {
-      console.error('❌ Failed to update subtask status', err);
+      console.error('Failed to update subtask status', err);
     }
   };
 
@@ -349,7 +599,7 @@ const ChildWorkItem: React.FC = () => {
     skip: !subtaskDetail?.taskId,
   });
 
-  if (!subtaskDetail) return <div style={{ padding: '24px' }}>Đang tải dữ liệu subtask...</div>;
+  if (!subtaskDetail) return <div style={{ padding: '24px' }}>Loading subtask data...</div>;
 
   return (
     <div className='child-work-item-page'>
@@ -364,11 +614,18 @@ const ChildWorkItem: React.FC = () => {
 
         <input
           className='subtask-input'
+          placeholder='Enter subtask title'
           defaultValue={subtaskDetail?.title}
-          onChange={(e) => setNewTitle(e.target.value)}
+          onChange={(e) => {
+            if (e.target.value.length <= 65) {
+              setNewTitle(e.target.value);
+            } else {
+              alert('Max 65 characters!');
+            }
+          }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '500px',
+            width: '600px',
             fontWeight: 'bold',
           }}
         />
@@ -386,7 +643,7 @@ const ChildWorkItem: React.FC = () => {
                 {isAddDropdownOpen && (
                   <div className='add-dropdown'>
                     <div className='add-item' onClick={() => fileInputRef.current?.click()}>
-                      📎 Attachment
+                      📁 Attachment
                     </div>
                   </div>
                 )}
@@ -396,6 +653,11 @@ const ChildWorkItem: React.FC = () => {
                   style={{ display: 'none' }}
                   onChange={handleFileUpload}
                 />
+                {fileError && (
+                  <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                    {fileError}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -403,6 +665,7 @@ const ChildWorkItem: React.FC = () => {
               <label>Description</label>
               <textarea
                 className='subtask-description'
+                placeholder='Enter subtask description'
                 defaultValue={subtaskDetail?.description}
                 onChange={(e) => setNewDescription(e.target.value)}
                 onBlur={handleUpdateSubtask}
@@ -411,13 +674,13 @@ const ChildWorkItem: React.FC = () => {
 
             {attachments.length > 0 && (
               <div className='attachments-section'>
-                <label>
+                <label className='block font-semibold mb-2'>
                   Attachments <span>({attachments.length})</span>
                 </label>
-                <div className='attachments-grid'>
+                <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100'>
                   {attachments.map((file) => (
                     <div
-                      className='attachment-card'
+                      className='relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200'
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
@@ -426,26 +689,28 @@ const ChildWorkItem: React.FC = () => {
                         href={file.urlFile}
                         target='_blank'
                         rel='noopener noreferrer'
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+                        className='block text-gray-800 no-underline'
                       >
-                        <div className='thumbnail'>
+                        <div className='h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden'>
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
+                            <img
+                              src={file.urlFile}
+                              alt={file.title}
+                              className='w-[100%] h-[100%] object-cover rounded-lg'
+                            />
                           ) : (
-                            <div className='doc-thumbnail'>
-                              <span className='doc-text'>
-                                {file.title.length > 15
-                                  ? file.title.slice(0, 15) + '...'
-                                  : file.title}
+                            <div className='flex items-center justify-center h-full w-full bg-gray-200'>
+                              <span className='text-xs font-medium text-gray-600 px-2 text-center'>
+                                {file.title.slice(0, 15)}...
                               </span>
                             </div>
                           )}
                         </div>
-                        <div className='file-meta'>
-                          <div className='file-name' title={file.title}>
+                        <div className='p-1'>
+                          <div className='truncate text-sm font-medium' title={file.title}>
                             {file.title}
                           </div>
-                          <div className='file-date'>
+                          <div className='text-xs text-gray-500'>
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -453,15 +718,11 @@ const ChildWorkItem: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id, file.createdBy)}
-                          className='delete-file-btn'
+                          onClick={() => openDeleteModal(file.id, file.createdBy)}
+                          className='absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200'
                           title='Delete file'
                         >
-                          <img
-                            src={deleteIcon}
-                            alt='Delete'
-                            style={{ width: '25px', height: '25px' }}
-                          />
+                          <img src={deleteIcon} alt='Delete' className='w-5 h-5' />
                         </button>
                       )}
                     </div>
@@ -515,92 +776,112 @@ const ChildWorkItem: React.FC = () => {
 
               {activeTab === 'COMMENTS' ? (
                 <>
-                  <div className='comment-list'>
-                    {isCommentsLoading ? (
-                      <p>Loading comments...</p>
-                    ) : comments.length === 0 ? (
-                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
-                    ) : (
-                      comments
-                        .slice()
-                        .reverse()
-                        .map((comment) => (
-                          <div key={comment.id} className='simple-comment'>
-                            <div className='avatar-circle'>
-                              <img src={comment.accountPicture || accountIcon} alt='avatar' />
+                  {comments.map((comment) => (
+                    <div key={comment.id} className='simple-comment'>
+                      <div className='avatar-circle'>
+                        <img src={comment.accountPicture || accountIcon} alt='avatar' />
+                      </div>
+                      <div className='comment-content'>
+                        <div className='comment-header'>
+                          <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
+                          <span className='comment-time'>
+                            {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                        {editCommentId === comment.id ? (
+                          <>
+                            <textarea
+                              value={editedContent[comment.id] || comment.content}
+                              onChange={(e) =>
+                                setEditedContent({ ...editedContent, [comment.id]: e.target.value })
+                              }
+                              className='border rounded p-2 w-full'
+                              autoFocus
+                            />
+                            <div className='flex gap-2 mt-2'>
+                              <button
+                                onClick={() => handleSave(comment.id, comment.content)}
+                                className='px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6'
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditCommentId(null)}
+                                className='px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6'
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            <div className='comment-content'>
-                              <div className='comment-header'>
-                                <strong>
-                                  {comment.accountName || `User #${comment.accountId}`}
-                                </strong>{' '}
-                                <span className='comment-time'>
-                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
-                                </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className='comment-text'>{comment.content}</div>
+                            {comment.accountId === accountId && (
+                              <div className='comment-actions'>
+                                <button
+                                  className='edit-btn'
+                                  onClick={() => setEditCommentId(comment.id)}
+                                >
+                                  ✏ Edit
+                                </button>
+                                <button
+                                  className='delete-btn'
+                                  onClick={async () => {
+                                    const confirmed = await Swal.fire({
+                                      title: 'Delete Comment',
+                                      text: 'Are you sure you want to delete this comment?',
+                                      icon: 'warning',
+                                      showCancelButton: true,
+                                      confirmButtonText: 'Delete',
+                                      confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                      customClass: {
+                                        title: 'small-title',
+                                        popup: 'small-popup',
+                                        icon: 'small-icon',
+                                        htmlContainer: 'small-html',
+                                      },
+                                    });
+                                    if (confirmed.isConfirmed) {
+                                      try {
+                                        console.log(
+                                          'Deleting comment:',
+                                          comment.id,
+                                          'for subtask:',
+                                          subtaskDetail.id
+                                        );
+                                        await deleteSubtaskComment({
+                                          id: comment.id,
+                                          subtaskId: subtaskDetail.id!,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('❌ Failed to delete comment:', err);
+                                        Swal.fire({
+                                          icon: 'error',
+                                          title: 'Delete Failed',
+                                          text: 'Failed to delete comment.',
+                                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                          customClass: {
+                                            title: 'small-title',
+                                            popup: 'small-popup',
+                                            icon: 'small-icon',
+                                            htmlContainer: 'small-html',
+                                          },
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  🗑 Delete
+                                </button>
                               </div>
-                              <div className='comment-text'>{comment.content}</div>
-                              {comment.accountId === accountId && (
-                                <div className='comment-actions'>
-                                  <button
-                                    className='edit-btn'
-                                    onClick={async () => {
-                                      const newContent = prompt(
-                                        '✏ Edit your comment:',
-                                        comment.content
-                                      );
-                                      if (newContent && newContent !== comment.content) {
-                                        try {
-                                          await updateSubtaskComment({
-                                            id: comment.id,
-                                            subtaskId: subtaskDetail.id,
-                                            accountId,
-                                            content: newContent,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          alert('✅ Comment updated');
-                                          await refetchComments();
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error('❌ Failed to update comment', err);
-                                          alert('❌ Update failed');
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    ✏ Edit
-                                  </button>
-                                  <button
-                                    className='delete-btn'
-                                    onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          '🗑️ Are you sure you want to delete this comment?'
-                                        )
-                                      ) {
-                                        try {
-                                          await deleteSubtaskComment({
-                                            id: comment.id,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          alert('🗑️ Deleted successfully');
-                                          await refetchComments();
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error('❌ Failed to delete comment', err);
-                                          alert('❌ Delete failed');
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    🗑 Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Comment Input */}
                   <div className='simple-comment-input'>
@@ -623,13 +904,14 @@ const ChildWorkItem: React.FC = () => {
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          alert('✅ Comment posted');
+                          //alert('✅ Comment posted');
+                          console.log('Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -689,7 +971,8 @@ const ChildWorkItem: React.FC = () => {
               <h4>Details</h4>
               <div className='detail-item'>
                 <label>Assignee</label>
-                <div className='detail-item'>
+
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedAssignee ?? subtaskDetail?.assignedBy}
                     onChange={async (e) => {
@@ -700,8 +983,8 @@ const ChildWorkItem: React.FC = () => {
                         await updateSubtask({
                           id: subtaskDetail.id,
                           assignedBy: newAssignee,
-                          sprintId: subtaskDetail.sprintId ?? 'None',
                           title: subtaskDetail.title,
+                          sprintId: subtaskDetail.sprintId ?? null,
                           description: subtaskDetail.description ?? '',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
@@ -709,24 +992,79 @@ const ChildWorkItem: React.FC = () => {
                           reporterId: subtaskDetail.reporterId,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Updated subtask assignee');
+
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Failed to update subtask');
                         console.error(err);
                       }
                     }}
                     style={{ minWidth: '150px' }}
                   >
                     <option value='0'>Unassigned</option>
-                    {projectMembers?.map((m) => (
+                    {assignees?.map((m) => (
                       <option key={m.accountId} value={m.accountId}>
-                        {m.accountName}
+                        {m.accountFullname}
                       </option>
                     ))}
                   </select>
-                </div>
+                ) : (
+                  <span>
+                    {assignees?.find(
+                      (m) => m.accountId === (selectedAssignee ?? subtaskDetail?.assignedBy)
+                    )?.accountFullname || 'Unassigned'}
+                  </span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <div className='flex items-center gap-1'>
+                    <input
+                      type='number'
+                      min='0'
+                      max='100'
+                      step='1'
+                      value={newPercentComplete ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setNewPercentComplete(value);
+                      }}
+                      onBlur={handlePercentCompleteChange}
+                      style={{ width: '100px' }}
+                      className='border rounded p-1'
+                    />
+                    <span>%</span>
+                  </div>
+                ) : (
+                  <span>{subtaskDetail.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Actual Cost (Equipment, Licenses, etc.)</label>
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <div className='flex items-center gap-1'>
+                    <input
+                      type='number'
+                      min='0'
+                      step='1'
+                      value={newActualCost ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : null;
+                        setNewActualCost(value);
+                      }}
+                      onBlur={handleActualCostChange}
+                      style={{ width: '150px' }}
+                      className='border rounded p-1'
+                      placeholder='Enter cost (e.g., equipment)'
+                    />
+                    <span>VND</span>
+                  </div>
+                ) : (
+                  <span>{subtaskDetail.actualCost ?? '0'} $</span>
+                )}
               </div>
 
               {isEditingLabel ? (
@@ -795,86 +1133,232 @@ const ChildWorkItem: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
 
               <div className='detail-item'>
                 <label>Parent</label>
-                <span>{subtaskDetail.taskId}</span>
+                {subtaskDetail.taskId ? (
+                  <Link
+                    to={`/project/${projectKey}/work-item-detail?taskId=${subtaskDetail.taskId}`}
+                    className='text no-underline hover:underline cursor-pointer'
+                  >
+                    Task [{subtaskDetail.taskId}]
+                  </Link>
+                ) : (
+                  <span>Task [None]</span>
+                )}
               </div>
 
-              <div className='detail-item'>
+              {/* <div className='detail-item'>
+                <label>Parent</label>
+                  <span>Task [{subtaskDetail.taskId ?? 'None'}]</span>
+              </div> */}
+
+              {/* <div className='detail-item'>
                 <label>Sprint</label>
-                <select
-                  style={{ width: '150px' }}
-                  value={newSprintId ?? subtaskDetail?.sprintId}
-                  onChange={(e) => setNewSprintId(parseInt(e.target.value))}
-                  onBlur={handleUpdateSubtask}
-                >
-                  {isProjectSprintsLoading ? (
-                    <option>Loading...</option>
-                  ) : isProjectSprintsError ? (
-                    <option>Error loading Sprint</option>
-                  ) : (
-                    projectSprints?.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <select
+                    style={{ width: '150px' }}
+                    value={newSprintId ?? subtaskDetail?.sprintId}
+                    onChange={(e) => setNewSprintId(parseInt(e.target.value, 10))}
+                    onBlur={handleUpdateSubtask}
+                  >
+                    {isProjectSprintsLoading ? (
+                      <option>Loading...</option>
+                    ) : isProjectSprintsError ? (
+                      <option>Error loading Sprint</option>
+                    ) : (
+                      <>
+                        <option value={0}>No Sprint</option>
+                        {projectSprints?.map((sprint) => (
+                          <option key={sprint.id} value={sprint.id}>
+                            {sprint.name}
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                ) : (
+                  <span>
+                    {isProjectSprintsLoading
+                      ? 'Loading...'
+                      : isProjectSprintsError
+                      ? 'Error loading Sprint'
+                      : projectSprints?.find(
+                          (s) => s.id === (newSprintId ?? subtaskDetail?.sprintId)
+                        )?.name || 'No Sprint'}
+                  </span>
+                )}
+              </div> */}
 
               <div className='detail-item'>
                 <label>Priority</label>
-                <select
-                  style={{ width: '150px' }}
-                  value={newPriority ?? subtaskDetail?.priority}
-                  onChange={(e) => setNewPriority(e.target.value)}
-                  onBlur={handleUpdateSubtask}
-                >
-                  {isPriorityLoading ? (
-                    <option>Loading...</option>
-                  ) : isPriorityError ? (
-                    <option>Error loading priorities</option>
-                  ) : (
-                    priorityOptions?.data.map((priority) => (
-                      <option key={priority.id} value={priority.name}>
-                        {priority.label}
-                      </option>
-                    ))
-                  )}
-                </select>
+
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <select
+                    style={{ width: '150px' }}
+                    value={newPriority ?? subtaskDetail?.priority}
+                    onChange={(e) => setNewPriority(e.target.value)}
+                    onBlur={handleUpdateSubtask}
+                  >
+                    {isPriorityLoading ? (
+                      <option>Loading...</option>
+                    ) : isPriorityError ? (
+                      <option>Error loading priorities</option>
+                    ) : (
+                      priorityOptions?.data.map((priority) => (
+                        <option key={priority.id} value={priority.name}>
+                          {priority.label}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                ) : (
+                  <span>
+                    {isPriorityLoading
+                      ? 'Loading...'
+                      : isPriorityError
+                      ? 'Error loading priorities'
+                      : priorityOptions?.data.find(
+                          (p) => p.name === (newPriority ?? subtaskDetail?.priority)
+                        )?.label || 'NONE'}
+                  </span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Start Date</label>
-                <input
-                  type='date'
-                  value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => setNewStartDate(e.target.value)}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <input
+                    type='date'
+                    value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data?.startDate?.slice(0, 10)}
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (newEndDate && new Date(value) >= new Date(newEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be smaller than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Start Date',
+                            html: `Start Date must be between project <strong>${
+                              projectData.data.name
+                            }</strong> 
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html',
+                            },
+                          });
+                          return;
+                        }
+                      }
+
+                      setNewStartDate(value);
+                    }}
+                    onBlur={handleUpdateSubtask}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{subtaskDetail?.startDate?.slice(0, 10) || 'None'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Due Date</label>
-                <input
-                  type='date'
-                  value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                  onChange={(e) => setNewEndDate(e.target.value)}
-                  onBlur={handleUpdateSubtask}
-                  style={{ width: '150px' }}
-                />
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                  <input
+                    type='date'
+                    value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
+                    min={newStartDate ?? projectData?.data?.startDate?.slice(0, 10)} // Use newStartDate if available
+                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (newStartDate && new Date(value) <= new Date(newStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be greater than Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Due Date',
+                            html: `Due Date must be between project <strong>${
+                              projectData.data.name
+                            }</strong> 
+                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html',
+                            },
+                          });
+                          return;
+                        }
+                      }
+
+                      setNewEndDate(value);
+                    }}
+                    onBlur={handleUpdateSubtask}
+                    style={{ width: '150px' }}
+                  />
+                ) : (
+                  <span>{subtaskDetail?.endDate?.slice(0, 10) || 'None'}</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Reporter</label>
-                <div className='detail-item'>
+
+                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}
                     onChange={async (e) => {
@@ -886,19 +1370,18 @@ const ChildWorkItem: React.FC = () => {
                           id: subtaskDetail.id,
                           assignedBy: subtaskDetail.assignedBy,
                           title: subtaskDetail.title,
+                          sprintId: subtaskDetail.sprintId ?? null,
                           description: subtaskDetail.description ?? '',
-                          sprintId: subtaskDetail.sprintId ?? 'None',
                           priority: subtaskDetail.priority,
                           startDate: subtaskDetail.startDate,
                           endDate: subtaskDetail.endDate,
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Updated subtask reporter');
+
                         await refetchSubtask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Failed to update reporter');
                         console.error(err);
                       }
                     }}
@@ -911,7 +1394,13 @@ const ChildWorkItem: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                </div>
+                ) : (
+                  <span>
+                    {projectMembers?.find(
+                      (m) => m.accountId === (selectedReporter ?? subtaskDetail?.reporterId)
+                    )?.accountName || 'Unassigned'}
+                  </span>
+                )}
               </div>
 
               <div className='detail-item'>
@@ -929,6 +1418,7 @@ const ChildWorkItem: React.FC = () => {
                 onClose={() => setIsWorklogOpen(false)}
                 workItemId={subtaskDetail.id}
                 type='subtask'
+                onRefetchActivityLogs={refetchActivityLogs}
               />
               <div className='detail-item'>
                 <label>Connections</label>
@@ -949,6 +1439,13 @@ const ChildWorkItem: React.FC = () => {
           </div>
         </div>
       </div>
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title='Delete this attachment?'
+        message="Once you delete, it's gone for good."
+      />
     </div>
   );
 };

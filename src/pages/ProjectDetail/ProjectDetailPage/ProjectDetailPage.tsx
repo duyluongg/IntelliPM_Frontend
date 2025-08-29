@@ -11,6 +11,8 @@ import Risk from '../../PM/Risk/Risk';
 import Backlog from '../BacklogPage/BacklogPage';
 import KanbanBoardPage from '../KanbanBoardPage/KanbanBoardPage';
 import MilestonePage from '../MilestonePage/MilestonePage';
+import TaskSubtaskSheet from '../../PM/ProjectSheet/TaskSubtaskSheet';
+import DocumentReport from '../../PM/YourProject/DocumentReport';
 
 const ProjectDetailPage = () => {
   const location = useLocation();
@@ -20,7 +22,6 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     const hash = location.hash;
-    console.log('📌 Current hash:', hash);
   }, [location.hash]);
 
   const [searchParams] = useSearchParams();
@@ -35,13 +36,13 @@ const ProjectDetailPage = () => {
         {activeTab === 'backlog' && <Backlog />}
         {activeTab === 'board' && <KanbanBoardPage />}
         {activeTab === 'timeline' && <MilestonePage />}
-        {activeTab === 'forms' && <Form />}
+        {activeTab === 'documents' && <Form />}
         {activeTab === 'gantt-chart' && <Gantt />}
         {activeTab === 'dashboard' && <ProjectDashboard />}
         {activeTab === 'risk' && <Risk />}
-        {/* {activeTab === 'tests' && <Doc/>} */}
+        {activeTab === 'sheet' && <TaskSubtaskSheet />}
+        {activeTab === 'document-report' && <DocumentReport />}
 
-        {/* Add more tabs as needed */}
       </div>
     </div>
   );

@@ -94,6 +94,7 @@ export interface WorkItemList {
   commentCount: number;
   sprintId: number | null;
   sprintName: string | null;
+  priority: string | null;
   assignees: Assignee[];
   dueDate: string | null;
   labels: string[];
@@ -104,7 +105,7 @@ export interface WorkItemList {
   reporterPicture: string | null;
 }
 
-interface TaskItem {
+export interface TaskItem {
   id: string;
   reporterId: number;
   reporterName: string | null;
@@ -133,7 +134,7 @@ interface TaskItem {
   plannedResourceCost: number | null;
   actualCost: number | null;
   actualResourceCost: number | null;
-  priority: string;
+  priority: string | null;
   status: string;
   evaluate: string | null;
   createdAt: string;
@@ -151,10 +152,12 @@ interface TaskDependency {
   type: string;
 }
 
-interface SubtaskItem {
+export interface SubtaskItem {
   id: string;
   taskId: string;
   assignedBy: number;
+  assignedFullName: string;
+  assignedUsername: string;
   title: string;
   description: string;
   reporterId: number | null;
@@ -348,6 +351,15 @@ export interface GetProjectItemsResponse {
   data: ProjectItem[];
 }
 
+export interface GetWorkItemByKeyResponse {
+  isSuccess: boolean;
+  code: number;
+  data: WorkItemList;
+  message: string;
+  error?: string;
+}
+
+
 export const projectApi = createApi({
   reducerPath: 'projectApi',
   baseQuery: fetchBaseQuery({
@@ -392,15 +404,23 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
-    checkProjectKey: builder.query<CheckProjectKeyResponse, string>({
-      query: (projectKey) => ({
-        url: `project/check-project-key?projectKey=${projectKey}`,
+    checkProjectKey: builder.query<
+      CheckProjectKeyResponse,
+      { projectKey: string; projectId?: number }
+    >({
+      query: ({ projectKey, projectId }) => ({
+        url: `project/check-project-key?projectKey=${projectKey}${projectId ? `&projectId=${projectId}` : ''
+          }`,
         method: 'GET',
       }),
     }),
-    checkProjectName: builder.query<CheckProjectNameResponse, string>({
-      query: (projectName) => ({
-        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}`,
+    checkProjectName: builder.query<
+      CheckProjectNameResponse,
+      { projectName: string; projectId?: number }
+    >({
+      query: ({ projectName, projectId }) => ({
+        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${projectId ? `&projectId=${projectId}` : ''
+          }`,
         method: 'GET',
       }),
     }),
@@ -479,13 +499,35 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
+
+    updateProjectStatus: builder.mutation<void, { id: number; status: string }>({
+      query: ({ id, status }) => ({
+        url: `project/${id}/status`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status }),
+      }),
+      invalidatesTags: ['Project'],
+    }),
+    getWorkItemByKey: builder.query<GetWorkItemByKeyResponse, string>({
+      query: (projectKey) => ({
+        url: `project/${projectKey}/allworkitems`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, projectKey) => [
+        { type: 'WorkItem', id: projectKey },
+      ],
+    }),
+
   }),
 });
 
 export const {
   useGetAllProjectsQuery,
   useGetProjectByIdQuery,
-  useLazyGetProjectByIdQuery  ,
+  useLazyGetProjectByIdQuery,
   useGetWorkItemsByProjectIdQuery,
   useGetProjectDetailsByKeyQuery,
   useCheckProjectKeyQuery,
@@ -500,4 +542,6 @@ export const {
   useRejectProjectMutation,
   useGetProjectItemsByKeyQuery,
   useLazyCheckProjectKeyQuery,
+  useUpdateProjectStatusMutation,
+  useLazyGetWorkItemByKeyQuery,
 } = projectApi;

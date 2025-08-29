@@ -24,9 +24,10 @@ import ProjectTaskList from '../pages/ProjectDetail/ProjectTaskList/ProjectTaskL
 import ProjectDetailPage from '../pages/ProjectDetail/ProjectDetailPage/ProjectDetailPage';
 import MeetingFeedbackPage from '../pages/PM/Meeting/MeetingFeedback/MeetingFeedbackPage';
 import ProjectCreation from '../pages/ProjectCreation/ProjectCreation';
+import ProjectCreatitonPM from '../pages/ProjectCreation/ProjectCreationPM';
 import TaskSetup from '../pages/ProjectCreation/TaskSetup/TaskSetup';
 // import DocBlank from '../pages/PM/YourProject/DocBlank';
-import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectOverviewPM';
+import ProjectOverviewPM from '../pages/ProjectCreation/ProjectOverview/ProjectReviewPM';
 import ProjectSummary from '../pages/ProjectDetail/ProjectSummary/ProjectSummary';
 // import Doc from '../pages/PM/YourProject/Doc';
 import DocWrapper from '../pages/PM/YourProject/DocWrapper';
@@ -45,6 +46,8 @@ import MeetingRequestRejectPage from '../pages/PM/Meeting/MeetingRequestReject/M
 import CreateDocumentRequestMeeting from '../pages/PM/Meeting/MeetingRequestReject/CreateDocumentRequestMeeting';
 import AdminHomePage from '../pages/Admin/AdminHomePage';
 import MembersPage from '../pages/Admin/MembersPage/MembersPage';
+import AdminProjectPage from '../pages/Admin/ProjectPage/AdminProjectPage';
+import ProjectDashboard from '../pages/Admin/ProjectPage/ProjectDashboard';
 import CustomerHome from '../pages/Guest/CustomerHome';
 import FeatureGuidePage from '../pages/Guest/FeatureGuidePage/FeatureGuidePage';
 import Login from '../components/Login';
@@ -55,12 +58,51 @@ import Analytics from '../pages/Admin/AnalyticsPage/Analytics';
 import Document from '../pages/PM/YourProject/Document';
 import ProjectListTable from '../pages/ProjectDetail/ProjectList/ProjectListTable';
 import UpdateProjectPage from '../pages/ProjectDetail/UpdateProject/UpdateProjectPage';
-
+import ProfilePage from '../pages/Account/ProfilePage';
+import TeamsHistoryPage from '../pages/Account/TeamsHistoryPage';
+import ProjectComplete from '../pages/ProjectDetail/ProjectList/ProjectComplete';
+import MilestoneFeedbackPanel from '../pages/PM/Meeting/MeetingFeedback/MilestoneFeedbackPanel';
+import SystemConfigPage from '../pages/Admin/SystemConfigPage/SystemConfigPage';
+import DynamicCategoryPage from '../pages/Admin/DynamicCategoryPage/DynamicCategoryPage';
+import AiResponsePage from '../pages/Admin/AiResponseHistoryPage/AiResponsePage';
+import RiskStatistics from '../pages/PM/Risk/RiskStatistics';
+import Register from '../components/Register';
+import VerifySuccess from '../components/VerifySuccess';
+import VerifyFail from '../components/VerifyFail';
+import DynamicBulkRegister from '../pages/Admin/DynamicBulkRegister/DynamicBulkRegister';
+import ShareVerificationPage from '../pages/PM/YourProject/ShareVerificationPage';
+import ForgotPassword from '../components/ForgotPassword';
+import ResetPassword from '../components/ResetPassword';
+import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Login />,
+  },
+  {
+    path: '/register',
+    element: <Register />,
+  },
+  {
+    path: '/verify-success',
+    element: <VerifySuccess />,
+  },
+  {
+    path: '/verify-fail',
+    element: <VerifyFail />,
+  },
+  {
+    path: '/share/verify',
+    element: <ShareVerificationPage />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPassword />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPassword />,
   },
   {
     path: '/Guest',
@@ -70,7 +112,10 @@ export const router = createBrowserRouter([
     path: '/feature',
     element: <FeatureGuidePage />,
   },
-
+  {
+    path: 'intro',
+    element: <GuestIntroPage />,
+  },
   {
     path: '/',
     element: <RootLayout />,
@@ -105,8 +150,17 @@ export const router = createBrowserRouter([
         element: <MeetingFeedbackPage />,
       },
       {
-        path: 'intro',
-        element: <GuestIntroPage />,
+        path: 'meeting-feedback/:transcriptId',
+        element: <MilestoneFeedbackPanel />,
+      },
+
+      {
+        path: 'account/profile',
+        element: <ProfilePage />,
+      },
+      {
+        path: 'account/teams-history',
+        element: <TeamsHistoryPage />,
       },
     ],
   },
@@ -131,7 +185,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -180,6 +234,10 @@ export const router = createBrowserRouter([
         element: <ProjectCreation />,
       },
       {
+        path: `pm/createform`,
+        element: <ProjectCreatitonPM />,
+      },
+      {
         path: `list`,
         element: <ProjectList />,
       },
@@ -190,6 +248,10 @@ export const router = createBrowserRouter([
       {
         path: `:projectKey/settings`,
         element: <UpdateProjectPage />,
+      },
+      {
+        path: `:projectKey/complete`,
+        element: <ProjectComplete />,
       },
       {
         path: `:projectKey/task-setup`,
@@ -258,6 +320,10 @@ export const router = createBrowserRouter([
         path: 'projects/form/recent_form',
         element: <RecentForm />,
       },
+      {
+        path: ':projectKey/risk-statistics',
+        element: <RiskStatistics />,
+      },
     ],
   },
 
@@ -290,6 +356,35 @@ export const router = createBrowserRouter([
         path: 'analytics',
         element: <Analytics />,
       },
+      {
+        path: 'ai-responses/history/:id',
+        element: <AiResponseHistoryDetail />,
+      },
+      {
+        path: 'categories',
+        element: <DynamicCategoryPage />,
+      },
+      {
+        path: 'configurations',
+        element: <SystemConfigPage />,
+      },
+      {
+        path: 'ai-responses',
+        element: <AiResponsePage />,
+      },
+      {
+        path: 'register-members',
+        element: <DynamicBulkRegister />,
+      },
+      {
+        path: 'projects',
+        element: <AdminProjectPage />,
+      },
+      {
+        path: 'account/profile',
+        element: <ProfilePage />,
+      },
+      { path: 'projects/:projectId/dashboard', element: <ProjectDashboard /> },
     ],
   },
 

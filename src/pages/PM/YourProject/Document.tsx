@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import '../../../components/PM/RichTextEditor/styles.scss';
+import './editor.scss';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { TextStyle } from '@tiptap/extension-text-style';
@@ -14,7 +16,6 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
 
 import debounce from 'lodash.debounce';
-import './editor.scss';
 
 import MenuBar from './MenuBar';
 import {
@@ -43,30 +44,50 @@ import {
 import { CommentMark } from './CommentMark';
 import CommentSidebar from './CommentSidebar';
 import SideMenu from './SideMenu';
+import { skipToken } from '@reduxjs/toolkit/query';
+import DocumentRealtimeBridge from './DocumentRealtimeBridge';
+import toast from 'react-hot-toast';
+import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/documentPermissionAPI';
+import type { DocumentVisibility } from '../../../types/DocumentType';
+import Swal from 'sweetalert2';
+import { useGetProfileByAccountIdQuery } from '../../../services/accountApi';
 
 interface CommentItem {
   id: number | string;
   documentId: number; // ✅ BẮT BUỘC
-  from: number; // ✅ BẮT BUỘC
-  to: number; // ✅ BẮT BUỘC
+  fromPos: number; // ✅ BẮT BUỘC
+  toPos: number; // ✅ BẮT BUỘC
   content: string; // ✅ BẮT BUỘC
   comment: string;
 }
 
+interface MentionItem {
+  id: number;
+  label: string;
+  name: string;
+}
+
 export const Document: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode');
-  const isReadOnly = mode === 'view';
+
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
   const navigate = useNavigate();
   const { documentId } = useParams();
-  const {
-    data: documentData,
-    isLoading,
-    isError,
-    refetch: refetchDocument,
-  } = useGetDocumentByIdQuery(documentId);
+
+  const numericDocId = documentId ? Number(documentId) : undefined;
+  const { data: permResp, refetch: refetchPermission } = useGetPermissionTypeByDocumentQuery(
+    numericDocId!,
+    { skip: !numericDocId }
+  );
+  // thêm ref:
+  const isHydratedRef = useRef(false);
+
+  const { data: documentData, refetch: refetchDocument } = useGetDocumentByIdQuery(numericDocId!, {
+    skip: !numericDocId,
+    refetchOnMountOrArgChange: true,
+  });
+
   const {
     content: initialContent,
     visibility,
@@ -75,22 +96,48 @@ export const Document: React.FC = () => {
     createdBy,
     title,
   } = documentData || {};
-  const { user } = useAuth();
-  console.log(user);
 
-  const projectId = useSelector((state: RootState) => state.project.currentProjectId);
-  const { data, isSuccess } = useGetProjectByIdQuery(projectId!, {
+  const {
+    data: dataProfile,
+    isLoading,
+    isError,
+  } = useGetProfileByAccountIdQuery(createdBy!, {
+    skip: !createdBy,
+  });
+
+  const { user } = useAuth();
+  const rawRole = (user?.role ?? '').toString().trim();
+  const isClient = rawRole.toUpperCase() === 'CLIENT';
+  const isOwner = !!user && !!createdBy && user.id === createdBy;
+
+  const permissionType = permResp?.permissionType ?? 'VIEW';
+
+  // const projectId = useSelector((state: RootState) => state.project.currentProjectId);
+  const projectIdRaw = useSelector((state: RootState) => state.project.currentProjectId);
+  const projectId = projectIdRaw != null ? Number(projectIdRaw) : undefined;
+  const { data, isSuccess } = useGetProjectByIdQuery(projectId as number, {
     skip: !projectId,
   });
+  const isInProject =
+    documentData?.projectId !== undefined &&
+    projectId !== undefined &&
+    documentData.projectId === projectId;
+
+  const canEdit = !isClient && (isOwner || isInProject || permissionType === 'EDIT');
+
+  console.log(isInProject, 'isInProject');
+  console.log(canEdit, 'canEdit');
+
   const projectKey = data?.data?.projectKey;
 
-  const projectKeyRef = useRef<string | undefined>();
+  const projectKeyRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     projectKeyRef.current = projectKey;
   }, [projectKey]);
 
   console.log('Document data:', projectId);
-  const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId!, {
+  const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId as number, {
     skip: !projectId,
   });
   const filterAccount = projectMembers?.filter((m) => m.id !== user?.id);
@@ -108,12 +155,12 @@ export const Document: React.FC = () => {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
 
-  const [currentTitle, setCurrentTitle] = useState(title);
+  const [currentTitle, setCurrentTitle] = useState<string>(title ?? '');
   const [updateDocument] = useUpdateDocumentMutation();
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
   const { data: commentList = [], refetch: refetchComments } = useGetCommentsByDocumentIdQuery(
-    documentId!,
+    Number(documentId),
     {
       skip: !documentId,
     }
@@ -127,28 +174,64 @@ export const Document: React.FC = () => {
   const debouncedSave = useCallback(
     debounce((html: string) => {
       if (documentId) {
-        updateDocument({ id: documentId, data: { content: html, visibility } });
+        updateDocument({
+          id: Number(documentId),
+          data: { content: html, visibility, title: currentTitle },
+        });
       }
     }, 500),
-    [documentId, visibility]
+    [documentId, visibility, currentTitle]
+  );
+
+  const debouncedSaveRef = useRef(
+    debounce((html: string, docVisibility?: DocumentVisibility) => {
+      if (documentId) {
+        updateDocument({
+          id: Number(documentId),
+          data: { content: html, visibility: docVisibility },
+        });
+      }
+    }, 500)
   );
 
   const handleTitleSave = async () => {
-    if (currentTitle.trim() && currentTitle !== title) {
+    // Nếu không có quyền chỉnh sửa, chỉ cần thoát khỏi chế độ chỉnh sửa
+    if (!canEdit) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    const trimmedTitle = currentTitle.trim();
+
+    // Kiểm tra xem tiêu đề có bị bỏ trống không
+    if (trimmedTitle === '') {
+      toast.error('Tiêu đề không được để trống.');
+      setCurrentTitle(title ?? ''); // Hoàn nguyên về tiêu đề ban đầu
+      setIsEditingTitle(false);
+      return; // Dừng hàm tại đây
+    }
+
+    // Chỉ gọi API nếu tiêu đề thực sự thay đổi
+    if (trimmedTitle !== title) {
       try {
         await updateDocument({
-          id: documentId,
-          data: { title: currentTitle, visibility },
-        });
+          id: Number(documentId),
+          data: { title: trimmedTitle, visibility }, // Lưu tiêu đề đã được trim
+        }).unwrap(); // Sử dụng unwrap để bắt lỗi từ RTK Query
+        toast.success('Cập nhật tiêu đề thành công!');
       } catch (err) {
-        console.error('Failed to update title', err);
+        console.error('Cập nhật tiêu đề thất bại', err);
+        toast.error('Không thể cập nhật tiêu đề.');
+        setCurrentTitle(title ?? ''); // Hoàn nguyên tiêu đề nếu có lỗi
       }
     }
+
+    // Thoát khỏi chế độ chỉnh sửa sau khi lưu hoặc không có gì thay đổi
     setIsEditingTitle(false);
   };
 
   const editor = useEditor({
-    editable: !isReadOnly,
+    editable: canEdit,
     extensions: [
       StarterKit,
       CommentMark,
@@ -225,11 +308,28 @@ export const Document: React.FC = () => {
         return false; // Để Tiptap xử lý tiếp
       },
     },
+    // onUpdate: ({ editor }) => {
+    //   if (!canEdit || !isHydratedRef.current) return;
+    //   const html = editor.getHTML();
+    //   debouncedSaveRef.current(html, visibility);
+    // },
+
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      debouncedSave(html);
+      if (!canEdit || !isHydratedRef.current) return;
+
+      const raw = editor.getHTML().trim();
+      const normalized = raw === '<p></p>' ? '' : raw; // 👈 chuẩn hóa rỗng
+
+      debouncedSaveRef.current(normalized, visibility);
     },
   });
+
+  useEffect(() => {
+    if (editor) {
+      editor.setEditable(canEdit);
+    }
+  }, [editor, canEdit]);
+
   const hasContent = editor && editor.getHTML().trim() !== '<p></p>';
 
   const handleGoToComment = (from: number, to: number, commentId: string) => {
@@ -254,7 +354,7 @@ export const Document: React.FC = () => {
 
   // ✨ THAY ĐỔI: Cập nhật lại hàm được truyền vào sidebar
   const handleSidebarCommentClick = (comment: CommentItem) => {
-    handleGoToComment(comment.from, comment.to, comment.id.toString());
+    handleGoToComment(comment.fromPos, comment.toPos, comment.id.toString());
   };
 
   useEffect(() => {
@@ -274,11 +374,22 @@ export const Document: React.FC = () => {
   }, [activeCommentId]); // Chạy mỗi khi activeCommentId thay đổi
 
   useEffect(() => {
-    if (documentData) {
-      setCurrentTitle(documentData.title);
-      editor?.commands.setContent(documentData.content || '');
+    // Chỉ thực thi khi cả editor và documentData đã sẵn sàng
+    if (!editor || !documentData) {
+      return;
     }
-    refetchDocument();
+
+    const currentContent = editor.getHTML();
+    const newContent = documentData.content || '';
+
+    // Chỉ cập nhật nếu nội dung thật sự khác nhau
+    if (currentContent !== newContent) {
+      setCurrentTitle(documentData.title);
+
+      // Cập nhật nội dung mà KHÔNG kích hoạt onUpdate
+      editor.commands.setContent(newContent, false);
+    }
+    isHydratedRef.current = true;
   }, [documentData, editor]);
 
   if (!documentId) {
@@ -302,120 +413,176 @@ export const Document: React.FC = () => {
     const { from, to } = editor.state.selection;
 
     if (from === to) {
-      alert('Vui lòng chọn đoạn văn bản để comment!');
+      // Translated to English
+      toast.error('Please select text to comment on!');
       return;
     }
 
     const selectedText = editor.state.doc.textBetween(from, to);
-    const commentContent = prompt(`Viết comment cho đoạn: "${selectedText}"`);
 
-    if (!commentContent?.trim()) return;
+    const { value: commentContent } = await Swal.fire({
+      // Translated to English
+      title: 'Add your comment',
+      html: `For the selected text: "<b>${selectedText}</b>"`,
+      input: 'textarea',
+      inputPlaceholder: 'Type your comment here...',
+      showCancelButton: true,
+      confirmButtonText: 'Comment',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'swal-confirm-button',
+        cancelButton: 'swal-cancel-button',
+      },
+      // Translated to English
+      inputValidator: (value) => {
+        if (!value || !value.trim()) {
+          return 'You need to write something!';
+        }
+      },
+    });
 
-    try {
-      const res = await createComment({
-        documentId: Number(documentId),
-        fromPos: from,
-        toPos: to,
-        content: selectedText,
-        comment: commentContent,
-      }).unwrap(); // 👉 Bắt lỗi nếu có
+    // If the user entered text and clicked "Comment"
+    if (commentContent) {
+      try {
+        const res = await createComment({
+          documentId: Number(documentId),
+          fromPos: from,
+          toPos: to,
+          content: selectedText,
+          comment: commentContent,
+        }).unwrap();
 
-      const commentId = res?.id ?? 'tạm-thời';
+        const commentId = res?.id ?? 'temporary-id';
 
-      // Gắn mark để highlight đoạn comment
-      editor
-        .chain()
-        .focus()
-        .setTextSelection({ from, to })
-        .setMark('commentMark', { commentId })
-        .run();
-      await refetchComments();
-      alert('✅ Comment đã được tạo!');
-    } catch (error) {
-      console.error('❌ Tạo comment thất bại:', error);
-      alert('Tạo comment thất bại');
-    }
-  };
-
-  // Document.tsx
-
-  const handleDeleteComment = async (commentId: number | string) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) {
-      const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
-
-      if (!commentToDelete) {
-        console.error('Không tìm thấy comment để xóa trong danh sách.');
-        return;
-      }
-
-      if (editor) {
         editor
           .chain()
           .focus()
-          // ✨ SỬA LẠI TẠI ĐÂY
-          .setTextSelection({ from: commentToDelete.fromPos, to: commentToDelete.toPos })
-          .unsetMark('commentMark')
+          .setTextSelection({ from, to })
+          .setMark('commentMark', { commentId })
           .run();
-      }
 
-      if (activeCommentId === commentId.toString()) {
-        setActiveCommentId(null);
-      }
-
-      try {
-        await deleteComment(commentId).unwrap();
-        refetchComments();
+        await refetchComments();
+        // Translated to English
+        toast.success('Comment created successfully!');
       } catch (error) {
-        console.error('Xóa bình luận thất bại:', error);
-        alert('Đã xảy ra lỗi khi xóa bình luận.');
+        // Translated to English
+        console.error('❌ Failed to create comment:', error);
+        toast.error('Failed to create comment.');
       }
     }
   };
+  // Document.tsx
 
-  // ✨ 4. TẠO HÀM XỬ LÝ CẬP NHẬT
-  const handleUpdateComment = async (
-    commentToUpdate: CommentItem, // Nhận vào toàn bộ object comment gốc
-    newCommentText: string // và nội dung bình luận mới
-  ) => {
-    // Kiểm tra để đảm bảo có documentId
+  const handleUpdateComment = async (commentToUpdate: CommentItem, newCommentText: string) => {
     if (!documentId) {
       alert('Không tìm thấy ID của tài liệu.');
       return;
     }
 
-    // 1. Xây dựng payload đầy đủ mà API yêu cầu
-    const payload = {
-      id: Number(commentToUpdate.id),
-      documentId: Number(documentId),
-      fromPos: commentToUpdate.from,
-      toPos: commentToUpdate.to,
-      content: commentToUpdate.content, // Lấy content gốc từ object comment
-      comment: newCommentText, // Dùng nội dung mới từ textarea
-    };
-
-    // 2. Gọi mutation với payload hoàn chỉnh
     try {
-      console.log('Đang gửi payload để cập nhật:', payload);
-      await updateComment(payload).unwrap();
-      refetchComments(); // Cập nhật lại danh sách bình luận trên UI
+      // Gửi partial update: chỉ field cần đổi
+      await updateComment({
+        id: Number(commentToUpdate.id),
+        body: {
+          // Nếu chỉ sửa text comment:
+          comment: newCommentText,
+
+          // Nếu bạn cũng muốn cập nhật lại vùng highlight và content:
+          // fromPos: commentToUpdate.from,
+          // toPos: commentToUpdate.to,
+          // content: commentToUpdate.content,
+        },
+      }).unwrap();
+
+      await refetchComments();
     } catch (error) {
       console.error('Cập nhật bình luận thất bại:', error);
       alert('Đã xảy ra lỗi khi cập nhật bình luận.');
     }
   };
 
+  const handleDeleteComment = async (commentId: number | string) => {
+    // Sử dụng Swal.fire để xác nhận
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      customClass: {
+        confirmButton: 'swal-confirm-button', // Sử dụng class đã có
+        cancelButton: 'swal-cancel-button', // Sử dụng class đã có
+      },
+    });
+
+    // Nếu người dùng không xác nhận, thì dừng hàm
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    // Phần logic còn lại giữ nguyên
+    const commentToDelete = commentList.find((c) => c.id.toString() === commentId.toString());
+    if (!commentToDelete) {
+      console.error('Không tìm thấy comment để xóa trong danh sách.');
+      toast.error('Could not find comment to delete.'); // Thay thế alert bằng toast
+      return;
+    }
+
+    // Gỡ highlight trong editor nếu cần
+    if (editor) {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: commentToDelete.fromPos, to: commentToDelete.toPos })
+        .unsetMark('commentMark')
+        .run();
+    }
+
+    try {
+      await deleteComment({
+        id: Number(commentId),
+        documentId: Number(documentId),
+      }).unwrap();
+
+      toast.success(' Comment deleted successfully!'); // Thêm thông báo thành công
+      if (activeCommentId === commentId.toString()) setActiveCommentId(null);
+    } catch (error) {
+      console.error('Xóa bình luận thất bại:', error);
+      toast.error('Failed to delete comment.'); // Thay thế alert bằng toast
+    }
+  };
+
+  const contentRef = useRef<HTMLDivElement>(null);
   return (
     <div className=''>
-      {editor && !isReadOnly && (
+      {typeof numericDocId === 'number' && (
+        <DocumentRealtimeBridge
+          documentId={numericDocId}
+          onPermissionChanged={() => {
+            toast.success('Quyền tài liệu đã được cập nhật!');
+            refetchPermission();
+          }}
+          onDocumentUpdated={() => {
+            // toast('Tài liệu vừa được cập nhật bởi người khác.', { icon: '🔄' });
+            debouncedSaveRef.current.cancel();
+            refetchDocument();
+          }}
+        />
+      )}
+
+      {editor && isHydratedRef.current && (
         <MenuBar
           editor={editor}
           onToggleChatbot={handleToggleChatbot}
           onAddComment={handleAddComment}
+          exportTargetRef={contentRef}
+          createdBy={createdBy}
         />
       )}
 
       <div className='flex'>
-        <div className='max-w-4xl mx-auto px-4 py-6 '>
+        <div className=' mx-auto max-w-4xl'>
           <div className='mb-6'>
             <div className='flex items-center justify-between'>
               {isEditingTitle ? (
@@ -436,7 +603,7 @@ export const Document: React.FC = () => {
               ) : (
                 <h1
                   className='text-4xl font-extrabold tracking-tight cursor-pointer'
-                  onClick={() => setIsEditingTitle(true)}
+                  onClick={() => canEdit && setIsEditingTitle(true)}
                   title='Click to edit title'
                 >
                   {currentTitle}
@@ -446,9 +613,11 @@ export const Document: React.FC = () => {
             <div className='mt-2 flex flex-wrap items-center text-sm text-gray-600 gap-x-4 gap-y-2'>
               <div className='flex items-center gap-1'>
                 <User2 className='w-4 h-4' />
-                <span>
-                  Creator <strong>{createdBy}</strong>
-                </span>
+                {dataProfile?.data && (
+                  <span>
+                    Creator <strong>{dataProfile.data.fullName}</strong>
+                  </span>
+                )}
               </div>
               <div className='flex items-center gap-1'>
                 <Clock3 className='w-4 h-4' />
@@ -465,11 +634,13 @@ export const Document: React.FC = () => {
             </div>
           </div>
 
-          <EditorContent editor={editor} />
-          {!hasContent && (
+          <div ref={contentRef}>
+            <EditorContent editor={editor} />
+          </div>
+          {isHydratedRef.current && canEdit && !hasContent && (
             <SideMenu
               onSelectTemplate={(html) => {
-                if (editor && !isReadOnly) {
+                if (editor && canEdit && isHydratedRef.current) {
                   editor.commands.setContent(html);
 
                   debouncedSave(html);
@@ -485,7 +656,7 @@ export const Document: React.FC = () => {
             />
           )}
 
-          {!isReadOnly && !hasContent && (
+          {isHydratedRef.current && canEdit && !hasContent && (
             <NewStartWithAI
               documentId={Number(documentId)}
               editor={editor}
@@ -495,13 +666,14 @@ export const Document: React.FC = () => {
 
           {isChatbotOpen && editor && <Chatbot onClose={handleToggleChatbot} editor={editor} />}
         </div>
-        {commentList.length > 0 && !isReadOnly && (
+        {commentList.length > 0 && (
           <CommentSidebar
             comments={commentList}
             activeCommentId={activeCommentId}
             onCommentClick={handleSidebarCommentClick}
             onUpdateComment={handleUpdateComment}
             onDeleteComment={handleDeleteComment}
+            currentUserId={user?.id ?? 0}
           />
         )}
       </div>

@@ -11,11 +11,6 @@ import {
 import { useGetCostDashboardQuery } from '../../../services/projectMetricApi';
 import { useSearchParams } from 'react-router-dom';
 
-// const CostBarChart = () => {
-//   const [searchParams] = useSearchParams();
-//   const projectKey = searchParams.get('projectKey') || 'NotFound';
-//   const { data, isLoading, isError } = useGetCostDashboardQuery(projectKey);
-
 interface CostDashboardData {
   isSuccess: boolean;
   code: number;
@@ -41,6 +36,8 @@ const CostBarChart = ({
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
   if (!data?.data) return <div>Failed to load cost data</div>;
 
+  console.log('CostDashboard data:', data);
+  
   const { actualCost, plannedCost, budget } = data.data;
 
   const chartData = [
@@ -58,8 +55,8 @@ const CostBarChart = ({
         <BarChart data={chartData}>
           <CartesianGrid strokeDasharray='3 3' />
           <XAxis dataKey='name' />
-          <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-          <Tooltip formatter={(v: number) => `$${v.toLocaleString()}`} />
+          <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K VND`} />
+          <Tooltip formatter={(v: number) => `${v.toLocaleString()} VND`} />
           <Legend />
           <Bar dataKey='Actual' fill='#00C49F' barSize={20} />
           <Bar dataKey='Planned' fill='#00E0FF' barSize={20} />

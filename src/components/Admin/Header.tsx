@@ -1,8 +1,17 @@
-import { Plus, HelpCircle, Settings, AppWindow, PanelLeftClose } from 'lucide-react';
+import {
+  Plus,
+  HelpCircle,
+  Settings,
+  AppWindow,
+  PanelLeftClose,
+  LogOut,
+  User,
+  Palette,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
 import logo from '../../assets/Logo_IntelliPM/Logo_NoText_NoBackgroud.png';
 import textLogo from '../../assets/Logo_IntelliPM/Text_IntelliPM_NoBackground.png';
-
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/AuthContext';
 import { useGetAccountByEmailQuery } from '../../services/accountApi';
 import NotificationBell from '../../components/NotificationBell';
@@ -13,13 +22,20 @@ interface HeaderProps {
 }
 
 export default function Header({ onToggleSidebar }: HeaderProps) {
-  const { user } = useAuth();
+
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const { data: accountResponse, isLoading } = useGetAccountByEmailQuery(user?.email ?? '', {
     skip: !user?.email,
   });
 
-
+const handleLogout = () => {
+    logout();
+    navigate('/Guest');
+  };
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
@@ -84,17 +100,72 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
         </button>
 
         {user ? (
-          accountResponse?.data?.picture ? (
-            <img
-              src={accountResponse.data.picture}
-              alt='avatar'
-              className='w-9 h-9 rounded-full object-cover border'
-            />
-          ) : (
-            <div className='w-8 h-8 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
-              {user.username.slice(0, 2).toUpperCase()}
-            </div>
-          )
+          <div className='relative '>
+            <button onClick={() => setIsMenuOpen((prev) => !prev)} className='focus:outline-none'>
+              {accountResponse?.data?.picture ? (
+                <img
+                  src={accountResponse.data.picture}
+                  alt='avatar'
+                  className='w-9 h-9 rounded-full object-cover border'
+                />
+              ) : (
+                <div className='w-9 h-9 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
+                  {user.username.slice(0, 2).toUpperCase()}
+                </div>
+              )}
+            </button>
+
+            {isMenuOpen && (
+              <div
+                ref={menuRef}
+                className='absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border z-50 p-4'
+              >
+                <div className='flex items-center space-x-3 border-b pb-3 mb-3'>
+                  <div className='w-10 h-10 text-white flex items-center justify-center rounded-full font-semibold'>
+                    {accountResponse?.data?.picture ? (
+                      <img
+                        src={accountResponse.data.picture}
+                        alt='avatar'
+                        className='w-10 h-10 rounded-full object-cover border'
+                      />
+                    ) : (
+                      <div className='w-10 h-10 bg-orange-500 text-white font-bold flex items-center justify-center rounded-full'>
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className='font-semibold text-sm'>{user.username}</div>
+                    <div className='text-xs text-gray-500 break-all'>{user.email}</div>
+                  </div>
+                </div>
+                <ul className='text-sm space-y-2'>
+                  <li
+                    onClick={() => navigate('account/profile')}
+                    className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded'
+                  >
+                    <User className='w-4 h-4 text-gray-600' /> Profile
+                  </li>
+                  <li className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded'>
+                    <Settings className='w-4 h-4 text-gray-600' /> Account settings
+                  </li>
+                  <li className='flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-2 py-1 rounded'>
+                    <Palette className='w-4 h-4 text-gray-600' /> Theme
+                  </li>
+                </ul>
+                <hr className='my-3' />
+                <button
+                  onClick={() => {
+                    logout();
+                    navigate('/Guest');
+                  }}
+                  className='w-full flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-2 py-2 rounded-md font-semibold'
+                >
+                  <LogOut className='w-4 h-4' /> Log out
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <Link to='/login'>
             <button className='px-4 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700'>

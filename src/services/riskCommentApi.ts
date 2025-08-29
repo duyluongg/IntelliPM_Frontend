@@ -45,9 +45,9 @@ export const riskCommentApi = createApi({
       transformResponse: (response: { isSuccess: boolean; data: RiskComment }) => response.data,
     }),
 
-    deleteRiskComment: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `riskcomment/${id}`,
+    deleteRiskComment: builder.mutation<void, { id: number; createdBy: number }>({
+      query: ({id, createdBy}) => ({
+        url: `riskcomment/${id}?createdBy=${createdBy}`,
         method: 'DELETE',
       }),
     }),

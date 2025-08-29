@@ -1,10 +1,10 @@
-// components/DocumentOptionCard.tsx
+// src/components/DocumentOptionCard.tsx
 import React from 'react';
 import { Check } from 'lucide-react';
+import type { DocumentVisibility } from '../../../types/DocumentType';
 
-// Định nghĩa kiểu dữ liệu cho props
 interface DocumentOption {
-  id: string;
+  id: DocumentVisibility;
   name: string;
   icon: React.ReactNode;
   description: string;
@@ -14,52 +14,46 @@ interface DocumentOption {
 
 interface DocumentOptionCardProps {
   option: DocumentOption;
-  onSelect: (id: string) => void;
+  onSelect: (id: DocumentVisibility) => void;
 }
 
 export const DocumentOptionCard: React.FC<DocumentOptionCardProps> = ({ option, onSelect }) => {
   return (
-    <div
-      key={option.id}
-      className='relative flex flex-col bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-500 transition-all duration-300'
+    <button
+      onClick={() => onSelect(option.id)}
+      className='group relative flex w-full flex-col text-left bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-xl hover:border-blue-500 dark:hover:border-blue-500 hover:-translate-y-1 transition-all duration-300 ease-in-out'
     >
       {/* Recommended Badge */}
       {option.recommended && (
-        <div className='absolute top-4 right-4 bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full'>
+        <div className='absolute top-4 right-4 bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-semibold px-3 py-1 rounded-full'>
           RECOMMENDED
         </div>
       )}
 
-      {/* Card Body */}
-      <div className='p-6 flex-grow'>
+      <div className='p-6 flex-grow flex flex-col'>
         <div className='flex items-center gap-4 mb-4'>
-          <div className='flex-shrink-0 bg-gray-100 p-3 rounded-lg'>{option.icon}</div>
+          <div className='flex-shrink-0 bg-slate-100 dark:bg-slate-700 p-3 rounded-lg'>
+            {option.icon}
+          </div>
           <div>
-            <h3 className='text-xl font-bold text-gray-800'>{option.name}</h3>
-            <p className='text-sm text-gray-500'>{option.description}</p>
+            <h3 className='text-xl font-bold text-slate-800 dark:text-white'>{option.name}</h3>
           </div>
         </div>
+        <p className='text-sm text-slate-500 dark:text-slate-400 mb-6'>{option.description}</p>
 
-        {/* Features List */}
-        <div className='space-y-3 my-6'>
+        <div className='space-y-3 mt-auto'>
           {option.features.map((feature, index) => (
             <div key={index} className='flex items-start gap-3'>
-              <Check className='w-4 h-4 text-green-500 mt-1 flex-shrink-0' />
-              <p className='text-sm text-gray-600'>{feature}</p>
+              <Check className='w-4 h-4 text-blue-500 mt-1 flex-shrink-0' />
+              <p className='text-sm text-slate-600 dark:text-slate-300'>{feature}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Card Footer with Button */}
-      <div className='p-6 pt-0 mt-ư'>
-        <button
-          onClick={() => onSelect(option.id)}
-          className='w-full py-2.5 px-6 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors'
-        >
-          {option.name}
-        </button>
+      <div className='absolute bottom-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-blue-600 dark:text-blue-400 font-semibold text-sm'>
+        Select &rarr;
       </div>
-    </div>
+    </button>
   );
 };

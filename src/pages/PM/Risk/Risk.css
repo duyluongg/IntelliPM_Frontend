@@ -509,52 +509,59 @@
   color: #dc2626;
 } */
 
-.risk-page-wrapper {
-  @apply p-6 bg-gray-50 min-h-screen;
+/* Định dạng ban đầu cho nút Filters */
+.filter-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 120px; /* Độ dài ban đầu ngắn */
+  height: 40px;
+  padding: 0 12px;
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: width 0.3s ease;
 }
 
-.risk-toolbar {
-  @apply flex justify-between items-center mb-6;
+/* Khi filter được mở rộng */
+.filter-button.expanded {
+  width: 100%; /* Mở rộng toàn bộ chiều rộng container cha, tùy chỉnh nếu cần */
 }
 
-.risk-table-container {
-  @apply bg-white shadow-md rounded-lg overflow-hidden;
+/* Container chứa filter và các nút */
+.filter-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: nowrap; /* Ngăn không cho xuống dòng */
 }
 
-.risk-table {
-  @apply w-full;
+/* Nội dung filter khi mở rộng */
+.filter-content {
+  display: none;
+  width: 100%; /* Chiếm toàn bộ chiều rộng container */
+  margin-top: 8px; /* Khoảng cách nhẹ khi mở */
 }
 
-.risk-table th {
-  @apply p-3 text-left text-sm font-semibold text-gray-600 bg-gray-100;
+.filter-content.expanded {
+  display: flex;
+  gap: 16px; /* Khoảng cách giữa các dropdown */
+  align-items: center;
 }
 
-.risk-table td {
-  @apply p-3;
+/* Định dạng cho các dropdown trong filter */
+.filter-content select {
+  width: 180px; /* Độ rộng cố định cho mỗi dropdown */
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
-.risk-key-wrapper {
-  @apply flex items-center;
-}
-
-.risk-key {
-  @apply text-blue-600 cursor-pointer hover:underline;
-}
-
-.risk-type-select,
-.risk-status-select,
-.due-date-input {
-  @apply p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
-
-.avatar {
-  @apply w-6 h-6 rounded-full;
-}
-
-.due-today {
-  @apply bg-yellow-100 text-yellow-800;
-}
-
-.due-warning {
-  @apply bg-red-100 text-red-800;
+/* Hover effect */
+.filter-button:hover {
+  background-color: #f9fafb;
 }

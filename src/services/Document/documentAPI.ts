@@ -1,17 +1,16 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../../constants/api';
-import type { DocumentType } from '../../types/DocumentType';
+import type { CreateDocumentRequest, DocumentType } from '../../types/DocumentType';
+import type {
+  ShareDocumentByEmailRequest,
+  ShareDocumentByEmailResult,
+  ShareDocWireData,
+} from '../../types/ShareDocumentType';
 
 interface ShareDocumentViaEmailRequest {
   userIds: number[];
   customMessage: string;
   file: File;
-}
-interface ShareDocumentByEmailRequest {
-  documentId: number;
-  emails: string[];
-  message: string;
-  projectKey: string;
 }
 
 export interface DocumentResponseDTO {
@@ -30,8 +29,26 @@ export interface DocumentResponseDTO {
   updatedAt: string;
 }
 
+export type ApiResponse<T> = {
+  isSuccess: boolean;
+  code: number;
+  data: T;
+  message: string;
+};
+
+interface GetSharedDocumentsResponse {
+  isSuccess: boolean;
+  code: number;
+  data: DocumentType[];
+  message: string;
+}
+
+type GenerateAIContentReq = { id: number; prompt: string };
+type GenerateAIContentResp = { content: string };
+
 export const documentApi = createApi({
   reducerPath: 'documentApi',
+  tagTypes: ['Documents'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -50,7 +67,9 @@ export const documentApi = createApi({
   endpoints: (builder) => ({
     getDocumentById: builder.query<DocumentType, number>({
       query: (id) => `documents/${id}`,
+      transformResponse: (response: ApiResponse<DocumentType>) => response.data,
     }),
+
     createDocumentRequest: builder.mutation<DocumentType, Partial<DocumentType>>({
       query: (body) => ({
         url: 'documents/request',
@@ -58,13 +77,15 @@ export const documentApi = createApi({
         body,
       }),
     }),
-    createDocument: builder.mutation<DocumentType, Partial<DocumentType>>({
+    createDocument: builder.mutation<DocumentType, CreateDocumentRequest>({
       query: (body) => ({
         url: 'documents/create',
         method: 'POST',
         body,
       }),
+      transformResponse: (resp: ApiResponse<DocumentType>) => resp.data,
     }),
+
     updateDocument: builder.mutation<DocumentType, { id: number; data: Partial<DocumentType> }>({
       query: ({ id, data }) => ({
         url: `documents/${id}`,
@@ -76,14 +97,16 @@ export const documentApi = createApi({
       query: () => 'documents/created-by-me',
     }),
 
-    generateAIContent: builder.mutation<string, { id: number; prompt: string }>({
+    generateAIContent: builder.mutation<GenerateAIContentResp, GenerateAIContentReq>({
       query: ({ id, prompt }) => ({
         url: `/documents/${id}/generate-ai-content`,
         method: 'POST',
+        // Nếu backend đang nhận raw string JSON (ví dụ [FromBody] string), giữ nguyên dòng dưới:
         body: JSON.stringify(prompt),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+
+        // Nếu backend nhận DTO { prompt: string } thì đổi thành:
+        // body: { prompt },
       }),
     }),
 
@@ -148,7 +171,14 @@ export const documentApi = createApi({
 
     generateFromTasks: builder.mutation<string, number>({
       query: (documentId) => ({
-        url: `documents/${documentId}/generate-from-tasks`,
+        url: `documents/${documentId}/generate-from-task`,
+        method: 'POST',
+      }),
+      transformResponse: (response: { content: string }) => response.content,
+    }),
+    generateFromProject: builder.mutation<string, number>({
+      query: (documentId) => ({
+        url: `documents/${documentId}/generate-from-project`,
         method: 'POST',
       }),
       transformResponse: (response: { content: string }) => response.content,
@@ -169,34 +199,20 @@ export const documentApi = createApi({
       },
     }),
 
-    shareDocumentToEmails: builder.mutation<any, ShareDocumentByEmailRequest>({
-      query: ({ documentId, emails, message }) => ({
-        url: `documents/${documentId}/share`,
-        method: 'POST',
-        body: {
-          emails,
-          message,
-        },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }),
-    }),
-
     shareDocumentByEmails: builder.mutation<
-      { success: boolean; failedEmails: string[] },
-      {
-        documentId: number;
-        permissionType: 'VIEW' | 'EDIT';
-        emails: string[];
-        message?: string;
-        projectKey?: string;
-      }
+      ShareDocumentByEmailResult, // ← kết quả đã chuẩn hoá cho component
+      ShareDocumentByEmailRequest
     >({
-      query: ({ documentId, ...body }) => ({
+      query: ({ documentId, emails, message, projectKey, permissionType }) => ({
         url: `documents/${documentId}/share`,
         method: 'POST',
-        body,
+        body: { emails, message, projectKey, permissionType }, // không cần documentId trong body
+      }),
+      // response backend: ApiResponse<ShareDocWireData>
+      transformResponse: (raw: ApiResponse<ShareDocWireData>): ShareDocumentByEmailResult => ({
+        isSuccess: (raw?.isSuccess ?? false) && (raw?.data?.success ?? false),
+        failedEmails: raw?.data?.failedEmails ?? [],
+        message: raw?.message ?? '',
       }),
     }),
 
@@ -204,17 +220,41 @@ export const documentApi = createApi({
       query: (documentId) => `documents/${documentId}/permission/current-user`,
     }),
 
-    getDocumentsByProjectId: builder.query<DocumentResponseDTO[], number>({
+    getDocumentsByProjectId: builder.query<DocumentType[], number>({
       query: (projectId) => `documents/project/${projectId}`,
+      transformResponse: (response: ApiResponse<DocumentType[]>) => response.data,
+      providesTags: (result) =>
+        result
+          ? [
+              { type: 'Documents', id: 'LIST' },
+              ...result.map((d) => ({ type: 'Documents' as const, id: d.id })),
+            ]
+          : [{ type: 'Documents', id: 'LIST' }],
     }),
 
     deleteDocument: builder.mutation<void, number>({
-  query: (id) => ({
-    url: `documents/${id}`,
-    method: 'DELETE',
-  }),
-}),
+      query: (id) => ({
+        url: `documents/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, _id) => [
+        { type: 'Documents', id: 'LIST' },
+        { type: 'Documents', id: _id },
+      ],
+    }),
 
+    updateVisibility: builder.mutation<any, { id: number; visibility: 'MAIN' | 'PRIVATE' }>({
+      query: ({ id, visibility }) => ({
+        url: `documents/${id}/visibility`,
+        method: 'PATCH',
+        body: { visibility },
+      }),
+      invalidatesTags: ['Documents'],
+    }),
+
+    getDocumentsSharedToMeInProject: builder.query<GetSharedDocumentsResponse, number>({
+      query: (projectId) => `documents/shared-to-me/project/${projectId}`,
+    }),
   }),
 });
 
@@ -232,10 +272,12 @@ export const {
   useDocumentStatusQuery,
   useApproveDocumentMutation,
   useGenerateFromTasksMutation,
+  useGenerateFromProjectMutation,
   useShareDocumentViaEmailMutation,
-  useShareDocumentToEmailsMutation,
   useShareDocumentByEmailsMutation,
   useGetMyPermissionQuery,
   useGetDocumentsByProjectIdQuery,
   useDeleteDocumentMutation,
+  useUpdateVisibilityMutation,
+  useGetDocumentsSharedToMeInProjectQuery,
 } = documentApi;

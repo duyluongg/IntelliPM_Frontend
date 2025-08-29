@@ -1,11 +1,3 @@
-import { useGetProgressDashboardQuery } from '../../../services/projectMetricApi';
-import { useSearchParams } from 'react-router-dom';
-
-// const ProgressPerSprint = () => {
-//   const [searchParams] = useSearchParams();
-//   const projectKey = searchParams.get('projectKey') || 'NotFound';
-//   const { data, isLoading, error } = useGetProgressDashboardQuery(projectKey);
-
 interface ProgressItem {
   sprintId: number;
   sprintName: string;
@@ -27,11 +19,12 @@ const ProgressPerSprint = ({
   isLoading: boolean;
 }) => {
   if (isLoading) return <div className='text-sm text-gray-500'>Loading...</div>;
-  if (!data?.data) return <div>Error loading progress data</div>;
+  if (!data?.data || data.data.length === 0) {
+    return <div className='text-sm text-gray-500'>There are currently no sprints with progress.</div>;
+  }
 
   return (
     <div className='p-4'>
-      {/* <h2 className="text-lg font-semibold mb-4">Progress</h2> */}
       <div className='space-y-2'>
         {data.data.map((item, index) => (
           <div key={item.sprintId}>

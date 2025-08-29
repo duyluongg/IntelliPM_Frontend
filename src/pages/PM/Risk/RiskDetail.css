@@ -609,22 +609,33 @@
   }
 }
 
+/* .error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: #fee2e2;
+  width: fit-content;
+  max-width: 100%;
+} */
 
-.risk-detail-panel {
+
+/* .risk-detail-panel {
   @apply relative;
-}
+} */
 
-.detail-header {
+/* .detail-header {
   @apply border-b-2;
-}
+} */
 
-.detail-title-section {
+/* .detail-title-section {
   @apply space-y-2;
-}
+} */
 
-.risk-path {
+/* .risk-path {
   @apply text-sm text-gray-600;
-}
+} */
 
 .risk-path {
   font-size: 12px;
@@ -634,100 +645,100 @@
   align-items: center;
 }
 
-.risk-code {
+/* .risk-code {
   @apply font-medium;
-}
+} */
 
-.reporter-meta-block {
+/* .reporter-meta-block {
   @apply flex items-center gap-2;
-}
+} */
 
-.reporter-icons {
+/* .reporter-icons {
   @apply flex items-center gap-2;
-}
+} */
 
-.icon-with-count {
+/* .icon-with-count {
   @apply flex items-center gap-1;
-}
+} */
 
-.reporter-avatar,
+/* .reporter-avatar,
 .responsible-avatar,
 .unassigned-avatar,
 .avatar-circle {
   @apply w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm;
-}
+} */
 
-.avatar-placeholder,
+/* .avatar-placeholder,
 .responsible-avatar-placeholder {
   @apply bg-gray-300 text-white;
-}
+} */
 
-.title-and-status {
+/* .title-and-status {
   @apply items-center gap-4;
-}
+} */
 
-.editable-title-input {
+/* .editable-title-input {
   @apply w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-semibold;
-}
+} */
 
-.due-date-input {
+/* .due-date-input {
   @apply p-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
+} */
 
-.meta-inline {
+/* .meta-inline {
   @apply flex items-center gap-2 text-sm text-gray-500;
-}
+} */
 
-.responsible-info {
+/* .responsible-info {
   @apply flex items-center gap-2;
-}
+} */
 
-.responsible-dropdown {
+/* .responsible-dropdown {
   @apply p-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
+} */
 
-.detail-section-no-border {
+/* .detail-section-no-border {
   @apply mt-6;
-}
+} */
 
-.section-label {
+/* .section-label {
   @apply text-lg font-semibold text-gray-800 mb-2;
-}
+} */
 
-.todo-list {
+/* .todo-list {
   @apply space-y-2;
-}
+} */
 
-.todo-item {
+/* .todo-item {
   @apply flex items-center gap-2;
-}
+} */
 
-.todo-index {
+/* .todo-index {
   @apply text-gray-500;
-}
+} */
 
-.edit-todo-input,
+/* .edit-todo-input,
 .add-todo-input {
   @apply w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
-}
+} */
 
-.triple-grid {
+/* .triple-grid {
   @apply grid grid-cols-1 md:grid-cols-3 gap-4;
-}
+} */
 
-.impactLikelihoodWrapper {
+/* .impactLikelihoodWrapper {
   @apply space-y-2;
-}
+} */
 
-.radio-button-list {
+/* .radio-button-list {
   @apply space-y-2;
-}
+} */
 
-.radio-label {
+/* .radio-label {
   @apply flex items-center gap-2 p-2 rounded-md cursor-pointer;
-}
+} */
 
-.semi-gauge {
+/* .semi-gauge {
   @apply w-24 h-24 flex items-center justify-center rounded-full text-white text-lg font-bold;
 }
 
@@ -745,9 +756,9 @@
 
 .thumbnail {
   @apply w-full h-32 overflow-hidden rounded-md;
-}
+} */
 
-.doc-thumbnail {
+/* .doc-thumbnail {
   @apply flex items-center justify-center w-full h-full bg-gray-100;
 }
 
@@ -777,7 +788,7 @@
 
 .risk-comments-panel {
   @apply mt-6 p-4 bg-gray-50 rounded-lg shadow-md;
-}
+} */
 
 .risk-comments-panel {
   width: 35%;
@@ -787,50 +798,10 @@
   background-color: #f9fafb;
 }
 
-.comments-header {
-  @apply text-lg font-semibold text-gray-800 mb-4 border-b pb-2;
-}
-
-.comment-list {
-  @apply space-y-4;
-}
-
-.simple-comment {
-  @apply flex gap-3 bg-white p-3 rounded-lg shadow;
-}
-
-.comment-content {
-  @apply flex-1;
-}
-
-.comment-header {
-  @apply flex justify-between items-center text-sm;
-}
-
-.comment-text {
-  @apply mt-1 text-gray-700;
-}
-
-.comment-actions {
-  @apply flex gap-2 mt-2;
-}
-
-.comment-input {
-  @apply mt-4 relative w-full;
-}
-
 .comments-body {
   flex-grow: 1;
   overflow-y: auto;
   font-size: 14px;
   color: #374151;
-}
-
-.comment-input input {
-  @apply w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700;
-}
-
-.close-btn {
-  @apply absolute top-4 right-4 text-2xl text-gray-500 hover:text-red-500 transition;
 }
 

@@ -6,7 +6,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Pencil,
-  Loader2,
   Send, // Giữ lại Send nếu bạn muốn dùng, nhưng code mới không cần
   MessageSquare, // Icon mới cho header
   FileSignature, // Icon cho gợi ý
@@ -14,9 +13,14 @@ import {
 } from 'lucide-react';
 import type { Editor } from '@tiptap/react';
 
-import { useAskAIMutation } from '../../../services/Document/documentAPI';
+import {
+  useAskAIMutation,
+  useGenerateFromProjectMutation,
+  useGenerateFromTasksMutation,
+} from '../../../services/Document/documentAPI';
 import { useAuth } from '../../../services/AuthContext';
 import { DOMParser as ProseMirrorDOMParser } from 'prosemirror-model';
+import { useParams } from 'react-router-dom';
 
 interface Message {
   id: number;
@@ -26,41 +30,156 @@ interface Message {
 
 interface ChatbotProps {
   onClose: () => void;
-  editor: Editor | null; // Thêm editor để có thể chèn nội dung AI vào
+  editor: Editor | null;
 }
 
-// Danh sách các gợi ý cho màn hình chào mừng
+function transformProjectSummaryHtml(
+  html: string,
+  opts?: {
+    locale?: string;
+    currency?: string;
+    timeZone?: string;
+  }
+) {
+  const { locale = 'vi-VN', currency = 'VND', timeZone = 'Asia/Ho_Chi_Minh' } = opts || {};
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  // Map cấu hình format theo nhãn (thẻ <th>)
+  const moneyFields = new Set([
+    'Planned Value (PV)',
+    'Earned Value (EV)',
+    'Actual Cost (AC)',
+    'Budget At Completion (BAC)',
+    'Estimate At Completion (EAC)',
+    'Estimate To Complete (ETC)',
+    'Variance At Completion (VAC)',
+  ]);
+  const indexFields = new Set(['Cost Performance Index (CPI)', 'Schedule Performance Index (SPI)']);
+  const dateFields = new Set(['Created At (UTC)', 'Updated At (UTC)']);
+
+  const nfMoney = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  });
+  const nfNumber = new Intl.NumberFormat(locale); // cho các số lớn không phải tiền
+  const nfIndex = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const df = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    timeZone,
+  });
+
+  const isIsoUtc = (s: string) => /^\d{4}-\d{2}-\d{2}T.*Z$/.test(s);
+
+  doc.querySelectorAll('tr').forEach((tr) => {
+    const th = tr.querySelector('th');
+    const td = tr.querySelector('td');
+    if (!th || !td) return;
+
+    const label = th.textContent?.trim() || '';
+    const raw = td.textContent?.trim() || '';
+
+    // Datetime: ISO UTC -> local + hiển thị cả UTC nhỏ phía dưới (nếu muốn)
+    if (dateFields.has(label) && isIsoUtc(raw)) {
+      const d = new Date(raw);
+      td.textContent = df.format(d); // only show local formatted date/time
+      th.textContent = label.replace('(UTC)', '').trim();
+      return;
+    }
+
+    // Tiền tệ (số lớn)
+    if (moneyFields.has(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = nfMoney.format(val);
+      return;
+    }
+
+    // Chỉ số CPI/SPI
+    if (indexFields.has(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = nfIndex.format(val);
+      return;
+    }
+
+    // Duration (days): thêm "ngày"
+    if (/Duration.*\(days\)/i.test(label)) {
+      const val = Number(raw);
+      if (!isNaN(val)) td.textContent = `${nfNumber.format(val)} day`;
+      th.textContent = label.replace(/\s*\(days\)\s*/i, '');
+      return;
+    }
+
+    // Số lớn khác -> thêm dấu phân cách
+    const asNum = Number(raw);
+    if (!isNaN(asNum) && raw !== '') {
+      td.textContent = nfNumber.format(asNum);
+    }
+  });
+
+  return doc.body.innerHTML;
+}
+
+function stripMarkdownCodeBlock(input: string): string {
+  if (typeof input !== 'string') return '';
+  // Xóa code fence ```html ... ``` hoặc ```...```
+  return input
+    .replace(/^```(?:html)?\s*([\s\S]*?)\s*```$/i, '$1') // match block có html
+    .trim();
+}
+
 const suggestions = [
   {
     icon: FileSignature,
     text: 'Summarize this doc',
     color: 'text-purple-600 dark:text-purple-400',
   },
+  // {
+  //   icon: Pencil,
+  //   text: 'Make this doc more clear and concise',
+  //   color: 'text-green-600 dark:text-green-400',
+  // },
+  // {
+  //   icon: CheckCircle,
+  //   text: 'Extract action items from this doc',
+  //   color: 'text-blue-600 dark:text-blue-400',
+  // },
   {
-    icon: Pencil,
-    text: 'Make this doc more clear and concise',
-    color: 'text-green-600 dark:text-green-400',
+    icon: CheckCircle,
+    text: 'Project summary',
+    color: 'text-blue-600 dark:text-blue-400',
   },
   {
     icon: CheckCircle,
-    text: 'Extract action items from this doc',
+    text: 'Task summary',
     color: 'text-blue-600 dark:text-blue-400',
   },
 ];
 
 const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
-  // Thay đổi: Bắt đầu với mảng tin nhắn rỗng để hiển thị màn hình chào mừng
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [generateFromTasks, { isLoading: isGenLoading }] = useGenerateFromTasksMutation();
+  const [generateFromProject, { isLoading: isProjectLoading }] = useGenerateFromProjectMutation();
 
   const [askAI, { isLoading }] = useAskAIMutation();
+  const { documentId } = useParams<{ documentId: string }>();
+  const docId = Number(documentId);
+  const busy = isLoading || isGenLoading || isProjectLoading;
+
+  const handleNewChat = () => {
+    setMessages([]); // Xóa tất cả tin nhắn để bắt đầu lại
+  };
 
   const handleSendMessage = async (messageText?: string) => {
     let textToSend = messageText || inputText;
 
-    // Nếu là lệnh đặc biệt → tóm tắt nội dung trong editor
     if (textToSend === 'Summarize this doc') {
       const docText = editor?.getText().trim();
       if (!docText) {
@@ -68,7 +187,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
           ...prev,
           {
             id: Date.now(),
-            text: '⚠️ Không có nội dung nào trong tài liệu để tóm tắt.',
+            text: '⚠️ There is no content in the document to summarize.',
             sender: 'ai',
           },
         ]);
@@ -111,6 +230,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
 
     if (textToSend.trim() === '') return;
 
+    // đẩy message user lên UI
     const userMessage: Message = {
       id: Date.now(),
       text: messageText || inputText,
@@ -120,26 +240,38 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
     setInputText('');
 
     try {
+      if (messageText === 'Task summary') {
+        const result = await generateFromTasks(docId).unwrap();
+        setMessages((prev) => [...prev, { id: Date.now() + 1, text: result, sender: 'ai' }]);
+        return;
+      }
+
+      if (messageText === 'Project summary') {
+        const result = await generateFromProject(docId).unwrap(); // { content: "```html ... ```" }
+        const clean = stripMarkdownCodeBlock(result);
+        const transformed = transformProjectSummaryHtml(clean, {
+          locale: 'vi-VN',
+          currency: 'VND',
+          timeZone: 'Asia/Ho_Chi_Minh',
+        });
+        setMessages((prev) => [...prev, { id: Date.now() + 1, text: transformed, sender: 'ai' }]);
+        return;
+      }
+
       const result = await askAI(textToSend).unwrap();
-      const aiMessage: Message = {
-        id: Date.now() + 1,
-        text: result.content,
-        sender: 'ai',
-      };
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) => [...prev, { id: Date.now() + 1, text: result.content, sender: 'ai' }]);
     } catch (err) {
       console.error('AI request failed:', err);
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
-          text: '❌ Đã xảy ra lỗi khi gọi AI. Vui lòng thử lại.',
+          text: '❌ An error occurred while calling AI. Please try again.',
           sender: 'ai',
         },
       ]);
     }
   };
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -150,19 +282,19 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
       <div className='flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0'>
         <div className='flex items-center gap-2'>
           <Sparkles className='w-6 h-6 text-blue-600' />
-          <span className='font-semibold text-gray-800 dark:text-white'>Sidekick</span>
-          <span className='text-xs font-semibold text-blue-700 bg-blue-100 dark:bg-blue-900/50 dark:text-blue-400 px-2 py-0.5 rounded-full'>
-            Beta
-          </span>
+          <span className='font-semibold text-gray-800 dark:text-white'>IntelliPM AI</span>
         </div>
         <div className='flex items-center gap-1'>
-          <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
+          <button
+            className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+            onClick={handleNewChat}
+          >
             <Pencil className='w-5 h-5' />
           </button>
           {/* Thay đổi: Thêm icon chat */}
-          <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
+          {/* <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
             <MessageSquare className='w-5 h-5' />
-          </button>
+          </button> */}
           <button
             onClick={onClose}
             className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
@@ -193,7 +325,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
                   <button
                     key={index}
                     onClick={() => handleSendMessage(suggestion.text)}
-                    disabled={isLoading}
+                    disabled={busy}
                     className='w-full flex items-center gap-3 p-3 text-left bg-white dark:bg-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-colors disabled:opacity-50'
                   >
                     <suggestion.icon className={`w-5 h-5 flex-shrink-0 ${suggestion.color}`} />
@@ -211,7 +343,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
             {messages.map((msg) => (
               <ChatMessage key={msg.id} message={msg} editor={editor} />
             ))}
-            {isLoading && (
+            {busy && (
               <div className='flex justify-start gap-3 items-start'>
                 <div className='w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0'>
                   <Sparkles className='w-5 h-5 text-blue-600 animate-pulse' />
@@ -235,7 +367,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
                 handleSendMessage();
               }
             }}
-            placeholder='Message Sidekick...'
+            placeholder='Message IntelliPM AI...'
             className='w-full h-12 pr-20 pl-3 py-3 text-sm bg-gray-100 dark:bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none'
           />
           <button

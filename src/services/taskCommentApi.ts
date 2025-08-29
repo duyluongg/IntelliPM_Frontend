@@ -14,7 +14,17 @@ export interface TaskComment {
 
 export const taskCommentApi = createApi({
   reducerPath: 'taskCommentApi',
-  baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  tagTypes: ['Comments', 'ActivityLogs'],
   endpoints: (builder) => ({
     getCommentsByTaskId: builder.query<TaskComment[], string>({
       query: (taskId) => `taskcomment/by-task/${taskId}`,
@@ -22,6 +32,7 @@ export const taskCommentApi = createApi({
         isSuccess: boolean;
         data: TaskComment[];
       }) => response.data,
+      providesTags: ['Comments'],
     }),
 
     createTaskComment: builder.mutation<
@@ -37,6 +48,7 @@ export const taskCommentApi = createApi({
         isSuccess: boolean;
         data: TaskComment;
       }) => response.data,
+      invalidatesTags: ['Comments', 'ActivityLogs'],
     }),
 
     updateTaskComment: builder.mutation<
@@ -52,14 +64,37 @@ export const taskCommentApi = createApi({
         isSuccess: boolean;
         data: TaskComment;
       }) => response.data,
+      invalidatesTags: ['Comments', 'ActivityLogs'],
     }),
 
-    deleteTaskComment: builder.mutation<void, { id: number; createdBy: number }>({
+    deleteTaskComment: builder.mutation<
+      void,
+      { id: number; taskId: string; createdBy: number }
+    >({
       query: ({ id, createdBy }) => ({
         url: `taskcomment/${id}`,
         method: 'DELETE',
         body: { createdBy },
       }),
+      invalidatesTags: ['Comments', 'ActivityLogs'],
+      async onQueryStarted({ id, taskId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          taskCommentApi.util.updateQueryData('getCommentsByTaskId', taskId, (draft) => {
+            const index = draft.findIndex((comment) => comment.id === id);
+            if (index !== -1) {
+              draft.splice(index, 1);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+          console.log('Comment deleted successfully, ID:', id, 'Task ID:', taskId);
+        } catch (err) {
+          patchResult.undo();
+          dispatch(taskCommentApi.util.invalidateTags(['Comments']));
+          console.error('Failed to delete comment:', err);
+        }
+      },
     }),
   }),
 });

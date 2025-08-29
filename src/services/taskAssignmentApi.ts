@@ -18,6 +18,7 @@ export interface TaskAssignmentHoursDTO {
   taskId: string;
   accountId: number;
   hourlyRate: number | null;
+  workingHoursPerDay: number | null;
   accountFullname: string;
   accountUsername: string;
   accountPicture: string | null;
@@ -87,15 +88,47 @@ export const taskAssignmentApi = createApi({
 
     updateActualHoursByTaskId: builder.mutation<
       void,
-      { taskId: string; data: { id: number; actualHours: number }[] }
+      { taskId: string; data: { id: number; actualHours: number }[]; createdBy: number }
     >({
-      query: ({ taskId, data }) => ({
-        url: `task/${taskId}/taskassignment/update-actual-hours`,
+      query: ({ taskId, data, createdBy }) => ({
+        url: `task/${taskId}/taskassignment/update-actual-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: data,
+      }),
+      invalidatesTags: ['TaskAssignment'],
+    }),
+
+    changeAssignmentPlannedHours: builder.mutation<
+      void,
+      { id: number; plannedHours: number; createdBy: number }
+    >({
+      query: ({ id, plannedHours, createdBy }) => ({
+        url: `taskassignment/${id}/planned-hours?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: '*/*',
+        },
+        body: { plannedHours },
+      }),
+      invalidatesTags: ['TaskAssignment'],
+    }),
+
+    updateAssignmentPlannedHoursBulk: builder.mutation<
+      void,
+      { taskId: string; updates: { assignmentId: number; plannedHours: number }[]; createdBy: number }
+    >({
+      query: ({ taskId, updates, createdBy }) => ({
+        url: `task/${taskId}/taskassignment/taskassignments/bulk/planned-hours?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          accept: '*/*',
+        },
+        body: updates,
       }),
       invalidatesTags: ['TaskAssignment'],
     }),
@@ -109,4 +142,6 @@ export const {
   useCreateTaskAssignmentQuickMutation,
   useGetTaskAssignmentHoursByTaskIdQuery,
   useUpdateActualHoursByTaskIdMutation,
+  useChangeAssignmentPlannedHoursMutation,
+  useUpdateAssignmentPlannedHoursBulkMutation
 } = taskAssignmentApi;

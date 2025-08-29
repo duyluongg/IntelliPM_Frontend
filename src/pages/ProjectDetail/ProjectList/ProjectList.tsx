@@ -86,7 +86,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, accountId }
   });
   const [updateProjectMemberStatus, { isLoading: isUpdating, isError: isUpdateError }] =
     useUpdateProjectMemberStatusMutation();
-const progress = projectDetails?.isSuccess
+  const progress = projectDetails?.isSuccess
     ? calculateProgress(projectDetails.data.startDate, projectDetails.data.endDate)
     : 0;
 
@@ -159,7 +159,7 @@ const progress = projectDetails?.isSuccess
         </p>
         <p className='text-sm text-gray-600'>
           {isMemberLoading ? (
-<span className='text-gray-500'>Loading...</span>
+            <span className='text-gray-500'>Loading...</span>
           ) : isMemberError ? (
             <span className='text-red-500'>Error</span>
           ) : memberStatus === 'INVITED' ? (
@@ -239,16 +239,9 @@ const progress = projectDetails?.isSuccess
 
 const ProjectList: React.FC = () => {
   const navigate = useNavigate();
-const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+  const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
   const accessToken = user?.accessToken || '';
   const accountId = user?.id || 0;
-  const formatName = (username: string) => {
-    return username
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/[_\-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .replace(/^./, (str) => str.toUpperCase());
-  };
 
   const {
     data: projectsResponse,
@@ -260,6 +253,14 @@ const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
   });
 
   const projects: Project[] = projectsResponse?.data || [];
+
+  // Filter projects: Exclude PLANNING projects for non-TEAM_LEADER and non-PROJECT_MANAGER roles
+const filteredProjects = (
+  user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER'
+    ? projects.slice()
+    : projects.filter(project => project.projectStatus !== 'PLANNING').slice()
+).sort((a, b) => b.projectId - a.projectId);
+
 
   const handleProjectClick = (projectKey: string) => {
     navigate(`/project/${projectKey}/summary`);
@@ -319,7 +320,7 @@ const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
           {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
             <button
               onClick={() => navigate('/project/introduction')}
-className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm transition-all duration-300 w-[140px] text-right'
+              className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm transition-all duration-300 w-[140px] text-right'
             >
               + Create Project
             </button>
@@ -329,14 +330,14 @@ className='bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm
         </div>
 
         <div className='m-12'></div>
-        {projects.length === 0 ? (
+        {filteredProjects.length === 0 ? (
           <div className='bg-white p-8 rounded-2xl shadow-xl text-center'>
             <p className='text-gray-600 text-sm'>No projects found for this account.</p>
           </div>
         ) : (
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
             <AnimatePresence>
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <ProjectCard
                   key={project.projectId}
                   project={project}

@@ -1,3 +1,4 @@
+
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -39,7 +40,7 @@ export interface TaskResponseDTO {
   evaluate: string | null;
   status: string;
   createdBy: number;
-  dependencies: TaskDependency[],
+  dependencies: TaskDependency[];
   warnings?: string[];
 }
 
@@ -178,6 +179,52 @@ export interface CreateTaskRequest {
 
 export interface CreateTasksRequest {
   tasks: CreateTaskRequest[];
+}
+
+// Interface for AI-generated task response
+export interface AITaskResponseDTO {
+  id: string | null;
+  reporterId: number;
+  reporterName: string | null;
+  reporterPicture: string | null;
+  projectId: number;
+  projectName: string | null;
+  epicId: string | null;
+  epicName: string | null;
+  sprintId: number | null;
+  sprintName: string | null;
+  type: string;
+  manualInput: boolean;
+  generationAiInput: boolean;
+  title: string;
+  description: string;
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
+  actualStartDate: string | null;
+  actualEndDate: string | null;
+  duration: number | null;
+  percentComplete: number | null;
+  plannedHours: number | null;
+  actualHours: number | null;
+  remainingHours: number | null;
+  plannedCost: number | null;
+  plannedResourceCost: number | null;
+  actualCost: number | null;
+  actualResourceCost: number | null;
+  priority: string | null;
+  status: string;
+  evaluate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dependencies: string | null;
+  warnings: string | null;
+}
+
+export interface AITaskListResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: AITaskResponseDTO[];
 }
 
 export const taskApi = createApi({
@@ -398,7 +445,7 @@ export const taskApi = createApi({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({sprintId, createdBy}),
+        body: JSON.stringify({ sprintId, createdBy }),
       }),
       transformResponse: (response: TaskDetailResponse) => response.data,
       invalidatesTags: ['Task'],
@@ -432,10 +479,10 @@ export const taskApi = createApi({
 
     updatePlannedHours: builder.mutation<
       void,
-      { id: string; plannedHours: number }
+      { id: string; plannedHours: number; createdBy: number }
     >({
-      query: ({ id, plannedHours }) => ({
-        url: `task/${id}/planned-hours`,
+      query: ({ id, plannedHours, createdBy }) => ({
+        url: `task/${id}/planned-hours?createdBy=${createdBy}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -444,7 +491,8 @@ export const taskApi = createApi({
       }),
       invalidatesTags: ['Task'],
     }),
-        createTasks: builder.mutation<TaskListResponse, CreateTasksRequest>({
+
+    createTasks: builder.mutation<TaskListResponse, CreateTasksRequest>({
       query: ({ tasks }) => ({
         url: 'task/bulk',
         method: 'POST',
@@ -458,6 +506,78 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
+    updateTaskEpic: builder.mutation<TaskResponseDTO, { id: string; epicId: string | null; createdBy: number }>({
+      query: ({ id, epicId, createdBy }) => ({
+        url: `task/${id}/epic`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: JSON.stringify({ epicId, createdBy }),
+      }),
+      transformResponse: (response: TaskDetailResponse) => response.data,
+      invalidatesTags: ['Task'],
+    }),
+
+    generateAITasks: builder.mutation<AITaskListResponse, number>({
+      query: (projectId) => ({
+        url: `ai/${projectId}/generate-task`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: {},
+      }),
+      transformResponse: (response: AITaskListResponse) => response,
+      invalidatesTags: ['Task'],
+    }),
+
+    updatePercentComplete: builder.mutation<
+      void,
+      { id: string; percentComplete: number; createdBy: number }
+    >({
+      query: ({ id, percentComplete, createdBy }) => ({
+        url: `task/${id}/percent-complete?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(percentComplete),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updatePlannedCost: builder.mutation<
+      void,
+      { id: string; plannedCost: number; createdBy: number }
+    >({
+      query: ({ id, plannedCost, createdBy }) => ({
+        url: `task/${id}/planned-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(plannedCost),
+      }),
+      invalidatesTags: ['Task'],
+    }),
+
+    updateActualCost: builder.mutation<
+      void,
+      { id: string; actualCost: number; createdBy: number }
+    >({
+      query: ({ id, actualCost, createdBy }) => ({
+        url: `task/${id}/actual-cost?createdBy=${createdBy}`,
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(actualCost),
+      }),
+      invalidatesTags: ['Task'],
+    }),
   }),
 });
 
@@ -484,5 +604,9 @@ export const {
   useGetTasksBySprintIdAndStatusQuery,
   useUpdatePlannedHoursMutation,
   useCreateTasksMutation,
-  
+  useUpdateTaskEpicMutation,
+  useGenerateAITasksMutation,
+  useUpdatePercentCompleteMutation,
+  useUpdatePlannedCostMutation,
+  useUpdateActualCostMutation,
 } = taskApi;

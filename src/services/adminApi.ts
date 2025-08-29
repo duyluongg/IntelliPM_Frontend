@@ -5,7 +5,7 @@ export interface Account {
   id: number;
   username: string;
   fullName: string;
-  email: string;
+  email: string | null;
   gender: string;
   position: string;
   dateOfBirth: string | null;
@@ -13,7 +13,26 @@ export interface Account {
   role: string;
   picture: string;
 }
+export interface AdminAccountRequest {
+  email: string;
+  position: string;
+  role: string;
+}
+export interface ApiResponse<T> {
+  isSuccess: boolean;
+  code: number;
+  data: T;
+  message: string;
+}
+export interface RegistrationError {
+  email: string;
+  errorMessage: string;
+}
 
+export interface AdminRegisterResponse {
+  successful: string[];
+  failed: RegistrationError[];
+}
 export interface GetAccountsResponse {
   isSuccess: boolean;
   code: number;
@@ -52,6 +71,42 @@ export interface GetProjectStatusResponse {
   message: string;
 }
 
+export interface ProjectManagerReport {
+  projectManagerId: number;
+  projectManagerName: string;
+  totalProjects: number;
+  activeProjects: number;
+  overdueTasks: number;
+  totalBudget: number;
+  projects: ProjectSummary[];
+}
+
+export interface ProjectSummary {
+  projectId: number;
+  projectKey: string;
+  projectName: string;
+  status: string;
+  spi?: number;
+  cpi?: number;
+  progress: number;
+  totalTasks: number;
+  completedTasks: number;
+  overdueTasks: number;
+  budget: number;
+  actualCost: number;
+  remainingBudget: number;
+  milestones: MilestoneSummary[];
+}
+
+export interface MilestoneSummary {
+  milestoneId: number;
+  key: string;
+  name: string;
+  status: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export const adminApi = createApi({
   reducerPath: 'adminApi',
   baseQuery: fetchBaseQuery({
@@ -79,7 +134,21 @@ export const adminApi = createApi({
         method: 'GET',
       }),
     }),
+
+    getProjectManagerReports: builder.query<ProjectManagerReport[], void>({
+      query: () => 'admin/project-managers',
+    }),
+
+    registerAccounts: builder.mutation<ApiResponse<AdminRegisterResponse>, AdminAccountRequest[]>({
+      query: (accounts) => ({
+        url: 'admin/register-account',
+        method: 'POST',
+        body: accounts,
+      }),
+    }),
+
   }),
 });
 
-export const { useGetAccountsQuery, useGetProjectStatusQuery } = adminApi;
+export const { useGetAccountsQuery, useGetProjectStatusQuery, useGetProjectManagerReportsQuery,useRegisterAccountsMutation, } =
+  adminApi;

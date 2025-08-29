@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { useGenerateTasksForSprintMutation, type AITaskForSprintDTO } from '../../../services/aiApi';
+import {
+  useGenerateTasksForSprintMutation,
+  type AITaskForSprintDTO,
+} from '../../../services/aiApi';
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useCreateTasksMutation } from '../../../services/taskApi';
 import aiIcon from '../../../assets/icon/ai.png';
@@ -40,10 +43,21 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
   const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
   const [evaluationPayload, setEvaluationPayload] = useState<string>('');
 
-  const { data: priorityData, isLoading: isPriorityLoading, error: priorityError } = useGetCategoriesByGroupQuery('task_priority', { skip: !isOpen });
-  const priorityOptions = priorityData?.data?.map((category) => category.name) || ['HIGHEST', 'HIGH', 'MEDIUM', 'LOW', 'LOWEST'];
+  const {
+    data: priorityData,
+    isLoading: isPriorityLoading,
+    error: priorityError,
+  } = useGetCategoriesByGroupQuery('task_priority', { skip: !isOpen });
+  const priorityOptions = priorityData?.data?.map((category) => category.name) || [
+    'HIGHEST',
+    'HIGH',
+    'MEDIUM',
+    'LOW',
+    'LOWEST',
+  ];
 
-  const [generateTasks, { isLoading: isGenerateTasksLoading }] = useGenerateTasksForSprintMutation();
+  const [generateTasks, { isLoading: isGenerateTasksLoading }] =
+    useGenerateTasksForSprintMutation();
   const [createTasks] = useCreateTasksMutation();
 
   // Fetch user from localStorage
@@ -71,9 +85,7 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
 
   const handleTaskCheckboxChange = (taskId: string) => {
     setSelectedTasks((prev) =>
-      prev.includes(taskId)
-        ? prev.filter((id) => id !== taskId)
-        : [...prev, taskId]
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
     );
   };
 
@@ -173,7 +185,7 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60'>
         <style>
           {`
             @keyframes gradientLoading {
@@ -186,17 +198,17 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
             }
           `}
         </style>
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-8 max-h-[85vh] overflow-y-auto">
-          <h2 className="text-2xl font-bold text-[#1c73fd] mb-6">Generate Tasks for Sprint</h2>
+        <div className='bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-8 max-h-[85vh] overflow-y-auto'>
+          <h2 className='text-2xl font-bold text-[#1c73fd] mb-6'>Generate Tasks for Sprint</h2>
           {(error || priorityError) && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-6">
+            <div className='bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg mb-6'>
               {error || (priorityError && 'Failed to load priority options')}
             </div>
           )}
           {isGenerating || isGenerateTasksLoading ? (
-            <div className="flex justify-center items-center py-10 bg-white/50 rounded-2xl shadow-md">
-              <div className="flex flex-col items-center gap-4">
-                <img src={galaxyaiIcon} alt="AI Processing" className="w-10 h-10 animate-pulse" />
+            <div className='flex justify-center items-center py-10 bg-white/50 rounded-2xl shadow-md'>
+              <div className='flex flex-col items-center gap-4'>
+                <img src={galaxyaiIcon} alt='AI Processing' className='w-10 h-10 animate-pulse' />
                 <span
                   style={{
                     background: 'linear-gradient(90deg, #1c73fd, #00d4ff, #4a90e2, #1c73fd)',
@@ -205,7 +217,7 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
                     WebkitTextFillColor: 'transparent',
                     animation: 'gradientLoading 1.8s ease-in-out infinite',
                   }}
-                  className="text-lg font-semibold"
+                  className='text-lg font-semibold'
                 >
                   Generating Tasks...
                 </span>
@@ -213,52 +225,54 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
             </div>
           ) : (
             <>
-              <div className="mb-6">
+              <div className='mb-6'>
                 <button
                   onClick={handleGenerateTasks}
                   className={`w-full py-3 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-300 ${
                     isGenerating || isSubmitting
-                      ? 'bg-gray-500 opacity-70 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-[#1c73fd] to-[#4a90e2] hover:from-[#155ac7] hover:to-[#3e7ed1] hover:shadow-lg'
+                      ? 'bg-gray-400 opacity-70 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg hover:scale-[1.02]'
                   }`}
                   disabled={isGenerating || isSubmitting}
                 >
-                  <img src={aiIcon} alt="AI Icon" className="w-5 h-5 object-contain" />
+                  <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
                   {isGenerating ? 'Generating Tasks...' : 'Generate Tasks'}
                 </button>
               </div>
               {tasks.length > 0 && (
-                <div className="border border-gray-200 rounded-xl p-5 max-h-[50vh] overflow-y-auto bg-gray-50">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Generated Tasks</h3>
+                <div className='border border-gray-200 rounded-xl p-5 max-h-[50vh] overflow-y-auto bg-gray-50'>
+                  <h3 className='text-lg font-semibold text-gray-800 mb-4'>Generated Tasks</h3>
                   {tasks.map((task, index) => (
                     <div
                       key={`task-${index}`}
-                      className="mb-4 bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                      className='mb-4 bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200'
                     >
-                      <div className="flex items-center gap-3">
+                      <div className='flex items-center gap-3'>
                         <input
-                          type="checkbox"
+                          type='checkbox'
                           checked={selectedTasks.includes(`task-${index}`)}
                           onChange={() => handleTaskCheckboxChange(`task-${index}`)}
-                          className="h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded"
+                          className='h-5 w-5 text-[#1c73fd] focus:ring-[#1c73fd] border-gray-300 rounded'
                           disabled={isSubmitting}
                         />
-                        <span className="font-semibold text-gray-800">{task.title}</span>
+                        <span className='font-semibold text-gray-800'>{task.title}</span>
                         <button
-                          onClick={() => handleStartTaskEdit(`task-${index}`, task.priority, task.plannedHours)}
-                          className="text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200"
+                          onClick={() =>
+                            handleStartTaskEdit(`task-${index}`, task.priority, task.plannedHours)
+                          }
+                          className='text-sm text-[#1c73fd] hover:text-[#155ac7] transition-colors duration-200'
                           disabled={isSubmitting}
                         >
                           Edit
                         </button>
                       </div>
-                      <p className="text-sm text-gray-600 ml-8 mt-2">{task.description}</p>
+                      <p className='text-sm text-gray-600 ml-8 mt-2'>{task.description}</p>
                       {editingTaskId === `task-${index}` && (
-                        <div className="ml-8 mt-3 flex items-center gap-2">
+                        <div className='ml-8 mt-3 flex items-center gap-2'>
                           <select
                             value={taskPriority}
                             onChange={(e) => setTaskPriority(e.target.value)}
-                            className="text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]"
+                            className='text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]'
                             disabled={isPriorityLoading}
                           >
                             {priorityOptions.map((priority) => (
@@ -268,29 +282,33 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
                             ))}
                           </select>
                           <input
-                            type="number"
+                            type='number'
                             value={taskPlannedHours}
-                            onChange={(e) => setTaskPlannedHours(e.target.value === '' ? '' : parseInt(e.target.value))}
-                            min="0"
-                            className="w-16 text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]"
+                            onChange={(e) =>
+                              setTaskPlannedHours(
+                                e.target.value === '' ? '' : parseInt(e.target.value)
+                              )
+                            }
+                            min='0'
+                            className='w-16 text-xs border border-gray-300 rounded-lg p-1.5 focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd]'
                           />
                           <button
                             onClick={() => handleSaveTaskEdit(`task-${index}`)}
-                            className="text-xs text-green-600 hover:text-green-700"
+                            className='text-xs text-green-600 hover:text-green-700'
                           >
                             Save
                           </button>
                           <button
                             onClick={handleCancelTaskEdit}
-                            className="text-xs text-red-600 hover:text-red-700"
+                            className='text-xs text-red-600 hover:text-red-700'
                           >
                             Cancel
                           </button>
                         </div>
                       )}
                       {!editingTaskId && (
-                        <div className="ml-8 mt-2">
-                          <span className="text-xs text-gray-500">
+                        <div className='ml-8 mt-2'>
+                          <span className='text-xs text-gray-500'>
                             Priority: {task.priority}, Planned Hours: {task.plannedHours}
                           </span>
                         </div>
@@ -299,10 +317,10 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
                   ))}
                 </div>
               )}
-              <div className="flex justify-end gap-4 mt-8">
+              <div className='flex justify-end gap-4 mt-8'>
                 <button
                   onClick={onClose}
-                  className="px-6 py-2.5 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200"
+                  className='px-6 py-2.5 text-sm font-semibold text-gray-800 border border-gray-300 rounded-xl hover:bg-gray-100 transition-all duration-200'
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -328,7 +346,7 @@ const GenerateTasksPopup: React.FC<GenerateTasksPopupProps> = ({
         onClose={handleEvaluationPopupClose}
         aiResponseJson={evaluationPayload}
         projectId={projectId}
-        aiFeature="TASK_FOR_SPRINT"
+        aiFeature='TASK_FOR_SPRINT'
         onSubmitSuccess={handleEvaluationSubmitSuccess}
       />
     </>

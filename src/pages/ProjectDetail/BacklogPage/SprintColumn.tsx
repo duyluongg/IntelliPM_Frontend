@@ -5,6 +5,7 @@ import {
   useUpdateTaskStatusMutation,
   useCreateTaskMutation,
   useUpdateTaskSprintMutation,
+  useUpdateTaskEpicMutation,
   type TaskBacklogResponseDTO,
 } from '../../../services/taskApi';
 import {
@@ -26,9 +27,14 @@ import StartSprintPopup from './StartSprintPopup';
 import EditDatePopup from './EditDatePopup';
 import CompleteSprintPopup from './CompleteSprintPopup';
 import GenerateTasksPopup from './GenerateTasksPopup';
+import PlanTasksPopup from './PlanTasksPopup';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
+import WorkItem from '../../WorkItem/WorkItem';
+import aiIcon from '../../../assets/icon/ai.png';
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
+  epics: EpicWithStatsResponseDTO[] | undefined;
   backlogTasks: TaskBacklogResponseDTO[];
   projectId: number;
   projectKey: string;
@@ -39,7 +45,9 @@ interface TaskItemProps {
   task: TaskBacklogResponseDTO;
   index: number;
   sprintId: number | null;
+  epics: EpicWithStatsResponseDTO[] | undefined;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
+  onTaskUpdated: () => void;
 }
 
 interface SectionProps {
@@ -47,6 +55,7 @@ interface SectionProps {
   tasks: TaskBacklogResponseDTO[];
   sprintId: number | null;
   sprints: SprintWithTaskListResponseDTO[];
+  epics: EpicWithStatsResponseDTO[] | undefined;
   projectId: number;
   projectKey: string;
   workItemCompleted: number;
@@ -67,7 +76,6 @@ const staticStatusOptions = [
   { label: 'DONE', value: 'DONE', name: 'DONE', bg: 'bg-lime-200', text: 'text-lime-800' },
 ];
 
-// Move mapApiStatusToUI to top level
 const mapApiStatusToUI = (
   apiStatus: string | null | undefined,
   categories: DynamicCategory[]
@@ -95,7 +103,14 @@ const formatDate = (dateStr: string | null | undefined): string => {
   return `${day} ${monthAbbr}`;
 };
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) => {
+const TaskItem: React.FC<TaskItemProps> = ({
+  task,
+  index,
+  sprintId,
+  epics,
+  moveTask,
+  onTaskUpdated,
+}) => {
   const {
     data: statusCategories,
     isLoading: isStatusLoading,
@@ -105,6 +120,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   });
   const [updateTaskStatus] = useUpdateTaskStatusMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
+  const [updateTaskEpic] = useUpdateTaskEpicMutation();
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
   const ref = useRef<HTMLDivElement>(null);
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -120,6 +136,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   }, [drag]);
 
   const [status, setStatus] = useState<string>('');
+  const [isEpicMenuOpen, setIsEpicMenuOpen] = useState(false);
+  const epicMenuRef = useRef<HTMLDivElement>(null);
+  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false);
 
   useEffect(() => {
     if (!isStatusLoading && statusCategories?.data) {
@@ -169,8 +188,12 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node))
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpenDropdown(false);
+      }
+      if (epicMenuRef.current && !epicMenuRef.current.contains(e.target as Node)) {
+        setIsEpicMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -179,6 +202,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
   }, [editingTitle]);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      const titleElement = titleRef.current;
+      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
+    }
+  }, [title]);
 
   const handleTitleBlur = async () => {
     if (title === (task.title || '') || !title.trim()) {
@@ -213,21 +243,73 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }
   };
 
-  const assignees = task.taskAssignments.map((a) => ({
-    name: a.accountFullname || 'Unknown',
-    picture: a.accountPicture || null,
-  }));
-  const epicRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (titleRef.current) {
-      const titleElement = titleRef.current;
-      setTitleOverflow(titleElement.scrollWidth > titleElement.clientWidth);
+  const handleEpicSelect = async (epicId: string | null) => {
+    try {
+      await updateTaskEpic({
+        id: task.id,
+        epicId,
+        createdBy: accountId,
+      }).unwrap();
+      setIsEpicMenuOpen(false);
+      onTaskUpdated();
+    } catch (err: any) {
+      alert(`Unable to assign epic: ${err?.data?.message || 'Unknown error'}`);
     }
-  }, [title]);
+  };
+
+  const handleOpenWorkItem = () => {
+    setIsWorkItemOpen(true);
+  };
+
+  const handleCloseWorkItem = () => {
+    setIsWorkItemOpen(false);
+  };
 
   const renderEpicName = () => {
-    if (!task.epicName) return <span className='text-xs text-gray-400'>-</span>;
+    if (!task.epicName) {
+      return (
+        <div className='relative flex justify-start pl-2 min-w-[100px]'>
+          <button
+            onClick={() => setIsEpicMenuOpen(true)}
+            className='text-xs text-gray-600 border border-gray-600 rounded px-2 py-[1px] hover:bg-gray-200 whitespace-nowrap'
+            title='Assign Epic'
+          >
+            + Epic
+          </button>
+          {isEpicMenuOpen && (
+            <div
+              ref={epicMenuRef}
+              className='absolute z-10 top-6 left-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto'
+            >
+              {!Array.isArray(epics) || epics.length === 0 ? (
+                <div className='px-4 py-2 text-sm text-gray-500'>No epics available</div>
+              ) : (
+                [
+                  <div
+                    key='no-epic'
+                    onClick={() => handleEpicSelect(null)}
+                    className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer'
+                  >
+                    <img src={epicIcon} alt='Epic icon' className='w-4 h-4' />
+                    <span>No Epic</span>
+                  </div>,
+                  ...epics.map((epic) => (
+                    <div
+                      key={epic.id}
+                      onClick={() => handleEpicSelect(epic.id)}
+                      className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer'
+                    >
+                      <img src={epicIcon} alt='Epic icon' className='w-4 h-4' />
+                      <span className='truncate'>{epic.name}</span>
+                    </div>
+                  )),
+                ]
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     let displayEpicName = task.epicName;
     if (displayEpicName.length > 12) {
@@ -235,15 +317,53 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
     }
 
     return (
-      <span
-        ref={epicRef}
-        className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
-        title={task.epicName || ''}
-      >
-        {displayEpicName}
-      </span>
+      <div className='relative flex justify-start pl-2 min-w-[100px]'>
+        <span
+          className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
+          title={task.epicName}
+          onClick={() => setIsEpicMenuOpen(true)}
+        >
+          {displayEpicName}
+        </span>
+        {isEpicMenuOpen && (
+          <div
+            ref={epicMenuRef}
+            className='absolute z-10 top-6 left-0 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto'
+          >
+            {!Array.isArray(epics) || epics.length === 0 ? (
+              <div className='px-4 py-2 text-sm text-gray-500'>No epics available</div>
+            ) : (
+              [
+                <div
+                  key='no-epic'
+                  onClick={() => handleEpicSelect(null)}
+                  className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer'
+                >
+                  <img src={epicIcon} alt='Epic icon' className='w-4 h-4' />
+                  <span>No Epic</span>
+                </div>,
+                ...epics.map((epic) => (
+                  <div
+                    key={epic.id}
+                    onClick={() => handleEpicSelect(epic.id)}
+                    className='flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 cursor-pointer'
+                  >
+                    <img src={epicIcon} alt='Epic icon' className='w-4 h-4' />
+                    <span className='truncate'>{epic.name}</span>
+                  </div>
+                )),
+              ]
+            )}
+          </div>
+        )}
+      </div>
     );
   };
+
+  const assignees = task.taskAssignments.map((a) => ({
+    name: a.accountFullname || 'Unknown',
+    picture: a.accountPicture || null,
+  }));
 
   if (isStatusLoading) return <div className='text-xs text-gray-500'>Loading status...</div>;
   if (categoryError)
@@ -256,14 +376,21 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
   return (
     <div
       ref={ref}
-      className={`grid grid-cols-[40px_100px_1fr_auto_120px_auto_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
+      className={`grid grid-cols-[40px_100px_minmax(200px,1fr)_100px_16px_120px_16px_100px] items-center px-3 py-2 border-t border-gray-200 hover:bg-gray-50 min-h-[48px] ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
       <div className='flex justify-center'>
         <img src={getTaskIcon(task.type)} alt={`${task.type || 'task'} icon`} className='w-4 h-4' />
       </div>
-      <span className='text-sm text-gray-900 truncate ml-2'>{task.id}</span>
+      <span
+        className={`text-sm text-gray-900 truncate ml-2 cursor-pointer hover:text-blue-600 hover:underline ${
+          status === 'DONE' ? 'line-through' : ''
+        }`}
+        onClick={handleOpenWorkItem}
+      >
+        {task.id}
+      </span>
       {editingTitle ? (
         <input
           ref={titleInputRef}
@@ -277,13 +404,14 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
       ) : (
         <span
           ref={titleRef}
-          className='text-sm text-gray-700 truncate cursor-pointer hover:underline w-full'
+          className='text-sm text-gray-700 truncate cursor-pointer hover:underline pr-2'
           onClick={() => setEditingTitle(true)}
         >
           {title}
         </span>
       )}
-      <div className='flex justify-end pl-2 mr-5'>{renderEpicName()}</div>
+      {renderEpicName()}
+      <div className='min-w-[16px]' />
       <div className='flex items-center justify-start relative' ref={dropdownRef}>
         <button
           onClick={() => setOpenDropdown(!openDropdown)}
@@ -356,6 +484,9 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, index, sprintId, moveTask }) 
           </div>
         )}
       </div>
+      {isWorkItemOpen && (
+        <WorkItem isOpen={isWorkItemOpen} onClose={handleCloseWorkItem} taskId={task.id} />
+      )}
     </div>
   );
 };
@@ -365,6 +496,7 @@ const Section: React.FC<SectionProps> = ({
   tasks,
   sprintId,
   sprints,
+  epics,
   projectId,
   projectKey,
   workItemCompleted,
@@ -383,30 +515,35 @@ const Section: React.FC<SectionProps> = ({
   const [isEditPopupOpen, setIsEditPopupOpen] = useState(false);
   const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
   const [isGenerateTasksPopupOpen, setIsGenerateTasksPopupOpen] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
-
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'TASK',
-    item: { sprintId },
-    drop: (item: {
-      id: string;
-      index: number;
-      sprintId: number | null;
-      status: string | null | undefined;
-    }) => {
-      if (item.sprintId !== sprintId) {
-        moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
-      }
-    },
-    collect: (monitor) => ({ isOver: monitor.isOver() }),
-  }));
-
-  drop(ref);
 
   const isSprint = sprintId !== null;
   const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
+  const isCompleted = sprint?.status === 'COMPLETED';
+  const ref = useRef<HTMLDivElement>(null);
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: isCompleted ? '' : 'TASK',
+    item: { sprintId },
+    drop: isCompleted
+      ? undefined
+      : (item: {
+          id: string;
+          index: number;
+          sprintId: number | null;
+          status: string | null | undefined;
+        }) => {
+          if (item.sprintId !== sprintId) {
+            moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
+          }
+        },
+    collect: (monitor) => ({ isOver: monitor.isOver() }),
+  }));
+
+  if (!isCompleted) {
+    drop(ref);
+  }
+
   const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
   const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
 
@@ -431,6 +568,11 @@ const Section: React.FC<SectionProps> = ({
     } catch (err: any) {
       alert(`Unable to create task: ${err?.data?.message || 'Unknown error'}`);
     }
+  };
+
+  const handleOpenPlanTasksPopup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPlanTasksPopupOpen(true);
   };
 
   const handleCreateSprint = async () => {
@@ -491,6 +633,8 @@ const Section: React.FC<SectionProps> = ({
     }
   };
 
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
@@ -504,7 +648,9 @@ const Section: React.FC<SectionProps> = ({
   return (
     <div
       ref={ref}
-      className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver ? 'bg-blue-50' : ''}`}
+      className={`bg-white rounded-lg border border-gray-200 mb-4 ${
+        isOver && !isCompleted ? 'bg-blue-50' : ''
+      }`}
     >
       {sprintId === null ? (
         <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
@@ -513,15 +659,13 @@ const Section: React.FC<SectionProps> = ({
             <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
           </span>
           <div className='flex items-center space-x-2'>
-            <div className='p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]'>
-              <button
-                onClick={handleOpenGenerateTasksPopup}
-                className='w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300'
-              >
-                <PlusCircle className='w-4 h-4 mr-1 text-indigo-500' />
-                Plan Tasks
-              </button>
-            </div>
+            <button
+              onClick={handleOpenPlanTasksPopup}
+              className='bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 rounded-xl text-sm text-white hover:text-gray-100 font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm hover:shadow-md'
+            >
+              <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
+              Plan Tasks
+            </button>
             <button
               onClick={handleCreateSprint}
               className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
@@ -575,18 +719,19 @@ const Section: React.FC<SectionProps> = ({
               </span>
             </div>
             <div className='flex items-center space-x-2'>
-              {sprint.status != 'COMPLETED' && (
-                <div className='p-[2px] rounded-xl bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-[0_0_8px_rgba(255,255,255,0.2)]'>
-                  <button
-                    onClick={handleOpenGenerateTasksPopup}
-                    className='w-full h-full bg-gray-50/80 backdrop-blur-sm rounded-xl text-sm text-indigo-700 hover:text-indigo-800 font-medium px-2 py-1 hover:bg-gray-100 flex items-center transition-all duration-300'
-                  >
-                    <PlusCircle className='w-4 h-4 mr-1 text-indigo-500' />
-                    More Tasks
-                  </button>
-                </div>
+              {sprint.status !== 'COMPLETED' && (
+                <button
+                  onClick={handleOpenGenerateTasksPopup}
+                  className='bg-gradient-to-r from-purple-600 to-blue-500 
+         hover:from-purple-700 hover:to-blue-600
+         rounded-xl text-sm text-white hover:text-gray-100 
+         font-medium px-2 py-[0.35rem] flex items-center justify-center 
+         transition-all duration-300 shadow-sm hover:shadow-md'
+                >
+                  <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
+                  More Tasks
+                </button>
               )}
-
               {sprint.status === 'FUTURE' && (
                 <>
                   {hasNoDates ? (
@@ -643,7 +788,6 @@ const Section: React.FC<SectionProps> = ({
                 sprint.status !== 'COMPLETED' && (
                   <span className='text-sm text-red-500'>Unknown status: {sprint.status}</span>
                 )}
-
               <div className='relative' ref={moreMenuRef}>
                 <button
                   className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
@@ -692,7 +836,7 @@ const Section: React.FC<SectionProps> = ({
             </div>
             {sprintId === null && (
               <button
-                onClick={() => setNewTaskTitle('New Task')} // Trigger input focus
+                onClick={() => setNewTaskTitle('New Task')}
                 className='px-3 py-1.5 text-sm border rounded hover:bg-gray-100 transition text-gray-700 border-gray-300'
               >
                 Create Task
@@ -707,7 +851,9 @@ const Section: React.FC<SectionProps> = ({
                 task={task}
                 index={index}
                 sprintId={sprintId}
+                epics={epics}
                 moveTask={moveTask}
+                onTaskUpdated={onTaskUpdated}
               />
             ))}
           </>
@@ -760,12 +906,20 @@ const Section: React.FC<SectionProps> = ({
         projectId={projectId}
         onTaskUpdated={onTaskUpdated}
       />
+      <PlanTasksPopup
+        isOpen={isPlanTasksPopupOpen}
+        onClose={() => setIsPlanTasksPopupOpen(false)}
+        projectId={projectId}
+        projectKey={projectKey}
+        onTaskUpdated={onTaskUpdated}
+      />
     </div>
   );
 };
 
 const SprintColumn: React.FC<SprintColumnProps> = ({
   sprints,
+  epics,
   backlogTasks,
   projectId,
   projectKey,
@@ -810,6 +964,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
             tasks={sprint.tasks}
             sprintId={sprint.id}
             sprints={sprints}
+            epics={epics}
             projectId={projectId}
             projectKey={projectKey}
             workItemCompleted={completed}
@@ -824,6 +979,7 @@ const SprintColumn: React.FC<SprintColumnProps> = ({
         tasks={backlogTasks}
         sprintId={null}
         sprints={sprints}
+        epics={epics}
         projectId={projectId}
         projectKey={projectKey}
         workItemCompleted={0}

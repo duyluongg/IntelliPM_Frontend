@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState, useRef } from 'react';
 import './EpicDetail.css';
+import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
@@ -20,11 +21,15 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetActivityLogsByProjectIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByProjectIdQuery, useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
+import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
+import { Tooltip } from 'react-tooltip';
+import aiIcon from '../../assets/icon/ai.png';
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -88,6 +93,7 @@ const EpicDetail: React.FC = () => {
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
   const [generateTasksByEpicByAI, { isLoading: loadingSuggest }] = useGenerateTasksByEpicByAIMutation();
@@ -98,6 +104,11 @@ const EpicDetail: React.FC = () => {
   const { data: taskPriorityOptions, isLoading: isTaskPriorityLoading, isError: isTaskPriorityError } = useGetCategoriesByGroupQuery("task_priority");
   const { data: taskStatusOptions, isLoading: isTaskStatusLoading, isError: isTaskStatusError } = useGetCategoriesByGroupQuery("task_status");
   const { data: epicStatusOptions, isLoading: isEpicStatusLoading, isError: isEpicStatusError } = useGetCategoriesByGroupQuery('epic_status');
+  const [editCommentId, setEditCommentId] = useState<number | null>(null);
+  const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const [fileError, setFileError] = useState('');
 
   const { data: comments = [], isLoading: isCommentsLoading, refetch: refetchComments } = useGetCommentsByEpicIdQuery(epicIdFromUrl!, {
     skip: !epicIdFromUrl,
@@ -139,19 +150,43 @@ const EpicDetail: React.FC = () => {
     skip: !epic?.projectId,
   });
 
-  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByProjectIdQuery(epic?.projectId!, {
-    skip: !epic?.projectId,
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
+    skip: !epic?.id,
   });
 
-  const handleDeleteFile = async (fileId: number) => {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ fileId: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (fileId: number) => {
+    setDeleteInfo({ fileId, createdBy: accountId });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
     try {
-      await deleteEpicFile(fileId).unwrap();
-      alert('✅ Delete file successfully!');
+      await deleteEpicFile({ id: deleteInfo.fileId, createdBy: accountId }).unwrap();
+      //alert("✅ Delete file successfully!");
       await refetchAttachments();
+      await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Failed to delete file:', error);
+      console.error("❌ Error delete file:", error);
+      //alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
     }
   };
+
+  // const handleDeleteFile = async (fileId: number, createdBy: number) => {
+  //   try {
+  //     await deleteEpicFile({ id: fileId, createdBy: accountId }).unwrap();
+  //     alert('✅ Delete file successfully!');
+  //     await refetchAttachments();
+  //   } catch (error) {
+  //     console.error('❌ Failed to delete file:', error);
+  //   }
+  // };
 
   React.useEffect(() => {
     if (epic && epic.assignedBy !== undefined) {
@@ -207,14 +242,17 @@ const EpicDetail: React.FC = () => {
           startDate: newStartDate ?? epic.startDate,
           endDate: newEndDate ?? epic.endDate,
           status: epic.status,
+          createdBy: accountId,
         },
       }).unwrap();
 
-      alert("✅ Epic updated");
+      //alert("✅ Epic updated");
       console.error("✅ Epic updated");
+      await refetchActivityLogs();
+      await refetch();
     } catch (err) {
       console.error("❌ Failed to update epic", err);
-      alert("❌ Update failed");
+      //alert("❌ Update failed");
     }
   };
 
@@ -222,18 +260,19 @@ const EpicDetail: React.FC = () => {
     if (epic) setStatus(epic.status);
   }, [epic]);
 
-  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-    try {
-      await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
-      refetch();
-    } catch (err) {
-      console.error('❌ Error updating task status:', err);
-    }
-  };
+  // const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
+  //   try {
+  //     await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
+  //     refetch();
+  //   } catch (err) {
+  //     console.error('❌ Error updating task status:', err);
+  //   }
+  // };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      await updateEpicStatus({ id: epicIdFromUrl!, status: newStatus }).unwrap();
+      await updateEpicStatus({ id: epicIdFromUrl!, status: newStatus, createdBy: accountId }).unwrap();
+      await refetchActivityLogs();
       setStatus(newStatus);
     } catch (err) {
       console.error('❌ Error updating epic status:', err);
@@ -281,6 +320,50 @@ const EpicDetail: React.FC = () => {
     );
   });
 
+  const handleSave = async (id: number, originalContent: string) => {
+    const newContent = editedContent[id];
+    if (newContent && newContent !== originalContent) {
+      try {
+        await updateEpicComment({
+          id,
+          epicId: epicIdFromUrl!,
+          accountId,
+          content: newContent,
+          createdBy: accountId,
+        }).unwrap();
+        await Promise.all([refetchComments(), refetchActivityLogs()]);
+        setEditCommentId(null);
+      } catch (err) {
+        console.error('❌ Failed to update comment', err);
+      }
+    } else {
+      setEditCommentId(null);
+    }
+  };
+
+  // Trong render comment
+  {
+    comments.map((comment) => (
+      <div key={comment.id}>
+        {editCommentId === comment.id ? (
+          <>
+            <textarea
+              value={editedContent[comment.id] || comment.content}
+              onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+            />
+            <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
+            <button onClick={() => setEditCommentId(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <span>{comment.content}</span>
+            <button onClick={() => setEditCommentId(comment.id)}>✏ Edit</button>
+          </>
+        )}
+      </div>
+    ))
+  }
+
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
 
   const handleCreateLabelAndAssign = async (labelName?: string) => {
@@ -300,16 +383,17 @@ const EpicDetail: React.FC = () => {
         subtaskId: null,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([
         refetchWorkItemLabels?.(),
         refetchProjectLabels?.(),
+
       ]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -335,6 +419,15 @@ const EpicDetail: React.FC = () => {
     } catch (error) {
       console.error(':', error);
     }
+  };
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
   };
 
   const getTypeIcon = (type: string) => {
@@ -365,7 +458,13 @@ const EpicDetail: React.FC = () => {
               className="issue-summary"
               placeholder="Enter epic name"
               defaultValue={epic.name}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 65) {
+                  setNewName(e.target.value);
+                } else {
+                  alert('Max 65 characters!');
+                }
+              }}
               onBlur={handleUpdateEpic}
               disabled={!canEdit}
               style={{ width: 500 }}
@@ -407,28 +506,41 @@ const EpicDetail: React.FC = () => {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadEpicFile({
                         epicId: epicIdFromUrl!,
                         title: file.name,
                         file,
+                        createdBy: accountId,
                       }).unwrap();
-                      alert(`✅ Uploaded: ${file.name}`);
+                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
+                      await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      alert('❌ Upload failed.');
+
                     }
                   }
-                  setIsAddDropdownOpen(false);
                 }}
               />
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
 
             <div className="field-group">
               <label>Description</label>
               <textarea
                 value={newDescription ?? epic?.description ?? ''}
+                placeholder='Enter epic description'
                 onChange={(e) => setNewDescription(e.target.value)}
                 onBlur={handleUpdateEpic}
                 disabled={!canEdit}
@@ -437,11 +549,14 @@ const EpicDetail: React.FC = () => {
 
             {attachments.length > 0 && (
               <div className="attachments-section">
-                <label>Attachments <span>({attachments.length})</span></label>
-                <div className="attachments-grid">
+                <label className="block font-semibold mb-2">
+                  Attachments <span>({attachments.length})</span>
+                </label>
+
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
                   {attachments.map(file => (
                     <div
-                      className="attachment-card"
+                      className="relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
                       key={file.id}
                       onMouseEnter={() => setHoveredFileId(file.id)}
                       onMouseLeave={() => setHoveredFileId(null)}
@@ -450,20 +565,31 @@ const EpicDetail: React.FC = () => {
                         href={file.urlFile}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
+                        className="block text-gray-800 no-underline"
                       >
-                        <div className="thumbnail">
+                        <div className="h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden">
                           {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                            <img src={file.urlFile} alt={file.title} />
+                            <img
+                              src={file.urlFile}
+                              alt={file.title}
+                              className="w-[100%] h-[100%] object-cover rounded-lg"
+                            />
                           ) : (
-                            <div className="doc-thumbnail">
-                              <span className="doc-text">{file.title.slice(0, 15)}...</span>
+                            <div className="flex items-center justify-center h-full w-full bg-gray-200">
+                              <span className="text-xs font-medium text-gray-600 px-2 text-center">
+                                {file.title.slice(0, 15)}...
+                              </span>
                             </div>
                           )}
                         </div>
-                        <div className="file-meta">
-                          <div className="file-name" title={file.title}>{file.title}</div>
-                          <div className="file-date">
+                        <div className="p-1">
+                          <div
+                            className="truncate text-sm font-medium"
+                            title={file.title}
+                          >
+                            {file.title}
+                          </div>
+                          <div className="text-xs text-gray-500">
                             {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                           </div>
                         </div>
@@ -471,11 +597,15 @@ const EpicDetail: React.FC = () => {
 
                       {hoveredFileId === file.id && (
                         <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="delete-file-btn"
+                          onClick={() => openDeleteModal(file.id)}
+                          className="absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200"
                           title="Delete file"
                         >
-                          <img src={deleteIcon} alt="Delete" style={{ width: '25px', height: '25px' }} />
+                          <img
+                            src={deleteIcon}
+                            alt="Delete"
+                            className="w-5 h-5"
+                          />
                         </button>
                       )}
                     </div>
@@ -487,238 +617,213 @@ const EpicDetail: React.FC = () => {
             <div className="field-group">
               <label>Child Work Items</label>
 
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  margin: '12px 0',
-                  backgroundColor: '#fff',
-                  fontSize: '14px',
-                }}
-              >
+              <div className="bg-white rounded-lg shadow-md p-4 mb-4">
                 {/* Header */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '15px',
-                      fontWeight: '500',
-                    }}
-                  >
-                    <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
-                    Create suggested work items
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-base font-semibold text-gray-700">
+                    <svg
+                      className="w-5 h-5 text-blue-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <span>Create suggested work items</span>
                   </div>
                   <button
                     onClick={async () => {
                       try {
                         const result = await generateTasksByEpicByAI(epicIdFromUrl!).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
                       } catch (err) {
-                        alert('❌ Failed to get suggestions');
                         console.error(err);
                       }
                     }}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#f4f5f7',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                    }}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105"
+                    data-tooltip-id="suggest-ai-tooltip"
+                    data-tooltip-content="Generate tasks using AI"
                   >
                     {loadingSuggest ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          role='img'
-                          style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
-                        >
-                          🧠
-                        </span>
-                        <div className='dot-loader'>
-                          <span>.</span>
-                          <span>.</span>
-                          <span>.</span>
-                        </div>
+                      <div className='flex items-center gap-2'>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                        <span>Suggesting...</span>
                       </div>
                     ) : (
-                      'Suggest'
+                      <>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                        <span>Suggest</span>
+                      </>
                     )}
+                    <Tooltip id="suggest-ai-tooltip" />
                   </button>
                 </div>
 
                 {/* Suggestions */}
                 {showSuggestionList && (
                   <div
-                    style={{
-                      position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: 'rgba(0,0,0,0.4)',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      zIndex: 1000,
-                    }}
+                    className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in"
                     onClick={() => setShowSuggestionList(false)}
                   >
                     <div
-                      style={{
-                        backgroundColor: '#fff',
-                        borderRadius: '8px',
-                        width: '480px',
-                        maxHeight: '80vh',
-                        overflowY: 'auto',
-                        padding: '20px',
-                        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-                      }}
+                      className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Header */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            fontSize: '15px',
-                            fontWeight: '500',
-                          }}
-                        >
-                          <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
-                          AI Suggested Tasks
+                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className='flex items-center gap-3'>
+                            <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
+                            <h2 className='text-2xl font-bold text-white'>AI-Suggested Tasks</h2>
+                          </div>
+                          <h2 className="text-2xl font-bold text-white">AI-Suggested Tasks</h2>
                         </div>
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '18px',
-                            cursor: 'pointer',
-                          }}
-                          title='Close'
+                          className="text-white text-xl font-semibold hover:text-gray-200 transition-colors duration-200"
+                          title="Close"
                         >
-                          ✖
+                          ✕
                         </button>
                       </div>
-
-                      {/* Suggestion List */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          padding: '4px 8px',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        {aiSuggestions.map((item, idx) => (
-                          <label
-                            key={idx}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: '2px',
-                              lineHeight: '1.4',
-                              wordBreak: 'break-word',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <input
-                              type='checkbox'
-                              checked={selectedSuggestions.includes(item)}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setSelectedSuggestions((prev) =>
-                                  checked
-                                    ? [...prev, item]
-                                    : prev.filter((s) => s.title !== item.title)
-                                );
-                              }}
-                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
-                            />
-                            <div style={{ flex: 7 }}>
-                              <div style={{ fontWeight: 'bold' }}>{item.title}</div>
-                              <div style={{ color: '#666', fontSize: '13px' }}>{item.description}</div>
-                              <div style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
-                                <strong>Type:</strong> {item.type}
-                              </div>
-                            </div>
-                          </label>
-                        ))}
+                      <div className="p-6 overflow-y-auto max-h-[60vh]">
+                        {aiSuggestions.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500 text-lg">
+                            No AI-suggested tasks available. Try again later!
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-separate border-spacing-0">
+                              <thead className="sticky top-0 bg-gray-50 shadow-sm">
+                                <tr>
+                                  <th className="p-4 text-left text-sm font-semibold text-gray-700 w-16">
+                                    Select
+                                  </th>
+                                  <th className="p-4 text-left text-sm font-semibold text-gray-700 w-24">
+                                    Type
+                                  </th>
+                                  <th className="p-4 text-left text-sm font-semibold text-gray-700">Title</th>
+                                  <th className="p-4 text-left text-sm font-semibold text-gray-700">
+                                    Description
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {aiSuggestions.map((item, index) => (
+                                  <tr
+                                    key={index}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
+                                  >
+                                    <td className="p-4 border-b border-gray-200">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedSuggestions.includes(item)}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          setSelectedSuggestions((prev) =>
+                                            checked ? [...prev, item] : prev.filter((s) => s.title !== item.title)
+                                          );
+                                        }}
+                                        className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                                      />
+                                    </td>
+                                    <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                                      {item.type}
+                                    </td>
+                                    <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                                      {item.title}
+                                    </td>
+                                    <td className="p-4 border-b border-gray-200 text-sm text-gray-800">
+                                      {item.description}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Create Button */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                        <button
-                          onClick={async () => {
-                            for (const suggestion of selectedSuggestions) {
-                              try {
-                                await createTask({
-                                  reporterId: accountId,
-                                  projectId: parseInt(projectId),
-                                  epicId: epic.id,
-                                  title: suggestion.title,
-                                  description: suggestion.description,
-                                  type: suggestion.type,
-                                  createdBy: accountId,
-                                }).unwrap();
-                              } catch (err) {
-                                console.error(`❌ Failed to create: ${suggestion.title}`, err);
-                              }
-                            }
-
-                            alert('✅ Created selected tasks');
-                            setShowSuggestionList(false);
-                            setSelectedSuggestions([]);
-                            await refetch();
-                            await refetchActivityLogs();
-                          }}
-                          disabled={selectedSuggestions.length === 0}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: 500,
-                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          Create Selected
-                        </button>
+                      <div className="p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200">
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#eee',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
+                          className="px-6 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105"
                         >
                           Cancel
                         </button>
+                        {canEdit ? (
+                          <button
+                            onClick={async () => {
+                              setLoadingCreate(true);
+                              try {
+                                for (const suggestion of selectedSuggestions) {
+                                  await createTask({
+                                    reporterId: accountId,
+                                    projectId: parseInt(projectId),
+                                    epicId: epic.id,
+                                    title: suggestion.title,
+                                    description: suggestion.description,
+                                    type: suggestion.type,
+                                    createdBy: accountId,
+                                  }).unwrap();
+                                }
+                                setShowSuggestionList(false);
+                                setSelectedSuggestions([]);
+                                await refetch();
+                                await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
+                              } catch (err) {
+                                console.error('❌ Failed to create tasks', err);
+                              } finally {
+                                setLoadingCreate(false);
+                              }
+                            }}
+                            disabled={selectedSuggestions.length === 0 || loadingCreate}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              }`}
+                          >
+                            {loadingCreate ? (
+                              <div className="flex items-center gap-2">
+                                <svg
+                                  className="animate-spin w-5 h-5 text-white"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                                  />
+                                </svg>
+                                <span>Creating...</span>
+                              </div>
+                            ) : (
+                              'Create Selected'
+                            )}
+                          </button>
+                        ) : (
+                          <div className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'>
+                            Only Team Leader, Project Manager can create tasks.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -942,7 +1047,7 @@ const EpicDetail: React.FC = () => {
                                               }));
                                             } catch (err) {
                                               console.error('❌ Failed to create assignee:', err);
-                                              alert('❌ Error adding assignee');
+                                              //alert('❌ Error adding assignee');
                                             }
                                           }
                                         }}
@@ -1120,7 +1225,7 @@ const EpicDetail: React.FC = () => {
                           await refetchActivityLogs();
                         } catch (err) {
                           console.error('❌ Failed to create task:', err);
-                          alert('❌ Failed to create task');
+                          //alert('❌ Failed to create task');
                         }
                       }}
 
@@ -1199,77 +1304,107 @@ const EpicDetail: React.FC = () => {
 
               {activeTab === 'COMMENTS' ? (
                 <>
-                  <div className="comment-list">
-                    {isCommentsLoading ? (
-                      <p>Loading comments...</p>
-                    ) : comments.length === 0 ? (
-                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
-                    ) : (
-                      comments
-                        .slice()
-                        .reverse()
-                        .map((comment: any) => (
-                          <div key={comment.id} className="simple-comment">
-                            <div className="avatar-circle">
-                              <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="simple-comment">
+                      <div className="avatar-circle">
+                        <img src={comment.accountPicture || accountIcon} alt="avatar" />
+                      </div>
+                      <div className="comment-content">
+                        <div className="comment-header">
+                          <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
+                          <span className="comment-time">
+                            {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                        {editCommentId === comment.id ? (
+                          <>
+                            <textarea
+                              value={editedContent[comment.id] || comment.content}
+                              onChange={(e) =>
+                                setEditedContent({ ...editedContent, [comment.id]: e.target.value })
+                              }
+                              className="border rounded p-2 w-full"
+                              autoFocus
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => handleSave(comment.id, comment.content)}
+                                className="px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditCommentId(null)}
+                                className="px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6"
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            <div className="comment-content">
-                              <div className="comment-header">
-                                <strong>{comment.accountName || `User #${comment.accountId}`}</strong>{' '}
-                                <span className="comment-time">
-                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
-                                </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="comment-text">{comment.content}</div>
+                            {comment.accountId === accountId && (
+                              <div className="comment-actions">
+                                <button
+                                  className="edit-btn"
+                                  onClick={() => setEditCommentId(comment.id)}
+                                >
+                                  ✏ Edit
+                                </button>
+                                <button
+                                  className="delete-btn"
+                                  onClick={async () => {
+                                    const confirmed = await Swal.fire({
+                                      title: 'Delete Comment',
+                                      text: 'Are you sure you want to delete this comment?',
+                                      icon: 'warning',
+                                      showCancelButton: true,
+                                      confirmButtonText: 'Delete',
+                                      confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                      customClass: {
+                                        title: 'small-title',
+                                        popup: 'small-popup',
+                                        icon: 'small-icon',
+                                        htmlContainer: 'small-html'
+                                      }
+                                    });
+                                    if (confirmed.isConfirmed) {
+                                      try {
+                                        console.log('Deleting comment:', comment.id, 'for epic:', epicIdFromUrl);
+                                        await deleteEpicComment({
+                                          id: comment.id,
+                                          epicId: epicIdFromUrl!,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('❌ Failed to delete comment:', err);
+                                        Swal.fire({
+                                          icon: 'error',
+                                          title: 'Delete Failed',
+                                          text: 'Failed to delete comment.',
+                                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                          customClass: {
+                                            title: 'small-title',
+                                            popup: 'small-popup',
+                                            icon: 'small-icon',
+                                            htmlContainer: 'small-html'
+                                          }
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  🗑 Delete
+                                </button>
                               </div>
-                              <div className="comment-text">{comment.content}</div>
-                              {comment.accountId === accountId && (
-                                <div className="comment-actions">
-                                  <button
-                                    className="edit-btn"
-                                    onClick={async () => {
-                                      const newContent = prompt("✏ Edit your comment:", comment.content);
-                                      if (newContent && newContent !== comment.content) {
-                                        try {
-                                          await updateEpicComment({
-                                            id: comment.id,
-                                            epicId: epicIdFromUrl!,
-                                            accountId,
-                                            content: newContent,
-                                          }).unwrap();
-                                          alert("✅ Comment updated");
-                                          await refetchComments();
-                                        } catch (err) {
-                                          console.error("❌ Failed to update comment", err);
-                                          alert("❌ Update failed");
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    ✏ Edit
-                                  </button>
-                                  <button
-                                    className="delete-btn"
-                                    onClick={async () => {
-                                      if (window.confirm("🗑️ Are you sure you want to delete this comment?")) {
-                                        try {
-                                          await deleteEpicComment(comment.id).unwrap();
-                                          alert("🗑️ Deleted successfully");
-                                          await refetchComments();
-                                        } catch (err) {
-                                          console.error("❌ Failed to delete comment", err);
-                                          alert("❌ Delete failed");
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    🗑 Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Comment Input */}
                   <div className="simple-comment-input">
@@ -1283,20 +1418,22 @@ const EpicDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            //alert('❌ User not identified. Please log in again.');
                             return;
                           }
                           createEpicComment({
                             epicId: epicIdFromUrl!,
                             accountId,
                             content: commentContent.trim(),
+                            createdBy: accountId,
                           }).unwrap();
-                          alert("✅ Comment posted");
+                          //alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
+                          await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -1435,16 +1572,62 @@ const EpicDetail: React.FC = () => {
                 </div>
               )}
 
-              <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div>
+              {/* <div className="detail-item"><label>Sprint</label><span>{epic?.sprintName ?? 'None'} : {epic?.sprintGoal ?? 'None'}</span></div> */}
               <div className="detail-item">
                 <label>Start date</label>
                 {canEdit ? (
                   <input
                     type="date"
                     value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
+                    min={projectData?.data.startDate?.slice(0, 10)}
+                    max={newEndDate ? newEndDate.slice(0, 10) : projectData?.data.endDate?.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      const currentEndDate = newEndDate ?? epic?.endDate;
+                      if (currentEndDate && new Date(fullDate) >= new Date(currentEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be smaller than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+
+                        if (new Date(fullDate) < projectStart || new Date(fullDate) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Start Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                                                                   is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                                                                   <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px',
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+
+                          return;
+                        }
+                      }
+
                       setNewStartDate(fullDate);
                     }}
                     onBlur={handleUpdateEpic}
@@ -1461,9 +1644,55 @@ const EpicDetail: React.FC = () => {
                   <input
                     type="date"
                     value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
+                    min={newStartDate ? newStartDate.slice(0, 10) : projectData?.data.startDate?.slice(0, 10)}
+                    max={projectData?.data.endDate?.slice(0, 10)}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      const currentStartDate = newStartDate ?? epic?.startDate;
+                      if (currentStartDate && new Date(fullDate) <= new Date(currentStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be greater than Start Date!',
+                          width: '500px', // nhỏ lại
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html'
+                          }
+                        });
+                        return;
+                      }
+
+                      if (projectData?.data.startDate && projectData?.data.endDate) {
+                        const projectStart = new Date(projectData.data.startDate);
+                        const projectEnd = new Date(projectData.data.endDate);
+
+                        if (new Date(fullDate) < projectStart || new Date(fullDate) > projectEnd) {
+                          Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Due Date',
+                            html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
+                                                                   is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
+                                                                   <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            width: '500px', // nhỏ lại
+                            confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                            customClass: {
+                              title: 'small-title',
+                              popup: 'small-popup',
+                              icon: 'small-icon',
+                              htmlContainer: 'small-html'
+                            }
+                          });
+
+                          return;
+                        }
+                      }
+
                       setNewEndDate(fullDate);
                     }}
                     onBlur={handleUpdateEpic}
@@ -1508,6 +1737,23 @@ const EpicDetail: React.FC = () => {
           isOpen={true}
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title="Delete this attachment?"
+        message="Once you delete, it's gone for good."
+      />
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='TASK_FROM_EPIC_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
         />
       )}
     </div>

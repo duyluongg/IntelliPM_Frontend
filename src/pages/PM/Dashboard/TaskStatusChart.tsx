@@ -4,11 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 
 const DEFAULT_COLORS = ['#d3d3d3', '#00BFFF', '#00C49F', '#FFA500', '#FF6384']; // Thêm màu nếu nhiều trạng thái hơn
 
-// const TaskStatusChart = () => {
-//   const [searchParams] = useSearchParams();
-//   const projectKey = searchParams.get('projectKey') || 'NotFound';
-//   const { data, isLoading, error } = useGetTaskStatusDashboardQuery(projectKey);
-
 interface TaskStatusItem {
   key: number;
   name: string;

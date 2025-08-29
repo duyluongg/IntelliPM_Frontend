@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './WorkItemDetail.css';
+import Swal from 'sweetalert2';
+import { Tooltip } from 'react-tooltip';
 import { useAuth, type Role } from '../../services/AuthContext';
 import tickIcon from '../../assets/icon/type_task.svg';
 import subtaskIcon from '../../assets/icon/type_subtask.svg';
@@ -24,7 +26,9 @@ import {
   useUpdatePlannedEndDateMutation,
   useUpdateTaskPriorityMutation,
   useUpdateTaskReporterMutation,
-  useUpdateTaskSprintMutation
+  useUpdateTaskSprintMutation,
+  useUpdatePercentCompleteMutation,
+  useUpdateActualCostMutation,
 } from '../../services/taskApi';
 import {
   useGetTaskFilesByTaskIdQuery,
@@ -51,7 +55,7 @@ import {
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   useCreateLabelAndAssignMutation,
   useGetLabelsByProjectIdQuery,
@@ -59,6 +63,12 @@ import {
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
+import { useGetProjectByIdQuery } from '../../services/projectApi';
+import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
+import aiIcon from '../../assets/icon/ai.png';
+import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import { useGetEpicByIdQuery } from '../../services/epicApi';
 
 const WorkItemDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -97,6 +107,7 @@ const WorkItemDetail: React.FC = () => {
   const [projectName, setProjectName] = React.useState('');
   const [projectId, setProjectId] = React.useState('');
   const [sprintId, setSprintId] = useState<number | null>(null);
+  const [epicId, setEpicId] = React.useState('');
   const [updateSubtask] = useUpdateSubtaskMutation();
   const [editableSummaries, setEditableSummaries] = React.useState<{ [key: string]: string }>({});
   const [editingSummaryId, setEditingSummaryId] = React.useState<string | null>(null);
@@ -106,12 +117,16 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updateTaskTitle] = useUpdateTaskTitleMutation();
   const [updateTaskDescription] = useUpdateTaskDescriptionMutation();
+  const [updatePercentComplete] = useUpdatePercentCompleteMutation();
+  const [updateActualCost] = useUpdateActualCostMutation();
+  const [newActualCost, setNewActualCost] = useState<number | null>(null);
   const [showSuggestionList, setShowSuggestionList] = React.useState(false);
   const [isWorklogOpen, setIsWorklogOpen] = useState(false);
   const [isDependencyOpen, setIsDependencyOpen] = useState(false);
   const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
-  const [generateSubtasksByAI, { isLoading: loadingSuggest }] = useGenerateSubtasksByAIMutation();
+  const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
+  const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
   const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
     Record<string, TaskAssignmentDTO[]>
   >({});
@@ -123,17 +138,46 @@ const WorkItemDetail: React.FC = () => {
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [loadingSuggest, setLoadingSuggest] = useState(false);
   const labelRef = useRef<HTMLDivElement>(null);
   const [deleteWorkItemLabel] = useDeleteWorkItemLabelMutation();
-  const { data: taskStatus, isLoading: loadTaskStatus, isError: taskStatusError } = useGetCategoriesByGroupQuery('task_status');
-  const { data: subtaskStatus, isLoading: loadSubtaskStatus, isError: subtaskStatusError } = useGetCategoriesByGroupQuery('subtask_status');
-  const taskStatusLabel = taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
-  const { data: taskTypes, isLoading: isLoadingTaskType, isError: isTaskTypeError } = useGetCategoriesByGroupQuery('task_type');
-  const { data: priorityOptions, isLoading: isPriorityLoading, isError: isPriorityError } = useGetCategoriesByGroupQuery('subtask_priority');
-  const { data: priorityTaskOptions, isLoading: isPriorityTaskLoading, isError: isPriorityTaskError } = useGetCategoriesByGroupQuery('task_priority');
+  const {
+    data: taskStatus,
+    isLoading: loadTaskStatus,
+    isError: taskStatusError,
+  } = useGetCategoriesByGroupQuery('task_status');
+  const {
+    data: subtaskStatus,
+    isLoading: loadSubtaskStatus,
+    isError: subtaskStatusError,
+  } = useGetCategoriesByGroupQuery('subtask_status');
+  const taskStatusLabel =
+    taskStatus?.data.find((s) => s.name === status)?.label || status.replace('_', ' ');
+  const {
+    data: taskTypes,
+    isLoading: isLoadingTaskType,
+    isError: isTaskTypeError,
+  } = useGetCategoriesByGroupQuery('task_type');
+  const {
+    data: priorityOptions,
+    isLoading: isPriorityLoading,
+    isError: isPriorityError,
+  } = useGetCategoriesByGroupQuery('subtask_priority');
+  const {
+    data: priorityTaskOptions,
+    isLoading: isPriorityTaskLoading,
+    isError: isPriorityTaskError,
+  } = useGetCategoriesByGroupQuery('task_priority');
   const currentType = taskTypes?.data.find((t) => t.name === workType);
   const currentIcon = currentType?.iconLink || '';
+  const [editCommentId, setEditCommentId] = useState<number | null>(null);
+  const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+  const [isEvaluationPopupOpen, setIsEvaluationPopupOpen] = useState(false);
+  const [aiResponseJson, setAiResponseJson] = useState<string>('');
+  const [fileError, setFileError] = useState('');
 
   const { data: assignees = [], isLoading: isAssigneeLoading } =
     useGetTaskAssignmentsByTaskIdQuery(taskId);
@@ -153,6 +197,17 @@ const WorkItemDetail: React.FC = () => {
   } = useGetCommentsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
+
+  const {
+    data: actualCostConfig,
+    isLoading: actualCostConfigLoading,
+    isError: actualCostConfigError,
+  } = useGetByConfigKeyQuery('actual_cost_limit');
+  const maxActualCost = actualCostConfigLoading
+    ? 1000000
+    : actualCostConfigError || !actualCostConfig?.data?.maxValue
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -189,14 +244,124 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
+  const handlePercentCompleteChange = async () => {
+    if (!taskData || newPercentComplete === taskData.percentComplete) return;
+
+    if (newPercentComplete !== null && (newPercentComplete < 0 || newPercentComplete > 100)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Percent Complete',
+        text: 'Percent complete must be between 0 and 100.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewPercentComplete(taskData.percentComplete);
+      return;
+    }
+
+    try {
+      await updatePercentComplete({
+        id: taskId,
+        percentComplete: newPercentComplete ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+      await refetchActivityLogs();
+    } catch (err) {
+      console.error('❌ Failed to update task percent complete', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update percent complete.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
+  const handleActualCostChange = async () => {
+    if (!taskData || newActualCost === taskData.actualCost) return;
+
+    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Actual Cost',
+        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewActualCost(taskData.actualCost ?? 0);
+      return;
+    }
+
+    try {
+      await updateActualCost({
+        id: taskId,
+        actualCost: newActualCost ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} actual cost to ${newActualCost}`);
+      await refetchTask();
+      await refetchActivityLogs();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Actual cost updated successfully!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    } catch (err) {
+      console.error('❌ Failed to update task actual cost', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update actual cost.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
-      alert('✅ Update title task successfully!');
+      //alert('✅ Update title task successfully!');
       await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
-      alert('✅ Error update task title!');
+      //alert('✅ Error update task title!');
       console.error('Error update task title:', err);
     }
   };
@@ -213,18 +378,42 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = async (id: number, createdBy: number) => {
-    if (!window.confirm('Are you sure delete file?')) return;
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteInfo, setDeleteInfo] = useState<{ id: number; createdBy: number } | null>(null);
+
+  const openDeleteModal = (id: number, createdBy: number) => {
+    setDeleteInfo({ id, createdBy });
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteFile = async () => {
+    if (!deleteInfo) return;
     try {
-      await deleteTaskFile({ id, createdBy: accountId }).unwrap();
-      alert('✅ Delete file successfully!');
+      await deleteTaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
+      // alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
       console.error('❌ Error delete file:', error);
-      alert('❌ Delete file failed');
+      //alert("❌ Delete file failed");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteInfo(null);
     }
   };
+
+  // const handleDeleteFile = async (id: number, createdBy: number) => {
+  //   if (!window.confirm('Are you sure delete file?')) return;
+  //   try {
+  //     await deleteTaskFile({ id, createdBy: accountId }).unwrap();
+  //     alert('✅ Delete file successfully!');
+  //     await refetchAttachments();
+  //     await refetchActivityLogs();
+  //   } catch (error) {
+  //     console.error('❌ Error delete file:', error);
+  //     alert('❌ Delete file failed');
+  //   }
+  // };
 
   const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
     const startX = e.clientX;
@@ -261,7 +450,13 @@ const WorkItemDetail: React.FC = () => {
 
   React.useEffect(() => {
     if (assignees && taskId) {
-      setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: assignees }));
+      setTaskAssignmentMap((prev) => {
+        // Kiểm tra nếu assignees không thay đổi
+        if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
+          return prev; // Không cập nhật nếu giống nhau
+        }
+        return { ...prev, [taskId]: assignees };
+      });
     }
   }, [assignees, taskId]);
 
@@ -298,9 +493,12 @@ const WorkItemDetail: React.FC = () => {
       setPlannedEndDate(taskData.plannedEndDate);
       setPlannedStartDate(taskData.plannedStartDate);
       setProjectName(taskData.projectName ?? '');
-      setSprintId(taskData.sprintId);
+      setSprintId(taskData.sprintId ?? null);
       setProjectId(String(taskData.projectId));
+      setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
+      setNewPercentComplete(taskData.percentComplete ?? 0);
+      setNewActualCost(taskData.actualCost ?? 0);
     }
   }, [taskData]);
 
@@ -316,8 +514,12 @@ const WorkItemDetail: React.FC = () => {
     reporterId: item.reporterId,
     reporterName: item.reporterName,
     description: item.description,
-    sprintId: item.sprintId ?? 'None'
+    sprintId: item.sprintId ?? null,
   }));
+
+  const { data: epicData, isLoading: isEpicLoading } = useGetEpicByIdQuery(taskData?.epicId || '', {
+    skip: !taskData?.epicId,
+  });
 
   const handleTaskStatusChange = async (newStatus: string) => {
     try {
@@ -335,7 +537,8 @@ const WorkItemDetail: React.FC = () => {
         status: newStatus,
         createdBy: accountId,
       }).unwrap();
-
+      await refetchActivityLogs();
+      await refetchTask();
       refetchSubtask();
     } catch (err) {
       console.error('Failed to update subtask status', err);
@@ -361,15 +564,15 @@ const WorkItemDetail: React.FC = () => {
       await updateTaskSprint({
         id: taskId,
         sprintId: newSprintId,
-        createdBy: accountId
+        createdBy: accountId,
       }).unwrap();
       setSprintId(newSprintId);
       await Promise.all([refetchActivityLogs(), refetchTask()]);
       console.log('Update sprint task successfully!');
-      alert('✅ Sprint updated successfully');
+      //alert('✅ Sprint updated successfully');
     } catch (err: any) {
       console.error('Error update sprint:', err);
-      alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
+      //alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
     }
   };
 
@@ -380,18 +583,38 @@ const WorkItemDetail: React.FC = () => {
     setIsDropdownOpen(!isDropdownOpen);
   };
 
-  const { data: workItemLabels = [], isLoading: isLabelLoading, refetch: refetchWorkItemLabels, } = useGetWorkItemLabelsByTaskQuery(taskId, {
+  const {
+    data: workItemLabels = [],
+    isLoading: isLabelLoading,
+    refetch: refetchWorkItemLabels,
+  } = useGetWorkItemLabelsByTaskQuery(taskId, {
     skip: !taskId,
   });
 
-  const { data: projectLabels = [], isLoading: isProjectLabelsLoading, refetch: refetchProjectLabels, } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
+  const {
+    data: projectLabels = [],
+    isLoading: isProjectLabelsLoading,
+    refetch: refetchProjectLabels,
+  } = useGetLabelsByProjectIdQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
   });
 
-  const { data: projectSprints = [], isLoading: isProjectSprintsLoading,
-    refetch: refetchProjectSprints, isError: isProjectSprintsError } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
-      skip: !taskData?.projectId,
-    });
+  const {
+    data: projectSprints = [],
+    isLoading: isProjectSprintsLoading,
+    refetch: refetchProjectSprints,
+    isError: isProjectSprintsError,
+  } = useGetSprintsByProjectIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
+
+  const {
+    data: projectData,
+    isLoading: isProjectDataLoading,
+    refetch: refetchProjectData,
+  } = useGetProjectByIdQuery(taskData?.projectId!, {
+    skip: !taskData?.projectId,
+  });
 
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
@@ -402,6 +625,58 @@ const WorkItemDetail: React.FC = () => {
 
     return label.name.toLowerCase().includes(newLabelName.toLowerCase()) && notAlreadyAdded;
   });
+
+  const handleCloseEvaluationPopup = () => {
+    setIsEvaluationPopupOpen(false);
+    setAiResponseJson('');
+  };
+
+  const handleEvaluationSubmitSuccess = (aiResponseId: number) => {
+    console.log('AI Response ID:', aiResponseId);
+  };
+
+  const handleSave = async (id: number, originalContent: string) => {
+    const newContent = editedContent[id];
+    if (newContent && newContent !== originalContent) {
+      try {
+        await updateTaskComment({
+          id,
+          taskId,
+          accountId,
+          content: newContent,
+          createdBy: accountId,
+        }).unwrap();
+        await Promise.all([refetchComments(), refetchActivityLogs()]);
+        setEditCommentId(null);
+      } catch (err) {
+        console.error('❌ Failed to update comment', err);
+      }
+    } else {
+      setEditCommentId(null);
+    }
+  };
+
+  {
+    comments.map((comment) => (
+      <div key={comment.id}>
+        {editCommentId === comment.id ? (
+          <>
+            <textarea
+              value={editedContent[comment.id] || comment.content}
+              onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+            />
+            <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
+            <button onClick={() => setEditCommentId(null)}>Cancel</button>
+          </>
+        ) : (
+          <>
+            <span>{comment.content}</span>
+            <button onClick={() => setEditCommentId(comment.id)}>✏ Edit</button>
+          </>
+        )}
+      </div>
+    ));
+  }
 
   const [createLabelAndAssign, { isLoading: isCreating }] = useCreateLabelAndAssignMutation();
 
@@ -422,13 +697,13 @@ const WorkItemDetail: React.FC = () => {
         subtaskId: null,
       }).unwrap();
 
-      alert('✅ Label assigned successfully!');
+      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
       console.error('❌ Failed to create and assign label:', error);
-      alert('❌ Failed to assign label');
+      //alert('❌ Failed to assign label');
     }
   };
 
@@ -480,15 +755,6 @@ const WorkItemDetail: React.FC = () => {
     }
   };
 
-  // const handleAddSubtask = () => {
-  //   setShowSubtaskInput(true);
-  //   setIsAddDropdownOpen(false);
-  // };
-
-  // const handleKeyClick = () => {
-  //   navigate(`/work-item-detail?taskId=${taskId}`);
-  // };
-
   return (
     <div className='work-item-detail-page'>
       <div className='work-item-detail-container'>
@@ -526,17 +792,23 @@ const WorkItemDetail: React.FC = () => {
                       {workType === type.name && <span style={{ fontSize: '16px' }}>✔</span>}
                     </div>
                   ))}
-
                 </div>
               )}
             </span>
             <input
               type='text'
               className='issue-summary'
-              placeholder='Enter summary'
+              placeholder='Enter task title'
               defaultValue={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= 65) {
+                  setTitle(e.target.value);
+                } else {
+                  alert('Max 65 characters!');
+                }
+              }}
               onBlur={handleTitleTaskChange}
+              style={{ width: '500px' }}
               disabled={!canEdit}
             />
           </div>
@@ -553,28 +825,30 @@ const WorkItemDetail: React.FC = () => {
                   <div className='add-item' onClick={() => fileInputRef.current?.click()}>
                     📁 Attachment
                   </div>
-                  <div
-                    className='add-item'
-                    onClick={() => {
-                      setShowSubtaskInput(true);
-                      setIsAddDropdownOpen(false);
+                  {(isUserAssignee(taskId) || canEdit) && (
+                    <div
+                      className='add-item'
+                      onClick={() => {
+                        setShowSubtaskInput(true);
+                        setIsAddDropdownOpen(false);
 
-                      setTimeout(() => {
-                        subtaskInputRef.current?.scrollIntoView({
-                          behavior: 'smooth',
-                          block: 'center',
-                        });
-                      }, 100);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center' }}
-                  >
-                    <img
-                      src={subtaskIcon}
-                      alt='Subtask'
-                      style={{ width: '16px', marginRight: '6px' }}
-                    />
-                    Subtask
-                  </div>
+                        setTimeout(() => {
+                          subtaskInputRef.current?.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                          });
+                        }, 100);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                      <img
+                        src={subtaskIcon}
+                        alt='Subtask'
+                        style={{ width: '16px', marginRight: '6px' }}
+                      />
+                      Subtask
+                    </div>
+                  )}
                 </div>
               )}
               <input
@@ -583,25 +857,36 @@ const WorkItemDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  setFileError(''); // Reset error message
                   if (file) {
+                    // Check file size (10MB = 10 * 1024 * 1024 bytes)
+                    if (file.size > 10 * 1024 * 1024) {
+                      setFileError('File size exceeds 10MB limit');
+                      setIsAddDropdownOpen(false);
+                      return;
+                    }
                     try {
+                      setIsAddDropdownOpen(false);
                       await uploadTaskFile({
                         taskId,
                         title: file.name,
                         file: file,
                         createdBy: accountId,
                       }).unwrap();
-                      alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
                       console.error('❌ Upload failed:', err);
-                      alert('❌ Upload failed.');
                     }
                   }
-                  setIsAddDropdownOpen(false);
                 }}
               />
+
+              {fileError && (
+                <span style={{ color: 'red', display: 'block', marginTop: '5px' }}>
+                  {fileError}
+                </span>
+              )}
             </div>
 
             <div className='field-group'>
@@ -616,13 +901,13 @@ const WorkItemDetail: React.FC = () => {
 
               {attachments.length > 0 && (
                 <div className='attachments-section'>
-                  <label>
+                  <label className='block font-semibold mb-2'>
                     Attachments <span>({attachments.length})</span>
                   </label>
-                  <div className='attachments-grid'>
+                  <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100'>
                     {attachments.map((file) => (
                       <div
-                        className='attachment-card'
+                        className='relative flex-shrink-0 w-36 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200'
                         key={file.id}
                         onMouseEnter={() => setHoveredFileId(file.id)}
                         onMouseLeave={() => setHoveredFileId(null)}
@@ -631,39 +916,40 @@ const WorkItemDetail: React.FC = () => {
                           href={file.urlFile}
                           target='_blank'
                           rel='noopener noreferrer'
-                          style={{ textDecoration: 'none', color: 'inherit' }}
+                          className='block text-gray-800 no-underline'
                         >
-                          <div className='thumbnail'>
+                          <div className='h-24 flex items-center justify-center bg-gray-100 rounded-t-lg overflow-hidden'>
                             {file.urlFile.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                              <img src={file.urlFile} alt={file.title} />
+                              <img
+                                src={file.urlFile}
+                                alt={file.title}
+                                className='w-[100%] h-[100%] object-cover rounded-lg'
+                              />
                             ) : (
-                              <div className='doc-thumbnail'>
-                                <span className='doc-text'>{file.title.slice(0, 15)}...</span>
+                              <div className='flex items-center justify-center h-full w-full bg-gray-200'>
+                                <span className='text-xs font-medium text-gray-600 px-2 text-center'>
+                                  {file.title.slice(0, 15)}...
+                                </span>
                               </div>
                             )}
                           </div>
-                          <div className='file-meta'>
-                            <div className='file-name' title={file.title}>
+                          <div className='p-1'>
+                            <div className='truncate text-sm font-medium' title={file.title}>
                               {file.title}
                             </div>
-                            <div className='file-date'>
+                            <div className='text-xs text-gray-500'>
                               {new Date(file.createdAt).toLocaleString('vi-VN', { hour12: false })}
                             </div>
                           </div>
                         </a>
 
-                        {/* Nút xóa file */}
                         {hoveredFileId === file.id && (
                           <button
-                            onClick={() => handleDeleteFile(file.id, file.createdBy)}
-                            className='delete-file-btn'
-                            title='Xoá file'
+                            onClick={() => openDeleteModal(file.id, file.createdBy)}
+                            className='absolute top-1 right-1 bg-white rounded-full shadow p-1 hover:bg-gray-200'
+                            title='Delete file'
                           >
-                            <img
-                              src={deleteIcon}
-                              alt='Delete'
-                              style={{ width: '25px', height: '25px' }}
-                            />
+                            <img src={deleteIcon} alt='Delete' className='w-5 h-5' />
                           </button>
                         )}
                       </div>
@@ -675,226 +961,204 @@ const WorkItemDetail: React.FC = () => {
 
             <div className='field-group'>
               <label>Subtasks</label>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  margin: '12px 0',
-                  backgroundColor: '#fff',
-                  fontSize: '14px',
-                }}
-              >
+              <div className='bg-white rounded-lg shadow-md p-4 mb-4'>
                 {/* Header */}
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '15px',
-                      fontWeight: '500',
-                    }}
-                  >
-                    <span style={{ marginRight: '6px', color: '#d63384' }}>🧠</span>
-                    Create suggested work items
+                <div className='flex justify-between items-center'>
+                  <div className='flex items-center gap-2 text-base font-semibold text-gray-700'>
+                    <svg
+                      className='w-5 h-5 text-blue-500'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'
+                      xmlns='http://www.w3.org/2000/svg'
+                    >
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
+                      />
+                    </svg>
+                    <span>Create suggested subtasks</span>
                   </div>
                   <button
                     onClick={async () => {
+                      setLoadingSuggest(true);
                       try {
                         const result = await generateSubtasksByAI(taskId).unwrap();
+                        setAiResponseJson(JSON.stringify(result));
                         setAiSuggestions(result);
                         setShowSuggestionList(true);
                         setSelectedSuggestions([]);
                       } catch (err) {
-                        alert('❌ Failed to get suggestions');
                         console.error(err);
+                      } finally {
+                        setLoadingSuggest(false);
                       }
                     }}
-                    style={{
-                      padding: '6px 12px',
-                      backgroundColor: '#f4f5f7',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                    }}
+                    className='flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 px-3 py-2 rounded-lg text-sm text-white font-semibold shadow-md hover:shadow-lg hover:from-purple-700 hover:to-blue-600 transition-all duration-200 transform hover:scale-105'
+                    data-tooltip-id='suggest-subtask-tooltip'
+                    data-tooltip-content='Generate subtasks using AI'
                   >
                     {loadingSuggest ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span
-                          role='img'
-                          style={{ fontSize: '16px', animation: 'pulse 1s infinite' }}
-                        >
-                          🧠
-                        </span>
-                        <div className='dot-loader'>
-                          <span>.</span>
-                          <span>.</span>
-                          <span>.</span>
-                        </div>
+                      <div className='flex items-center gap-2'>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                        <span>Suggesting...</span>
                       </div>
                     ) : (
-                      'Suggest'
+                      <>
+                        <img src={aiIcon} alt='AI Icon' className='w-5 h-5 object-contain' />
+                        <span>Suggest</span>
+                      </>
                     )}
+                    <Tooltip id='suggest-subtask-tooltip' />
                   </button>
                 </div>
 
                 {/* Suggestions */}
                 {showSuggestionList && (
                   <div
-                    style={{
-                      position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      backgroundColor: 'rgba(0,0,0,0.4)',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      zIndex: 1000,
-                    }}
+                    className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 animate-fade-in'
                     onClick={() => setShowSuggestionList(false)}
                   >
                     <div
-                      style={{
-                        backgroundColor: '#fff',
-                        borderRadius: '8px',
-                        width: '480px',
-                        maxHeight: '80vh',
-                        overflowY: 'auto',
-                        padding: '20px',
-                        boxShadow: '0 0 10px rgba(0,0,0,0.3)',
-                      }}
+                      className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {/* Header */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            fontSize: '15px',
-                            fontWeight: '500',
-                          }}
-                        >
-                          <span style={{ marginRight: '8px', color: '#d63384' }}>🧠</span>
-                          AI Suggested Subtasks
+                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
+                        <div className='flex items-center gap-3'>
+                          <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
+                          <h2 className='text-2xl font-bold text-white'>AI-Suggested Subtasks</h2>
                         </div>
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '18px',
-                            cursor: 'pointer',
-                          }}
+                          className='text-white text-xl font-semibold hover:text-gray-200 transition-colors duration-200'
                           title='Close'
                         >
-                          ✖
+                          ✕
                         </button>
                       </div>
-
-                      {/* Suggestion List */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          padding: '4px 8px',
-                          marginBottom: '16px',
-                        }}
-                      >
-                        {aiSuggestions.map((item, idx) => (
-                          <label
-                            key={idx}
-                            style={{
-                              display: 'flex ',
-                              alignItems: 'flex-start',
-                              gap: '2px',
-                              lineHeight: '1.4',
-                              wordBreak: 'break-word',
-                              fontSize: '14px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <input
-                              type='checkbox'
-                              checked={selectedSuggestions.includes(item.title)}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setSelectedSuggestions((prev) =>
-                                  checked
-                                    ? [...prev, item.title]
-                                    : prev.filter((t) => t !== item.title)
-                                );
-                              }}
-                              style={{ display: 'flex !important', marginTop: '3px', flex: 1 }}
-                            />
-                            <span style={{ flex: 6 }}>{item.title}</span>
-                          </label>
-                        ))}
+                      <div className='p-6 overflow-y-auto max-h-[60vh]'>
+                        {aiSuggestions.length === 0 ? (
+                          <div className='text-center py-8 text-gray-500 text-lg'>
+                            No AI-suggested subtasks available. Try again later!
+                          </div>
+                        ) : (
+                          <div className='overflow-x-auto'>
+                            <table className='w-full border-separate border-spacing-0'>
+                              <thead className='sticky top-0 bg-gray-50 shadow-sm'>
+                                <tr>
+                                  <th className='p-4 text-left text-sm font-semibold text-gray-700 w-16'>
+                                    Select
+                                  </th>
+                                  <th className='p-4 text-left text-sm font-semibold text-gray-700'>
+                                    Title
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {aiSuggestions.map((item, index) => (
+                                  <tr
+                                    key={index}
+                                    className={`${
+                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                  >
+                                    <td className='p-4 border-b border-gray-200'>
+                                      <input
+                                        type='checkbox'
+                                        checked={selectedSuggestions.includes(item.title)}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+                                          setSelectedSuggestions((prev) =>
+                                            checked
+                                              ? [...prev, item.title]
+                                              : prev.filter((t) => t !== item.title)
+                                          );
+                                        }}
+                                        className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
+                                      />
+                                    </td>
+                                    <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
+                                      {item.title}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-
-                      {/* Create Button */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                        <button
-                          onClick={async () => {
-                            for (const title of selectedSuggestions) {
-                              try {
-                                await createSubtask({
-                                  taskId,
-                                  title,
-                                  createdBy: accountId,
-                                }).unwrap();
-                              } catch (err) {
-                                console.error(`❌ Failed to create: ${title}`, err);
-                              }
-                            }
-                            alert('✅ Created selected subtasks');
-                            setShowSuggestionList(false);
-                            setSelectedSuggestions([]);
-                            await refetchSubtask();
-                          }}
-                          disabled={selectedSuggestions.length === 0}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: selectedSuggestions.length > 0 ? '#0052cc' : '#ccc',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: 500,
-                            cursor: selectedSuggestions.length > 0 ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          Create Selected
-                        </button>
+                      <div className='p-6 bg-gray-50 flex justify-end gap-4 border-t border-gray-200'>
                         <button
                           onClick={() => setShowSuggestionList(false)}
-                          style={{
-                            padding: '8px 16px',
-                            backgroundColor: '#eee',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                          }}
+                          className='px-6 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105'
                         >
                           Cancel
                         </button>
+                        {isUserAssignee(taskId) || canEdit ? (
+                          <button
+                            onClick={async () => {
+                              setLoadingCreate(true);
+                              try {
+                                for (const title of selectedSuggestions) {
+                                  await createSubtask({
+                                    taskId,
+                                    title,
+                                    createdBy: accountId,
+                                    reporterId: accountId,
+                                  }).unwrap();
+                                }
+                                setShowSuggestionList(false);
+                                setSelectedSuggestions([]);
+                                await refetchSubtask();
+                                await refetchActivityLogs();
+                                setIsEvaluationPopupOpen(true);
+                              } catch (err) {
+                                console.error('❌ Failed to create subtasks', err);
+                              } finally {
+                                setLoadingCreate(false);
+                              }
+                            }}
+                            disabled={selectedSuggestions.length === 0 || loadingCreate}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
+                              selectedSuggestions.length === 0 || loadingCreate
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                            }`}
+                          >
+                            {loadingCreate ? (
+                              <div className='flex items-center gap-2'>
+                                <svg
+                                  className='animate-spin w-5 h-5 text-white'
+                                  fill='none'
+                                  viewBox='0 0 24 24'
+                                >
+                                  <circle
+                                    className='opacity-25'
+                                    cx='12'
+                                    cy='12'
+                                    r='10'
+                                    stroke='currentColor'
+                                    strokeWidth='4'
+                                  />
+                                  <path
+                                    className='opacity-75'
+                                    fill='currentColor'
+                                    d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
+                                  />
+                                </svg>
+                                <span>Creating...</span>
+                              </div>
+                            ) : (
+                              'Create Selected'
+                            )}
+                          </button>
+                        ) : (
+                          <div className='px-6 py-2 bg-gray-200 text-gray-700 rounded-lg flex items-center justify-center hover:bg-gray-300 transition-all duration-200 transform hover:scale-105'>
+                            Only Team Leader, Project Manager, or assignees can create subtasks.
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1006,20 +1270,20 @@ const WorkItemDetail: React.FC = () => {
                                           ),
                                           title: newTitle,
                                           description: item?.description ?? '',
-                                          sprintId: item.sprintId ?? 'None',
+                                          sprintId: item.sprintId ?? null,
                                           priority: item.priority,
                                           startDate: item.startDate,
                                           endDate: item.endDate,
                                           reporterId: item.reporterId,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        alert('✅ Updated summary');
+                                        //alert('✅ Updated summary');
                                         console.log('✅ Updated summary');
                                         await refetchSubtask();
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Failed to update summary:', err);
-                                        alert('❌ Failed to update summary');
+                                        //alert('❌ Failed to update summary');
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1045,10 +1309,12 @@ const WorkItemDetail: React.FC = () => {
                                   try {
                                     await updateSubtask({
                                       id: item.key,
-                                      assignedBy: parseInt(selectedAssignees[item.key] ?? item.assigneeId),
+                                      assignedBy: parseInt(
+                                        selectedAssignees[item.key] ?? item.assigneeId
+                                      ),
                                       title: editableSummaries[item.key] ?? item.summary,
                                       description: item?.description ?? '',
-                                      sprintId: item.sprintId ?? 'None',
+                                      sprintId: item.sprintId ?? null,
                                       priority: newPriority,
                                       startDate: item.startDate,
                                       endDate: item.endDate,
@@ -1056,14 +1322,19 @@ const WorkItemDetail: React.FC = () => {
                                       createdBy: accountId,
                                     }).unwrap();
                                     console.log('✅ Updated priority');
-                                    await refetchTask();
+                                    await refetchSubtask();
                                     await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('❌ Failed to update priority:', err);
-                                    alert('❌ Failed to update priority');
+                                    //alert('❌ Failed to update priority');
                                   }
                                 }}
-                                style={{ padding: '4px 8px' }}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #ccc',
+                                  backgroundColor: 'white',
+                                }}
                               >
                                 {isPriorityLoading ? (
                                   <option>Loading...</option>
@@ -1097,25 +1368,32 @@ const WorkItemDetail: React.FC = () => {
                                         priority: item.priority,
                                         title: item.summary,
                                         description: item?.description ?? '',
-                                        sprintId: item.sprintId ?? 'None',
+                                        sprintId: item.sprintId ?? null,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      alert('✅ Updated subtask assignee');
+                                      //alert('✅ Updated subtask assignee');
                                       console.log('✅ Updated subtask assignee');
                                       await refetchSubtask();
                                     } catch (err) {
                                       console.error('❌ Failed to update subtask:', err);
-                                      alert('❌ Failed to update subtask');
+                                      //alert('❌ Failed to update subtask');
                                     }
+                                  }}
+                                  style={{
+                                    width: '170px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #ccc',
+                                    backgroundColor: 'white',
                                   }}
                                 >
                                   <option value='0'>Unassigned</option>
-                                  {projectMembers.map((member) => (
-                                    <option key={member.accountId} value={member.accountId}>
-                                      {member.accountName}
+                                  {assignees.map((assignees) => (
+                                    <option key={assignees.accountId} value={assignees.accountId}>
+                                      {assignees.accountFullname}
                                     </option>
                                   ))}
                                 </select>
@@ -1146,9 +1424,13 @@ const WorkItemDetail: React.FC = () => {
                                   )}
                                 </select>
                               ) : (
-                                <span className={`custom-status-select status-${item.status.toLowerCase().replace('_', '-')}`}>
-                                  {subtaskStatus?.data.find((status) => status.name === item.status)?.label ||
-                                    item.status.replace('_', ' ')}
+                                <span
+                                  className={`custom-status-select status-${item.status
+                                    .toLowerCase()
+                                    .replace('_', '-')}`}
+                                >
+                                  {subtaskStatus?.data.find((status) => status.name === item.status)
+                                    ?.label || item.status.replace('_', ' ')}
                                 </span>
                               )}
                             </td>
@@ -1181,6 +1463,7 @@ const WorkItemDetail: React.FC = () => {
                                         taskId,
                                         title: newSubtaskTitle,
                                         createdBy: accountId,
+                                        reporterId: accountId,
                                       }).unwrap();
                                       console.log('✅ Create successfully');
                                     } catch (err) {
@@ -1276,92 +1559,112 @@ const WorkItemDetail: React.FC = () => {
 
               {activeTab === 'COMMENTS' ? (
                 <>
-                  <div className='comment-list'>
-                    {isCommentsLoading ? (
-                      <p>Loading comments...</p>
-                    ) : comments.length === 0 ? (
-                      <p style={{ fontStyle: 'italic', color: '#666' }}>No comments yet.</p>
-                    ) : (
-                      comments
-                        .slice()
-                        .reverse()
-                        .map((comment: any) => (
-                          <div key={comment.id} className='simple-comment'>
-                            <div className='avatar-circle'>
-                              <img src={comment.accountPicture || accountIcon} alt='avatar' />
+                  {comments.map((comment) => (
+                    <div key={comment.id} className='simple-comment'>
+                      <div className='avatar-circle'>
+                        <img src={comment.accountPicture || accountIcon} alt='avatar' />
+                      </div>
+                      <div className='comment-content'>
+                        <div className='comment-header'>
+                          <strong>{comment.accountName || `User #${comment.accountId}`}</strong>
+                          <span className='comment-time'>
+                            {new Date(comment.createdAt).toLocaleString('vi-VN')}
+                          </span>
+                        </div>
+                        {editCommentId === comment.id ? (
+                          <>
+                            <textarea
+                              value={editedContent[comment.id] || comment.content}
+                              onChange={(e) =>
+                                setEditedContent({ ...editedContent, [comment.id]: e.target.value })
+                              }
+                              className='border rounded p-2 w-full'
+                              autoFocus
+                            />
+                            <div className='flex gap-2 mt-2'>
+                              <button
+                                onClick={() => handleSave(comment.id, comment.content)}
+                                className='px-1 py-0.5 bg-blue-500 text-xs text-white rounded hover:bg-blue-600 h-6'
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => setEditCommentId(null)}
+                                className='px-1 py-0.5 bg-gray-300 text-xs text-gray-700 rounded hover:bg-gray-400 h-6'
+                              >
+                                Cancel
+                              </button>
                             </div>
-                            <div className='comment-content'>
-                              <div className='comment-header'>
-                                <strong>
-                                  {comment.accountName || `User #${comment.accountId}`}
-                                </strong>{' '}
-                                <span className='comment-time'>
-                                  {new Date(comment.createdAt).toLocaleString('vi-VN')}
-                                </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className='comment-text'>{comment.content}</div>
+                            {comment.accountId === accountId && (
+                              <div className='comment-actions'>
+                                <button
+                                  className='edit-btn'
+                                  onClick={() => setEditCommentId(comment.id)}
+                                >
+                                  ✏ Edit
+                                </button>
+                                <button
+                                  className='delete-btn'
+                                  onClick={async () => {
+                                    const confirmed = await Swal.fire({
+                                      title: 'Delete Comment',
+                                      text: 'Are you sure you want to delete this comment?',
+                                      icon: 'warning',
+                                      showCancelButton: true,
+                                      confirmButtonText: 'Delete',
+                                      confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                      customClass: {
+                                        title: 'small-title',
+                                        popup: 'small-popup',
+                                        icon: 'small-icon',
+                                        htmlContainer: 'small-html',
+                                      },
+                                    });
+                                    if (confirmed.isConfirmed) {
+                                      try {
+                                        console.log(
+                                          'Deleting comment:',
+                                          comment.id,
+                                          'for task:',
+                                          taskId
+                                        );
+                                        await deleteTaskComment({
+                                          id: comment.id,
+                                          taskId,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('❌ Failed to delete comment:', err);
+                                        Swal.fire({
+                                          icon: 'error',
+                                          title: 'Delete Failed',
+                                          text: 'Failed to delete comment.',
+                                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                          customClass: {
+                                            title: 'small-title',
+                                            popup: 'small-popup',
+                                            icon: 'small-icon',
+                                            htmlContainer: 'small-html',
+                                          },
+                                        });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  🗑 Delete
+                                </button>
                               </div>
-                              <div className='comment-text'>{comment.content}</div>
-                              {comment.accountId === accountId && (
-                                <div className='comment-actions'>
-                                  <button
-                                    className='edit-btn'
-                                    onClick={async () => {
-                                      const newContent = prompt(
-                                        '✏ Edit your comment:',
-                                        comment.content
-                                      );
-                                      if (newContent && newContent !== comment.content) {
-                                        try {
-                                          await updateTaskComment({
-                                            id: comment.id,
-                                            taskId,
-                                            accountId,
-                                            content: newContent,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          alert('✅ Comment updated');
-                                          await refetchComments();
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error('❌ Failed to update comment', err);
-                                          alert('❌ Update failed');
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    ✏ Edit
-                                  </button>
-                                  <button
-                                    className='delete-btn'
-                                    onClick={async () => {
-                                      if (
-                                        window.confirm(
-                                          '🗑️ Are you sure you want to delete this comment?'
-                                        )
-                                      ) {
-                                        try {
-                                          await deleteTaskComment({
-                                            id: comment.id,
-                                            createdBy: accountId,
-                                          }).unwrap();
-                                          alert('🗑️ Deleted successfully');
-                                          await refetchComments();
-                                          await refetchActivityLogs();
-                                        } catch (err) {
-                                          console.error('❌ Failed to delete comment', err);
-                                          alert('❌ Delete failed');
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    🗑 Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    )}
-                  </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Comment Input */}
                   <div className='simple-comment-input'>
@@ -1375,7 +1678,7 @@ const WorkItemDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            // alert('❌ User not identified. Please log in again.');
                             return;
                           }
                           await createTaskComment({
@@ -1386,12 +1689,12 @@ const WorkItemDetail: React.FC = () => {
                           }).unwrap();
 
                           setCommentContent('');
-                          alert('✅ Comment posted ');
+                          //alert('✅ Comment posted ');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -1412,7 +1715,9 @@ const WorkItemDetail: React.FC = () => {
                   <select
                     value={status}
                     onChange={(e) => handleTaskStatusChange(e.target.value)}
-                    className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}
+                    className={`custom-status-select status-${status
+                      .toLowerCase()
+                      .replace('_', '-')}`}
                   >
                     {loadTaskStatus ? (
                       <option>Loading...</option>
@@ -1427,7 +1732,11 @@ const WorkItemDetail: React.FC = () => {
                     )}
                   </select>
                 ) : (
-                  <span className={`custom-status-select status-${status.toLowerCase().replace('_', '-')}`}>
+                  <span
+                    className={`custom-status-select status-${status
+                      .toLowerCase()
+                      .replace('_', '-')}`}
+                  >
                     {taskStatusLabel}
                   </span>
                 )}
@@ -1483,6 +1792,8 @@ const WorkItemDetail: React.FC = () => {
                     {/* Dropdown chọn thêm */}
                     <div className='dropdown-select-wrapper'>
                       <select
+                        style={{ width: '150px' }}
+                        value={selectedAssigneeId}
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
                           if (!selectedId) return;
@@ -1491,11 +1802,11 @@ const WorkItemDetail: React.FC = () => {
                             await createTaskAssignment({ taskId, accountId: selectedId }).unwrap();
                             const data = await getTaskAssignments(taskId).unwrap();
                             setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
+                            setSelectedAssigneeId('');
                           } catch (err) {
                             console.error('Error assigning task', err);
                           }
                         }}
-                        defaultValue=''
                       >
                         <option value='' disabled>
                           + Add assignee
@@ -1521,13 +1832,71 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
                         ))}
                   </span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Percent Complete</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        max='100'
+                        step='0.01'
+                        value={newPercentComplete ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewPercentComplete(value);
+                        }}
+                        onBlur={handlePercentCompleteChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                      />
+                      <span>%</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.percentComplete ?? '0'}% (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Actual Cost (Equipment, Licenses, etc.)</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        step='1'
+                        value={newActualCost ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewActualCost(value);
+                        }}
+                        onBlur={handleActualCostChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                        placeholder='Enter cost (e.g., equipment)'
+                      />
+                      <span>VND</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.actualCost ?? '0'} VND</span>
                 )}
               </div>
 
@@ -1597,50 +1966,65 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
 
               <div className='detail-item'>
                 <label>Parent</label>
-                <span>{subtaskData[0]?.taskId ?? 'None'}</span>
+                {taskData?.epicId ? (
+                  <Link
+                    to={`/project/epic/${taskData.epicId}`}
+                    className='text no-underline hover:underline cursor-pointer'
+                  >
+                    Epic [{taskData.epicId}]
+                  </Link>
+                ) : (
+                  <span>Epic [None]</span>
+                )}
               </div>
 
               <div className='detail-item'>
                 <label>Sprint</label>
-                {isProjectSprintsLoading ? (
-                  <span>Loading sprints...</span>
-                ) : isProjectSprintsError ? (
-                  <span>Error loading sprints</span>
-                ) : projectSprints.length === 0 ? (
-                  <span>No sprints available</span>
+
+                {isUserAssignee(taskId) || canEdit ? (
+                  isProjectSprintsLoading ? (
+                    <span>Loading sprints...</span>
+                  ) : isProjectSprintsError ? (
+                    <span>Error loading sprints</span>
+                  ) : projectSprints.length === 0 ? (
+                    <span>No sprints available</span>
+                  ) : (
+                    <select
+                      style={{ width: '150px' }}
+                      value={sprintId ?? 'none'}
+                      onChange={(e) => {
+                        const val = e.target.value === 'none' ? null : Number(e.target.value);
+                        setSprintId(val);
+                        if (val !== null) {
+                          handleSprintTaskChange(val);
+                        }
+                      }}
+                    >
+                      <option value='none'>No Sprint</option>
+                      {projectSprints.map((sprint) => (
+                        <option key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </option>
+                      ))}
+                    </select>
+                  )
                 ) : (
-                  <select
-                    style={{ width: '150px' }}
-                    value={sprintId ?? 'none'}
-                    onChange={(e) => {
-                      const val = e.target.value === 'none' ? null : Number(e.target.value);
-                      setSprintId(val);
-                      if (val !== null) {
-                        handleSprintTaskChange(val);
-                      }
-                    }}
-                  >
-                    <option value="none">No Sprint</option>
-                    {projectSprints.map((sprint) => (
-                      <option key={sprint.id} value={sprint.id}>
-                        {sprint.name}
-                      </option>
-                    ))}
-                  </select>
+                  <span>{projectSprints.find((s) => s.id === sprintId)?.name || 'No Sprint'}</span>
                 )}
               </div>
 
               <div className='detail-item'>
                 <label>Priority</label>
-                {canEdit ? (
+
+                {isUserAssignee(taskId) || canEdit ? (
                   <select
                     value={taskData?.priority}
                     onChange={async (e) => {
@@ -1669,7 +2053,6 @@ const WorkItemDetail: React.FC = () => {
                       </option>
                     ))}
                   </select>
-
                 ) : (
                   <span>{taskData?.priority ?? 'NONE'}</span>
                 )}
@@ -1677,17 +2060,87 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Start date</label>
-                {canEdit ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
+                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
+                    max={
+                      plannedEndDate
+                        ? plannedEndDate.slice(0, 10)
+                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                    }
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedStartDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      // Validate against epic's startDate
+                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Epic Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project startDate (fallback)
+                      if (
+                        !epicData?.startDate &&
+                        projectData?.data?.startDate &&
+                        new Date(fullDate) < new Date(projectData.data.startDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Project Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedEndDate
+                      if (plannedEndDate && new Date(fullDate) >= new Date(plannedEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be before Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
                       setPlannedStartDate(fullDate);
                     }}
-                    onBlur={() => handlePlannedStartDateTaskChange()}
+                    onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -1696,17 +2149,87 @@ const WorkItemDetail: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Due date</label>
-                {canEdit ? (
+                {isUserAssignee(taskId) || canEdit ? (
                   <input
                     type='date'
                     value={plannedEndDate?.slice(0, 10) ?? ''}
+                    min={
+                      plannedStartDate
+                        ? plannedStartDate.slice(0, 10)
+                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
+                    }
+                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedEndDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
+
+                      // Validate against epic's endDate
+                      if (epicData?.endDate && new Date(fullDate) > new Date(epicData.endDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Epic Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project endDate (fallback)
+                      if (
+                        !epicData?.endDate &&
+                        projectData?.data?.endDate &&
+                        new Date(fullDate) > new Date(projectData.data.endDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Project End Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedStartDate
+                      if (plannedStartDate && new Date(fullDate) <= new Date(plannedStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be after Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
                       setPlannedEndDate(fullDate);
                     }}
-                    onBlur={() => handlePlannedEndDateTaskChange()}
+                    onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -1728,11 +2251,11 @@ const WorkItemDetail: React.FC = () => {
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        alert('✅ Update successfully');
+                        //alert('✅ Update successfully');
                         await refetchTask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        alert('❌ Update failed');
+                        //alert('❌ Update failed');
                         console.error(err);
                       }
                     }}
@@ -1764,6 +2287,7 @@ const WorkItemDetail: React.FC = () => {
                 onClose={() => setIsWorklogOpen(false)}
                 workItemId={taskId}
                 type='task'
+                onRefetchActivityLogs={refetchActivityLogs}
               />
 
               <div className='detail-item'>
@@ -1785,6 +2309,30 @@ const WorkItemDetail: React.FC = () => {
           </div>
         </div>
       </div>
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteFile}
+        title='Delete this attachment?'
+        message="Once you delete, it's gone for good."
+      />
+      {isEvaluationPopupOpen && (
+        <AiResponseEvaluationPopup
+          isOpen={isEvaluationPopupOpen}
+          onClose={handleCloseEvaluationPopup}
+          aiResponseJson={aiResponseJson}
+          projectId={Number(projectId)}
+          aiFeature='SUBTASK_FROM_TASK_CREATION'
+          onSubmitSuccess={handleEvaluationSubmitSuccess}
+        />
+      )}
+      {/* <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteComment}
+        title="Delete this comment?"
+        message="Once you delete, it's gone for good."
+      /> */}
     </div>
   );
 };

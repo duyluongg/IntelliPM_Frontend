@@ -20,11 +20,48 @@ interface LoginResponse {
   message: string;
 }
 
+interface RegisterRequest {
+  username: string;
+  password: string;
+  email: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  position: string;
+
+}
+
+interface RegisterResponse {
+  isSuccess: boolean;
+  code: number;
+  data: null;
+  message: string;
+}
+
+
+interface ForgotPasswordRequest {
+  email: string;
+}
+
+interface ForgotPasswordResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+interface ResetPasswordRequest {
+  otp: string;
+  newPassword: string;
+  confirmNewPassword: string;
+  email: string;
+}
+interface ResetPasswordResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+
 // ... existing code ...
 interface LogoutRequest {
   refreshToken: string;
 }
-
 interface LogoutResponse {
   isSuccess: boolean;
   code: number;
@@ -53,7 +90,39 @@ export const authApi = createApi({
         },
       }),
     }),
+register: builder.mutation<RegisterResponse, RegisterRequest>({
+      query: (body) => ({
+        url: 'auth/register',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+forgotPassword: builder.mutation<ForgotPasswordResponse, ForgotPasswordRequest>({
+      query: (body) => ({
+        url: 'auth/forgot-password',
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+    resetPassword: builder.mutation<ResetPasswordResponse, ResetPasswordRequest>({
+      query: (body) => ({
+        url: 'auth/reset-password',
+        method: 'POST',
+        body,
+        headers: {
+          accept: '*/*',
+          'Content-Type': 'application/json',
+        },
+      }),
+    }),
+    
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation, useRegisterMutation, useForgotPasswordMutation, 
+  useResetPasswordMutation } = authApi;

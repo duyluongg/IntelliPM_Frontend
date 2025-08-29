@@ -16,7 +16,7 @@ import {
   useDeleteTaskAssignmentMutation,
   useCreateTaskAssignmentQuickMutation,
 } from '../../../services/taskAssignmentApi';
-import taskIcon from '../../../assets/icon/type_task.svg';
+import storyIcon from '../../../assets/icon/type_story.svg';
 import epicIcon from '../../../assets/icon/type_epic.svg';
 
 // Hàm formatDate được khai báo ở phạm vi cao hơn
@@ -398,6 +398,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           status: item.status,
           reporterId: item.reporterId || null,
           assignedBy: item.assignedBy || null,
+          createdBy: accountId,
         };
 
         await updateEpic({
@@ -463,6 +464,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
           status: item.status,
           reporterId: field === 'reporter' ? member.accountId : item.reporterId || null,
           assignedBy: field === 'assignees' ? member.accountId : item.assignedBy || null,
+          createdBy: accountId,
         };
         const response = await updateEpic({
           id: item.id,
@@ -568,6 +570,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
             status: normalizedEpics[epicIndex].status,
             reporterId: normalizedEpics[epicIndex].reporterId,
             assignedBy: null,
+            createdBy: accountId, //hello
           };
           await updateEpic({
             id: itemId,
@@ -793,7 +796,7 @@ const TasksAndEpicsTable: React.FC<TasksAndEpicsTableProps> = ({ projectId }) =>
                     className='text-gray-800 p-2.5 border-b border-l border-r border-gray-200 text-sm whitespace-nowrap overflow-hidden'
                   >
                     {item.type === 'TASK' && (
-                      <img src={taskIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
+                      <img src={storyIcon} alt='Task' className='w-5 h-5 rounded p-0.5' />
                     )}
                     {item.type === 'EPIC' && (
                       <img src={epicIcon} alt='Epic' className='w-5 h-5 rounded p-0.5' />

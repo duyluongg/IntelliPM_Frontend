@@ -121,7 +121,7 @@ export default function MeetingCore() {
               <p className='text-xs text-center'>Manage meetings</p>
             </div>
 
-            <div
+            {/* <div
               onClick={() => navigate('/project/meeting-management/view-reject')}
               className={`${boxBase} bg-pink-500 text-white col-span-1 h-full`}
             >
@@ -135,7 +135,7 @@ export default function MeetingCore() {
             >
               <h2 className='text-base font-semibold'>Send Requests</h2>
               <p className='text-xs text-center'>Send document requests from Team Leaders</p>
-            </div>
+            </div> */}
           </div>
         )}
       </div>

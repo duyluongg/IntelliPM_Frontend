@@ -56,6 +56,10 @@ import { documentRequestMeetingApi } from '../services/ProjectManagement/Meeting
 import { adminApi } from '../services/adminApi';
 import { aiResponseHistoryApi } from '../services/aiResponseHistoryApi';
 import { aiResponseEvaluationApi } from '../services/aiResponseEvaluationApi';
+import { documentPermissionApi } from '../services/Document/documentPermissionAPI';
+import { systemConfigurationApi } from '../services/systemConfigurationApi';
+import { meetingTranscriptSnapApi } from '../services/ProjectManagement/MeetingServices/MeetingTranscriptSnapService';
+import { shareApi } from '../services/Document/verifyShareAPI';
 
 const persistConfig = {
   key: 'root',
@@ -112,10 +116,13 @@ const rootReducer = combineReducers({
   [milestoneCommentApi.reducerPath]: milestoneCommentApi.reducer,
   [documentCommentApi.reducerPath]: documentCommentApi.reducer,
   [documentRequestMeetingApi.reducerPath]: documentRequestMeetingApi.reducer,
-
+  [documentPermissionApi.reducerPath]: documentPermissionApi.reducer,
+  [systemConfigurationApi.reducerPath]: systemConfigurationApi.reducer,
   [adminApi.reducerPath]: adminApi.reducer,
   [aiResponseHistoryApi.reducerPath]: aiResponseHistoryApi.reducer,
   [aiResponseEvaluationApi.reducerPath]: aiResponseEvaluationApi.reducer,
+  [meetingTranscriptSnapApi.reducerPath]: meetingTranscriptSnapApi.reducer,
+  [shareApi.reducerPath]: shareApi.reducer,
   doc: docReducer,
   projectCreation: projectCreationReducer,
   project: projectCurrentReducer,
@@ -181,6 +188,10 @@ export const store = configureStore({
       aiResponseHistoryApi.middleware,
       aiResponseEvaluationApi.middleware,
       taskAiApi.middleware,
+      documentPermissionApi.middleware,
+      systemConfigurationApi.middleware,
+      meetingTranscriptSnapApi.middleware,
+      shareApi.middleware,
     ),
 });
 

@@ -27,6 +27,21 @@ export interface MeetingParticipant {
   fullName:string;
 }
 
+// NEW — DTO cho update status, match BE DynamicCategoryValidation(string)
+export interface UpdateParticipantStatusDTO {
+  meetingId: number;
+  accountId: number;
+  role?: string | null;
+  status?: string | null; // ✅ dynamic
+}
+
+export interface AddParticipantsResult {
+  added: number[];
+  alreadyIn: number[];
+  conflicted: number[];
+  notFound: number[];
+} 
+
 /* ========== Phản hồi trả về ========= */
 
 interface BaseResponse<T = unknown> {
@@ -67,6 +82,29 @@ export const meetingParticipantApi = createApi({
       }),
     }),
 
+    removeParticipantFromMeeting: builder.mutation<
+  { message: string } | void,
+  { meetingId: number; accountId: number }
+>({
+  query: ({ meetingId, accountId }) => ({
+    url: `meetings/${meetingId}/participants/${accountId}`,
+    method: 'DELETE',
+  }),
+  async onQueryStarted({ meetingId, accountId }, { dispatch, queryFulfilled }) {
+    const patch = dispatch(
+      meetingParticipantApi.util.updateQueryData('getParticipantsByMeetingId', meetingId, (draft) => {
+        const idx = draft.findIndex((p) => p.accountId === accountId);
+        if (idx !== -1) draft.splice(idx, 1);
+      }),
+    );
+    try {
+      await queryFulfilled;
+    } catch {
+      patch.undo();
+    }
+  },
+}),
+
     /* --- PARTICIPANTS ---------------------------------------------------- */
 
     /** GET /api/meeting-participants/meeting/:meetingId – Danh sách người tham gia */
@@ -85,18 +123,39 @@ completeMeeting: builder.mutation<void, number>({
   }),
 }),
 
-
-    /** PUT /api/meeting-participants/:id – Điểm danh (Present / Absent) */
-    updateParticipantStatus: builder.mutation<
-      MeetingParticipant,
-      { participantId: number; data: Pick<MeetingParticipant, 'meetingId' | 'accountId' | 'role' | 'status'> }
+addParticipantsToMeeting: builder.mutation<
+      AddParticipantsResult,
+      { meetingId: number; participantIds: number[] }
     >({
-      query: ({ participantId, data }) => ({
-        url: `meeting-participants/${participantId}`,
-        method: 'PUT',
-        body: data,
+      query: ({ meetingId, participantIds }) => ({
+        url: `meetings/${meetingId}/participants`,
+        method: 'POST',
+        body: participantIds,
       }),
     }),
+
+
+    /** PUT /api/meeting-participants/:id – Điểm danh (Present / Absent) */
+    // updateParticipantStatus: builder.mutation<
+    //   MeetingParticipant,
+    //   { participantId: number; data: Pick<MeetingParticipant, 'meetingId' | 'accountId' | 'role' | 'status'> }
+    // >({
+    //   query: ({ participantId, data }) => ({
+    //     url: `meeting-participants/${participantId}`,
+    //     method: 'PUT',
+    //     body: data,
+    //   }),
+    // }),
+    updateParticipantStatus: builder.mutation<
+  MeetingParticipant,
+  { participantId: number; data: UpdateParticipantStatusDTO }
+>({
+  query: ({ participantId, data }) => ({
+    url: `meeting-participants/${participantId}`,
+    method: 'PUT',
+    body: data,
+  }),
+}),
   }),
 });
 
@@ -108,4 +167,6 @@ export const {
   useGetParticipantsByMeetingIdQuery,
   useUpdateParticipantStatusMutation,
   useCompleteMeetingMutation, 
+  useAddParticipantsToMeetingMutation,
+  useRemoveParticipantFromMeetingMutation,
 } = meetingParticipantApi;

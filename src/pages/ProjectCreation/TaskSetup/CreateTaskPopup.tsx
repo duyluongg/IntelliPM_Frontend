@@ -1,6 +1,6 @@
 import React, { type RefObject } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
-import {type TaskState } from '../../../services/aiApi';
+import { type TaskState } from '../../../services/aiApi';
 
 interface EpicState {
   epicId: string;
@@ -12,32 +12,47 @@ interface EpicState {
   backendEpicId?: string;
 }
 
+interface Member {
+  accountId: number;
+  fullName: string;
+  picture: string;
+  projectPositions: { position: string }[];
+}
+
+interface NewTask {
+  epicId: string;
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  suggestedRole: string;
+  assignedMembers: { accountId: number; fullName: string; picture: string }[];
+  newEpicTitle?: string;
+  newEpicDescription?: string;
+  newEpicStartDate?: string;
+  newEpicEndDate?: string;
+}
+
 interface CreateTaskPopupProps {
+  isOpen: boolean;
+  onClose: () => void;
   epics: EpicState[];
-  newTask: {
-    epicId: string;
-    title: string;
-    description: string;
-    startDate: string;
-    endDate: string;
-    suggestedRole: string;
-    assignedMembers: { accountId: number; fullName: string; picture: string }[];
-    newEpicTitle?: string;
-    newEpicDescription?: string;
-    newEpicStartDate?: string;
-    newEpicEndDate?: string;
-  };
-  setNewTask: (newTask: any) => void;
-  membersData: any;
+  newTask: NewTask;
+  setNewTask: (newTask: NewTask) => void;
+  membersData: { data?: Member[] } | undefined;
   isMemberDropdownOpen: boolean;
   setIsMemberDropdownOpen: (open: boolean) => void;
   handleCreateTask: () => void;
   handleAddNewTaskMember: (accountId: number) => void;
   handleRemoveNewTaskMember: (accountId: number) => void;
   memberDropdownRef: RefObject<HTMLDivElement | null>;
+  projectId: number;
+  projectKey: string;
 }
 
 const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
+  isOpen,
+  onClose,
   epics,
   newTask,
   setNewTask,
@@ -48,7 +63,29 @@ const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
   handleAddNewTaskMember,
   handleRemoveNewTaskMember,
   memberDropdownRef,
+  projectId,
+  projectKey,
 }) => {
+  if (!isOpen) return null;
+
+  const resetNewTask = () => {
+    setNewTask({
+      epicId: '',
+      title: '',
+      description: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      suggestedRole: 'Developer',
+      assignedMembers: [],
+      newEpicTitle: '',
+      newEpicDescription: 'No description',
+      newEpicStartDate: new Date().toISOString().split('T')[0],
+      newEpicEndDate: new Date(new Date().setDate(new Date().getDate() + 7))
+        .toISOString()
+        .split('T')[0],
+    });
+  };
+
   return (
     <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
       <div className='bg-white p-4 sm:p-6 rounded-2xl shadow-2xl max-w-sm w-full max-h-[80vh] overflow-y-auto'>
@@ -57,21 +94,8 @@ const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
           <button
             onClick={() => {
               setIsMemberDropdownOpen(false);
-              setNewTask({
-                epicId: '',
-                title: '',
-                description: '',
-                startDate: new Date().toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-                suggestedRole: 'Developer',
-                assignedMembers: [],
-                newEpicTitle: '',
-                newEpicDescription: 'No description',
-                newEpicStartDate: new Date().toISOString().split('T')[0],
-                newEpicEndDate: new Date(new Date().setDate(new Date().getDate() + 7))
-                  .toISOString()
-                  .split('T')[0],
-              });
+              resetNewTask();
+              onClose();
             }}
             className='p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors duration-200'
           >
@@ -220,9 +244,9 @@ const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
                   <div className='px-4 py-2 border-b border-gray-200 font-semibold text-gray-700 bg-gray-50'>
                     Select Members
                   </div>
-                  {membersData?.data?.map((member: any) => {
+                  {membersData?.data?.map((member: Member) => {
                     const isAssigned = newTask.assignedMembers.some(
-                      (m: any) => m.accountId === member.accountId
+                      (m) => m.accountId === member.accountId
                     );
                     return (
                       <div
@@ -284,21 +308,8 @@ const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
           <button
             onClick={() => {
               setIsMemberDropdownOpen(false);
-              setNewTask({
-                epicId: '',
-                title: '',
-                description: '',
-                startDate: new Date().toISOString().split('T')[0],
-                endDate: new Date().toISOString().split('T')[0],
-                suggestedRole: 'Developer',
-                assignedMembers: [],
-                newEpicTitle: '',
-                newEpicDescription: 'No description',
-                newEpicStartDate: new Date().toISOString().split('T')[0],
-                newEpicEndDate: new Date(new Date().setDate(new Date().getDate() + 7))
-                  .toISOString()
-                  .split('T')[0],
-              });
+              resetNewTask();
+              onClose();
             }}
             className='px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all duration-200'
           >

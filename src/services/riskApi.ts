@@ -64,41 +64,49 @@ export interface CreateRiskResponse {
 export interface UpdateRiskStatusRequest {
   id: number;
   status: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskTypeRequest {
   id: number;
   type: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskResponsibleRequest {
   id: number;
   responsibleId: number | null;
+  createdBy: number;
 }
 
 export interface UpdateRiskDueDateRequest {
   id: number;
   dueDate: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskTitleRequest {
   id: number;
   title: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskDescriptionRequest {
   id: number;
   description: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskImpactLevelRequest {
   id: number;
   impactLevel: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskProbabilityRequest {
   id: number;
   probability: string;
+  createdBy: number;
 }
 
 export interface UpdateRiskResponse {
@@ -128,6 +136,21 @@ export interface GetAiSuggestedRisksResponse {
   data: AiSuggestedRisk[];
 }
 
+export interface CheckOverdueTasksResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+}
+
+export interface RiskStatisticsResponse {
+  totalRisks: number;
+  overdueRisks: number;
+  risksByStatus: Record<string, number>;
+  risksByType: Record<string, number>;
+  risksBySeverity: Record<string, number>;
+  risksByResponsible: Record<string, number>;
+}
+
 export const riskApi = createApi({
   reducerPath: 'riskApi',
   baseQuery: fetchBaseQuery({
@@ -155,64 +178,64 @@ export const riskApi = createApi({
     }),
 
     updateRiskStatus: builder.mutation<UpdateRiskResponse, UpdateRiskStatusRequest>({
-      query: ({ id, status }) => ({
-        url: `risk/${id}/status`,
+      query: ({ id, status, createdBy }) => ({
+        url: `risk/${id}/status?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(status),
       }),
     }),
 
     updateRiskType: builder.mutation<UpdateRiskResponse, UpdateRiskTypeRequest>({
-      query: ({ id, type }) => ({
-        url: `risk/${id}/type`,
+      query: ({ id, type, createdBy }) => ({
+        url: `risk/${id}/type?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(type),
       }),
     }),
 
     updateRiskResponsible: builder.mutation<UpdateRiskResponse, UpdateRiskResponsibleRequest>({
-      query: ({ id, responsibleId }) => ({
-        url: `risk/${id}/responsible-id`,
+      query: ({ id, responsibleId, createdBy }) => ({
+        url: `risk/${id}/responsible-id?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(responsibleId),
       }),
     }),
 
     updateRiskDueDate: builder.mutation<UpdateRiskResponse, UpdateRiskDueDateRequest>({
-      query: ({ id, dueDate }) => ({
-        url: `risk/${id}/duedate`,
+      query: ({ id, dueDate, createdBy }) => ({
+        url: `risk/${id}/duedate?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(dueDate),
       }),
     }),
 
     updateRiskTitle: builder.mutation<UpdateRiskResponse, UpdateRiskTitleRequest>({
-      query: ({ id, title }) => ({
-        url: `risk/${id}/title`,
+      query: ({ id, title, createdBy }) => ({
+        url: `risk/${id}/title?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(title),
       }),
     }),
 
     updateRiskDescription: builder.mutation<UpdateRiskResponse, UpdateRiskDescriptionRequest>({
-      query: ({ id, description }) => ({
-        url: `risk/${id}/description`,
+      query: ({ id, description, createdBy }) => ({
+        url: `risk/${id}/description?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(description),
       }),
     }),
 
     updateRiskImpactLevel: builder.mutation<UpdateRiskResponse, UpdateRiskImpactLevelRequest>({
-      query: ({ id, impactLevel }) => ({
-        url: `risk/${id}/impact-level`,
+      query: ({ id, impactLevel, createdBy }) => ({
+        url: `risk/${id}/impact-level?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(impactLevel),
       }),
     }),
 
     updateRiskProbability: builder.mutation<UpdateRiskResponse, UpdateRiskProbabilityRequest>({
-      query: ({ id, probability }) => ({
-        url: `risk/${id}/probability`,
+      query: ({ id, probability, createdBy }) => ({
+        url: `risk/${id}/probability?createdBy=${createdBy}`,
         method: 'PATCH',
         body: JSON.stringify(probability),
       }),
@@ -226,7 +249,18 @@ export const riskApi = createApi({
     }),
 
     getRiskByKey: builder.query<CreateRiskResponse, string>({
-      query: (riskKey) => `/risk/by-risk-key?key=${riskKey}`,
+      query: (riskKey) => `risk/by-risk-key?key=${riskKey}`,
+    }),
+
+    checkOverdueTasks: builder.mutation<CheckOverdueTasksResponse, string>({
+      query: (projectKey) => ({
+        url: `risk/check-overdue-tasks/${projectKey}`,
+        method: 'POST',
+      }),
+    }),
+
+    getRiskStatisticsByProjectKey: builder.query({
+      query: (projectKey) => `/risk/statistics/${projectKey}`,
     }),
   }),
 });
@@ -245,4 +279,6 @@ export const {
   useGetAiSuggestedRisksQuery,
   useLazyGetAiSuggestedRisksQuery,
   useGetRiskByKeyQuery,
+  useCheckOverdueTasksMutation,
+  useGetRiskStatisticsByProjectKeyQuery,
 } = riskApi;

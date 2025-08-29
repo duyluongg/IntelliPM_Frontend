@@ -38,9 +38,12 @@ const UpdateProjectPage: React.FC = () => {
   const [updateProject, { isLoading: isUpdating, isError: isUpdateError, error: updateError }] = useUpdateProjectMutation();
 
   // Check project name uniqueness
-  const { data: nameCheck, isFetching: isNameChecking } = useCheckProjectNameQuery(formState.name, {
-    skip: !formState.name || formState.name === project?.name,
-  });
+  const { data: nameCheck, isFetching: isNameChecking } = useCheckProjectNameQuery(
+    { projectName: formState.name, projectId: project?.id },
+    {
+      skip: !formState.name || formState.name === project?.name || !project?.id,
+    }
+  );
 
   // Initialize form with project data
   useEffect(() => {

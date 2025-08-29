@@ -12,7 +12,7 @@ export interface EpicResponseDTO {
   createdAt: string;
   updatedAt: string;
   status: string;
-  reporterId: number  | null;
+  reporterId: number | null;
   assignedBy: number | null;
   assignedByFullname: string | null;
   assignedByPicture: string | null;
@@ -21,6 +21,7 @@ export interface EpicResponseDTO {
   sprintId: number | null;
   sprintName: string | null;
   sprintGoal: string | null;
+  createdBy: number;
 }
 
 export interface UpdateEpicRequestDTO {
@@ -32,6 +33,7 @@ export interface UpdateEpicRequestDTO {
   status: string;
   reporterId?: number | null;
   assignedBy?: number | null;
+  createdBy: number;
 }
 
 interface EpicListResponse {
@@ -51,6 +53,7 @@ interface EpicDetailResponse {
 export interface EpicWithTaskRequestDTO {
   epicId?: string;
   title: string;
+  type: string;
   description: string;
   startDate: string;
   endDate: string;
@@ -119,6 +122,12 @@ interface EpicWithStatsListResponse {
   data: EpicWithStatsResponseDTO[];
 }
 
+interface GenerateEpicsResponse {
+  isSuccess: boolean;
+  code: number;
+  message: string;
+  data: EpicResponseDTO[];
+}
 
 export const epicApi = createApi({
   reducerPath: 'epicApi',
@@ -132,7 +141,7 @@ export const epicApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Epic'],
+  tagTypes: ['Epic', 'WorkItem'],
   endpoints: (builder) => ({
     getEpicsByProjectId: builder.query<EpicResponseDTO[], number>({
       query: (projectId) => ({
@@ -149,14 +158,14 @@ export const epicApi = createApi({
       providesTags: ['Epic'],
     }),
 
-    updateEpicStatus: builder.mutation<void, { id: string; status: string }>({
-      query: ({ id, status }) => ({
+    updateEpicStatus: builder.mutation<void, { id: string; status: string; createdBy: number }>({
+      query: ({ id, status, createdBy }) => ({
         url: `epic/${id}/status`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(status),
+        body: JSON.stringify({ status, createdBy }),
       }),
       invalidatesTags: ['Epic'],
     }),
@@ -177,12 +186,12 @@ export const epicApi = createApi({
       invalidatesTags: ['Epic'],
     }),
 
-        createEpicsWithTasks: builder.mutation<
+    createEpicsWithTasks: builder.mutation<
       CreateEpicsResponse,
       { projectId: number; data: EpicWithTaskRequestDTO[] }
     >({
       query: ({ projectId, data }) => ({
-        url: `epic/projects/${projectId}/epics/batch`,
+        url: `epic/projects/${projectId}/batch`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,6 +219,45 @@ export const epicApi = createApi({
       providesTags: ['Epic'],
     }),
 
+    createEpic: builder.mutation<
+      CreateEpicResponse,
+      {
+        projectId: number;
+        name: string;
+        description: string;
+        startDate: string;
+        endDate: string;
+        status: string;
+        reporterId?: number | null;
+        assignedBy?: number | null;
+        createdBy: number;
+      }
+    >({
+      query: (data) => ({
+        url: `epic`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: data,
+      }),
+      transformResponse: (response: CreateEpicResponse) => response,
+      invalidatesTags: ['Epic'],
+    }),
+    generateEpics: builder.mutation<EpicResponseDTO[], number>({
+      query: (projectId) => ({
+        url: `ai/${projectId}/generate-epic`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': '*/*',
+        },
+        body: {},
+      }),
+      transformResponse: (response: GenerateEpicsResponse) => response.data,
+      invalidatesTags: ['Epic'],
+    }),
+
   }),
 });
 
@@ -221,4 +269,6 @@ export const {
   useCreateEpicsWithTasksMutation,
   useUpdateEpicMutation,
   useGetEpicsWithTasksByProjectKeyQuery,
+  useCreateEpicMutation,
+  useGenerateEpicsMutation
 } = epicApi;

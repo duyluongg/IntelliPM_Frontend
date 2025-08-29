@@ -32,8 +32,9 @@ import {
   useUpdateTaskReporterMutation,
   useUpdateTaskSprintMutation,
   useUpdatePercentCompleteMutation,
+  useUpdateActualCostMutation,
 } from '../../services/taskApi';
-import { useNavigate, useSearchParams, Link, useParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -70,6 +71,8 @@ import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import aiIcon from '../../assets/icon/ai.png';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
+import { useGetEpicByIdQuery } from '../../services/epicApi';
 
 interface WorkItemProps {
   isOpen: boolean;
@@ -141,6 +144,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const [updateTaskReporter] = useUpdateTaskReporterMutation();
   const [updateTaskSprint] = useUpdateTaskSprintMutation();
   const [updatePercentComplete] = useUpdatePercentCompleteMutation();
+  const [updateActualCost] = useUpdateActualCostMutation();
+  const [newActualCost, setNewActualCost] = useState<number | null>(null);
   const [selectedReporter, setSelectedReporter] = useState<number | null>(null);
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
@@ -182,6 +187,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   } = useGetCategoriesByGroupQuery('task_priority');
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editedContent, setEditedContent] = useState<{ [key: number]: string }>({});
+
+  const {
+    data: actualCostConfig,
+    isLoading: actualCostConfigLoading,
+    isError: actualCostConfigError,
+  } = useGetByConfigKeyQuery('actual_cost_limit');
+  const maxActualCost = actualCostConfigLoading
+    ? 1000000
+    : actualCostConfigError || !actualCostConfig?.data?.maxValue
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   const {
     data: attachments = [],
@@ -330,6 +346,68 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
+  const handleActualCostChange = async () => {
+    if (!taskData || newActualCost === taskData.actualCost) return;
+
+    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Actual Cost',
+        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewActualCost(taskData.actualCost ?? 0);
+      return;
+    }
+
+    try {
+      await updateActualCost({
+        id: taskId,
+        actualCost: newActualCost ?? 0,
+        createdBy: accountId,
+      }).unwrap();
+
+      console.log(`✅ Updated task ${taskId} actual cost to ${newActualCost}`);
+      await refetchTask();
+      await refetchActivityLogs();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Actual cost updated successfully!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    } catch (err) {
+      console.error('❌ Failed to update task actual cost', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update actual cost.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+    }
+  };
+
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
@@ -425,16 +503,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   }, [assignees, taskId]);
 
-  const {
-    data: activityLogs = [],
-    isLoading: isActivityLogsLoading,
-    refetch: refetchActivityLogs,
-  } = useGetActivityLogsByTaskIdQuery(taskId, {
+  const { data: epicData, isLoading: isEpicLoading } = useGetEpicByIdQuery(taskData?.epicId || '', {
+    skip: !taskData?.epicId,
+  });
+
+  const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs, } = useGetActivityLogsByTaskIdQuery(taskId, {
     skip: !taskId,
   });
 
-  const {
-    data: workItemLabels = [],
+  const { data: workItemLabels = [],
     isLoading: isLabelLoading,
     refetch: refetchWorkItemLabels,
   } = useGetWorkItemLabelsByTaskQuery(taskId, {
@@ -545,6 +622,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setEpicId(taskData.epicId ?? '');
       setSelectedReporter(taskData.reporterId ?? null);
       setNewPercentComplete(taskData.percentComplete ?? 0);
+      setNewActualCost(taskData.actualCost ?? 0);
     }
   }, [taskData]);
 
@@ -829,7 +907,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       console.error('❌ Upload failed:', err);
                     }
                   }
-
                 }}
               />
 
@@ -1009,13 +1086,17 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                      } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${
+                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                    } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
-                                        type="checkbox"
-                                        checked={selectedSuggestions.some(([t, r]) => t === item.title && r === Number(item.reporterId))}
+                                        type='checkbox'
+                                        checked={selectedSuggestions.some(
+                                          ([t, r]) =>
+                                            t === item.title && r === Number(item.reporterId)
+                                        )}
                                         onChange={(e) => {
                                           const checked = e.target.checked;
                                           const numericReporterId = Number(item.reporterId);
@@ -1029,7 +1110,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                               : prev.filter(([t]) => t !== item.title)
                                           );
                                         }}
-                                        className="h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                                        className='h-5 w-5 text-purple-600 rounded focus:ring-purple-500 cursor-pointer'
                                       />
                                     </td>
                                     <td className='p-4 border-b border-gray-200 text-sm text-gray-800'>
@@ -1074,10 +1155,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
-                              ? 'bg-gray-400 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                              }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
+                              selectedSuggestions.length === 0 || loadingCreate
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                            }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1111,9 +1193,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             Only Team Leader, Project Manager, or assignees can create subtasks.
                           </div>
                         )}
-
                       </div>
-
                     </div>
                   </div>
                 )}
@@ -1787,8 +1867,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1797,30 +1877,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 )}
               </div>
 
-              {/* <div className='detail-item'>
-                <label>Percent Complete</label>
-                {isUserAssignee(taskId) || canEdit ? (
-                  <div className='flex items-center gap-1'>
-                    <input
-                      type='number'
-                      min='0'
-                      max='100'
-                      step='0.01'
-                      value={newPercentComplete ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                        setNewPercentComplete(value);
-                      }}
-                      onBlur={handlePercentCompleteChange}
-                      style={{ width: '100px' }}
-                      className='border rounded p-1'
-                    />
-                    <span>%</span>
-                  </div>
-                ) : (
-                  <span>{taskData?.percentComplete ?? '0'}%</span>
-                )}
-              </div> */}
               <div className='detail-item'>
                 <label>Percent Complete</label>
                 {isUserAssignee(taskId) || canEdit ? (
@@ -1830,7 +1886,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         type='number'
                         min='0'
                         max='100'
-                        step='0.01'
+                        step='1'
                         value={newPercentComplete ?? ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) : null;
@@ -1847,6 +1903,35 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   )
                 ) : (
                   <span>{taskData?.percentComplete ?? '0'}%</span>
+                )}
+              </div>
+
+              <div className='detail-item'>
+                <label>Actual Cost (Equipment, Licenses, etc.)</label>
+                {isUserAssignee(taskId) || canEdit ? (
+                  subtaskData.length === 0 ? (
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        step='1'
+                        value={newActualCost ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : null;
+                          setNewActualCost(value);
+                        }}
+                        onBlur={handleActualCostChange}
+                        style={{ width: '100px' }}
+                        className='border rounded p-1'
+                        placeholder='Enter cost (e.g., equipment)'
+                      />
+                      <span>VND</span>
+                    </div>
+                  ) : (
+                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                  )
+                ) : (
+                  <span>{taskData?.actualCost ?? '0'} VND</span>
                 )}
               </div>
 
@@ -1916,8 +2001,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2013,22 +2098,66 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)} // Giới hạn ngày nhỏ nhất
+                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
                     max={
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
-                        : projectData?.data?.endDate?.slice(0, 10)
-                    } // Giới hạn ngày lớn nhất
+                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                    }
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedStartDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
-                      // Compare với Due date
+                      // Validate against epic's startDate
+                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Epic Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project startDate (fallback)
+                      if (
+                        !epicData?.startDate &&
+                        projectData?.data?.startDate &&
+                        new Date(fullDate) < new Date(projectData.data.startDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Task Start Date cannot be before Project Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedEndDate
                       if (plannedEndDate && new Date(fullDate) >= new Date(plannedEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
-                          html: 'Start Date must be smaller than Due Date!',
+                          html: 'Start Date must be before Due Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2045,6 +2174,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2060,18 +2190,63 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     min={
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
-                        : projectData?.data.startDate.slice(0, 10)
+                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
                     }
-                    max={projectData?.data.endDate.slice(0, 10)}
+                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
                       const selectedDate = e.target.value;
+                      if (!selectedDate) {
+                        setPlannedEndDate('');
+                        return;
+                      }
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
+                      // Validate against epic's endDate
+                      if (epicData?.endDate && new Date(fullDate) > new Date(epicData.endDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Epic Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against project endDate (fallback)
+                      if (
+                        !epicData?.endDate &&
+                        projectData?.data?.endDate &&
+                        new Date(fullDate) > new Date(projectData.data.endDate)
+                      ) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Task Due Date cannot be after Project End Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
+                      }
+
+                      // Validate against task's plannedStartDate
                       if (plannedStartDate && new Date(fullDate) <= new Date(plannedStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',
-                          html: 'Due Date must be greater than Start Date!',
+                          html: 'Due Date must be after Start Date!',
                           width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
@@ -2088,6 +2263,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
+                    disabled={isEpicLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>

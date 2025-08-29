@@ -98,6 +98,7 @@
     "sweetalert2": "^11.22.4",
     "tippy.js": "^6.3.7",
     "unified": "^11.0.5",
+    "use-debounce": "^10.0.5",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -33,7 +33,7 @@ import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEva
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
-  const { data: epic, isLoading } = useGetEpicByIdQuery(epicIdFromUrl || '');
+  const { data: epic, isLoading, refetch: refetchEpic } = useGetEpicByIdQuery(epicIdFromUrl || '');
   const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(epicIdFromUrl ?? '');
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
@@ -1095,6 +1095,7 @@ const EpicDetail: React.FC = () => {
                                           createdBy: accountId,
                                         }).unwrap();
                                         await refetch();
+                                        await refetchEpic();
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('❌ Error updating status:', err);
@@ -1115,7 +1116,6 @@ const EpicDetail: React.FC = () => {
                                   </span>
                                 )}
                               </td>
-
                             </tr>
                           ))
                         )}

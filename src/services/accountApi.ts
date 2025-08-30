@@ -140,6 +140,7 @@ export interface UploadAvatarResponse {
 
 export const accountApi = createApi({
   reducerPath: 'accountApi',
+  tagTypes: ['Account'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -173,12 +174,14 @@ export const accountApi = createApi({
         url: `account/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
+      providesTags: ['Account'],
     }),
     getProfileByEmail: builder.query<GetProfileResponse, string>({
       query: (email) => ({
         url: `account/profile/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
+      providesTags: ['Account'],
     }),
     getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
       query: (accountId) => ({
@@ -233,6 +236,7 @@ export const accountApi = createApi({
           body: formData,
         };
       },
+      invalidatesTags: ['Account'],
     }),
   }),
 });

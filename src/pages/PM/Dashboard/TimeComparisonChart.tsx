@@ -289,7 +289,7 @@ const TimeComparisonChart = ({
     color: '#D3D3D3', // Fallback for unmatched status
   };
 
-  const deltaValue = Math.abs(actualCompletion - plannedCompletion);
+  const deltaValue = Math.abs(actualCompletion - plannedCompletion).toFixed(2);
 
   const chartData = [
     {

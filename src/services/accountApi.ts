@@ -127,8 +127,20 @@ export interface ChangeAccountResponse {
   message: string;
 }
 
+export interface UploadAvatarData {
+  fileUrl: string;
+}
+
+export interface UploadAvatarResponse {
+  isSuccess: boolean;
+  code: number;
+  data: UploadAvatarData;
+  message: string;
+}
+
 export const accountApi = createApi({
   reducerPath: 'accountApi',
+  tagTypes: ['Account'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -137,7 +149,7 @@ export const accountApi = createApi({
         headers.set('Authorization', `Bearer ${token}`);
       }
       headers.set('accept', '*/*');
-      headers.set('Content-Type', 'application/json');
+      // headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
@@ -162,12 +174,14 @@ export const accountApi = createApi({
         url: `account/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
+      providesTags: ['Account'],
     }),
     getProfileByEmail: builder.query<GetProfileResponse, string>({
       query: (email) => ({
         url: `account/profile/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
+      providesTags: ['Account'],
     }),
     getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
       query: (accountId) => ({
@@ -181,27 +195,48 @@ export const accountApi = createApi({
         method: 'GET',
       }),
     }),
-    changeAccountStatus: builder.mutation<ChangeAccountResponse, { accountId: number; newStatus: string }>({
+    changeAccountStatus: builder.mutation<
+      ChangeAccountResponse,
+      { accountId: number; newStatus: string }
+    >({
       query: ({ accountId, newStatus }) => ({
         url: `account/${accountId}/status`,
         method: 'PATCH',
         body: { newStatus },
       }),
     }),
-    changeAccountRole: builder.mutation<ChangeAccountResponse, { accountId: number; newRole: string }>({
+    changeAccountRole: builder.mutation<
+      ChangeAccountResponse,
+      { accountId: number; newRole: string }
+    >({
       query: ({ accountId, newRole }) => ({
         url: `account/${accountId}/role`,
         method: 'PATCH',
         body: { newRole },
       }),
-         
     }),
-    changeAccountPosition: builder.mutation<ChangeAccountResponse, { accountId: number; newPosition: string }>({
+    changeAccountPosition: builder.mutation<
+      ChangeAccountResponse,
+      { accountId: number; newPosition: string }
+    >({
       query: ({ accountId, newPosition }) => ({
         url: `account/${accountId}/position`,
         method: 'PATCH',
         body: { newPosition },
       }),
+    }),
+    uploadAvatar: builder.mutation<UploadAvatarResponse, File>({
+      query: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return {
+          url: 'account/upload-avatar',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['Account'],
     }),
   }),
 });
@@ -217,4 +252,5 @@ export const {
   useChangeAccountStatusMutation,
   useChangeAccountRoleMutation,
   useChangeAccountPositionMutation,
+  useUploadAvatarMutation,
 } = accountApi;

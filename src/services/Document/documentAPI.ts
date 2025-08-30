@@ -48,7 +48,7 @@ type GenerateAIContentResp = { content: string };
 
 export const documentApi = createApi({
   reducerPath: 'documentApi',
-  tagTypes: ['Documents'],
+  tagTypes: ['Documents', 'DocumentMapping'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
@@ -135,6 +135,7 @@ export const documentApi = createApi({
     >({
       query: ({ projectId, userId }) =>
         `/documents/mapping?projectId=${projectId}&userId=${userId}`,
+      providesTags: [{ type: 'DocumentMapping', id: 'LIST' }],
     }),
 
     askAI: builder.mutation<{ content: string }, string>({
@@ -240,6 +241,7 @@ export const documentApi = createApi({
       invalidatesTags: (_result, _error, _id) => [
         { type: 'Documents', id: 'LIST' },
         { type: 'Documents', id: _id },
+        { type: 'DocumentMapping', id: 'LIST' },
       ],
     }),
 

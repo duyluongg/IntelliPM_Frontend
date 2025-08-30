@@ -29,6 +29,7 @@ import PlanTasksPopup from './PlanTasksPopup';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
 import WorkItem from '../../WorkItem/WorkItem';
 import aiIcon from '../../../assets/icon/ai.png';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 
 // Define User type
 interface User {
@@ -169,32 +170,14 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const epicMenuRef = useRef<HTMLDivElement>(null);
   const [isWorkItemOpen, setIsWorkItemOpen] = useState(false);
 
-  useEffect(() => {
-    if (!isStatusLoading && statusCategories?.data) {
-      setStatus(mapApiStatusToUI(task.status, statusCategories.data));
-    }
-  }, [task.status, statusCategories?.data, isStatusLoading]);
-
-  const statusOptions =
-    statusCategories?.data
-      ?.filter((category) => category.isActive)
-      ?.map((category) => {
-        const staticOption =
-          staticStatusOptions.find(
-            (opt) =>
-              opt.name.toUpperCase().replace(/[-_\s]/g, '') ===
-              category.name.toUpperCase().replace(/[-_\s]/g, '')
-          ) || staticStatusOptions[0];
-        return {
-          label: category.label.toUpperCase(),
-          value: category.label.toUpperCase(),
-          name: category.name,
-          bg: staticOption.bg,
-          text: staticOption.text,
-        };
-      }) || staticStatusOptions;
-
-  const currentStyle = statusOptions.find((s) => s.value === status) || statusOptions[0];
+  // Fetch title length configuration
+  const {
+    data: titleLengthConfig,
+    isLoading: isTitleLengthLoading,
+    isError: isTitleLengthError,
+  } = useGetByConfigKeyQuery('title_length', {
+    skip: !isWorkItemOpen, // Only fetch when the work item is open
+  });
 
   const [title, setTitle] = useState(task.title || '');
   const [editingTitle, setEditingTitle] = useState(false);
@@ -203,30 +186,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const titleInputRef = useRef<HTMLInputElement>(null);
   const titleRef = useRef<HTMLSpanElement>(null);
   const [titleOverflow, setTitleOverflow] = useState(false);
-
-  type TaskType = 'story' | 'bug' | 'epic' | 'task';
-  const getTaskIcon = (type: string | null | undefined): string => {
-    const iconMap: Record<TaskType, string> = {
-      story: storyIcon,
-      bug: bugIcon,
-      epic: epicIcon,
-      task: taskIcon,
-    };
-    return iconMap[(type?.toLowerCase() as TaskType) || 'task'] || taskIcon;
-  };
+  const [titleError, setTitleError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpenDropdown(false);
-      }
-      if (epicMenuRef.current && !epicMenuRef.current.contains(e.target as Node)) {
-        setIsEpicMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (!isStatusLoading && statusCategories?.data) {
+      setStatus(mapApiStatusToUI(task.status, statusCategories.data));
+    }
+  }, [task.status, statusCategories?.data, isStatusLoading]);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) titleInputRef.current.focus();
@@ -239,15 +205,34 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
   }, [title]);
 
+  // Validate title length
+  useEffect(() => {
+    if (!isTitleLengthLoading && !isTitleLengthError && titleLengthConfig?.data) {
+      const maxLength = parseInt(titleLengthConfig.data.valueConfig, 10) || 100; // Default to 100 if invalid
+      if (title.length > maxLength) {
+        setTitleError(`Title must not exceed ${maxLength} characters.`);
+      } else {
+        setTitleError(null);
+      }
+    }
+  }, [title, isTitleLengthLoading, isTitleLengthError, titleLengthConfig]);
+
   const handleTitleBlur = async () => {
     if (title === (task.title || '') || !title.trim()) {
       setTitle(task.title || '');
       setEditingTitle(false);
       return;
     }
+
+    if (titleError) {
+      alert(titleError);
+      return;
+    }
+
     try {
       await updateTaskTitle({ id: task.id, title, createdBy: accountId }).unwrap();
       setEditingTitle(false);
+      onTaskUpdated();
     } catch (err: any) {
       alert(`Unable to update title: ${err?.data?.message || 'Unknown error'}`);
       setTitle(task.title || '');
@@ -275,15 +260,10 @@ const TaskItem: React.FC<TaskItemProps> = ({
   const handleEpicSelect = async (epicId: string | null) => {
     const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
     const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
-    if (!isLeaderOrManager) {
-      return; // Tooltip handles the feedback
-    }
+    if (!isLeaderOrManager) return;
+
     try {
-      await updateTaskEpic({
-        id: task.id,
-        epicId,
-        createdBy: accountId,
-      }).unwrap();
+      await updateTaskEpic({ id: task.id, epicId, createdBy: accountId }).unwrap();
       setIsEpicMenuOpen(false);
       onTaskUpdated();
     } catch (err: any) {
@@ -291,12 +271,17 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
   };
 
-  const handleOpenWorkItem = () => {
-    setIsWorkItemOpen(true);
-  };
+  const handleOpenWorkItem = () => setIsWorkItemOpen(true);
+  const handleCloseWorkItem = () => setIsWorkItemOpen(false);
 
-  const handleCloseWorkItem = () => {
-    setIsWorkItemOpen(false);
+  const getTaskIcon = (type: string | null | undefined): string => {
+    const iconMap: Record<string, string> = {
+      story: storyIcon,
+      bug: bugIcon,
+      epic: epicIcon,
+      task: taskIcon,
+    };
+    return iconMap[(type?.toLowerCase() as string) || 'task'] || taskIcon;
   };
 
   const renderEpicName = () => {
@@ -305,10 +290,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
     if (!task.epicName) {
       return (
         <div className='relative flex justify-start pl-2 min-w-[100px]'>
-          <Tooltip
-            message='You are not authorized to use this feature.'
-            show={!isLeaderOrManager}
-          >
+          <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
             <button
               onClick={() => isLeaderOrManager && setIsEpicMenuOpen(true)}
               className={`text-xs text-gray-600 border border-gray-600 rounded px-2 py-[1px] whitespace-nowrap ${
@@ -355,16 +337,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
     }
 
     let displayEpicName = task.epicName;
-    if (displayEpicName.length > 12) {
-      displayEpicName = displayEpicName.substring(0, 12) + '...';
-    }
+    if (displayEpicName.length > 12) displayEpicName = displayEpicName.substring(0, 12) + '...';
 
     return (
       <div className='relative flex justify-start pl-2 min-w-[100px]'>
-        <Tooltip
-          message='You are not authorized to use this feature.'
-          show={!isLeaderOrManager}
-        >
+        <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
           <span
             className={`text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] truncate ${
               isLeaderOrManager ? 'hover:bg-purple-50 cursor-pointer' : 'opacity-50 cursor-not-allowed'
@@ -422,6 +399,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
       </div>
     );
 
+  // Determine current style based on status
+  const currentStyle =
+    staticStatusOptions.find((opt) => opt.label === status) ||
+    staticStatusOptions[0]; // Default to 'TO DO' style if status not found
+
   return (
     <div
       ref={ref}
@@ -441,15 +423,20 @@ const TaskItem: React.FC<TaskItemProps> = ({
         {task.id}
       </span>
       {editingTitle ? (
-        <input
-          ref={titleInputRef}
-          type='text'
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
-          className='text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full'
-        />
+        <div className='relative'>
+          <input
+            ref={titleInputRef}
+            type='text'
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            onKeyDown={(e) => e.key === 'Enter' && handleTitleBlur()}
+            className={`text-sm text-gray-700 truncate border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full ${
+              titleError ? 'border-red-500' : ''
+            }`}
+          />
+          {titleError && <p className='text-xs text-red-500 mt-1'>{titleError}</p>}
+        </div>
       ) : (
         <span
           ref={titleRef}
@@ -472,7 +459,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
         </button>
         {openDropdown && (
           <div className='absolute z-10 top-full mt-1 w-fit bg-white border border-gray-200 rounded shadow-md'>
-            {statusOptions.map((option) => (
+            {staticStatusOptions.map((option: typeof staticStatusOptions[0]) => (
               <div
                 key={option.value}
                 onClick={() => handleStatusChange(option.value)}
@@ -565,7 +552,6 @@ const Section: React.FC<SectionProps> = ({
   const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
-  // Check user role
   const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
   const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
 
@@ -578,22 +564,13 @@ const Section: React.FC<SectionProps> = ({
     item: { sprintId },
     drop: isCompleted
       ? undefined
-      : (item: {
-          id: string;
-          index: number;
-          sprintId: number | null;
-          status: string | null | undefined;
-        }) => {
-          if (item.sprintId !== sprintId) {
-            moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
-          }
+      : (item: { id: string; index: number; sprintId: number | null; status: string | null | undefined }) => {
+          if (item.sprintId !== sprintId) moveTask(item.id, sprintId, sprintId === null ? 'TO DO' : null);
         },
     collect: (monitor) => ({ isOver: monitor.isOver() }),
   }));
 
-  if (!isCompleted) {
-    drop(ref);
-  }
+  if (!isCompleted) drop(ref);
 
   const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
   const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
@@ -617,9 +594,7 @@ const Section: React.FC<SectionProps> = ({
   const handleStartSprint = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLeaderOrManager) return;
-    if (sprintId) {
-      setIsStartPopupOpen(true);
-    }
+    if (sprintId) setIsStartPopupOpen(true);
   };
 
   const handleEditSprint = (e: React.MouseEvent) => {
@@ -646,18 +621,13 @@ const Section: React.FC<SectionProps> = ({
   const handleOpenGenerateTasksPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLeaderOrManager) return;
-    if (sprintId) {
-      setIsGenerateTasksPopupOpen(true);
-    }
+    if (sprintId) setIsGenerateTasksPopupOpen(true);
   };
 
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isLeaderOrManager) return;
-    if (
-      sprintId &&
-      window.confirm('Are you sure you want to delete this sprint and all its tasks?')
-    ) {
+    if (sprintId && window.confirm('Are you sure you want to delete this sprint and all its tasks?')) {
       try {
         await deleteSprint(sprintId.toString()).unwrap();
         onTaskUpdated();
@@ -671,11 +641,8 @@ const Section: React.FC<SectionProps> = ({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setIsMoreMenuOpen(false);
-      }
-    };
+    const handleClickOutside = (e: MouseEvent) =>
+      moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node) && setIsMoreMenuOpen(false);
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -683,21 +650,15 @@ const Section: React.FC<SectionProps> = ({
   return (
     <div
       ref={ref}
-      className={`bg-white rounded-lg border border-gray-200 mb-4 ${
-        isOver && !isCompleted ? 'bg-blue-50' : ''
-      }`}
+      className={`bg-white rounded-lg border border-gray-200 mb-4 ${isOver && !isCompleted ? 'bg-blue-50' : ''}`}
     >
       {sprintId === null ? (
         <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
           <span className='text-sm font-semibold text-gray-800'>
-            Backlogㅤ
-            <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
+            Backlogㅤ<span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
           </span>
           <div className='flex items-center space-x-2'>
-            <Tooltip
-              message='You are not authorized to use this feature.'
-              show={!isLeaderOrManager}
-            >
+            <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
               <button
                 onClick={handleOpenPlanTasksPopup}
                 className={`bg-gradient-to-r from-purple-600 to-blue-500 rounded-xl text-sm text-white font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm ${
@@ -711,10 +672,7 @@ const Section: React.FC<SectionProps> = ({
                 Plan Tasks
               </button>
             </Tooltip>
-            <Tooltip
-              message='You are not authorized to use this feature.'
-              show={!isLeaderOrManager}
-            >
+            <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
               <button
                 onClick={handleCreateSprint}
                 className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
@@ -729,190 +687,136 @@ const Section: React.FC<SectionProps> = ({
             </Tooltip>
           </div>
         </div>
-      ) : (
-        isSprint &&
-        sprint && (
-          <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
-            <div className='flex items-center space-x-2'>
-              <span className='text-sm font-semibold text-gray-800'>
-                {sprint.name}
-                {'ㅤ'}
-                <span className='text-gray-700 font-normal'>
-                  {hasNoDates ? (
-                    <Tooltip
-                      message='You are not authorized to use this feature.'
-                      show={!isLeaderOrManager}
+      ) : isSprint && sprint ? (
+        <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
+          <div className='flex items-center space-x-2'>
+            <span className='text-sm font-semibold text-gray-800'>
+              {sprint.name}
+              {'ㅤ'}
+              <span className='text-gray-700 font-normal'>
+                {hasNoDates ? (
+                  <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
+                    <button
+                      className={`inline-flex items-center text-xs text-black px-1 py-1 rounded ${
+                        isLeaderOrManager ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'
+                      }`}
+                      onClick={handleEditSprint}
+                      disabled={!isLeaderOrManager}
                     >
-                      <button
-                        className={`inline-flex items-center text-xs text-black px-1 py-1 rounded ${
-                          isLeaderOrManager ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'
-                        }`}
-                        onClick={handleEditSprint}
-                        disabled={!isLeaderOrManager}
+                      <svg
+                        fill='none'
+                        viewBox='0 0 16 16'
+                        role='presentation'
+                        className='w-3.5 h-3.5 mr-1'
+                        style={{ color: 'var(--ds-icon, #000000)' }}
                       >
-                        <svg
-                          fill='none'
-                          viewBox='0 0 16 16'
-                          role='presentation'
-                          className='w-3.5 h-3.5 mr-1'
-                          style={{ color: 'var(--ds-icon, #000000)' }}
-                        >
-                          <path
-                            fill='currentColor'
-                            fillRule='evenodd'
-                            clipRule='evenodd'
-                            d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
-                          />
-                        </svg>
-                        Add Dates
-                      </button>
-                    </Tooltip>
-                  ) : (
-                    `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
-                      tasks.length
-                    } work items)`
-                  )}
-                </span>
+                        <path
+                          fill='currentColor'
+                          fillRule='evenodd'
+                          clipRule='evenodd'
+                          d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
+                        />
+                      </svg>
+                      Add Dates
+                    </button>
+                  </Tooltip>
+                ) : (
+                  `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${tasks.length} work items)`
+                )}
               </span>
-            </div>
-            <div className='flex items-center space-x-2'>
-              {sprint.status !== 'COMPLETED' && (
-                <Tooltip
-                  message='You are not authorized to use this feature.'
-                  show={!isLeaderOrManager}
-                >
-                  <button
-                    onClick={handleOpenGenerateTasksPopup}
-                    className={`bg-gradient-to-r from-purple-600 to-blue-500 rounded-xl text-sm text-white font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm ${
-                      isLeaderOrManager
-                        ? 'hover:from-purple-700 hover:to-blue-600 hover:shadow-md'
-                        : 'opacity-50 cursor-not-allowed'
-                    }`}
-                    disabled={!isLeaderOrManager}
-                  >
-                    <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
-                    More Tasks
-                  </button>
-                </Tooltip>
-              )}
-              {sprint.status === 'FUTURE' && (
-                <>
-                  {hasNoDates ? (
-                    <Tooltip
-                      message='You are not authorized to use this feature.'
-                      show={!isLeaderOrManager}
-                    >
-                      <button
-                        onClick={handleStartSprint}
-                        disabled={tasks.length === 0 || hasActiveSprint || !isLeaderOrManager}
-                        className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                          tasks.length === 0 || hasActiveSprint || !isLeaderOrManager
-                            ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                            : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                        }`}
-                      >
-                        Start Sprint
-                      </button>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip
-                      message='You are not authorized to use this feature.'
-                      show={!isLeaderOrManager}
-                    >
-                      <button
-                        onClick={handleStartSprint}
-                        disabled={tasks.length === 0 || hasActiveSprint || !isLeaderOrManager}
-                        className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                          tasks.length === 0 || hasActiveSprint || !isLeaderOrManager
-                            ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                            : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                        }`}
-                      >
-                        Start Sprint
-                      </button>
-                    </Tooltip>
-                  )}
-                </>
-              )}
-              {sprint.status === 'ACTIVE' && (
-                <Tooltip
-                  message='You are not authorized to use this feature.'
-                  show={!isLeaderOrManager}
-                >
-                  <button
-                    onClick={handleOpenCompleteSprintPopup}
-                    disabled={tasks.length === 0 || !isLeaderOrManager}
-                    className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                      tasks.length === 0 || !isLeaderOrManager
-                        ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                        : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                    }`}
-                  >
-                    Complete Sprint
-                  </button>
-                </Tooltip>
-              )}
-              {sprint.status === 'COMPLETED' && (
-                <span className='text-sm font-medium text-gray-500'>COMPLETED</span>
-              )}
-              {sprint.status !== 'FUTURE' &&
-                sprint.status !== 'ACTIVE' &&
-                sprint.status !== 'COMPLETED' && (
-                  <span className='text-sm text-red-500'>Unknown status: {sprint.status}</span>
-                )}
-              <div className='relative' ref={moreMenuRef}>
+            </span>
+          </div>
+          <div className='flex items-center space-x-2'>
+            {sprint.status !== 'COMPLETED' && (
+              <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
                 <button
-                  className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
-                    isMoreMenuOpen
-                      ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]'
-                      : 'border-transparent'
+                  onClick={handleOpenGenerateTasksPopup}
+                  className={`bg-gradient-to-r from-purple-600 to-blue-500 rounded-xl text-sm text-white font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm ${
+                    isLeaderOrManager
+                      ? 'hover:from-purple-700 hover:to-blue-600 hover:shadow-md'
+                      : 'opacity-50 cursor-not-allowed'
                   }`}
-                  onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                  aria-label='Sprint options'
+                  disabled={!isLeaderOrManager}
                 >
-                  <MoreHorizontal size={16} />
+                  <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
+                  More Tasks
                 </button>
-                {isMoreMenuOpen && (
-                  <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
-                    <Tooltip
-                      message='You are not authorized to use this feature.'
-                      show={!isLeaderOrManager}
+              </Tooltip>
+            )}
+            {sprint.status === 'FUTURE' && (
+              <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
+                <button
+                  onClick={handleStartSprint}
+                  disabled={tasks.length === 0 || hasActiveSprint || !isLeaderOrManager}
+                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                    tasks.length === 0 || hasActiveSprint || !isLeaderOrManager
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
+                  }`}
+                >
+                  Start Sprint
+                </button>
+              </Tooltip>
+            )}
+            {sprint.status === 'ACTIVE' && (
+              <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
+                <button
+                  onClick={handleOpenCompleteSprintPopup}
+                  disabled={tasks.length === 0 || !isLeaderOrManager}
+                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                    tasks.length === 0 || !isLeaderOrManager
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                      : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
+                  }`}
+                >
+                  Complete Sprint
+                </button>
+              </Tooltip>
+            )}
+            {sprint.status === 'COMPLETED' && <span className='text-sm font-medium text-gray-500'>COMPLETED</span>}
+            {sprint.status !== 'FUTURE' && sprint.status !== 'ACTIVE' && sprint.status !== 'COMPLETED' && (
+              <span className='text-sm text-red-500'>Unknown status: {sprint.status}</span>
+            )}
+            <div className='relative' ref={moreMenuRef}>
+              <button
+                className={`w-8 h-8 rounded-lg text-gray-500 flex items-center justify-center hover:bg-gray-200 ${
+                  isMoreMenuOpen ? 'border border-blue-500 shadow-[0_0_0_3px_rgba(59,130,246,0.3)]' : 'border-transparent'
+                }`}
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                aria-label='Sprint options'
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {isMoreMenuOpen && (
+                <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
+                  <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        isLeaderOrManager ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      onClick={handleEditSprint}
+                      disabled={!isLeaderOrManager}
                     >
-                      <button
-                        className={`block w-full text-left px-4 py-2 text-sm ${
-                          isLeaderOrManager
-                            ? 'text-gray-700 hover:bg-gray-100'
-                            : 'text-gray-400 cursor-not-allowed'
-                        }`}
-                        onClick={handleEditSprint}
-                        disabled={!isLeaderOrManager}
-                      >
-                        Edit Sprint
-                      </button>
-                    </Tooltip>
-                    <Tooltip
-                      message='You are not authorized to use this feature.'
-                      show={!isLeaderOrManager}
+                      Edit Sprint
+                    </button>
+                  </Tooltip>
+                  <Tooltip message='You are not authorized to use this feature.' show={!isLeaderOrManager}>
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-sm ${
+                        isLeaderOrManager ? 'text-red-600 hover:bg-red-50' : 'text-gray-400 cursor-not-allowed'
+                      }`}
+                      onClick={handleDeleteSprint}
+                      disabled={!isLeaderOrManager}
                     >
-                      <button
-                        className={`block w-full text-left px-4 py-2 text-sm ${
-                          isLeaderOrManager
-                            ? 'text-red-600 hover:bg-red-50'
-                            : 'text-gray-400 cursor-not-allowed'
-                        }`}
-                        onClick={handleDeleteSprint}
-                        disabled={!isLeaderOrManager}
-                      >
-                        Delete Sprint
-                      </button>
-                    </Tooltip>
-                  </div>
-                )}
-              </div>
+                      Delete Sprint
+                    </button>
+                  </Tooltip>
+                </div>
+              )}
             </div>
           </div>
-        )
-      )}
+        </div>
+      ) : null}
       <div className='divide-y divide-gray-200'>
         {tasks.length === 0 ? (
           <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-4 space-y-4 border border-dashed rounded-md'>
@@ -921,26 +825,22 @@ const Section: React.FC<SectionProps> = ({
                 {sprintId === null ? 'Your backlog is empty' : 'Your sprint is empty'}
               </p>
               <p className='text-sm text-gray-500'>
-                {sprintId === null
-                  ? 'No tasks available in the backlog.'
-                  : 'No tasks available in this sprint.'}
+                {sprintId === null ? 'No tasks available in the backlog.' : 'No tasks available in this sprint.'}
               </p>
             </div>
           </div>
         ) : (
-          <>
-            {tasks.map((task, index) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                index={index}
-                sprintId={sprintId}
-                epics={epics}
-                moveTask={moveTask}
-                onTaskUpdated={onTaskUpdated}
-              />
-            ))}
-          </>
+          tasks.map((task, index) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              index={index}
+              sprintId={sprintId}
+              epics={epics}
+              moveTask={moveTask}
+              onTaskUpdated={onTaskUpdated}
+            />
+          ))
         )}
       </div>
       <StartSprintPopup

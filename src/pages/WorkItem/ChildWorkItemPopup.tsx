@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './ChildWorkItemPopup.css';
 import Swal from 'sweetalert2';
-import { useAuth, type Role } from '../../services/AuthContext';
+import { useAuth } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
@@ -12,15 +12,8 @@ import {
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
-import {
-  useGetWorkItemLabelsBySubtaskQuery,
-  useDeleteWorkItemLabelMutation,
-} from '../../services/workItemLabelApi';
-import {
-  useDeleteSubtaskFileMutation,
-  useGetSubtaskFilesBySubtaskIdQuery,
-  useUploadSubtaskFileMutation,
-} from '../../services/subtaskFileApi';
+import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation,useGetSubtaskFilesBySubtaskIdQuery,useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -33,10 +26,7 @@ import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useSearchParams } from 'react-router-dom';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -283,13 +273,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         subtaskId: subtaskDetail?.id,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -352,12 +340,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      console.log('✅ Subtask updated');
+      console.log('Subtask updated');
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask', err);
-      //alert('❌ Update failed');
+      console.error('Failed to update subtask', err);
     }
   };
 
@@ -389,13 +376,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      console.log(
-        `✅ Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
-      );
+      console.log(`Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`);
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask percent complete', err);
+      console.error('Failed to update subtask percent complete', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -440,7 +425,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
+      console.log(`Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
       await refetchSubtask();
       await refetchActivityLogs();
       Swal.fire({
@@ -457,7 +442,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         },
       });
     } catch (err) {
-      console.error('❌ Failed to update subtask actual cost', err);
+      console.error('Failed to update subtask actual cost', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -490,12 +475,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         createdBy: accountId,
       }).unwrap();
 
-      //alert(`✅ Uploaded file "${file.name}" successfully!`);
       refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Upload failed:', error);
-      //alert('❌ Upload failed!');
+      console.error('Upload failed:', error);
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -513,30 +496,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     if (!deleteInfo) return;
     try {
       await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
-      // alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Error delete file:', error);
-      //alert("❌ Delete file failed");
+      console.error('Error delete file:', error);
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
-  //   try {
-  //     await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
-  //     //alert('✅ File deleted!');
-  //     await refetchAttachments();
-  //     await refetchActivityLogs();
-  //   } catch (error) {
-  //     console.error('❌ Delete failed:', error);
-  //     //alert('❌ Delete failed!');
-  //   }
-  // };
 
   const handleSave = async (id: number, originalContent: string) => {
     const newContent = editedContent[id];
@@ -552,14 +520,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -594,11 +561,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       }).unwrap();
 
       setSubtaskDetail({ ...subtaskDetail, status: newStatus });
-      console.log(`✅ Updated subtask ${subtaskDetail.id} to ${newStatus}`);
+      console.log(`Updated subtask ${subtaskDetail.id} to ${newStatus}`);
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask status', err);
+      console.error('Failed to update subtask status', err);
     }
   };
 
@@ -638,15 +605,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
           placeholder='Enter subtask title'
           defaultValue={subtaskDetail?.title}
           onChange={(e) => {
-            if (e.target.value.length <= 65) {
+            if (e.target.value.length <= 100) {
               setNewTitle(e.target.value);
             } else {
-              alert('Max 65 characters!');
+              alert('Max 100 characters!');
             }
           }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '600px',
+            width: '800px',
             fontWeight: 'bold',
           }}
         />
@@ -875,7 +842,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -914,7 +881,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            alert('User not identified. Please log in again.');
                             return;
                           }
                           await createSubtaskComment({
@@ -923,14 +890,13 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          //alert('✅ Comment posted');
-                          console.error('✅ Comment posted');
+                          console.error('Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                          
                         }
                       }}
                     >
@@ -1091,7 +1057,6 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                   <div className='flex flex-col gap-2 w-full relative'>
                     <label className='font-semibold'>Labels</label>
 
-                    {/* Tag list + input */}
                     <div
                       className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}

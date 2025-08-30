@@ -1,4 +1,3 @@
-
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -438,7 +437,10 @@ export const taskApi = createApi({
       providesTags: ['Task'],
     }),
 
-    updateTaskSprint: builder.mutation<TaskResponseDTO, { id: string; sprintId: number | null; createdBy: number }>({
+    updateTaskSprint: builder.mutation<
+      TaskResponseDTO,
+      { id: string; sprintId: number | null; createdBy: number }
+    >({
       query: ({ id, sprintId, createdBy }) => ({
         url: `task/${id}/sprint`,
         method: 'PATCH',
@@ -498,7 +500,7 @@ export const taskApi = createApi({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': '*/*',
+          Accept: '*/*',
         },
         body: tasks,
       }),
@@ -506,13 +508,16 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateTaskEpic: builder.mutation<TaskResponseDTO, { id: string; epicId: string | null; createdBy: number }>({
+    updateTaskEpic: builder.mutation<
+      TaskResponseDTO,
+      { id: string; epicId: string | null; createdBy: number }
+    >({
       query: ({ id, epicId, createdBy }) => ({
         url: `task/${id}/epic`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': '*/*',
+          Accept: '*/*',
         },
         body: JSON.stringify({ epicId, createdBy }),
       }),
@@ -526,7 +531,7 @@ export const taskApi = createApi({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': '*/*',
+          Accept: '*/*',
         },
         body: {},
       }),
@@ -564,17 +569,24 @@ export const taskApi = createApi({
       invalidatesTags: ['Task'],
     }),
 
-    updateActualCost: builder.mutation<
-      void,
-      { id: string; actualCost: number; createdBy: number }
-    >({
-      query: ({ id, actualCost, createdBy }) => ({
-        url: `task/${id}/actual-cost?createdBy=${createdBy}`,
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(actualCost),
+    updateActualCost: builder.mutation<void, { id: string; actualCost: number; createdBy: number }>(
+      {
+        query: ({ id, actualCost, createdBy }) => ({
+          url: `task/${id}/actual-cost?createdBy=${createdBy}`,
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(actualCost),
+        }),
+        invalidatesTags: ['Task'],
+      }
+    ),
+
+    recalculateTaskPlannedHours: builder.mutation<any, { id: string }>({
+      query: ({ id }) => ({
+        url: `task/${id}/recalculate-planned-hours`,
+        method: 'POST',
       }),
       invalidatesTags: ['Task'],
     }),
@@ -609,4 +621,5 @@ export const {
   useUpdatePercentCompleteMutation,
   useUpdatePlannedCostMutation,
   useUpdateActualCostMutation,
+  useRecalculateTaskPlannedHoursMutation
 } = taskApi;

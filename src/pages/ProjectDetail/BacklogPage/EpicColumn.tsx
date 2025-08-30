@@ -116,7 +116,7 @@ const EpicColumn: React.FC<EpicColumnProps> = ({ epics, onCreateEpic }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Epic</h3>
-        <button className="text-xl text-gray-600 hover:text-gray-800">×</button>
+        {/* <button className="text-xl text-gray-600 hover:text-gray-800">×</button> */}
       </div>
 
       {/* Epic List */}

@@ -630,7 +630,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           </button>
           <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}></button>
           {isMenuDropdownOpen && (
-            <div className='absolute z-10 right-0 bottom-full mb-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
+            <div className='absolute z-20 right-0 top-full mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
                 onClick={() => {
                   setIsCreateModalOpen(true); // ✅ mở modal

@@ -41,30 +41,18 @@ import {
   useUpdateTaskCommentMutation,
   useDeleteTaskCommentMutation,
 } from '../../services/taskCommentApi';
-import {
-  useGetTaskFilesByTaskIdQuery,
-  useUploadTaskFileMutation,
-  useDeleteTaskFileMutation,
-} from '../../services/taskFileApi';
+import {useGetTaskFilesByTaskIdQuery,useUploadTaskFileMutation,useDeleteTaskFileMutation} from '../../services/taskFileApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
-import {
-  useLazyGetTaskAssignmentsByTaskIdQuery,
-  useCreateTaskAssignmentQuickMutation,
-  useDeleteTaskAssignmentMutation,
-} from '../../services/taskAssignmentApi';
+import {useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
-// import type { useState } from 'react';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
@@ -196,8 +184,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-    ? 10000000000
-    : parseInt(actualCostConfig.data.maxValue, 10);
+      ? 10000000000
+      : parseInt(actualCostConfig.data.maxValue, 10);
 
   const {
     data: attachments = [],
@@ -219,30 +207,15 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (!deleteInfo) return;
     try {
       await deleteTaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
-      // alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Error delete file:', error);
-      //alert("❌ Delete file failed");
+      console.error('Error delete file:', error);
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
-  //   try {
-  //     await deleteTaskFile({ id, createdBy: accountId }).unwrap();
-  //     alert('✅ Delete file successfully!');
-  //     await refetchAttachments();
-  //     await refetchActivityLogs();
-  //   } catch (error) {
-  //     console.error('❌ Error delete file:', error);
-  //     alert('❌ Delete file failed');
-  //   }
-  // };
 
   const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
     const startX = e.clientX;
@@ -269,32 +242,228 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   };
 
   const handlePlannedStartDateTaskChange = async () => {
-    if (plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    await refetchSubtasks();
+    if (!taskData || !plannedStartDate || plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+
+    // Validate against epic's startDate
+    if (epicData?.startDate && new Date(plannedStartDate) < new Date(epicData.startDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Task Start Date cannot be before Epic Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // Validate against project startDate (fallback)
+    if (
+      !epicData?.startDate &&
+      projectData?.data?.startDate &&
+      new Date(plannedStartDate) < new Date(projectData.data.startDate)
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Task Start Date cannot be before Project Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // Validate against task's plannedEndDate
+    if (plannedEndDate && new Date(plannedStartDate) >= new Date(plannedEndDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Start Date must be before Due Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // test date subtask
+    const effectiveEndDate = plannedEndDate || taskData.plannedEndDate || new Date().toISOString();
+    const dateValidation = await validateSubtaskDates(plannedStartDate, effectiveEndDate);
+    if (!dateValidation.isValid) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        text: dateValidation.message,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
     try {
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
-      await refetchActivityLogs();
-      console.log('✅ Start date updated');
+      await Promise.all([refetchActivityLogs(), refetchSubtasks()]); 
+      console.log('Start date updated');
     } catch (err) {
-      console.error('❌ Failed to update start date', err);
+      console.error('Failed to update start date', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update task start date.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
     }
   };
 
   const handlePlannedEndDateTaskChange = async () => {
-    if (plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    await refetchSubtasks();
+    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+
+    // Validate against epic's endDate
+    if (epicData?.endDate && new Date(plannedEndDate) > new Date(epicData.endDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Task Due Date cannot be after Epic Due Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // Validate against project endDate (fallback)
+    if (
+      !epicData?.endDate &&
+      projectData?.data?.endDate &&
+      new Date(plannedEndDate) > new Date(projectData.data.endDate)
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Task Due Date cannot be after Project End Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // Validate against task's plannedStartDate
+    if (plannedStartDate && new Date(plannedEndDate) <= new Date(plannedStartDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Due Date must be after Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // compare subtask date
+    const effectiveStartDate = plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
+    const dateValidation = await validateSubtaskDates(effectiveStartDate, plannedEndDate);
+    if (!dateValidation.isValid) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        text: dateValidation.message,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
     try {
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
         createdBy: accountId,
       }).unwrap();
-      await refetchActivityLogs();
-      console.log('✅ End date updated');
+      await Promise.all([refetchActivityLogs(), refetchSubtasks()]); // Refetch cả activity logs và subtasks
+      console.log('End date updated');
     } catch (err) {
-      console.error('❌ Failed to update end date', err);
+      console.error('Failed to update end date', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update task end date.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
     }
   };
 
@@ -326,10 +495,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+      console.log(`Updated task ${taskId} percent complete to ${newPercentComplete}`);
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update task percent complete', err);
+      console.error('Failed to update task percent complete', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -374,7 +543,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated task ${taskId} actual cost to ${newActualCost}`);
+      console.log(`Updated task ${taskId} actual cost to ${newActualCost}`);
       await refetchTask();
       await refetchActivityLogs();
       Swal.fire({
@@ -391,7 +560,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         },
       });
     } catch (err) {
-      console.error('❌ Failed to update task actual cost', err);
+      console.error('Failed to update task actual cost', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -411,11 +580,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   const handleTitleTaskChange = async () => {
     try {
       await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
-      //alert('✅ Update title task successfully!');
       await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
-      //alert('✅ Error update task title!');
       console.error('Error update task title:', err);
     }
   };
@@ -445,20 +612,68 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       setSprintId(newSprintId);
       await Promise.all([refetchActivityLogs(), refetchTask()]);
       console.log('Update sprint task successfully!');
-      //alert('✅ Sprint updated successfully');
     } catch (err: any) {
       console.error('Error update sprint:', err);
-      //alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
     }
   };
 
   const {
     data: subtaskData = [],
-    isLoading,
-    refetch,
+    isLoading: isSubtasksLoading,
+    refetch: refetchSubtasks,
   } = useGetSubtasksByTaskIdQuery(taskId, {
     skip: !isOpen || !taskId,
   });
+
+  const validateSubtaskDates = async (newStartDate: string, newEndDate: string) => {
+    await refetchSubtasks();
+    if (!subtaskData || subtaskData.length === 0) return { isValid: true };
+
+    const taskStart = new Date(newStartDate);
+    const taskEnd = new Date(newEndDate);
+
+    for (const subtask of subtaskData) {
+      const subtaskStart = subtask.startDate ? new Date(subtask.startDate) : null;
+      const subtaskEnd = subtask.endDate ? new Date(subtask.endDate) : null;
+
+      // compare subtaskStartDate
+      if (subtaskStart) {
+        if (subtaskStart < taskStart) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (subtaskStart > taskEnd) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+
+      // compare subtaskEnd
+      if (subtaskEnd) {
+        if (subtaskEnd < taskStart) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (subtaskEnd > taskEnd) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+    }
+    return { isValid: true };
+  };
 
   const totalSubtasks = subtaskData.length;
   const completedSubtasks = subtaskData.filter((item) => item.status === 'DONE').length;
@@ -494,9 +709,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
   React.useEffect(() => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
-        // Kiểm tra nếu assignees không thay đổi
         if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
-          return prev; // Không cập nhật nếu giống nhau
+          return prev; 
         }
         return { ...prev, [taskId]: assignees };
       });
@@ -564,13 +778,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         subtaskId: null,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -658,7 +870,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
@@ -696,7 +908,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         createdBy: accountId,
       }).unwrap();
 
-      refetch();
+      refetchSubtasks();
       await refetchActivityLogs();
       await refetchTask();
     } catch (err) {
@@ -735,7 +947,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
       await refetchTask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Error update work type:', err);
+      console.error('Error update work type:', err);
     }
   };
 
@@ -822,14 +1034,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               placeholder='Enter task title'
               value={title}
               onChange={(e) => {
-                if (e.target.value.length <= 65) {
+                if (e.target.value.length <= 100) {
                   setTitle(e.target.value);
                 } else {
-                  alert('Max 65 characters!');
+                  alert('Max 100 characters!');
                 }
               }}
               onBlur={handleTitleTaskChange}
-              style={{ width: '500px' }}
+              style={{ width: '600px' }}
               disabled={!canEdit}
             />
 
@@ -885,7 +1097,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  setFileError(''); // Reset error message
+                  setFileError(''); 
                   if (file) {
                     // Check file size (10MB = 10 * 1024 * 1024 bytes)
                     if (file.size > 10 * 1024 * 1024) {
@@ -904,7 +1116,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
-                      console.error('❌ Upload failed:', err);
+                      console.error('Upload failed:', err);
                     }
                   }
                 }}
@@ -1086,9 +1298,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${
-                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -1145,21 +1356,20 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                 }
                                 setShowSuggestionList(false);
                                 setSelectedSuggestions([]);
-                                await refetch();
+                                await refetchSubtasks();
                                 await refetchActivityLogs();
                                 setIsEvaluationPopupOpen(true);
                               } catch (err) {
-                                console.error('❌ Failed to create subtasks', err);
+                                console.error('Failed to create subtasks', err);
                               } finally {
                                 setLoadingCreate(false);
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
-                              selectedSuggestions.length === 0 || loadingCreate
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                            }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1223,7 +1433,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
               </div>
 
               <div className='issue-table'>
-                {isLoading ? (
+                {isSubtasksLoading ? (
                   <p>Loading...</p>
                 ) : (
                   <div className='scrollable-table-wrapper'>
@@ -1308,13 +1518,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                           reporterId: item.reporterId,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        //alert('✅ Updated summary');
-                                        console.log('✅ Updated summary');
-                                        await refetch();
+                                        console.log('Updated summary');
+                                        await refetchSubtasks();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to update summary:', err);
-                                        //alert('❌ Failed to update summary');
+                                        console.error('Failed to update summary:', err);
+                                        
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1352,12 +1561,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       reporterId: item.reporterId,
                                       createdBy: accountId,
                                     }).unwrap();
-                                    console.log('✅ Updated priority');
-                                    await refetch();
+                                    console.log('Updated priority');
+                                    await refetchSubtasks();
                                     await refetchActivityLogs();
                                   } catch (err) {
-                                    console.error('❌ Failed to update priority:', err);
-                                    //alert('❌ Failed to update priority');
+                                    console.error('Failed to update priority:', err);
                                   }
                                 }}
                                 style={{
@@ -1405,13 +1613,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      //alert('✅ Updated subtask assignee');
-                                      console.log('✅ Updated subtask assignee');
-                                      await refetch();
+                                      console.log('Updated subtask assignee');
+                                      await refetchSubtasks();
                                       await refetchActivityLogs();
                                     } catch (err) {
-                                      console.error('❌ Failed to update subtask:', err);
-                                      //alert('❌ Failed to update subtask');
+                                      console.error('Failed to update subtask:', err);
+                                     
                                     }
                                   }}
                                   style={{
@@ -1497,14 +1704,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         createdBy: accountId,
                                         reporterId: accountId,
                                       }).unwrap();
-                                      console.log('✅ Create successfully');
+                                      console.log('Create successfully');
                                     } catch (err) {
-                                      console.error('❌ Error to call createSubtask:', err);
+                                      console.error('Error to call createSubtask:', err);
                                     }
 
                                     setNewSubtaskTitle('');
                                     setShowSubtaskInput(false);
-                                    await refetch();
+                                    await refetchSubtasks();
                                     await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('Error create subtask:', err);
@@ -1672,7 +1879,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -1711,7 +1918,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            //alert('❌ User not identified. Please log in again.');
+                           
                             return;
                           }
                           createTaskComment({
@@ -1720,13 +1927,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          //alert('✅ Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                         
                         }
                       }}
                     >
@@ -1813,7 +2019,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                   ),
                                 }));
                               } catch (err) {
-                                console.error('❌ Failed to delete assignee:', err);
+                                console.error('Failed to delete assignee:', err);
                               }
                             }}
                           >
@@ -1826,7 +2032,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     <div className='dropdown-select-wrapper'>
                       <select
                         style={{ width: '150px' }}
-                        value={selectedAssigneeId} // <-- điều khiển bằng state
+                        value={selectedAssigneeId} 
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
                           if (!selectedId) return;
@@ -1836,7 +2042,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                             const data = await getTaskAssignments(taskId).unwrap();
                             setTaskAssignmentMap((prev) => ({ ...prev, [taskId]: data }));
 
-                            // Reset dropdown về trạng thái ban đầu
                             setSelectedAssigneeId('');
                           } catch (err) {
                             console.error('Error assigning task', err);
@@ -1867,8 +2072,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1940,7 +2145,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                   <div className='flex flex-col gap-2 w-full relative'>
                     <label className='font-semibold'>Labels</label>
 
-                    {/* Tag list + input */}
                     <div
                       className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
@@ -2001,8 +2205,8 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2069,10 +2273,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           priority: newPriority,
                           createdBy: accountId,
                         }).unwrap();
-                        await refetch();
+                        await refetchSubtasks();
                         await refetchActivityLogs();
                       } catch (err) {
-                        console.error('❌ Error updating priority:', err);
+                        console.error('Error updating priority:', err);
                       }
                     }}
                     style={{
@@ -2105,6 +2309,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
                     }
                     onChange={(e) => {
+                      refetchSubtasks();
                       const selectedDate = e.target.value;
                       if (!selectedDate) {
                         setPlannedStartDate('');
@@ -2174,7 +2379,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
-                    disabled={isEpicLoading}
+                    disabled={isEpicLoading || isSubtasksLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2194,6 +2399,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }
                     max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
+                      refetchSubtasks();
                       const selectedDate = e.target.value;
                       if (!selectedDate) {
                         setPlannedEndDate('');
@@ -2263,7 +2469,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     }}
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
-                    disabled={isEpicLoading}
+                    disabled={isEpicLoading || isSubtasksLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2285,11 +2491,9 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        //alert('✅ Updated successfully');
                         await refetchTask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        //alert('❌ Update failed');
                         console.error(err);
                       }
                     }}

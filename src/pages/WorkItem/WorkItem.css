@@ -342,8 +342,7 @@ input {
 
 .modal-cont {
   position: relative;
-  /* 👈 Quan trọng để định vị */
-  left: 330px;
+  left: 230px;
   bottom: 25px;
 }
 

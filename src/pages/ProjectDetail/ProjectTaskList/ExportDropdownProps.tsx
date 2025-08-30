@@ -42,7 +42,7 @@ const ExportDropdown: React.FC<ExportDropdownProps> = ({ onExportExcel, onExport
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="absolute z-10 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg">
+        <div className="absolute z-20 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg">
           <div
             onClick={() => handleExport('excel')}
             className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 cursor-pointer"

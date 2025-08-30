@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import './EpicDetail.css';
 import Swal from 'sweetalert2';
 import { useParams } from 'react-router-dom';
-import { useAuth, type Role } from '../../services/AuthContext';
+import { useAuth } from '../../services/AuthContext';
 import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation } from '../../services/taskApi';
 import { useGetWorkItemLabelsByEpicQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
@@ -21,7 +21,7 @@ import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import { useGetActivityLogsByProjectIdQuery, useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
+import { useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
 import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
@@ -34,7 +34,7 @@ import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEva
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
   const { data: epic, isLoading, refetch: refetchEpic } = useGetEpicByIdQuery(epicIdFromUrl || '');
-  const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(epicIdFromUrl ?? '');
+  const { data: tasks = [], isLoading: loadingTasks, refetch: refetchTasks } = useGetTasksByEpicIdQuery(epicIdFromUrl ?? '');
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [status, setStatus] = React.useState('');
@@ -51,11 +51,6 @@ const EpicDetail: React.FC = () => {
   const taskInputRef = React.useRef<HTMLTableRowElement>(null);
   const [newTaskType, setNewTaskType] = React.useState<'TASK' | 'BUG' | 'STORY'>('TASK');
   const [showTypeDropdown, setShowTypeDropdown] = React.useState(false);
-  const taskTypes = [
-    { label: 'Task', value: 'TASK', icon: taskIcon },
-    { label: 'Bug', value: 'BUG', icon: bugIcon },
-    { label: 'Story', value: 'STORY', icon: storyIcon },
-  ];
   const [description, setDescription] = React.useState('');
   const [hoveredFileId, setHoveredFileId] = React.useState<number | null>(null);
   const { data: attachments = [], refetch: refetchAttachments } = useGetEpicFilesByEpicIdQuery(epicIdFromUrl ?? '');
@@ -136,7 +131,7 @@ const EpicDetail: React.FC = () => {
           const data = await getTaskAssignments(t.id).unwrap();
           result[t.id] = data;
         } catch (err) {
-          console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
+          console.error(`Failed to fetch assignees for ${t.id}:`, err);
         }
       }
 
@@ -166,27 +161,15 @@ const EpicDetail: React.FC = () => {
     if (!deleteInfo) return;
     try {
       await deleteEpicFile({ id: deleteInfo.fileId, createdBy: accountId }).unwrap();
-      //alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error("❌ Error delete file:", error);
-      //alert("❌ Delete file failed");
+      console.error("Error delete file:", error);
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (fileId: number, createdBy: number) => {
-  //   try {
-  //     await deleteEpicFile({ id: fileId, createdBy: accountId }).unwrap();
-  //     alert('✅ Delete file successfully!');
-  //     await refetchAttachments();
-  //   } catch (error) {
-  //     console.error('❌ Failed to delete file:', error);
-  //   }
-  // };
 
   React.useEffect(() => {
     if (epic && epic.assignedBy !== undefined) {
@@ -230,6 +213,89 @@ const EpicDetail: React.FC = () => {
   const handleUpdateEpic = async () => {
     if (!epic) return;
 
+    if (newStartDate || newEndDate) {
+      const effectiveStartDate = newStartDate ?? epic.startDate;
+      const effectiveEndDate = newEndDate ?? epic.endDate;
+
+      // compare startDate smaller than endDate
+      if (effectiveStartDate && effectiveEndDate && new Date(effectiveStartDate) >= new Date(effectiveEndDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Dates',
+          html: 'Epic Start Date must be before Due Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        if (newStartDate) setNewStartDate(epic.startDate);
+        if (newEndDate) setNewEndDate(epic.endDate);
+        return;
+      }
+
+      // compare date project
+      if (projectData?.data?.startDate && effectiveStartDate && new Date(effectiveStartDate) < new Date(projectData.data.startDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Start Date',
+          html: 'Epic Start Date cannot be before Project Start Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        setNewStartDate(epic.startDate);
+        return;
+      }
+
+      if (projectData?.data?.endDate && effectiveEndDate && new Date(effectiveEndDate) > new Date(projectData.data.endDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Due Date',
+          html: 'Epic Due Date cannot be after Project End Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        setNewEndDate(epic.endDate);
+        return;
+      }
+
+      // compare task date
+      const dateValidation = await validateTaskDates(effectiveStartDate, effectiveEndDate);
+      if (!dateValidation.isValid) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Epic Dates',
+          text: dateValidation.message,
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        if (newStartDate) setNewStartDate(epic.startDate);
+        if (newEndDate) setNewEndDate(epic.endDate);
+        return;
+      }
+    }
+
     try {
       await updateEpic({
         id: epic.id,
@@ -246,28 +312,78 @@ const EpicDetail: React.FC = () => {
         },
       }).unwrap();
 
-      //alert("✅ Epic updated");
-      console.error("✅ Epic updated");
-      await refetchActivityLogs();
-      await refetch();
+      console.log('Epic updated');
+      await Promise.all([refetchActivityLogs(), refetchTasks(), refetchEpic()]);
     } catch (err) {
-      console.error("❌ Failed to update epic", err);
-      //alert("❌ Update failed");
+      console.error('Failed to update epic', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update epic.',
+        width: 350,
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      if (newStartDate) setNewStartDate(epic.startDate);
+      if (newEndDate) setNewEndDate(epic.endDate);
     }
+  };
+
+  const validateTaskDates = async (newStartDate: string, newEndDate: string) => {
+    if (!tasks || tasks.length === 0) return { isValid: true };
+
+    const epicStart = new Date(newStartDate);
+    const epicEnd = new Date(newEndDate);
+
+    for (const task of tasks) {
+      const taskStart = task.plannedStartDate ? new Date(task.plannedStartDate) : null;
+      const taskEnd = task.plannedEndDate ? new Date(task.plannedEndDate) : null;
+
+      if (taskStart) {
+        if (taskStart < epicStart) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has start date (${task.plannedStartDate.slice(0, 10)}) before epic start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (taskStart > epicEnd) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has start date (${task.plannedStartDate.slice(0, 10)}) after epic end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+
+      if (taskEnd) {
+        if (taskEnd < epicStart) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has end date (${task.plannedEndDate.slice(0, 10)}) before epic start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (taskEnd > epicEnd) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has end date (${task.plannedEndDate.slice(0, 10)}) after epic end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+    }
+    return { isValid: true };
   };
 
   React.useEffect(() => {
     if (epic) setStatus(epic.status);
   }, [epic]);
-
-  // const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
-  //   try {
-  //     await updateTaskStatus({ id: taskId, status: newStatus, createdBy: accountId }).unwrap();
-  //     refetch();
-  //   } catch (err) {
-  //     console.error('❌ Error updating task status:', err);
-  //   }
-  // };
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -275,7 +391,7 @@ const EpicDetail: React.FC = () => {
       await refetchActivityLogs();
       setStatus(newStatus);
     } catch (err) {
-      console.error('❌ Error updating epic status:', err);
+      console.error('Error updating epic status:', err);
     }
   };
 
@@ -334,14 +450,13 @@ const EpicDetail: React.FC = () => {
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -382,8 +497,6 @@ const EpicDetail: React.FC = () => {
         epicId: epicIdFromUrl,
         subtaskId: null,
       }).unwrap();
-
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([
@@ -392,8 +505,7 @@ const EpicDetail: React.FC = () => {
 
       ]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -439,7 +551,7 @@ const EpicDetail: React.FC = () => {
     }
   };
 
-  if (isLoading || !epic) return <div className="epic-page-container"><p>🔄 Đang tải Epic...</p></div>;
+  if (isLoading || !epic) return <div className="epic-page-container"><p>Loading Epic...</p></div>;
 
   return (
     <div className="epic-page-container">
@@ -459,15 +571,15 @@ const EpicDetail: React.FC = () => {
               placeholder="Enter epic name"
               defaultValue={epic.name}
               onChange={(e) => {
-                if (e.target.value.length <= 65) {
+                if (e.target.value.length <= 100) {
                   setNewName(e.target.value);
                 } else {
-                  alert('Max 65 characters!');
+                  alert('Max 100 characters!');
                 }
               }}
               onBlur={handleUpdateEpic}
               disabled={!canEdit}
-              style={{ width: 500 }}
+              style={{ width: 700 }}
             />
           </div>
         </div>
@@ -519,11 +631,10 @@ const EpicDetail: React.FC = () => {
                         file,
                         createdBy: accountId,
                       }).unwrap();
-                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
-                      console.error('❌ Upload failed:', err);
+                      console.error('Upload failed:', err);
 
                     }
                   }
@@ -777,11 +888,11 @@ const EpicDetail: React.FC = () => {
                                 }
                                 setShowSuggestionList(false);
                                 setSelectedSuggestions([]);
-                                await refetch();
+                                await refetchTasks();
                                 await refetchActivityLogs();
                                 setIsEvaluationPopupOpen(true);
                               } catch (err) {
-                                console.error('❌ Failed to create tasks', err);
+                                console.error('Failed to create tasks', err);
                               } finally {
                                 setLoadingCreate(false);
                               }
@@ -927,10 +1038,10 @@ const EpicDetail: React.FC = () => {
                                         if (newTitle && newTitle !== task.title) {
                                           try {
                                             await updateTaskTitle({ id: task.id, title: newTitle, createdBy: accountId }).unwrap();
-                                            await refetch();
+                                            await refetchTasks();
                                             await refetchActivityLogs();
                                           } catch (err) {
-                                            console.error('❌ Failed to update title:', err);
+                                            console.error('Failed to update title:', err);
                                           }
                                         }
                                         setEditingTaskId(null);
@@ -965,10 +1076,10 @@ const EpicDetail: React.FC = () => {
                                           priority: newPriority,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        await refetch();
+                                        await refetchTasks();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Error updating priority:', err);
+                                        console.error('Error updating priority:', err);
                                       }
                                     }}
                                     style={{
@@ -1013,7 +1124,7 @@ const EpicDetail: React.FC = () => {
                                                   [task.id]: prev[task.id].filter((a) => a.accountId !== assignment.accountId),
                                                 }));
                                               } catch (err) {
-                                                console.error('❌ Failed to delete assignee:', err);
+                                                console.error('Failed to delete assignee:', err);
                                               }
                                             }}
                                           >
@@ -1046,8 +1157,8 @@ const EpicDetail: React.FC = () => {
                                                 [task.id]: [...(prev[task.id] ?? []), selectedId],
                                               }));
                                             } catch (err) {
-                                              console.error('❌ Failed to create assignee:', err);
-                                              //alert('❌ Error adding assignee');
+                                              console.error('Failed to create assignee:', err);
+
                                             }
                                           }
                                         }}
@@ -1094,11 +1205,11 @@ const EpicDetail: React.FC = () => {
                                           status: e.target.value,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        await refetch();
+                                        await refetchTasks();
                                         await refetchEpic();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Error updating status:', err);
+                                        console.error('Error updating status:', err);
                                       }
                                     }}
                                   >
@@ -1218,14 +1329,13 @@ const EpicDetail: React.FC = () => {
                             createdBy: accountId,
                           }).unwrap();
 
-                          console.log('✅ Task created');
+                          console.log('Task created');
                           setNewTaskTitle('');
                           setShowTaskInput(false);
-                          await refetch();
+                          await refetchTasks();
                           await refetchActivityLogs();
                         } catch (err) {
-                          console.error('❌ Failed to create task:', err);
-                          //alert('❌ Failed to create task');
+                          console.error('Failed to create task:', err);
                         }
                       }}
 
@@ -1379,7 +1489,7 @@ const EpicDetail: React.FC = () => {
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -1418,7 +1528,7 @@ const EpicDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            //alert('❌ User not identified. Please log in again.');
+
                             return;
                           }
                           createEpicComment({
@@ -1427,13 +1537,12 @@ const EpicDetail: React.FC = () => {
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          //alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+
                         }
                       }}
                     >
@@ -1656,7 +1765,7 @@ const EpicDetail: React.FC = () => {
                           icon: 'error',
                           title: 'Invalid Due Date',
                           html: 'Due Date must be greater than Start Date!',
-                          width: '500px', // nhỏ lại
+                          width: '500px', 
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',
@@ -1679,7 +1788,7 @@ const EpicDetail: React.FC = () => {
                             html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
                                                                    is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                                                                    <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                            width: '500px', // nhỏ lại
+                            width: '500px', 
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',

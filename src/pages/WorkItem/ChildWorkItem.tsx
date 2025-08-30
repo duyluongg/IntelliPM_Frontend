@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './ChildWorkItem.css';
 import Swal from 'sweetalert2';
-import { useAuth, type Role } from '../../services/AuthContext';
+import { useAuth } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
@@ -11,15 +11,8 @@ import {
   useUpdateSubtaskActualCostMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
-import {
-  useGetWorkItemLabelsBySubtaskQuery,
-  useDeleteWorkItemLabelMutation,
-} from '../../services/workItemLabelApi';
-import {
-  useDeleteSubtaskFileMutation,
-  useGetSubtaskFilesBySubtaskIdQuery,
-  useUploadSubtaskFileMutation,
-} from '../../services/subtaskFileApi';
+import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -32,10 +25,7 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -274,13 +264,11 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail?.id,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -343,13 +331,11 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      //alert(' Subtask updated');
       console.log('Subtask updated');
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
       console.error('Failed to update subtask', err);
-      //alert('Update failed');
     }
   };
 
@@ -382,12 +368,12 @@ const ChildWorkItem: React.FC = () => {
       }).unwrap();
 
       console.log(
-        `✅ Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
+        ` Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
       );
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask percent complete', err);
+      console.error('Failed to update subtask percent complete', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -432,7 +418,7 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
+      console.log(`Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
       await refetchSubtask();
       await refetchActivityLogs();
       Swal.fire({
@@ -449,7 +435,7 @@ const ChildWorkItem: React.FC = () => {
         },
       });
     } catch (err) {
-      console.error('❌ Failed to update subtask actual cost', err);
+      console.error('Failed to update subtask actual cost', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -482,12 +468,10 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      //alert(`Uploaded file "${file.name}" successfully!`);
       console.log('Uploaded file');
       refetchAttachments();
     } catch (error) {
       console.error('Upload failed:', error);
-      //alert('Upload failed!');
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -506,31 +490,16 @@ const ChildWorkItem: React.FC = () => {
     try {
       await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
 
-      // alert("Delete file successfully!");
       console.log('Deleted file');
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
       console.error(' Error delete file:', error);
-      //alert(" Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
-  //   try {
-  //     await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
-  //     alert('✅ File deleted!');
-  //     await refetchAttachments();
-  //     await refetchActivityLogs();
-  //   } catch (error) {
-  //     console.error('Delete failed:', error);
-  //     alert('Delete failed!');
-  //   }
-  // };
 
   const handleSave = async (id: number, originalContent: string) => {
     const newContent = editedContent[id];
@@ -546,14 +515,13 @@ const ChildWorkItem: React.FC = () => {
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -617,15 +585,15 @@ const ChildWorkItem: React.FC = () => {
           placeholder='Enter subtask title'
           defaultValue={subtaskDetail?.title}
           onChange={(e) => {
-            if (e.target.value.length <= 65) {
+            if (e.target.value.length <= 100) {
               setNewTitle(e.target.value);
             } else {
-              alert('Max 65 characters!');
+              alert('Max 100 characters!');
             }
           }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '600px',
+            width: '800px',
             fontWeight: 'bold',
           }}
         />
@@ -856,7 +824,7 @@ const ChildWorkItem: React.FC = () => {
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -895,7 +863,7 @@ const ChildWorkItem: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            alert('User not identified. Please log in again.');
                             return;
                           }
                           await createSubtaskComment({
@@ -903,15 +871,14 @@ const ChildWorkItem: React.FC = () => {
                             accountId,
                             content: commentContent.trim(),
                             createdBy: accountId,
-                          }).unwrap();
-                          //alert('✅ Comment posted');
+                          }).unwrap()
                           console.log('Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                          
                         }
                       }}
                     >
@@ -1072,7 +1039,6 @@ const ChildWorkItem: React.FC = () => {
                   <div className='flex flex-col gap-2 w-full relative'>
                     <label className='font-semibold'>Labels</label>
 
-                    {/* Tag list + input */}
                     <div
                       className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}

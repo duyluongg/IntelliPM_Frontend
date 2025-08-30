@@ -2897,53 +2897,68 @@ const ProjectDashboard: React.FC = () => {
   );
 
   const ForecastCard: React.FC<{
+    pv: number;
+    ev: number;
+    ac: number;
     spi: number;
     cpi: number;
     eac: number;
     etc: number;
     vac: number;
     edac: number;
-  }> = ({ spi, cpi, eac, etc, vac, edac }) => (
+  }> = ({ pv, ev, ac, spi, cpi, eac, etc, vac, edac }) => (
     <DashboardCard title='Project Forecast'>
       <div className='flex flex-col gap-3 text-sm text-gray-700'>
         <div>
-          <strong className='text-blue-700 min-w-[160px]'>Schedule Performance Index (SPI):</strong>
+          <strong className='text-blue-700 min-w-[160px]'>Planned Value (PV): </strong>
+          <span>{Math.round(pv).toLocaleString()}</span>{' '}VND
+        </div>
+        <div>
+          <strong className='text-blue-700 min-w-[160px]'>Earned Value (EV): </strong>
+          <span>{Math.round(ev).toLocaleString()}</span>{' '}VND
+        </div>
+        <div>
+          <strong className='text-blue-700 min-w-[160px]'>Actual Cost (AC): </strong>
+          <span>{Math.round(ac).toLocaleString()}</span>{' '}VND
+        </div>
+        <div>
+          <strong className='text-blue-700 min-w-[160px]'>Schedule Performance Index (SPI): </strong>
           <span>{spi.toFixed(2)}</span>
-          <p className='text-xs text-gray-500'>
+          {/* <p className='text-xs text-gray-500'>
             Measures schedule efficiency. Above 1 means ahead of schedule.
-          </p>
+          </p> */}
         </div>
         <div>
           <strong className='text-blue-700 min-w-[160px]'>Cost Performance Index (CPI):</strong>
           <span>{cpi.toFixed(2)}</span>
-          <p className='text-xs text-gray-500'>
+          {/* <p className='text-xs text-gray-500'>
             Measures cost efficiency. Above 1 means under budget.
-          </p>
+          </p> */}
         </div>
         <div>
           <strong className='text-blue-700'>Estimate at Completion (EAC):</strong>{' '}
-          {eac.toLocaleString()}
-          <p className='ml-1 text-xs text-gray-500'>
+          {eac.toLocaleString()} VND
+          {/* <p className='ml-1 text-xs text-gray-500'>
             Expected total cost of the project based on current data.
-          </p>
+          </p> */}
         </div>
         <div>
           <strong className='text-blue-700'>Estimate to Complete (ETC):</strong>{' '}
-          {etc.toLocaleString()}
-          <p className='ml-1 text-xs text-gray-500'>Projected cost to finish remaining work.</p>
+          {etc.toLocaleString()} VND
+          {/* <p className='ml-1 text-xs text-gray-500'>Projected cost to finish remaining work.</p> */}
         </div>
         <div>
           <strong className='text-blue-700'>Variance at Completion (VAC):</strong>{' '}
-          {vac.toLocaleString()}
-          <p className='ml-1 text-xs text-gray-500'>
+          {vac.toLocaleString()} VND
+          {/* <p className='ml-1 text-xs text-gray-500'>
             Difference between budget and estimated cost. Negative means over budget.
-          </p>
+          </p> */}
         </div>
         <div>
           <strong className='text-blue-700'>Estimated Duration (EDAC):</strong> {edac} months
-          <p className='ml-1 text-xs text-gray-500'>
+          {/* <p className='ml-1 text-xs text-gray-500'>
             Estimated total time to complete based on progress.
-          </p>
+          </p> */}
         </div>
       </div>
     </DashboardCard>
@@ -3000,6 +3015,25 @@ const ProjectDashboard: React.FC = () => {
     );
   };
 
+  const formatCurrency = (value: number): string => {
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(2)}B VND`;
+  } else if (value >= 100_000_000) {
+    return `${(value / 1_000_000).toFixed(2)}M VND`;
+  } else if (value >= 1_000_000) {
+    return `${value.toLocaleString('vi-VN')} VND`;
+  } else if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(2)}K VND`;
+  } else {
+    return `${value.toLocaleString('vi-VN')} VND`;
+  }
+};
+
+// Utility function to format ratios (SPI, CPI)
+const formatRatio = (value: number): string => {
+  return value.toFixed(2);
+};
+
   return (
     <div className='container mx-auto p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'>
       <div className='col-span-full grid grid-cols-1 lg:grid-cols-3 gap-6'>
@@ -3037,6 +3071,9 @@ const ProjectDashboard: React.FC = () => {
       />
 
       <ForecastCard
+        pv={metricData?.data?.plannedValue ?? 0}
+        ev={metricData?.data?.earnedValue ?? 0}
+        ac={metricData?.data?.actualCost ?? 0}
         spi={metricData?.data?.schedulePerformanceIndex ?? 0}
         cpi={metricData?.data?.costPerformanceIndex ?? 0}
         eac={metricData?.data?.estimateAtCompletion ?? 0}
@@ -3075,19 +3112,45 @@ const ProjectDashboard: React.FC = () => {
             <div className='w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin'></div>
           </div>
         ) : processedHistory.length > 0 ? (
-          <ResponsiveContainer width='100%' height={300}>
-            <LineChart data={processedHistory}>
-              <CartesianGrid strokeDasharray='3 3' />
-              <XAxis dataKey='date' />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type='monotone' dataKey='SPI' stroke='#8884d8' activeDot={{ r: 8 }} />
-              <Line type='monotone' dataKey='CPI' stroke='#82ca9d' />
-              <Line type='monotone' dataKey='EV' stroke='#ffc658' />
-              <Line type='monotone' dataKey='AC' stroke='#ff7300' />
-            </LineChart>
-          </ResponsiveContainer>
+          // <ResponsiveContainer width='100%' height={300}>
+          //   <LineChart data={processedHistory}>
+          //     <CartesianGrid strokeDasharray='3 3' />
+          //     <XAxis dataKey='date' />
+          //     <YAxis />
+          //     <Tooltip />
+          //     <Legend />
+          //     <Line type='monotone' dataKey='SPI' stroke='#8884d8' activeDot={{ r: 8 }} />
+          //     <Line type='monotone' dataKey='CPI' stroke='#82ca9d' />
+          //     <Line type='monotone' dataKey='EV' stroke='#ffc658' />
+          //     <Line type='monotone' dataKey='AC' stroke='#ff7300' />
+          //   </LineChart>
+          // </ResponsiveContainer>
+          <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={processedHistory}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis
+              tickFormatter={(value, index) => {
+                return formatCurrency(value);
+              }}
+              width={100} 
+              tick={{ fontSize: 12 }} 
+            />
+            <Tooltip
+              formatter={(value: number, name: string) => {
+                if (name === 'SPI' || name === 'CPI') {
+                  return [formatRatio(value), name];
+                }
+                return [formatCurrency(value), name];
+              }}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="SPI" stroke="#8884d8" activeDot={{ r: 8 }} />
+            <Line type="monotone" dataKey="CPI" stroke="#82ca9d" />
+            <Line type="monotone" dataKey="EV" stroke="#ffc658" />
+            <Line type="monotone" dataKey="AC" stroke="#ff7300" />
+          </LineChart>
+        </ResponsiveContainer>
         ) : (
           <p className='text-sm text-gray-500 italic'>No historical metric data available yet.</p>
         )}

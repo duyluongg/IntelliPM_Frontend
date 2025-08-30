@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronDown, MoreHorizontal, PlusCircle } from 'lucide-react';
+import { ChevronDown, MoreHorizontal } from 'lucide-react';
 import {
   useUpdateTaskTitleMutation,
   useUpdateTaskStatusMutation,
-  useCreateTaskMutation,
   useUpdateTaskSprintMutation,
   useUpdateTaskEpicMutation,
   type TaskBacklogResponseDTO,
@@ -12,7 +11,6 @@ import {
   type SprintWithTaskListResponseDTO,
   useCreateSprintQuickMutation,
   useDeleteSprintMutation,
-  useCreateSprintsWithTasksMutation,
 } from '../../../services/sprintApi';
 import {
   useGetCategoriesByGroupQuery,
@@ -31,6 +29,13 @@ import PlanTasksPopup from './PlanTasksPopup';
 import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
 import WorkItem from '../../WorkItem/WorkItem';
 import aiIcon from '../../../assets/icon/ai.png';
+
+// Define User type
+interface User {
+  id: number;
+  role: string;
+  [key: string]: any; // For additional properties
+}
 
 interface SprintColumnProps {
   sprints: SprintWithTaskListResponseDTO[];
@@ -63,6 +68,30 @@ interface SectionProps {
   onTaskUpdated: () => void;
   moveTask: (taskId: string, toSprintId: number | null, toStatus: string | null) => Promise<void>;
 }
+
+// Tooltip Component
+const Tooltip: React.FC<{
+  children: React.ReactNode;
+  message: string;
+  show: boolean;
+}> = ({ children, message, show }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div
+      className="relative inline-flex"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      {show && isVisible && (
+        <div className="absolute z-20 top-full mt-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+          {message}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const staticStatusOptions = [
   { label: 'TO DO', value: 'TO DO', name: 'TO_DO', bg: 'bg-gray-200', text: 'text-gray-800' },
@@ -244,6 +273,11 @@ const TaskItem: React.FC<TaskItemProps> = ({
   };
 
   const handleEpicSelect = async (epicId: string | null) => {
+    const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+    const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
+    if (!isLeaderOrManager) {
+      return; // Tooltip handles the feedback
+    }
     try {
       await updateTaskEpic({
         id: task.id,
@@ -266,16 +300,25 @@ const TaskItem: React.FC<TaskItemProps> = ({
   };
 
   const renderEpicName = () => {
+    const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+    const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
     if (!task.epicName) {
       return (
         <div className='relative flex justify-start pl-2 min-w-[100px]'>
-          <button
-            onClick={() => setIsEpicMenuOpen(true)}
-            className='text-xs text-gray-600 border border-gray-600 rounded px-2 py-[1px] hover:bg-gray-200 whitespace-nowrap'
-            title='Assign Epic'
+          <Tooltip
+            message='You are not authorized to use this feature.'
+            show={!isLeaderOrManager}
           >
-            + Epic
-          </button>
+            <button
+              onClick={() => isLeaderOrManager && setIsEpicMenuOpen(true)}
+              className={`text-xs text-gray-600 border border-gray-600 rounded px-2 py-[1px] whitespace-nowrap ${
+                isLeaderOrManager ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'
+              }`}
+              disabled={!isLeaderOrManager}
+            >
+              + Epic
+            </button>
+          </Tooltip>
           {isEpicMenuOpen && (
             <div
               ref={epicMenuRef}
@@ -318,13 +361,19 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
     return (
       <div className='relative flex justify-start pl-2 min-w-[100px]'>
-        <span
-          className='text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] hover:bg-purple-50 truncate'
-          title={task.epicName}
-          onClick={() => setIsEpicMenuOpen(true)}
+        <Tooltip
+          message='You are not authorized to use this feature.'
+          show={!isLeaderOrManager}
         >
-          {displayEpicName}
-        </span>
+          <span
+            className={`text-xs text-purple-600 border border-purple-600 rounded px-2 py-[1px] truncate ${
+              isLeaderOrManager ? 'hover:bg-purple-50 cursor-pointer' : 'opacity-50 cursor-not-allowed'
+            }`}
+            onClick={() => isLeaderOrManager && setIsEpicMenuOpen(true)}
+          >
+            {displayEpicName}
+          </span>
+        </Tooltip>
         {isEpicMenuOpen && (
           <div
             ref={epicMenuRef}
@@ -504,8 +553,6 @@ const Section: React.FC<SectionProps> = ({
   onTaskUpdated,
   moveTask,
 }) => {
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [createTask] = useCreateTaskMutation();
   const [createSprint, { isLoading: isCreatingSprint }] = useCreateSprintQuickMutation();
   const [deleteSprint] = useDeleteSprintMutation();
   const { data: statusCategories } = useGetCategoriesByGroupQuery('task_status', {
@@ -517,6 +564,10 @@ const Section: React.FC<SectionProps> = ({
   const [isGenerateTasksPopupOpen, setIsGenerateTasksPopupOpen] = useState(false);
   const [isPlanTasksPopupOpen, setIsPlanTasksPopupOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Check user role
+  const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+  const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
 
   const isSprint = sprintId !== null;
   const sprint = isSprint ? sprints.find((s) => s.id === sprintId) : null;
@@ -547,35 +598,14 @@ const Section: React.FC<SectionProps> = ({
   const hasActiveSprint = sprints.some((s) => s.status === 'ACTIVE');
   const hasNoDates = sprint && (!sprint.startDate || !sprint.endDate);
 
-  const handleAddTask = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter' || !newTaskTitle.trim()) return;
-    try {
-      const defaultStatus =
-        statusCategories?.data?.find((c) => c.isActive && c.orderIndex === 1)?.name || 'TO_DO';
-      const newTask = {
-        projectId,
-        title: newTaskTitle,
-        type: 'task',
-        status: defaultStatus,
-        sprintId,
-        createdAt: new Date().toISOString(),
-        manualInput: true,
-        generationAiInput: false,
-      };
-      await createTask(newTask).unwrap();
-      setNewTaskTitle('');
-      onTaskUpdated();
-    } catch (err: any) {
-      alert(`Unable to create task: ${err?.data?.message || 'Unknown error'}`);
-    }
-  };
-
   const handleOpenPlanTasksPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     setIsPlanTasksPopupOpen(true);
   };
 
   const handleCreateSprint = async () => {
+    if (!isLeaderOrManager) return;
     try {
       await createSprint({ projectKey }).unwrap();
       onTaskUpdated();
@@ -586,6 +616,7 @@ const Section: React.FC<SectionProps> = ({
 
   const handleStartSprint = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     if (sprintId) {
       setIsStartPopupOpen(true);
     }
@@ -593,6 +624,7 @@ const Section: React.FC<SectionProps> = ({
 
   const handleEditSprint = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     if (sprintId) {
       setIsEditPopupOpen(true);
       setIsMoreMenuOpen(false);
@@ -601,6 +633,7 @@ const Section: React.FC<SectionProps> = ({
 
   const handleOpenCompleteSprintPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     if (sprintId && statusCategories?.data) {
       const completed = tasks.filter((task) =>
         ['DONE'].includes(mapApiStatusToUI(task.status, statusCategories.data).toUpperCase())
@@ -612,6 +645,7 @@ const Section: React.FC<SectionProps> = ({
 
   const handleOpenGenerateTasksPopup = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     if (sprintId) {
       setIsGenerateTasksPopupOpen(true);
     }
@@ -619,6 +653,7 @@ const Section: React.FC<SectionProps> = ({
 
   const handleDeleteSprint = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isLeaderOrManager) return;
     if (
       sprintId &&
       window.confirm('Are you sure you want to delete this sprint and all its tasks?')
@@ -659,20 +694,39 @@ const Section: React.FC<SectionProps> = ({
             <span className='text-gray-700 font-normal'>({tasks.length} work items)</span>
           </span>
           <div className='flex items-center space-x-2'>
-            <button
-              onClick={handleOpenPlanTasksPopup}
-              className='bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 rounded-xl text-sm text-white hover:text-gray-100 font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm hover:shadow-md'
+            <Tooltip
+              message='You are not authorized to use this feature.'
+              show={!isLeaderOrManager}
             >
-              <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
-              Plan Tasks
-            </button>
-            <button
-              onClick={handleCreateSprint}
-              className='text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 rounded hover:bg-indigo-50 flex items-center transition-colors duration-200 border border-indigo-300'
-              disabled={isCreatingSprint}
+              <button
+                onClick={handleOpenPlanTasksPopup}
+                className={`bg-gradient-to-r from-purple-600 to-blue-500 rounded-xl text-sm text-white font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm ${
+                  isLeaderOrManager
+                    ? 'hover:from-purple-700 hover:to-blue-600 hover:shadow-md'
+                    : 'opacity-50 cursor-not-allowed'
+                }`}
+                disabled={!isLeaderOrManager}
+              >
+                <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
+                Plan Tasks
+              </button>
+            </Tooltip>
+            <Tooltip
+              message='You are not authorized to use this feature.'
+              show={!isLeaderOrManager}
             >
-              {isCreatingSprint ? 'Creating...' : 'Create Sprint'}
-            </button>
+              <button
+                onClick={handleCreateSprint}
+                className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                  isCreatingSprint || !isLeaderOrManager
+                    ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                    : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'
+                }`}
+                disabled={isCreatingSprint || !isLeaderOrManager}
+              >
+                {isCreatingSprint ? 'Creating...' : 'Create Sprint'}
+              </button>
+            </Tooltip>
           </div>
         </div>
       ) : (
@@ -680,32 +734,39 @@ const Section: React.FC<SectionProps> = ({
         sprint && (
           <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
             <div className='flex items-center space-x-2'>
-    
               <span className='text-sm font-semibold text-gray-800'>
                 {sprint.name}
                 {'ㅤ'}
                 <span className='text-gray-700 font-normal'>
                   {hasNoDates ? (
-                    <button
-                      className='inline-flex items-center text-xs text-black hover:no-underline hover:bg-gray-200 px-1 py-1 rounded'
-                      onClick={handleEditSprint}
+                    <Tooltip
+                      message='You are not authorized to use this feature.'
+                      show={!isLeaderOrManager}
                     >
-                      <svg
-                        fill='none'
-                        viewBox='0 0 16 16'
-                        role='presentation'
-                        className='w-3.5 h-3.5 mr-1'
-                        style={{ color: 'var(--ds-icon, #000000)' }}
+                      <button
+                        className={`inline-flex items-center text-xs text-black px-1 py-1 rounded ${
+                          isLeaderOrManager ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'
+                        }`}
+                        onClick={handleEditSprint}
+                        disabled={!isLeaderOrManager}
                       >
-                        <path
-                          fill='currentColor'
-                          fillRule='evenodd'
-                          clipRule='evenodd'
-                          d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
-                        />
-                      </svg>
-                      Add Dates
-                    </button>
+                        <svg
+                          fill='none'
+                          viewBox='0 0 16 16'
+                          role='presentation'
+                          className='w-3.5 h-3.5 mr-1'
+                          style={{ color: 'var(--ds-icon, #000000)' }}
+                        >
+                          <path
+                            fill='currentColor'
+                            fillRule='evenodd'
+                            clipRule='evenodd'
+                            d='M11.586.854a2 2 0 0 1 2.828 0l.732.732a2 2 0 0 1 0 2.828L10.01 9.551a2 2 0 0 1-.864.51l-3.189.91a.75.75 0 0 1-.927-.927l.91-3.189a2 2 0 0 1 .51-.864zm1.768 1.06a.5.5 0 0 0-.708 0l-.585.586L13.5 3.94l.586-.586a.5.5 0 0 0 0-.707zM12.439 5 11 3.56 7.51 7.052a.5.5 0 0 0-.128.217l-.54 1.89 1.89-.54a.5.5 0 0 0 .217-.127zM3 2.501a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h10a.5.5 0 0 0 .5-.5v-3H15v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-10a2 2 0 0 1 2-2h3v1.5z'
+                          />
+                        </svg>
+                        Add Dates
+                      </button>
+                    </Tooltip>
                   ) : (
                     `${formatDate(sprint.startDate)} - ${formatDate(sprint.endDate)} (${
                       tasks.length
@@ -716,65 +777,80 @@ const Section: React.FC<SectionProps> = ({
             </div>
             <div className='flex items-center space-x-2'>
               {sprint.status !== 'COMPLETED' && (
-                <button
-                  onClick={handleOpenGenerateTasksPopup}
-                  className='bg-gradient-to-r from-purple-600 to-blue-500 
-         hover:from-purple-700 hover:to-blue-600
-         rounded-xl text-sm text-white hover:text-gray-100 
-         font-medium px-2 py-[0.35rem] flex items-center justify-center 
-         transition-all duration-300 shadow-sm hover:shadow-md'
+                <Tooltip
+                  message='You are not authorized to use this feature.'
+                  show={!isLeaderOrManager}
                 >
-                  <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
-                  More Tasks
-                </button>
+                  <button
+                    onClick={handleOpenGenerateTasksPopup}
+                    className={`bg-gradient-to-r from-purple-600 to-blue-500 rounded-xl text-sm text-white font-medium px-2 py-[0.35rem] flex items-center justify-center transition-all duration-300 shadow-sm ${
+                      isLeaderOrManager
+                        ? 'hover:from-purple-700 hover:to-blue-600 hover:shadow-md'
+                        : 'opacity-50 cursor-not-allowed'
+                    }`}
+                    disabled={!isLeaderOrManager}
+                  >
+                    <img src={aiIcon} alt='AI Icon' className='w-4 h-4 mr-1 object-contain' />
+                    More Tasks
+                  </button>
+                </Tooltip>
               )}
               {sprint.status === 'FUTURE' && (
                 <>
                   {hasNoDates ? (
-                    <button
-                      onClick={handleStartSprint}
-                      disabled={tasks.length === 0 || hasActiveSprint}
-                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                        tasks.length === 0 || hasActiveSprint
-                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                      }`}
-                      title={
-                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
-                      }
+                    <Tooltip
+                      message='You are not authorized to use this feature.'
+                      show={!isLeaderOrManager}
                     >
-                      Start Sprint
-                    </button>
+                      <button
+                        onClick={handleStartSprint}
+                        disabled={tasks.length === 0 || hasActiveSprint || !isLeaderOrManager}
+                        className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                          tasks.length === 0 || hasActiveSprint || !isLeaderOrManager
+                            ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                            : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
+                        }`}
+                      >
+                        Start Sprint
+                      </button>
+                    </Tooltip>
                   ) : (
-                    <button
-                      onClick={handleStartSprint}
-                      disabled={tasks.length === 0 || hasActiveSprint}
-                      className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                        tasks.length === 0 || hasActiveSprint
-                          ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                      }`}
-                      title={
-                        hasActiveSprint ? 'Cannot start sprint while another sprint is active' : ''
-                      }
+                    <Tooltip
+                      message='You are not authorized to use this feature.'
+                      show={!isLeaderOrManager}
                     >
-                      Start Sprint
-                    </button>
+                      <button
+                        onClick={handleStartSprint}
+                        disabled={tasks.length === 0 || hasActiveSprint || !isLeaderOrManager}
+                        className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                          tasks.length === 0 || hasActiveSprint || !isLeaderOrManager
+                            ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                            : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
+                        }`}
+                      >
+                        Start Sprint
+                      </button>
+                    </Tooltip>
                   )}
                 </>
               )}
               {sprint.status === 'ACTIVE' && (
-                <button
-                  onClick={handleOpenCompleteSprintPopup}
-                  disabled={tasks.length === 0}
-                  className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
-                    tasks.length === 0
-                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                      : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
-                  }`}
+                <Tooltip
+                  message='You are not authorized to use this feature.'
+                  show={!isLeaderOrManager}
                 >
-                  Complete Sprint
-                </button>
+                  <button
+                    onClick={handleOpenCompleteSprintPopup}
+                    disabled={tasks.length === 0 || !isLeaderOrManager}
+                    className={`text-sm font-medium px-2 py-1 rounded flex items-center transition-colors duration-200 border border-indigo-300 ${
+                      tasks.length === 0 || !isLeaderOrManager
+                        ? 'text-gray-400 bg-gray-100 cursor-not-allowed opacity-50'
+                        : 'text-blue-600 hover:text-blue-700 hover:bg-indigo-50'
+                    }`}
+                  >
+                    Complete Sprint
+                  </button>
+                </Tooltip>
               )}
               {sprint.status === 'COMPLETED' && (
                 <span className='text-sm font-medium text-gray-500'>COMPLETED</span>
@@ -798,18 +874,38 @@ const Section: React.FC<SectionProps> = ({
                 </button>
                 {isMoreMenuOpen && (
                   <div className='absolute z-10 right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg'>
-                    <button
-                      className='block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
-                      onClick={handleEditSprint}
+                    <Tooltip
+                      message='You are not authorized to use this feature.'
+                      show={!isLeaderOrManager}
                     >
-                      Edit Sprint
-                    </button>
-                    <button
-                      className='block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50'
-                      onClick={handleDeleteSprint}
+                      <button
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          isLeaderOrManager
+                            ? 'text-gray-700 hover:bg-gray-100'
+                            : 'text-gray-400 cursor-not-allowed'
+                        }`}
+                        onClick={handleEditSprint}
+                        disabled={!isLeaderOrManager}
+                      >
+                        Edit Sprint
+                      </button>
+                    </Tooltip>
+                    <Tooltip
+                      message='You are not authorized to use this feature.'
+                      show={!isLeaderOrManager}
                     >
-                      Delete Sprint
-                    </button>
+                      <button
+                        className={`block w-full text-left px-4 py-2 text-sm ${
+                          isLeaderOrManager
+                            ? 'text-red-600 hover:bg-red-50'
+                            : 'text-gray-400 cursor-not-allowed'
+                        }`}
+                        onClick={handleDeleteSprint}
+                        disabled={!isLeaderOrManager}
+                      >
+                        Delete Sprint
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>
@@ -826,18 +922,10 @@ const Section: React.FC<SectionProps> = ({
               </p>
               <p className='text-sm text-gray-500'>
                 {sprintId === null
-                  ? 'Add a task to your backlog to get started.'
-                  : 'Add a task to this sprint to get started.'}
+                  ? 'No tasks available in the backlog.'
+                  : 'No tasks available in this sprint.'}
               </p>
             </div>
-            {sprintId === null && (
-              <button
-                onClick={() => setNewTaskTitle('New Task')}
-                className='px-3 py-1.5 text-sm border rounded hover:bg-gray-100 transition text-gray-700 border-gray-300'
-              >
-                Create Task
-              </button>
-            )}
           </div>
         ) : (
           <>
@@ -854,9 +942,6 @@ const Section: React.FC<SectionProps> = ({
             ))}
           </>
         )}
-        <div className='flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100'>
-          
-        </div>
       </div>
       <StartSprintPopup
         isOpen={isStartPopupOpen}

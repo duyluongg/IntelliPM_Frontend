@@ -458,7 +458,7 @@ const TaskItem: React.FC<TaskItemProps> = ({
                 {assignee.name.charAt(0).toUpperCase()}
               </span>
             )}
-            <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+            <span className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 whitespace-nowrap group-hover:opacity-100 transition-opacity'>
               {assignee.name}
             </span>
           </div>
@@ -680,11 +680,7 @@ const Section: React.FC<SectionProps> = ({
         sprint && (
           <div className='flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-300'>
             <div className='flex items-center space-x-2'>
-              <input
-                type='checkbox'
-                className='h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded'
-                disabled={sprint.status === 'COMPLETED'}
-              />
+    
               <span className='text-sm font-semibold text-gray-800'>
                 {sprint.name}
                 {'ㅤ'}
@@ -859,15 +855,7 @@ const Section: React.FC<SectionProps> = ({
           </>
         )}
         <div className='flex items-center px-4 py-2 bg-gray-50 hover:bg-gray-100'>
-          <ChevronDown className='w-4 h-4 text-gray-400' />
-          <input
-            type='text'
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            onKeyDown={handleAddTask}
-            placeholder='What needs to be done?'
-            className='flex-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded bg-transparent'
-          />
+          
         </div>
       </div>
       <StartSprintPopup

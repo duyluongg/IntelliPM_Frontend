@@ -153,12 +153,14 @@ export const accountApi = createApi({
       return headers;
     },
   }),
+    tagTypes: ['Account'],
   endpoints: (builder) => ({
     getProjectsByAccountId: builder.query<GetProjectsResponse, number>({
       query: (accountId) => ({
         url: `account/${accountId}/projects`,
         method: 'GET',
       }),
+      providesTags: ['Account']
     }),
     getProjectsByAccount: builder.query<GetProjectsResponse, string>({
       query: (accessToken) => ({
@@ -168,32 +170,39 @@ export const accountApi = createApi({
           Authorization: `Bearer ${accessToken}`,
         },
       }),
+      providesTags: ['Account']
     }),
     getAccountByEmail: builder.query<GetAccountResponse, string>({
       query: (email) => ({
         url: `account/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
-      providesTags: ['Account'],
+
+      providesTags: ['Account']
+
     }),
     getProfileByEmail: builder.query<GetProfileResponse, string>({
       query: (email) => ({
         url: `account/profile/${encodeURIComponent(email)}`,
         method: 'GET',
       }),
-      providesTags: ['Account'],
+
+      providesTags: ['Account']
+
     }),
     getTeamsByAccountId: builder.query<GetTeamsResponse, number>({
       query: (accountId) => ({
         url: `account/${accountId}/teams`,
         method: 'GET',
       }),
+      providesTags: ['Account']
     }),
     getProfileByAccountId: builder.query<GetProfileResponse, number>({
       query: (accountId) => ({
         url: `account/${accountId}/profile`,
         method: 'GET',
       }),
+      providesTags: ['Account']
     }),
     changeAccountStatus: builder.mutation<
       ChangeAccountResponse,
@@ -204,6 +213,7 @@ export const accountApi = createApi({
         method: 'PATCH',
         body: { newStatus },
       }),
+      invalidatesTags: ['Account']
     }),
     changeAccountRole: builder.mutation<
       ChangeAccountResponse,
@@ -214,6 +224,9 @@ export const accountApi = createApi({
         method: 'PATCH',
         body: { newRole },
       }),
+
+         invalidatesTags: ['Account']
+
     }),
     changeAccountPosition: builder.mutation<
       ChangeAccountResponse,
@@ -224,6 +237,7 @@ export const accountApi = createApi({
         method: 'PATCH',
         body: { newPosition },
       }),
+      invalidatesTags: ['Account']
     }),
     uploadAvatar: builder.mutation<UploadAvatarResponse, File>({
       query: (file) => {

@@ -30,17 +30,18 @@ const mapApiStatusToUI = (apiStatus: string | null | undefined): 'To Do' | 'In P
   }
 };
 
-// Utility function to convert date string to UTC ISO 8601 format
 const toUTCISODate = (dateString: string): string => {
   if (!dateString) return '';
   const date = new Date(dateString);
-  return date.toISOString(); // Converts to UTC, e.g., "2025-08-12T00:00:00Z"
+  return date.toISOString();
 };
 
 const BacklogPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const projectKey = searchParams.get('projectKey') || 'NotFound';
   const [searchQuery, setSearchQuery] = useState('');
+  const [epicFilter, setEpicFilter] = useState<string | null>(null); // New state for epic filter
+  const [typeFilter, setTypeFilter] = useState<string | null>(null); // New state for type filter
   const [isCreateEpicOpen, setIsCreateEpicOpen] = useState(false);
   const [epicForm, setEpicForm] = useState({
     name: '',
@@ -81,21 +82,44 @@ const BacklogPage: React.FC = () => {
 
   const sprints: SprintWithTaskListResponseDTO[] = (Array.isArray(sprintData) ? sprintData : []).map((sprint) => ({
     ...sprint,
-    tasks: Array.isArray(sprint.tasks) ? sprint.tasks.map((task) => ({
-      ...task,
-      status: mapApiStatusToUI(task.status),
-    })) : [],
+    tasks: Array.isArray(sprint.tasks) ? sprint.tasks
+      .filter((task) => {
+        // Apply search query filter
+        const matchesSearch = searchQuery
+          ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            task.id.toLowerCase().includes(searchQuery.toLowerCase())
+          : true;
+        // Apply epic filter
+        const matchesEpic = epicFilter ? task.epicId === epicFilter : true;
+        // Apply type filter
+        const matchesType = typeFilter ? task.type?.toLowerCase() === typeFilter.toLowerCase() : true;
+        return matchesSearch && matchesEpic && matchesType;
+      })
+      .map((task) => ({
+        ...task,
+        status: mapApiStatusToUI(task.status),
+      })) : [],
   }));
 
-  const backlogTasks: TaskBacklogResponseDTO[] = (Array.isArray(backlogData) ? backlogData : []).map((task) => ({
+  const backlogTasks: TaskBacklogResponseDTO[] = (Array.isArray(backlogData) ? backlogData : []).filter((task) => {
+    // Apply search query filter
+    const matchesSearch = searchQuery
+      ? task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.id.toLowerCase().includes(searchQuery.toLowerCase())
+      : true;
+    // Apply epic filter
+    const matchesEpic = epicFilter ? task.epicId === epicFilter : true;
+    // Apply type filter
+    const matchesType = typeFilter ? task.type?.toLowerCase() === typeFilter.toLowerCase() : true;
+    return matchesSearch && matchesEpic && matchesType;
+  }).map((task) => ({
     ...task,
     status: mapApiStatusToUI(task.status),
   }));
 
-  // Date validation
   const validateDates = () => {
-    const today = new Date('2025-08-12'); // Current date: August 12, 2025
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    const today = new Date('2025-08-12');
+    today.setHours(0, 0, 0, 0);
     const startDate = epicForm.startDate ? new Date(epicForm.startDate) : null;
     const endDate = epicForm.endDate ? new Date(epicForm.endDate) : null;
 
@@ -124,10 +148,10 @@ const BacklogPage: React.FC = () => {
         data: {
           title: epicForm.name,
           description: epicForm.description,
-          type: 'epic', // Added to satisfy EpicWithTaskRequestDTO
+          type: 'epic',
           startDate: toUTCISODate(epicForm.startDate),
           endDate: toUTCISODate(epicForm.endDate),
-          tasks: [], // Empty tasks for now
+          tasks: [],
         },
       }).unwrap();
       refetchEpics();
@@ -140,14 +164,16 @@ const BacklogPage: React.FC = () => {
   };
 
   const handleSearch = (query: string) => {
-    setSearchQuery(query.toLowerCase());
+    setSearchQuery(query);
   };
 
-  const filteredEpics = searchQuery
-    ? epicData.filter((epic: EpicWithStatsResponseDTO) =>
-        epic.name.toLowerCase().includes(searchQuery)
-      )
-    : epicData;
+  const handleEpicFilter = (epicId: string | null) => {
+    setEpicFilter(epicId);
+  };
+
+  const handleTypeFilter = (type: string | null) => {
+    setTypeFilter(type);
+  };
 
   if (isProjectLoading || isEpicLoading || isSprintLoading || isBacklogLoading) {
     return <div className="p-4 text-center text-gray-500">Loading...</div>;
@@ -163,12 +189,18 @@ const BacklogPage: React.FC = () => {
 
   return (
     <div className="min-h-screen p-0.1">
-      <BacklogHeader onSearch={handleSearch} projectId={projectData?.data?.id || 0} />
+      <BacklogHeader
+        onSearch={handleSearch}
+        onEpicFilter={handleEpicFilter}
+        onTypeFilter={handleTypeFilter}
+        projectId={projectData?.data?.id || 0}
+        epics={epicData}
+      />
       <DndProvider backend={HTML5Backend}>
         <BacklogBody
           onCreateEpic={() => setIsCreateEpicOpen(true)}
           sprints={sprints}
-          epics={filteredEpics}
+          epics={epicData} // Pass unfiltered epics for display in EpicColumn
           backlogTasks={backlogTasks}
           projectId={projectData?.data?.id || 0}
         />

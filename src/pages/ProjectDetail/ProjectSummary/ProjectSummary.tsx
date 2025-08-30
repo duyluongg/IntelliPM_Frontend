@@ -11,8 +11,10 @@ import {
   type ProjectRequirement,
 } from '../../../services/projectApi';
 import { Mail, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ProjectSummary: React.FC = () => {
+  const navigate = useNavigate();
   const { projectKey } = useParams<{ projectKey: string }>();
   const {
     data: projectResponse,
@@ -206,7 +208,10 @@ const ProjectSummary: React.FC = () => {
               />
             )}
             <div>
-              <h1 className='text-3xl font-extrabold text-gray-900 tracking-tight'>
+              <h1
+                onClick={() => navigate(`/project?projectKey=${project.projectKey}#backlog`)}
+                className='text-3xl font-extrabold text-gray-900 tracking-tight cursor-pointer hover:text-blue-600 transition'
+              >
                 {project.name}
               </h1>
               <p className='text-gray-500 text-xs mt-1 font-medium'>

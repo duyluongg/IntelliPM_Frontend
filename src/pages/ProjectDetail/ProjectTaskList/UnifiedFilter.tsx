@@ -170,7 +170,7 @@ const UnifiedFilter: React.FC<UnifiedFilterProps> = ({
 
       {/* Dropdown Menu */}
       {isDropdownOpen && (
-        <div className="absolute z-10 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg">
+        <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg">
           {/* Status Section */}
           <div className="border-b border-gray-200">
             <button

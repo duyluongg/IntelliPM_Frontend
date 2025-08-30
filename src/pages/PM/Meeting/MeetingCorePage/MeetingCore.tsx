@@ -1,7 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../services/AuthContext';
 import './MeetingCore.css';
+import { useGetAllRescheduleRequestsQuery } from
+  '../../../../services/ProjectManagement/MeetingServices/MeetingRescheduleRequestServices';
+
 
 export default function MeetingCore() {
   const navigate = useNavigate();
@@ -25,6 +28,16 @@ export default function MeetingCore() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+const isPMOrTL =
+  user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
+
+const { data: allRequests, isLoading: pendingLoading } =
+  useGetAllRescheduleRequestsQuery(undefined, { skip: !isPMOrTL });
+
+const pendingCount = useMemo(() => {
+  const list = allRequests?.data ?? [];
+  return list.filter((r: any) => r.status === 'PENDING').length;
+}, [allRequests]);
 
   const boxBase =
     'rounded-lg cursor-pointer flex flex-col justify-center items-center p-6 ' +
@@ -109,6 +122,15 @@ export default function MeetingCore() {
               onClick={() => navigate('/meeting-reschedule-request-send')}
               className={`${boxBase} bg-green-600 text-white col-span-1 h-full`}
             >
+              {isPMOrTL && (
+    <span
+      aria-label="Pending reschedule requests"
+      className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-xs font-bold
+                 bg-yellow-500 text-white shadow"
+    >
+      {pendingLoading ? '…' : pendingCount}
+    </span>
+  )}
               <h2 className='text-base font-semibold'>⏳ Reschedule</h2>
               <p className='text-xs text-center'>Send request</p>
             </div>
@@ -120,22 +142,6 @@ export default function MeetingCore() {
               <h2 className='text-base font-semibold'>🛠️ Management</h2>
               <p className='text-xs text-center'>Manage meetings</p>
             </div>
-
-            {/* <div
-              onClick={() => navigate('/project/meeting-management/view-reject')}
-              className={`${boxBase} bg-pink-500 text-white col-span-1 h-full`}
-            >
-              <h2 className='text-base font-semibold'>View Rejected Meetings</h2>
-              <p className='text-xs text-center'>View rejected meetings</p>
-            </div>
-
-            <div
-              onClick={() => navigate('/project/meeting-management/send-request')}
-              className={`${boxBase} bg-pink-500 text-white col-span-1 h-full`}
-            >
-              <h2 className='text-base font-semibold'>Send Requests</h2>
-              <p className='text-xs text-center'>Send document requests from Team Leaders</p>
-            </div> */}
           </div>
         )}
       </div>

@@ -143,6 +143,10 @@ const EpicDetail: React.FC = () => {
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
     skip: !epic?.projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
   });
 
   const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
@@ -1765,7 +1769,7 @@ const EpicDetail: React.FC = () => {
                           icon: 'error',
                           title: 'Invalid Due Date',
                           html: 'Due Date must be greater than Start Date!',
-                          width: '500px', 
+                          width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',
@@ -1788,7 +1792,7 @@ const EpicDetail: React.FC = () => {
                             html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
                                                                    is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                                                                    <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                            width: '500px', 
+                            width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',

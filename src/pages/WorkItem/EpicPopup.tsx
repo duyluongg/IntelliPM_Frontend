@@ -5,22 +5,22 @@ import Swal from 'sweetalert2';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
-import {useGetEpicByIdQuery,useUpdateEpicStatusMutation,useUpdateEpicMutation,} from '../../services/epicApi';
+import { useGetEpicByIdQuery, useUpdateEpicStatusMutation, useUpdateEpicMutation, } from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import {useGetTasksByEpicIdQuery,useUpdateTaskStatusMutation,useCreateTaskMutation,useUpdateTaskTitleMutation,useUpdateTaskPriorityMutation,} from '../../services/taskApi';
-import {useGetWorkItemLabelsByEpicQuery,useDeleteWorkItemLabelMutation,} from '../../services/workItemLabelApi';
-import {useGetEpicFilesByEpicIdQuery,useUploadEpicFileMutation,useDeleteEpicFileMutation} from '../../services/epicFileApi';
-import { type TaskAssignmentDTO, useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
+import { useGetTasksByEpicIdQuery, useUpdateTaskStatusMutation, useCreateTaskMutation, useUpdateTaskTitleMutation, useUpdateTaskPriorityMutation, } from '../../services/taskApi';
+import { useGetWorkItemLabelsByEpicQuery, useDeleteWorkItemLabelMutation, } from '../../services/workItemLabelApi';
+import { useGetEpicFilesByEpicIdQuery, useUploadEpicFileMutation, useDeleteEpicFileMutation } from '../../services/epicFileApi';
+import { type TaskAssignmentDTO, useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
-import {useGetCommentsByEpicIdQuery,useCreateEpicCommentMutation,useUpdateEpicCommentMutation,useDeleteEpicCommentMutation} from '../../services/epicCommentApi';
-import {useGetActivityLogsByEpicIdQuery} from '../../services/activityLogApi';
-import {useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import { useGetCommentsByEpicIdQuery, useCreateEpicCommentMutation, useUpdateEpicCommentMutation, useDeleteEpicCommentMutation } from '../../services/epicCommentApi';
+import { useGetActivityLogsByEpicIdQuery } from '../../services/activityLogApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -183,8 +183,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     if (tasks.length > 0) fetchAllTaskAssignments();
   }, [tasks]);
 
+  // In EpicPopup.tsx
   const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
     skip: !epic?.projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
   });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -268,17 +273,114 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
   };
 
   const handleUpdateEpic = async () => {
-  if (!epic) return;
+    if (!epic) return;
 
-  if (newStartDate || newEndDate) {
-    const effectiveStartDate = newStartDate ?? epic.startDate;
-    const effectiveEndDate = newEndDate ?? epic.endDate;
+    if (newStartDate || newEndDate) {
+      const effectiveStartDate = newStartDate ?? epic.startDate;
+      const effectiveEndDate = newEndDate ?? epic.endDate;
 
-    if (effectiveStartDate && effectiveEndDate && new Date(effectiveStartDate) >= new Date(effectiveEndDate)) {
+      if (effectiveStartDate && effectiveEndDate && new Date(effectiveStartDate) >= new Date(effectiveEndDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Dates',
+          html: 'Epic Start Date must be before Due Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        if (newStartDate) setNewStartDate(epic.startDate);
+        if (newEndDate) setNewEndDate(epic.endDate);
+        return;
+      }
+
+      // compare date project
+      if (projectData?.data?.startDate && effectiveStartDate && new Date(effectiveStartDate) < new Date(projectData.data.startDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Start Date',
+          html: 'Epic Start Date cannot be before Project Start Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        setNewStartDate(epic.startDate);
+        return;
+      }
+
+      if (projectData?.data?.endDate && effectiveEndDate && new Date(effectiveEndDate) > new Date(projectData.data.endDate)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Due Date',
+          html: 'Epic Due Date cannot be after Project End Date!',
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        setNewEndDate(epic.endDate);
+        return;
+      }
+
+      // compare task date
+      const dateValidation = await validateTaskDates(effectiveStartDate, effectiveEndDate);
+      if (!dateValidation.isValid) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Epic Dates',
+          text: dateValidation.message,
+          width: 350,
+          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+          customClass: {
+            title: 'small-title',
+            popup: 'small-popup',
+            icon: 'small-icon',
+            htmlContainer: 'small-html',
+          },
+        });
+        if (newStartDate) setNewStartDate(epic.startDate);
+        if (newEndDate) setNewEndDate(epic.endDate);
+        return;
+      }
+    }
+
+    try {
+      await updateEpic({
+        id: epic.id,
+        data: {
+          projectId: epic.projectId,
+          name: newName ?? epic.name,
+          description: newDescription ?? epic.description,
+          assignedBy: newAssignedBy ?? epic.assignedBy,
+          reporterId: newReporterId ?? epic.reporterId,
+          startDate: newStartDate ?? epic.startDate,
+          endDate: newEndDate ?? epic.endDate,
+          status: epic.status,
+          createdBy: accountId,
+        },
+      }).unwrap();
+
+      console.log('Epic updated');
+      await Promise.all([refetchActivityLogs(), refetchTasks(), refetchEpic()]);
+    } catch (err) {
+      console.error('Failed to update epic', err);
       Swal.fire({
         icon: 'error',
-        title: 'Invalid Dates',
-        html: 'Epic Start Date must be before Due Date!',
+        title: 'Update Failed',
+        text: 'Failed to update epic.',
         width: 350,
         confirmButtonColor: 'rgba(44, 104, 194, 1)',
         customClass: {
@@ -290,105 +392,8 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
       });
       if (newStartDate) setNewStartDate(epic.startDate);
       if (newEndDate) setNewEndDate(epic.endDate);
-      return;
     }
-
-    // compare date project
-    if (projectData?.data?.startDate && effectiveStartDate && new Date(effectiveStartDate) < new Date(projectData.data.startDate)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Start Date',
-        html: 'Epic Start Date cannot be before Project Start Date!',
-        width: 350,
-        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-        customClass: {
-          title: 'small-title',
-          popup: 'small-popup',
-          icon: 'small-icon',
-          htmlContainer: 'small-html',
-        },
-      });
-      setNewStartDate(epic.startDate);
-      return;
-    }
-
-    if (projectData?.data?.endDate && effectiveEndDate && new Date(effectiveEndDate) > new Date(projectData.data.endDate)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Due Date',
-        html: 'Epic Due Date cannot be after Project End Date!',
-        width: 350,
-        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-        customClass: {
-          title: 'small-title',
-          popup: 'small-popup',
-          icon: 'small-icon',
-          htmlContainer: 'small-html',
-        },
-      });
-      setNewEndDate(epic.endDate);
-      return;
-    }
-
-    // compare task date
-    const dateValidation = await validateTaskDates(effectiveStartDate, effectiveEndDate);
-    if (!dateValidation.isValid) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Epic Dates',
-        text: dateValidation.message,
-        width: 350,
-        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-        customClass: {
-          title: 'small-title',
-          popup: 'small-popup',
-          icon: 'small-icon',
-          htmlContainer: 'small-html',
-        },
-      });
-      if (newStartDate) setNewStartDate(epic.startDate);
-      if (newEndDate) setNewEndDate(epic.endDate);
-      return;
-    }
-  }
-
-  try {
-    await updateEpic({
-      id: epic.id,
-      data: {
-        projectId: epic.projectId,
-        name: newName ?? epic.name,
-        description: newDescription ?? epic.description,
-        assignedBy: newAssignedBy ?? epic.assignedBy,
-        reporterId: newReporterId ?? epic.reporterId,
-        startDate: newStartDate ?? epic.startDate,
-        endDate: newEndDate ?? epic.endDate,
-        status: epic.status,
-        createdBy: accountId,
-      },
-    }).unwrap();
-
-    console.log('Epic updated');
-    await Promise.all([refetchActivityLogs(), refetchTasks(), refetchEpic()]);
-  } catch (err) {
-    console.error('Failed to update epic', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Update Failed',
-      text: 'Failed to update epic.',
-      width: 350,
-      confirmButtonColor: 'rgba(44, 104, 194, 1)',
-      customClass: {
-        title: 'small-title',
-        popup: 'small-popup',
-        icon: 'small-icon',
-        htmlContainer: 'small-html',
-      },
-    });
-    if (newStartDate) setNewStartDate(epic.startDate);
-    if (newEndDate) setNewEndDate(epic.endDate);
-  }
-};
+  };
 
   const validateTaskDates = async (newStartDate: string, newEndDate: string) => {
     if (!tasks || tasks.length === 0) return { isValid: true };

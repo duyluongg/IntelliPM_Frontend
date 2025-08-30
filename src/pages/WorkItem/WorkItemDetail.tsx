@@ -10,12 +10,7 @@ import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  useGetSubtasksByTaskIdQuery,
-  useUpdateSubtaskStatusMutation,
-  useCreateSubtaskMutation,
-  useUpdateSubtaskMutation,
-} from '../../services/subtaskApi';
+import { useGetSubtasksByTaskIdQuery,useUpdateSubtaskStatusMutation,useCreateSubtaskMutation,useUpdateSubtaskMutation} from '../../services/subtaskApi';
 import {
   useGetTaskByIdQuery,
   useUpdateTaskStatusMutation,
@@ -30,11 +25,7 @@ import {
   useUpdatePercentCompleteMutation,
   useUpdateActualCostMutation,
 } from '../../services/taskApi';
-import {
-  useGetTaskFilesByTaskIdQuery,
-  useUploadTaskFileMutation,
-  useDeleteTaskFileMutation,
-} from '../../services/taskFileApi';
+import { useGetTaskFilesByTaskIdQuery,useUploadTaskFileMutation,useDeleteTaskFileMutation} from '../../services/taskFileApi';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -44,22 +35,15 @@ import {
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
-import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; // chỉnh lại path cho đúng
+import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; 
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
-import {
-  useLazyGetTaskAssignmentsByTaskIdQuery,
-  useCreateTaskAssignmentQuickMutation,
-  useDeleteTaskAssignmentMutation,
-} from '../../services/taskAssignmentApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useParams, Link } from 'react-router-dom';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
@@ -127,9 +111,7 @@ const WorkItemDetail: React.FC = () => {
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
-    Record<string, TaskAssignmentDTO[]>
-  >({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
@@ -206,8 +188,8 @@ const WorkItemDetail: React.FC = () => {
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-    ? 10000000000
-    : parseInt(actualCostConfig.data.maxValue, 10);
+      ? 10000000000
+      : parseInt(actualCostConfig.data.maxValue, 10);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -215,32 +197,228 @@ const WorkItemDetail: React.FC = () => {
   };
 
   const handlePlannedStartDateTaskChange = async () => {
-    if (plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    await refetchSubtask();
+    if (!taskData || !plannedStartDate || plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+
+    // Validate against epic's startDate
+    if (epicData?.startDate && new Date(plannedStartDate) < new Date(epicData.startDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Task Start Date cannot be before Epic Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // Validate against project startDate (fallback)
+    if (
+      !epicData?.startDate &&
+      projectData?.data?.startDate &&
+      new Date(plannedStartDate) < new Date(projectData.data.startDate)
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Task Start Date cannot be before Project Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // Validate against task's plannedEndDate
+    if (plannedEndDate && new Date(plannedStartDate) >= new Date(plannedEndDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Start Date must be before Due Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
+    // test date subtask
+    const effectiveEndDate = plannedEndDate || taskData.plannedEndDate || new Date().toISOString();
+    const dateValidation = await validateSubtaskDates(plannedStartDate, effectiveEndDate);
+    if (!dateValidation.isValid) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        text: dateValidation.message,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
+      return;
+    }
+
     try {
       await updatePlannedStartDate({
         id: taskId,
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
-      await refetchActivityLogs();
-      console.log('✅ Start date updated');
+      await Promise.all([refetchActivityLogs(), refetchSubtask()]); 
+      console.log('Start date updated');
     } catch (err) {
-      console.error('❌ Failed to update start date', err);
+      console.error('Failed to update start date', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update task start date.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedStartDate(taskData.plannedStartDate);
     }
   };
 
   const handlePlannedEndDateTaskChange = async () => {
-    if (plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    await refetchSubtask();
+    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+
+    // Validate against epic's endDate
+    if (epicData?.endDate && new Date(plannedEndDate) > new Date(epicData.endDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Task Due Date cannot be after Epic Due Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // Validate against project endDate (fallback)
+    if (
+      !epicData?.endDate &&
+      projectData?.data?.endDate &&
+      new Date(plannedEndDate) > new Date(projectData.data.endDate)
+    ) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Task Due Date cannot be after Project End Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // Validate against task's plannedStartDate
+    if (plannedStartDate && new Date(plannedEndDate) <= new Date(plannedStartDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Due Date must be after Start Date!',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
+    // compare subtask
+    const effectiveStartDate = plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
+    const dateValidation = await validateSubtaskDates(effectiveStartDate, plannedEndDate);
+    if (!dateValidation.isValid) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        text: dateValidation.message,
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
+      return;
+    }
+
     try {
       await updatePlannedEndDate({
         id: taskId,
         plannedEndDate: toISO(plannedEndDate),
         createdBy: accountId,
       }).unwrap();
-      await refetchActivityLogs();
-      console.log('✅ End date updated');
+      await Promise.all([refetchActivityLogs(), refetchSubtask()]);
+      console.log('End date updated');
     } catch (err) {
-      console.error('❌ Failed to update end date', err);
+      console.error('Failed to update end date', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update task end date.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setPlannedEndDate(taskData.plannedEndDate);
     }
   };
 
@@ -272,10 +450,10 @@ const WorkItemDetail: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated task ${taskId} percent complete to ${newPercentComplete}`);
+      console.log(`Updated task ${taskId} percent complete to ${newPercentComplete}`);
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update task percent complete', err);
+      console.error('Failed to update task percent complete', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -320,7 +498,7 @@ const WorkItemDetail: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated task ${taskId} actual cost to ${newActualCost}`);
+      console.log(`Updated task ${taskId} actual cost to ${newActualCost}`);
       await refetchTask();
       await refetchActivityLogs();
       Swal.fire({
@@ -337,7 +515,7 @@ const WorkItemDetail: React.FC = () => {
         },
       });
     } catch (err) {
-      console.error('❌ Failed to update task actual cost', err);
+      console.error('Failed to update task actual cost', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -356,12 +534,10 @@ const WorkItemDetail: React.FC = () => {
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
-      //alert('✅ Update title task successfully!');
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap(); 
       await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
-      //alert('✅ Error update task title!');
       console.error('Error update task title:', err);
     }
   };
@@ -390,30 +566,15 @@ const WorkItemDetail: React.FC = () => {
     if (!deleteInfo) return;
     try {
       await deleteTaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
-      // alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Error delete file:', error);
-      //alert("❌ Delete file failed");
+      console.error('Error delete file:', error);
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //   if (!window.confirm('Are you sure delete file?')) return;
-  //   try {
-  //     await deleteTaskFile({ id, createdBy: accountId }).unwrap();
-  //     alert('✅ Delete file successfully!');
-  //     await refetchAttachments();
-  //     await refetchActivityLogs();
-  //   } catch (error) {
-  //     console.error('❌ Error delete file:', error);
-  //     alert('❌ Delete file failed');
-  //   }
-  // };
 
   const handleResize = (e: React.MouseEvent<HTMLDivElement>, colIndex: number) => {
     const startX = e.clientX;
@@ -451,9 +612,8 @@ const WorkItemDetail: React.FC = () => {
   React.useEffect(() => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
-        // Kiểm tra nếu assignees không thay đổi
         if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
-          return prev; // Không cập nhật nếu giống nhau
+          return prev; 
         }
         return { ...prev, [taskId]: assignees };
       });
@@ -470,11 +630,61 @@ const WorkItemDetail: React.FC = () => {
 
   const {
     data: subtaskData = [],
-    isLoading,
+    isLoading: isSubtasksLoading,
     refetch: refetchSubtask,
   } = useGetSubtasksByTaskIdQuery(taskId, {
     skip: !taskId,
   });
+
+  const validateSubtaskDates = async (newStartDate: string, newEndDate: string) => {
+    await refetchSubtask();
+    if (!subtaskData || subtaskData.length === 0) return { isValid: true };
+
+    const taskStart = new Date(newStartDate);
+    const taskEnd = new Date(newEndDate);
+
+    for (const subtask of subtaskData) {
+      const subtaskStart = subtask.startDate ? new Date(subtask.startDate) : null;
+      const subtaskEnd = subtask.endDate ? new Date(subtask.endDate) : null;
+
+      // compare subtaskStart
+      if (subtaskStart) {
+        if (subtaskStart < taskStart) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (subtaskStart > taskEnd) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+
+      // compare subtaskEnd
+      if (subtaskEnd) {
+        if (subtaskEnd < taskStart) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (subtaskEnd > taskEnd) {
+          return {
+            isValid: false,
+            invalidSubtaskId: subtask.id,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+    }
+    return { isValid: true };
+  };
 
   const totalSubtasks = subtaskData.length;
   const completedSubtasks = subtaskData.filter((item) => item.status === 'DONE').length;
@@ -552,7 +762,7 @@ const WorkItemDetail: React.FC = () => {
       await updateTaskType({ id: taskId, type: type.toUpperCase(), createdBy: accountId }).unwrap();
       await refetchTask();
     } catch (err) {
-      console.error('❌ Error update work type:', err);
+      console.error('Error update work type:', err);
     }
   };
 
@@ -569,10 +779,8 @@ const WorkItemDetail: React.FC = () => {
       setSprintId(newSprintId);
       await Promise.all([refetchActivityLogs(), refetchTask()]);
       console.log('Update sprint task successfully!');
-      //alert('✅ Sprint updated successfully');
     } catch (err: any) {
       console.error('Error update sprint:', err);
-      //alert(`❌ Failed to update sprint: ${err?.data?.message || err.message || 'Unknown error'}`);
     }
   };
 
@@ -649,7 +857,7 @@ const WorkItemDetail: React.FC = () => {
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
@@ -697,13 +905,11 @@ const WorkItemDetail: React.FC = () => {
         subtaskId: null,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -742,17 +948,6 @@ const WorkItemDetail: React.FC = () => {
 
     // For subtask: Check if the user matches the subtask's assignee
     return subtaskAssigneeId.toString() === currentUserId;
-  };
-
-  const getIconSrc = () => {
-    switch (workType) {
-      case 'BUG':
-        return bugIcon;
-      case 'STORY':
-        return flagIcon;
-      default:
-        return tickIcon;
-    }
   };
 
   return (
@@ -801,14 +996,14 @@ const WorkItemDetail: React.FC = () => {
               placeholder='Enter task title'
               defaultValue={title}
               onChange={(e) => {
-                if (e.target.value.length <= 65) {
+                if (e.target.value.length <= 100) {
                   setTitle(e.target.value);
                 } else {
-                  alert('Max 65 characters!');
+                  alert('Max 100 characters!');
                 }
               }}
               onBlur={handleTitleTaskChange}
-              style={{ width: '500px' }}
+              style={{ width: '700px' }}
               disabled={!canEdit}
             />
           </div>
@@ -876,7 +1071,7 @@ const WorkItemDetail: React.FC = () => {
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
-                      console.error('❌ Upload failed:', err);
+                      console.error('Upload failed:', err);
                     }
                   }
                 }}
@@ -1060,9 +1255,8 @@ const WorkItemDetail: React.FC = () => {
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${
-                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -1115,17 +1309,16 @@ const WorkItemDetail: React.FC = () => {
                                 await refetchActivityLogs();
                                 setIsEvaluationPopupOpen(true);
                               } catch (err) {
-                                console.error('❌ Failed to create subtasks', err);
+                                console.error('Failed to create subtasks', err);
                               } finally {
                                 setLoadingCreate(false);
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
-                              selectedSuggestions.length === 0 || loadingCreate
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                            }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1188,7 +1381,7 @@ const WorkItemDetail: React.FC = () => {
               </div>
 
               <div className='issue-table'>
-                {isLoading ? (
+                {isSubtasksLoading ? (
                   <p>Loading subtasks...</p>
                 ) : (
                   <div className='scrollable-work-table-wrapper'>
@@ -1277,13 +1470,12 @@ const WorkItemDetail: React.FC = () => {
                                           reporterId: item.reporterId,
                                           createdBy: accountId,
                                         }).unwrap();
-                                        //alert('✅ Updated summary');
-                                        console.log('✅ Updated summary');
+                                        console.log('Updated summary');
                                         await refetchSubtask();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to update summary:', err);
-                                        //alert('❌ Failed to update summary');
+                                        console.error('Failed to update summary:', err);
+                                        
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1321,12 +1513,12 @@ const WorkItemDetail: React.FC = () => {
                                       reporterId: item.reporterId,
                                       createdBy: accountId,
                                     }).unwrap();
-                                    console.log('✅ Updated priority');
+                                    console.log('Updated priority');
                                     await refetchSubtask();
                                     await refetchActivityLogs();
                                   } catch (err) {
-                                    console.error('❌ Failed to update priority:', err);
-                                    //alert('❌ Failed to update priority');
+                                    console.error('Failed to update priority:', err);
+                                   
                                   }
                                 }}
                                 style={{
@@ -1374,12 +1566,11 @@ const WorkItemDetail: React.FC = () => {
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      //alert('✅ Updated subtask assignee');
-                                      console.log('✅ Updated subtask assignee');
+                                      console.log('Updated subtask assignee');
                                       await refetchSubtask();
                                     } catch (err) {
-                                      console.error('❌ Failed to update subtask:', err);
-                                      //alert('❌ Failed to update subtask');
+                                      console.error('Failed to update subtask:', err);
+                                      
                                     }
                                   }}
                                   style={{
@@ -1465,9 +1656,9 @@ const WorkItemDetail: React.FC = () => {
                                         createdBy: accountId,
                                         reporterId: accountId,
                                       }).unwrap();
-                                      console.log('✅ Create successfully');
+                                      console.log('Create successfully');
                                     } catch (err) {
-                                      console.error('❌ Error to call createSubtask:', err);
+                                      console.error('Error to call createSubtask:', err);
                                     }
 
                                     setNewSubtaskTitle('');
@@ -1639,7 +1830,7 @@ const WorkItemDetail: React.FC = () => {
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -1678,7 +1869,7 @@ const WorkItemDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            // alert('❌ User not identified. Please log in again.');
+                            
                             return;
                           }
                           await createTaskComment({
@@ -1689,12 +1880,11 @@ const WorkItemDetail: React.FC = () => {
                           }).unwrap();
 
                           setCommentContent('');
-                          //alert('✅ Comment posted ');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                          
                         }
                       }}
                     >
@@ -1755,7 +1945,6 @@ const WorkItemDetail: React.FC = () => {
                 <label>Assignee</label>
                 {canEdit ? (
                   <div className='multi-select-dropdown'>
-                    {/* Hiển thị danh sách đã chọn */}
                     <div
                       className='selected-list'
                       style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1779,7 +1968,7 @@ const WorkItemDetail: React.FC = () => {
                                   ),
                                 }));
                               } catch (err) {
-                                console.error('❌ Failed to delete assignee:', err);
+                                console.error('Failed to delete assignee:', err);
                               }
                             }}
                           >
@@ -1789,7 +1978,6 @@ const WorkItemDetail: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Dropdown chọn thêm */}
                     <div className='dropdown-select-wrapper'>
                       <select
                         style={{ width: '150px' }}
@@ -1832,8 +2020,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -1905,7 +2093,6 @@ const WorkItemDetail: React.FC = () => {
                   <div className='flex flex-col gap-2 w-full relative'>
                     <label className='font-semibold'>Labels</label>
 
-                    {/* Tag list + input */}
                     <div
                       className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
@@ -1966,8 +2153,8 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2038,7 +2225,7 @@ const WorkItemDetail: React.FC = () => {
                         await refetchTask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        console.error('❌ Error updating priority:', err);
+                        console.error('Error updating priority:', err);
                       }
                     }}
                     style={{
@@ -2071,6 +2258,7 @@ const WorkItemDetail: React.FC = () => {
                         : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
                     }
                     onChange={(e) => {
+                      refetchSubtask();
                       const selectedDate = e.target.value;
                       if (!selectedDate) {
                         setPlannedStartDate('');
@@ -2140,7 +2328,7 @@ const WorkItemDetail: React.FC = () => {
                     }}
                     onBlur={handlePlannedStartDateTaskChange}
                     style={{ width: '150px' }}
-                    disabled={isEpicLoading}
+                    disabled={isEpicLoading || isSubtasksLoading}
                   />
                 ) : (
                   <span>{plannedStartDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2160,6 +2348,7 @@ const WorkItemDetail: React.FC = () => {
                     }
                     max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
                     onChange={(e) => {
+                      refetchSubtask();
                       const selectedDate = e.target.value;
                       if (!selectedDate) {
                         setPlannedEndDate('');
@@ -2229,7 +2418,7 @@ const WorkItemDetail: React.FC = () => {
                     }}
                     onBlur={handlePlannedEndDateTaskChange}
                     style={{ width: '150px' }}
-                    disabled={isEpicLoading}
+                    disabled={isEpicLoading || isSubtasksLoading}
                   />
                 ) : (
                   <span>{plannedEndDate?.slice(0, 10) ?? 'N/A'}</span>
@@ -2251,11 +2440,9 @@ const WorkItemDetail: React.FC = () => {
                           reporterId: newReporter,
                           createdBy: accountId,
                         }).unwrap();
-                        //alert('✅ Update successfully');
                         await refetchTask();
                         await refetchActivityLogs();
                       } catch (err) {
-                        //alert('❌ Update failed');
                         console.error(err);
                       }
                     }}
@@ -2326,13 +2513,6 @@ const WorkItemDetail: React.FC = () => {
           onSubmitSuccess={handleEvaluationSubmitSuccess}
         />
       )}
-      {/* <DeleteConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={confirmDeleteComment}
-        title="Delete this comment?"
-        message="Once you delete, it's gone for good."
-      /> */}
     </div>
   );
 };

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import './ChildWorkItem.css';
 import Swal from 'sweetalert2';
-import { useAuth, type Role } from '../../services/AuthContext';
+import { useAuth } from '../../services/AuthContext';
 import {
   useUpdateSubtaskStatusMutation,
   useUpdateSubtaskMutation,
@@ -11,15 +11,8 @@ import {
   useUpdateSubtaskActualCostMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
-import {
-  useGetWorkItemLabelsBySubtaskQuery,
-  useDeleteWorkItemLabelMutation,
-} from '../../services/workItemLabelApi';
-import {
-  useDeleteSubtaskFileMutation,
-  useGetSubtaskFilesBySubtaskIdQuery,
-  useUploadSubtaskFileMutation,
-} from '../../services/subtaskFileApi';
+import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -32,10 +25,7 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -147,8 +137,8 @@ const ChildWorkItem: React.FC = () => {
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-    ? 10000000000
-    : parseInt(actualCostConfig.data.maxValue, 10);
+      ? 10000000000
+      : parseInt(actualCostConfig.data.maxValue, 10);
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -274,13 +264,11 @@ const ChildWorkItem: React.FC = () => {
         subtaskId: subtaskDetail?.id,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -343,13 +331,11 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      //alert(' Subtask updated');
       console.log('Subtask updated');
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
       console.error('Failed to update subtask', err);
-      //alert('Update failed');
     }
   };
 
@@ -382,12 +368,12 @@ const ChildWorkItem: React.FC = () => {
       }).unwrap();
 
       console.log(
-        `✅ Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
+        ` Updated subtask ${subtaskDetail.id} percent complete to ${newPercentComplete}`
       );
       await refetchSubtask();
       await refetchActivityLogs();
     } catch (err) {
-      console.error('❌ Failed to update subtask percent complete', err);
+      console.error('Failed to update subtask percent complete', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -432,7 +418,7 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      console.log(`✅ Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
+      console.log(`Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
       await refetchSubtask();
       await refetchActivityLogs();
       Swal.fire({
@@ -449,7 +435,7 @@ const ChildWorkItem: React.FC = () => {
         },
       });
     } catch (err) {
-      console.error('❌ Failed to update subtask actual cost', err);
+      console.error('Failed to update subtask actual cost', err);
       Swal.fire({
         icon: 'error',
         title: 'Update Failed',
@@ -482,12 +468,10 @@ const ChildWorkItem: React.FC = () => {
         createdBy: accountId,
       }).unwrap();
 
-      //alert(`Uploaded file "${file.name}" successfully!`);
       console.log('Uploaded file');
       refetchAttachments();
     } catch (error) {
       console.error('Upload failed:', error);
-      //alert('Upload failed!');
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -506,31 +490,16 @@ const ChildWorkItem: React.FC = () => {
     try {
       await deleteSubtaskFile({ id: deleteInfo.id, createdBy: accountId }).unwrap();
 
-      // alert("Delete file successfully!");
       console.log('Deleted file');
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
       console.error(' Error delete file:', error);
-      //alert(" Delete file failed");
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
-
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //   if (!window.confirm('Are you sure you want to delete this file?')) return;
-  //   try {
-  //     await deleteSubtaskFile({ id, createdBy: accountId }).unwrap();
-  //     alert('✅ File deleted!');
-  //     await refetchAttachments();
-  //     await refetchActivityLogs();
-  //   } catch (error) {
-  //     console.error('Delete failed:', error);
-  //     alert('Delete failed!');
-  //   }
-  // };
 
   const handleSave = async (id: number, originalContent: string) => {
     const newContent = editedContent[id];
@@ -546,14 +515,13 @@ const ChildWorkItem: React.FC = () => {
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -617,15 +585,15 @@ const ChildWorkItem: React.FC = () => {
           placeholder='Enter subtask title'
           defaultValue={subtaskDetail?.title}
           onChange={(e) => {
-            if (e.target.value.length <= 65) {
+            if (e.target.value.length <= 100) {
               setNewTitle(e.target.value);
             } else {
-              alert('Max 65 characters!');
+              alert('Max 100 characters!');
             }
           }}
           onBlur={handleUpdateSubtask}
           style={{
-            width: '600px',
+            width: '800px',
             fontWeight: 'bold',
           }}
         />
@@ -856,7 +824,7 @@ const ChildWorkItem: React.FC = () => {
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -895,7 +863,7 @@ const ChildWorkItem: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            alert('User not identified. Please log in again.');
                             return;
                           }
                           await createSubtaskComment({
@@ -903,15 +871,14 @@ const ChildWorkItem: React.FC = () => {
                             accountId,
                             content: commentContent.trim(),
                             createdBy: accountId,
-                          }).unwrap();
-                          //alert('✅ Comment posted');
+                          }).unwrap()
                           console.log('Comment posted');
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          //alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                          
                         }
                       }}
                     >
@@ -1072,7 +1039,6 @@ const ChildWorkItem: React.FC = () => {
                   <div className='flex flex-col gap-2 w-full relative'>
                     <label className='font-semibold'>Labels</label>
 
-                    {/* Tag list + input */}
                     <div
                       className='border rounded px-2 py-1 flex flex-wrap items-center gap-2 min-h-[42px] focus-within:ring-2 ring-blue-400'
                       onClick={() => setDropdownOpen(true)}
@@ -1133,8 +1099,8 @@ const ChildWorkItem: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1223,8 +1189,8 @@ const ChildWorkItem: React.FC = () => {
                     {isPriorityLoading
                       ? 'Loading...'
                       : isPriorityError
-                      ? 'Error loading priorities'
-                      : priorityOptions?.data.find(
+                        ? 'Error loading priorities'
+                        : priorityOptions?.data.find(
                           (p) => p.name === (newPriority ?? subtaskDetail?.priority)
                         )?.label || 'NONE'}
                   </span>
@@ -1237,39 +1203,24 @@ const ChildWorkItem: React.FC = () => {
                   <input
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
-                    min={projectData?.data?.startDate?.slice(0, 10)}
-                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    min={parentTask?.plannedStartDate?.slice(0, 10)} // Restrict to parent task start date
+                    max={parentTask?.plannedEndDate?.slice(0, 10)} // Restrict to parent task end date
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (newEndDate && new Date(value) >= new Date(newEndDate)) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Start Date',
-                          html: 'Start Date must be smaller than Due Date!',
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html',
-                          },
-                        });
-                        return;
-                      }
+                      const selectedDate = new Date(value);
+                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
+                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
 
-                      if (projectData?.data.startDate && projectData?.data.endDate) {
-                        const projectStart = new Date(projectData.data.startDate);
-                        const projectEnd = new Date(projectData.data.endDate);
-                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                      // Validate against parent task dates
+                      if (parentStartDate && parentEndDate) {
+                        if (selectedDate < parentStartDate || selectedDate > parentEndDate) {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Start Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Start Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                              0,
+                              10
+                            )}</b> and <b>${parentTask?.plannedStartDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
@@ -1281,6 +1232,24 @@ const ChildWorkItem: React.FC = () => {
                           });
                           return;
                         }
+                      }
+
+                      // Validate against due date
+                      if (newEndDate && selectedDate >= new Date(newEndDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Start Date',
+                          html: 'Start Date must be earlier than Due Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
                       }
 
                       setNewStartDate(value);
@@ -1299,39 +1268,24 @@ const ChildWorkItem: React.FC = () => {
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                    min={newStartDate ?? projectData?.data?.startDate?.slice(0, 10)} // Use newStartDate if available
-                    max={projectData?.data?.endDate?.slice(0, 10)} // Restrict to project end date
+                    min={newStartDate ?? parentTask?.plannedStartDate?.slice(0, 10)} // Use newStartDate or parent task start date
+                    max={parentTask?.plannedEndDate?.slice(0, 10)} // Restrict to parent task end date
                     onChange={(e) => {
                       const value = e.target.value;
-                      if (newStartDate && new Date(value) <= new Date(newStartDate)) {
-                        Swal.fire({
-                          icon: 'error',
-                          title: 'Invalid Due Date',
-                          html: 'Due Date must be greater than Start Date!',
-                          width: '500px',
-                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
-                          customClass: {
-                            title: 'small-title',
-                            popup: 'small-popup',
-                            icon: 'small-icon',
-                            htmlContainer: 'small-html',
-                          },
-                        });
-                        return;
-                      }
+                      const selectedDate = new Date(value);
+                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
+                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
 
-                      if (projectData?.data.startDate && projectData?.data.endDate) {
-                        const projectStart = new Date(projectData.data.startDate);
-                        const projectEnd = new Date(projectData.data.endDate);
-                        if (new Date(value) < projectStart || new Date(value) > projectEnd) {
+                      // Validate against parent task dates
+                      if (parentStartDate && parentEndDate) {
+                        if (selectedDate < parentStartDate || selectedDate > parentEndDate) {
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Due Date',
-                            html: `Due Date must be between project <strong>${
-                              projectData.data.name
-                            }</strong> 
-                     is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
-                     <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
+                            html: `Due Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                              0,
+                              10
+                            )}</b> and <b>${parentTask?.plannedEndDate.slice(0, 10)}</b>!`,
                             width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
@@ -1343,6 +1297,24 @@ const ChildWorkItem: React.FC = () => {
                           });
                           return;
                         }
+                      }
+
+                      // Validate against start date
+                      if (newStartDate && selectedDate <= new Date(newStartDate)) {
+                        Swal.fire({
+                          icon: 'error',
+                          title: 'Invalid Due Date',
+                          html: 'Due Date must be later than Start Date!',
+                          width: '500px',
+                          confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                          customClass: {
+                            title: 'small-title',
+                            popup: 'small-popup',
+                            icon: 'small-icon',
+                            htmlContainer: 'small-html',
+                          },
+                        });
+                        return;
                       }
 
                       setNewEndDate(value);
@@ -1357,7 +1329,6 @@ const ChildWorkItem: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Reporter</label>
-
                 {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}

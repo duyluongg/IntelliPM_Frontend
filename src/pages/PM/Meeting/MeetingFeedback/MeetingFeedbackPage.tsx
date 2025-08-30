@@ -26,8 +26,8 @@ const STATUS_GROUP = 'milestone_feedback_status';
 
 // ---------- Small UI helpers ----------
 const EmptyState: React.FC<{ title?: string; hint?: string }> = ({
-  title = 'Không có dữ liệu',
-  hint = 'Thử đổi bộ lọc hoặc nhập từ khoá khác.',
+  title = 'No data available',
+  hint = 'Try changing the filter or entering a different keyword.',
 }) => (
   <div className="w-full rounded-xl border bg-white p-10 text-center text-gray-500">
     <div className="text-xl font-semibold">{title}</div>
@@ -166,7 +166,7 @@ const [triggerGetRejected] = useLazyGetRejectedFeedbacksQuery();
     return (
       <div className="mt-10 flex flex-col items-center">
         <p className="rounded bg-red-100 px-5 py-3 text-center text-red-600 font-semibold">
-          ⚠️ Bạn chưa đăng nhập.
+          ⚠️ You are not logged in.
         </p>
       </div>
     );
@@ -180,7 +180,7 @@ const [triggerGetRejected] = useLazyGetRejectedFeedbacksQuery();
     return (
       <div className="mt-10 flex justify-center">
         <p className="rounded bg-red-100 px-5 py-3 text-red-600">
-          ❌ Lỗi: {JSON.stringify(error)}
+          ❌ Error: {JSON.stringify(error)}
         </p>
       </div>
     );
@@ -206,8 +206,6 @@ const [triggerGetRejected] = useLazyGetRejectedFeedbacksQuery();
   statusKey = 'PENDING';
   
 }
-
-
       const createdAt = f.createdAt === '0001-01-01T00:00:00' ? null : new Date(f.createdAt);
       return {
         id: f.meetingTranscriptId,
@@ -342,7 +340,7 @@ const dailyTrend = isClient ? [] : buildDailyTrend(normalized as any);
         </div>
 
         {sorted.length === 0 ? (
-          <EmptyState title="Không có feedback" />
+          <EmptyState title="No feedback" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto border-collapse">

@@ -76,17 +76,17 @@ const AddMembersModal: React.FC<Props> = ({ projectId, meetingId, onClose, onAdd
   return (
     <Dialog.Portal>
       {/* Nền mờ */}
-      <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+      <Dialog.Overlay className="fixed inset-0 bg-black/50 inset-0 z-[200]" />
 
       {/* Nội dung modal ở giữa màn hình */}
       <Dialog.Content
-        className="fixed left-1/2 top-1/2 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl"
+        className="inset-0 z-[200] fixed left-1/2 top-1/2 w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-xl"
       >
         <h3 className="mb-3 text-xl font-bold">Add members to meeting</h3>
 
         <div className="mb-3 text-sm text-gray-600">
-          Project ID: <span className="font-medium">{projectId}</span> • Meeting ID:{' '}
-          <span className="font-medium">{meetingId}</span>
+          {/* Project ID: <span className="font-medium">{projectId}</span> • Meeting ID:{' '} */}
+          {/* <span className="font-medium">{meetingId}</span> */}
         </div>
 
         <input

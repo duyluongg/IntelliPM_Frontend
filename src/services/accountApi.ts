@@ -140,7 +140,6 @@ export interface UploadAvatarResponse {
 
 export const accountApi = createApi({
   reducerPath: 'accountApi',
-  tagTypes: ['Account'],
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {

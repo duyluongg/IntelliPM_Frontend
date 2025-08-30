@@ -160,7 +160,7 @@ const ProjectDetailHeader: React.FC = () => {
       <nav aria-label='Breadcrumbs' className='mb-4'>
         <ol className='flex items-center space-x-2 text-sm text-gray-600'>
           <li>
-            <a href='/projects' className='hover:text-blue-600'>
+            <a href='/project/list' className='hover:text-blue-600'>
               Projects
             </a>
           </li>

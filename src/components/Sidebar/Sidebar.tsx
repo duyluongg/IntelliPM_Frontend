@@ -46,7 +46,7 @@ const menuItems = [
     isDropdown: true,
     hasArrow: true,
   },
-  { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
+  // { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
 
 export default function Sidebar() {

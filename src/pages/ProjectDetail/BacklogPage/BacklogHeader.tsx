@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
+import { type EpicWithStatsResponseDTO } from '../../../services/epicApi';
 
 // Custom Search Icon Component
 const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -8,7 +9,7 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     fill='none'
     viewBox='0 0 16 16'
     role='presentation'
-    {...props} // Spread props to allow className and other SVG attributes
+    {...props}
     style={{ color: 'var(--ds-icon, #44546F)' }}
   >
     <path
@@ -22,7 +23,10 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 interface BacklogHeaderProps {
   onSearch: (query: string) => void;
+  onEpicFilter: (epicId: string | null) => void; // New prop for epic filter
+  onTypeFilter: (type: string | null) => void;   // New prop for type filter
   projectId: number;
+  epics: EpicWithStatsResponseDTO[] | undefined; // Add epics prop for dropdown
 }
 
 interface Member {
@@ -31,9 +35,13 @@ interface Member {
   avatar: string;
 }
 
-const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) => {
+const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, onEpicFilter, onTypeFilter, projectId, epics = [] }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
+  const [isEpicDropdownOpen, setIsEpicDropdownOpen] = useState(false);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const epicDropdownRef = useRef<HTMLDivElement>(null);
+  const typeDropdownRef = useRef<HTMLDivElement>(null);
 
   const {
     data: membersData,
@@ -52,6 +60,8 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
         avatar: member.picture || 'https://via.placeholder.com/30',
       })) || [];
 
+  const taskTypes = ['task', 'bug', 'story', 'epic']; // Define available task types
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
@@ -61,6 +71,29 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
   const toggleMembers = () => {
     setIsMembersExpanded(!isMembersExpanded);
   };
+
+  const handleEpicSelect = (epicId: string | null) => {
+    onEpicFilter(epicId);
+    setIsEpicDropdownOpen(false);
+  };
+
+  const handleTypeSelect = (type: string | null) => {
+    onTypeFilter(type);
+    setIsTypeDropdownOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (epicDropdownRef.current && !epicDropdownRef.current.contains(e.target as Node)) {
+        setIsEpicDropdownOpen(false);
+      }
+      if (typeDropdownRef.current && !typeDropdownRef.current.contains(e.target as Node)) {
+        setIsTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (isLoading) {
     return <div className='p-4 text-center text-gray-500'>Loading members...</div>;
@@ -77,6 +110,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
   return (
     <div className='flex items-center justify-between px-6 py-3 bg-white'>
       <div className='flex items-center gap-4'>
+        {/* Search Input */}
         <div className='flex items-center border border-gray-300 rounded-md w-64 px-2 py-1 focus-within:ring-1 focus-within:ring-blue-500 bg-white'>
           <CustomSearchIcon className='w-4 h-4 text-gray-400 mr-2' />
           <input
@@ -106,10 +140,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
                       className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                       onClick={toggleMembers}
                     />
-                    <span className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5
-                 text-xs bg-gray-800 text-white rounded 
-                 opacity-0 group-hover:opacity-100 transition-opacity 
-                 whitespace-nowrap'>
+                    <span className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'>
                       {member.name}
                     </span>
                   </div>
@@ -124,11 +155,8 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
                   onClick={toggleMembers}
                 />
                 <span
-                  className='absolute top-full left-1/2 mt-1 px-2 py-0.5
-               text-xs bg-gray-800 text-white rounded 
-               opacity-0 group-hover:opacity-100 transition-opacity 
-               whitespace-nowrap pointer-events-none z-10'
-                  style={{ transform: 'translateX(-50%)' }} // luôn căn giữa
+                  className='absolute top-full left-1/2 mt-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10'
+                  style={{ transform: 'translateX(-50%)' }}
                 >
                   {members[0].name}
                 </span>
@@ -148,14 +176,62 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, projectId }) =>
         </div>
 
         {/* Epic Dropdown */}
-        <button className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'>
-          Epic <ChevronDown className='w-4 h-4 ml-1' />
-        </button>
+        <div className='relative' ref={epicDropdownRef}>
+          <button
+            className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
+            onClick={() => setIsEpicDropdownOpen(!isEpicDropdownOpen)}
+          >
+            Epic <ChevronDown className='w-4 h-4 ml-1' />
+          </button>
+          {isEpicDropdownOpen && (
+            <div className='absolute z-10 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto'>
+              <div
+                className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+                onClick={() => handleEpicSelect(null)}
+              >
+                All Epics
+              </div>
+              {epics.map((epic) => (
+                <div
+                  key={epic.id}
+                  className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+                  onClick={() => handleEpicSelect(epic.id)}
+                >
+                  {epic.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Type Dropdown */}
-        <button className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'>
-          Type <ChevronDown className='w-4 h-4 ml-1' />
-        </button>
+        <div className='relative' ref={typeDropdownRef}>
+          <button
+            className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
+            onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+          >
+            Type <ChevronDown className='w-4 h-4 ml-1' />
+          </button>
+          {isTypeDropdownOpen && (
+            <div className='absolute z-10 top-full mt-1 w-32 bg-white border border-gray-200 rounded-md shadow-lg'>
+              <div
+                className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+                onClick={() => handleTypeSelect(null)}
+              >
+                All Types
+              </div>
+              {taskTypes.map((type) => (
+                <div
+                  key={type}
+                  className='px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer'
+                  onClick={() => handleTypeSelect(type)}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Action Buttons */}

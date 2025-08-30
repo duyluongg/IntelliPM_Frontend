@@ -71,6 +71,7 @@ interface ProjectCardProps {
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, accountId }) => {
+  const navigate = useNavigate();
   const {
     data: projectDetails,
     isLoading: isDetailsLoading,
@@ -135,7 +136,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onClick, accountId }
             />
           )}
           <div>
-            <h2 className='text-lg font-semibold text-gray-800'>{truncateName(projectName)}</h2>
+            <button
+              onClick={() => navigate(`/project?projectKey=${project.projectKey}#backlog`)}
+              className='text-lg font-semibold text-gray-800 hover:text-blue-600 text-left'
+            >
+              {truncateName(projectName)}
+            </button>
             <p className='text-gray-500 text-xs'>Key: {project.projectKey}</p>
           </div>
         </div>
@@ -255,12 +261,11 @@ const ProjectList: React.FC = () => {
   const projects: Project[] = projectsResponse?.data || [];
 
   // Filter projects: Exclude PLANNING projects for non-TEAM_LEADER and non-PROJECT_MANAGER roles
-const filteredProjects = (
-  user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER'
-    ? projects.slice()
-    : projects.filter(project => project.projectStatus !== 'PLANNING').slice()
-).sort((a, b) => b.projectId - a.projectId);
-
+  const filteredProjects = (
+    user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER'
+      ? projects.slice()
+      : projects.filter((project) => project.projectStatus !== 'PLANNING').slice()
+  ).sort((a, b) => b.projectId - a.projectId);
 
   const handleProjectClick = (projectKey: string) => {
     navigate(`/project/${projectKey}/summary`);

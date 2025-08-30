@@ -616,7 +616,7 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     if (!window.confirm('Are you sure you want to delete this meeting summary?')) return;
     await deleteMeetingSummary(id);
     toast.success('Meeting summary deleted successfully.');
-    refetch();
+    await refetch();
   };
 
   // ===== Upload transcript (file / url) =====
@@ -843,11 +843,6 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
               <p className="text-xs text-gray-500">
                 {feedbackText.trim().length}/{cfg.FEEDBACK_MAX}
               </p>
-
-              
-
-
-
               <button
                 onClick={onRejectSubmit}
                 disabled={isSubmittingFeedback}
@@ -986,7 +981,7 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
         projectId={projectIdFromMeeting}
         aiFeature={AI_FEATURE}
         onSubmitSuccess={(aiResponseId: number) => {
-          toast.success(`Thanks! Saved rating (ID: ${aiResponseId}).`);
+          toast.success(`Thanks! Saved rating.`);
         }}
       />
     </div>

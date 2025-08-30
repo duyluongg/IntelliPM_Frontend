@@ -4,6 +4,7 @@ import { Dialog, DialogTrigger, DialogContent } from '@radix-ui/react-dialog';
 import { useAuth } from '../../../../services/AuthContext';
 import {
   useGetMeetingsManagedByQuery,
+  useCreateMeetingLogMutation,
 } from '../../../../services/ProjectManagement/MeetingServices/MeetingLogServices';
 import {
   useDeleteMeetingMutation,
@@ -124,8 +125,25 @@ const MeetingManagementPage: React.FC = () => {
   const [updateMeeting] = useUpdateMeetingMutation();
   const [updateParticipantStatus] = useUpdateParticipantStatusMutation();
   const [completeMeeting] = useCompleteMeetingMutation();
+  const [createMeetingLog] = useCreateMeetingLogMutation();
+
+
+
 
   // ===== Participants for attendance =====
+
+  const writeLog = async (
+  action: 'UPDATE_MEETING' | 'DELETE_MEETING',
+  meetingId: number
+) => {
+  if (!accountId) return;
+  try {
+    await createMeetingLog({ meetingId, accountId, action }).unwrap();
+  } catch (err) {
+    // Không block UI nếu log fail
+    console.error('MeetingLog error:', err);
+  }
+};
   const {
     data: participants = [],
     refetch: refetchParticipants,
@@ -167,7 +185,8 @@ const MeetingManagementPage: React.FC = () => {
         deadline.setDate(meetingDate.getDate() + 1);
         if (now > deadline) {
           try {
-            await deleteMeeting(meeting.id);
+            await deleteMeeting(meeting.id).unwrap();
+            await writeLog('DELETE_MEETING', meeting.id);
             toast.success(`🗑️ The meeting "${meeting.meetingTopic}" has been deleted due to expiration`);
             await refetch();
           } catch (err) {
@@ -588,7 +607,8 @@ const MeetingManagementPage: React.FC = () => {
                                 participantIds: selectedMeeting.participantIds || [],
                                 status: formData.status || selectedMeeting.status,
                               },
-                            });
+                            }).unwrap();
+                            await writeLog('UPDATE_MEETING', selectedMeeting.id); 
 
                             toast.success('✅ Meeting update successful!');
                             await refetch();
@@ -625,6 +645,7 @@ const MeetingManagementPage: React.FC = () => {
           className="mt-4 rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           onClick={async () => {
             await deleteMeeting(m.id);
+            await writeLog('DELETE_MEETING', m.id);
             await refetch();
             setDeleteOpen(false);
           }}

@@ -3,6 +3,7 @@ import { ChevronDown, Plus } from 'lucide-react';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 import { type MilestoneResponseDTO } from '../../../services/milestoneApi';
+import { useAuth } from '../../../services/AuthContext';
 interface MilestoneHeaderProps {
   projectKey: string;
   projectId: number;
@@ -18,10 +19,28 @@ const MilestoneHeader: React.FC<MilestoneHeaderProps> = ({ projectKey, projectId
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const [dateFilter, setDateFilter] = useState('All');
   const [sprintFilter, setSprintFilter] = useState<string | null>('All');
+  const { user } = useAuth();
+  const accountId = user?.id;
+
+
+
 
   const { data: membersData, isLoading: membersLoading } = useGetProjectMembersWithPositionsQuery(projectId, {
     skip: !projectId || projectId === 0,
   });
+
+  // tìm chính mình trong danh sách members của project
+const me = (membersData as any)?.data?.find(
+  (m: any) => m?.accountId === accountId || m?.id === accountId
+);
+
+
+const roleName = String(
+  me?.positionName ?? me?.role ?? me?.position?.name ?? user?.role ?? ''
+).toUpperCase();
+
+
+const isClient = roleName === 'CLIENT';
 
   const members = membersData?.data
     ?.filter((member) => member.status.toUpperCase() === 'ACTIVE')
@@ -94,6 +113,7 @@ const MilestoneHeader: React.FC<MilestoneHeaderProps> = ({ projectKey, projectId
             ))}
           </select>
         </div>
+        {!isClient && (
         <div className="flex items-center">
           {members.length > 0 ? (
             isMembersExpanded ? (
@@ -141,6 +161,7 @@ const MilestoneHeader: React.FC<MilestoneHeaderProps> = ({ projectKey, projectId
             </div>
           )}
         </div>
+        )}
       </div>
       <div className="flex justify-center items-center max-w-md mx-auto">
         {thisWeekMilestones.length > 0 || keyFilter ? (
@@ -168,13 +189,16 @@ const MilestoneHeader: React.FC<MilestoneHeaderProps> = ({ projectKey, projectId
         )}
       </div>
       <div className="flex items-center gap-3">
-        <button
-          onClick={onCreateMilestone}
-          className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Create Milestone
-        </button>
+{!isClient && (
+  <button
+    onClick={onCreateMilestone}
+    className="flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md"
+  >
+    <Plus className="w-5 h-5 mr-2" />
+    Create Milestone
+  </button>
+)}
+
       </div>
     </div>
   );

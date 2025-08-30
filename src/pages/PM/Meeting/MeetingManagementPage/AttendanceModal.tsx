@@ -81,19 +81,8 @@ const AttendanceModal: React.FC<Props> = ({
   // ⬇️ THÊM hook trong component
 const [removeParticipant, { isLoading: isRemoving }] = useRemoveParticipantFromMeetingMutation();
 
-// ⬇️ THÊM handler trong component (trước return)
-// const handleRemoveMember = async (p: Participant) => {
-//   if (!meetingId) return;
-//   const ok = window.confirm(`Remove ${p.fullName} khỏi cuộc họp?`);
-//   if (!ok) return;
-//   try {
-//     await removeParticipant({ meetingId, accountId: p.accountId }).unwrap();
-//     // Optimistic update đã xử lý trong slice
-//   } catch (e) {
-//     console.error(e);
-//     alert('Xóa thành viên thất bại.');
-//   }
-// };
+
+
 
 // ⬇️ THÊM state + handler ở đầu component
 const [confirmOpen, setConfirmOpen] = useState(false);
@@ -156,14 +145,43 @@ const confirmRemove = async () => {
     });
   }, [participants, statusOptions, setDraft]);
 
-  const handleSelectAllPresent = () => {
-    if (!presentOpt) return;
-    setDraft((prev) => {
-      const next = { ...prev };
+  // const handleSelectAllPresent = () => {
+  //   if (!presentOpt) return;
+  //   setDraft((prev) => {
+  //     const next = { ...prev };
+  //     for (const p of participants) next[p.id] = presentOpt.value;
+  //     return next;
+  //   });
+  // };
+// 1) Kiểm tra xem hiện tại tất cả đã là Present chưa
+const isAllPresent = useMemo(() => {
+  if (!presentOpt) return false;
+  return participants.every(p => (draft[p.id] ?? p.status) === presentOpt.value);
+}, [participants, draft, presentOpt]);
+
+// 2) Toggle Select All
+const handleSelectAllPresent = () => {
+  if (!presentOpt) return;
+  setDraft(prev => {
+    const next = { ...prev };
+    const allPresentNow = participants.every(
+      p => (prev[p.id] ?? p.status) === presentOpt.value
+    );
+
+    if (allPresentNow) {
+      // 👉 Bỏ chọn: trả về trạng thái gốc từ server (p.status)
+      for (const p of participants) {
+        if (p.status) next[p.id] = p.status;
+        else delete next[p.id]; // không có status gốc thì xóa để fallback
+      }
+    } else {
+      // 👉 Chọn hết: set tất cả = Present
       for (const p of participants) next[p.id] = presentOpt.value;
-      return next;
-    });
-  };
+    }
+
+    return next;
+  });
+};
 
   const accentColors = statusOptions.map((s) => s.color).filter(Boolean);
   const headerBarStyle = {
@@ -222,22 +240,22 @@ const onDragEnd = () => {
 
   return (
     <>
-      <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
+      {/* <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
         <div style={headerBarStyle} />
 
-        {/* Header: title + nút dấu cộng */}
+        
 <div className="mb-2 flex items-center justify-between">
   <h3 className="text-xl font-bold tracking-tight">
     📋 Attendance{meetingTopic ? `: ${meetingTopic}` : ''}
   </h3>
 
   <div className="flex items-center gap-2">
-    {/* 👥 total members */}
+    
     <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
       👥 {totalMembers} members
     </span>
 
-    {/* present count (nếu có presentOpt) */}
+    
     {presentOpt && (
       <span className="rounded-full px-3 py-1 text-xs font-semibold"
         style={{
@@ -250,7 +268,7 @@ const onDragEnd = () => {
       </span>
     )}
 
-    {/* nút + chỉ hiện khi ACTIVE */}
+    
     {canAddMembers && (
       <button
         type="button"
@@ -266,10 +284,10 @@ const onDragEnd = () => {
 </div>
 
 
-        {/* toolbar: legend + Select all Present */}
+        
         {!isLoading && statusOptions.length > 0 && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            {/* legend */}
+            
             <div className="flex flex-wrap gap-2">
               {statusOptions.map((s) => (
                 <span
@@ -291,7 +309,7 @@ const onDragEnd = () => {
               ))}
             </div>
 
-            {/* Select all Present */}
+            
             {presentOpt && (
               <button
                 className="rounded-full px-4 py-2 text-sm font-semibold transition"
@@ -310,7 +328,7 @@ const onDragEnd = () => {
           </div>
         )}
 
-        {/* mini progress */}
+       
         {presentOpt && (
           <div className="mb-4 text-xs text-gray-500">
             {presentCount}/{participants.length} marked as {presentOpt.label}
@@ -331,36 +349,7 @@ const onDragEnd = () => {
               className="mb-3 rounded-2xl border p-4 shadow-sm"
               style={{ borderColor: alpha('#e5e7eb', 1), background: '#ffffff' }}
             >
-              {/* <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-<div className="text-xs leading-snug">
-  <p className="font-medium text-gray-700">👤 {p.fullName}</p>
-  <p className="text-gray-500">Role: {p.role || '—'}</p>
-</div>
-                <div className="flex gap-2">
-                  {statusOptions.map((opt) => {
-                    const active = draft[p.id] === opt.value;
-                    const bg = active ? opt.color : alpha(opt.color, 0.1);
-                    const bd = active ? opt.color : alpha(opt.color, 0.5);
-                    const fg = active ? contrastText(opt.color) : '#374151';
-                    return (
-                      <button
-                        key={opt.value}
-                        className="rounded-full px-4 py-2 text-sm font-medium transition"
-                        style={{
-                          background: bg,
-                          border: `1px solid ${bd}`,
-                          color: fg,
-                          boxShadow: active ? `0 4px 14px ${alpha(opt.color, 0.35)}` : 'none',
-                        }}
-                        onClick={() => setDraft((prev) => ({ ...prev, [p.id]: opt.value }))}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div> */}
-              {/* wrapper cho mỗi participant */}
+
 <div
   className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-lg p-3 hover:bg-gray-50"
   onMouseDown={(e) => onDragStart(e, p)}
@@ -376,7 +365,7 @@ const onDragEnd = () => {
     <p className="text-gray-500">Role: {p.role || '—'}</p>
   </div>
 
-  {/* ⬇️ THÊM data-nodrag cho các nút trạng thái để không trigger kéo */}
+  
   <div className="flex gap-2" data-nodrag>
     {statusOptions.map((opt) => {
       const active = draft[p.id] === opt.value;
@@ -417,7 +406,192 @@ const onDragEnd = () => {
         >
           💾 Save Attendance
         </button>
-      </DialogContent>
+      </DialogContent> */}
+      <Dialog.Portal>
+  <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/30" />
+  <Dialog.Content
+    className="fixed left-1/2 top-1/2 z-[100] w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2
+               max-h-[80vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl outline-none"
+  >
+    <div style={headerBarStyle} />
+
+    {/* Header: title + nút dấu cộng */}
+    <div className="mb-2 flex items-center justify-between">
+      <h3 className="text-xl font-bold tracking-tight">
+        📋{meetingTopic ? `: ${meetingTopic}` : ''}
+      </h3>
+
+      <div className="flex items-center gap-2">
+        {/* 👥 total members */}
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+          👥 {totalMembers} members
+        </span>
+
+        {/* present count */}
+        {presentOpt && (
+          <span
+            className="rounded-full px-3 py-1 text-xs font-semibold"
+            style={{
+              background: alpha(presentOpt.color, 0.12),
+              border: `1px solid ${alpha(presentOpt.color, 0.6)}`,
+              color: '#111827',
+            }}
+          >
+            ✅ {countsByStatus[presentOpt.value] ?? 0} {presentOpt.label}
+          </span>
+        )}
+
+        {/* nút + chỉ hiện khi ACTIVE */}
+        {canAddMembers && (
+          <button
+            type="button"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+            title="Add members"
+            onClick={() => setOpenAdd(true)}
+            disabled={!meetingId}
+          >
+            +
+          </button>
+        )}
+      </div>
+    </div>
+
+    {/* toolbar: legend + Select all Present */}
+    {!isLoading && statusOptions.length > 0 && (
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {statusOptions.map((s) => (
+            <span
+              key={s.value}
+              className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
+              style={{
+                background: alpha(s.color, 0.12),
+                border: `1px solid ${alpha(s.color, 0.6)}`,
+                color: '#111827',
+              }}
+              title={s.value}
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full"
+                style={{ background: s.color ?? '#9ca3af' }}
+              />
+              {s.label}
+            </span>
+          ))}
+        </div>
+
+        {presentOpt && (
+          // <button
+          //   className="rounded-full px-4 py-2 text-sm font-semibold transition"
+          //   style={{
+          //     background: presentOpt.color,
+          //     color: contrastText(presentOpt.color),
+          //     border: `1px solid ${presentOpt.color}`,
+          //     boxShadow: `0 4px 14px ${alpha(presentOpt.color, 0.35)}`,
+          //   }}
+          //   onClick={handleSelectAllPresent}
+          //   title="Mark all as Present"
+          // >
+          //   Select all {presentOpt.label}
+          // </button>
+          <button
+  className="rounded-full px-4 py-2 text-sm font-semibold transition"
+  style={{
+    background: presentOpt.color,
+    color: contrastText(presentOpt.color),
+    border: `1px solid ${presentOpt.color}`,
+    boxShadow: `0 4px 14px ${alpha(presentOpt.color, 0.35)}`,
+  }}
+  onClick={handleSelectAllPresent}
+  title={isAllPresent ? `Clear ${presentOpt.label}` : `Mark all as ${presentOpt.label}`}
+>
+  {isAllPresent ? `Clear ${presentOpt.label}` : `Select all ${presentOpt.label}`}
+</button>
+
+        )}
+      </div>
+    )}
+
+    {/* mini progress */}
+    {presentOpt && (
+      <div className="mb-4 text-xs text-gray-500">
+        {presentCount}/{participants.length} marked as {presentOpt.label}
+      </div>
+    )}
+
+    {isLoading && <p className="text-sm text-gray-500">Loading participant statuses…</p>}
+    {isError && (
+      <p className="text-sm text-red-500">
+        Couldn’t load participant statuses. Please try again.
+      </p>
+    )}
+
+    {!isLoading &&
+      participants.map((p) => (
+        <div
+          key={p.id}
+          className="mb-3 rounded-2xl border p-4 shadow-sm"
+          style={{ borderColor: alpha('#e5e7eb', 1), background: '#ffffff' }}
+        >
+          <div
+            className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-lg p-3 hover:bg-gray-50"
+            onMouseDown={(e) => onDragStart(e, p)}
+            onMouseMove={(e) => onDragMove(e, p)}
+            onMouseUp={onDragEnd}
+            onMouseLeave={onDragEnd}
+            onTouchStart={(e) => onDragStart(e, p)}
+            onTouchMove={(e) => onDragMove(e, p)}
+            onTouchEnd={onDragEnd}
+          >
+            <div className="text-xs leading-snug">
+              <p className="font-medium text-gray-700">👤 {p.fullName}</p>
+              <p className="text-gray-500">Role: {p.role || '—'}</p>
+            </div>
+
+            <div className="flex gap-2" data-nodrag>
+              {statusOptions.map((opt) => {
+                const active = draft[p.id] === opt.value;
+                const bg = active ? opt.color : alpha(opt.color, 0.1);
+                const bd = active ? opt.color : alpha(opt.color, 0.5);
+                const fg = active ? contrastText(opt.color) : '#374151';
+                return (
+                  <button
+                    key={opt.value}
+                    className="rounded-full px-4 py-2 text-sm font-medium transition"
+                    style={{
+                      background: bg,
+                      border: `1px solid ${bd}`,
+                      color: fg,
+                      boxShadow: active ? `0 4px 14px ${alpha(opt.color, 0.35)}` : 'none',
+                    }}
+                    onClick={() =>
+                      setDraft((prev) => ({ ...prev, [p.id]: opt.value }))
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ))}
+
+    <button
+      className="mt-6 w-full rounded-xl px-4 py-3 text-center text-sm font-semibold text-white"
+      style={{
+        background: gradientFrom(accentColors.length ? accentColors : ['#2563eb']),
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+      }}
+      onClick={async () => {
+        await onSave();
+      }}
+    >
+      💾 Save Attendance
+    </button>
+  </Dialog.Content>
+</Dialog.Portal>
+
 
       {/* Nested dialog cho Add Members */}
       <Dialog.Root open={openAdd} onOpenChange={setOpenAdd}>
@@ -436,8 +610,8 @@ const onDragEnd = () => {
       {/* ⬇️ THÊM modal confirm (đặt gần cuối component, song song với modal Add Members) */}
 <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
   <Dialog.Portal>
-    <Dialog.Overlay className="fixed inset-0 bg-black/30" />
-    <DialogContent className="fixed left-1/2 top-1/2 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl">
+    <Dialog.Overlay className=" inset-0 z-[200] fixed inset-0 bg-black/30" />
+    <DialogContent className=" inset-0 z-[200] fixed left-1/2 top-1/2 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl">
       <h3 className="mb-2 text-lg font-semibold">Remove participant?</h3>
       <p className="mb-4 text-sm text-gray-600">
         Are you sure you want to remove{' '}

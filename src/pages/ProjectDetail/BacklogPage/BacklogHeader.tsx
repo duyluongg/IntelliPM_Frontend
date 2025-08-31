@@ -235,7 +235,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, onEpicFilter, o
       </div>
 
       {/* Action Buttons */}
-      <div className='flex items-center gap-2'>
+      {/* <div className='flex items-center gap-2'>
         <button className='p-2 rounded hover:bg-gray-100'>
           <LineChart className='w-5 h-5 text-gray-700' />
         </button>
@@ -245,7 +245,7 @@ const BacklogHeader: React.FC<BacklogHeaderProps> = ({ onSearch, onEpicFilter, o
         <button className='p-2 rounded hover:bg-gray-100'>
           <MoreHorizontal className='w-5 h-5 text-gray-700' />
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -22,19 +22,15 @@ const KanbanColumn = forwardRef<
 >(({ sprint, tasks, moveTask, status, isActive }, ref) => {
   const [, drop] = useDrop(() => ({
     accept: 'TASK',
-    drop: (item: { id: string; fromSprintId: number | null; fromStatus: string }) => {
-      moveTask(item.id, item.fromSprintId, sprint.id || null, status);
-    },
+    drop: (item: { id: string; fromSprintId: number | null; fromStatus: string }) =>
+      moveTask(item.id, item.fromSprintId, sprint.id || null, status),
   }));
 
   const dropRef = (node: HTMLDivElement) => {
     drop(node);
     if (ref) {
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if ('current' in ref) {
-        (ref as React.RefObject<HTMLDivElement>).current = node;
-      }
+      if (typeof ref === 'function') ref(node);
+      else if ('current' in ref) (ref as React.RefObject<HTMLDivElement>).current = node;
     }
   };
 
@@ -50,17 +46,14 @@ const KanbanColumn = forwardRef<
   return (
     <div
       ref={dropRef}
-      className={`w-64 shrink-0 p-2 rounded-lg border bg-gray-100 shadow-sm flex flex-col `}
+      className='w-64 shrink-0 p-2 rounded-lg border bg-gray-100 shadow-sm flex flex-col relative'
     >
       <div className='flex items-center justify-between mb-4'>
         <div className='flex items-center gap-2'>
-          <span className='text-xs font-medium text-gray-500 uppercase tracking-wide'>
-            {status}
-          </span>
+          <span className='text-xs font-medium text-gray-500 uppercase tracking-wide'>{status}</span>
           <span className='w-6 h-4 flex items-center justify-center text-xs text-gray-600 bg-gray-200 border rounded-md'>
             {tasks.length}
           </span>
-
           {isDoneColumn && (
             <svg fill='none' viewBox='0 0 16 16' className='w-3.5 h-3.5 text-green-700 ml-2'>
               <path
@@ -73,7 +66,6 @@ const KanbanColumn = forwardRef<
           )}
         </div>
       </div>
-
       {isToDoColumn && isEmpty && isFromSprintId ? (
         <div className='flex flex-col items-center justify-center text-center flex-1 py-6 px-2 space-y-4'>
           <img
@@ -93,7 +85,7 @@ const KanbanColumn = forwardRef<
           </Link>
         </div>
       ) : (
-        <div className='space-y-2 flex-1 overflow-y-auto overflow-x-hidden'>
+        <div className='space-y-2 flex-1 overflow-y-auto' style={{ position: 'relative' }}>
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} sprintId={sprint.id || null} moveTask={moveTask} />
           ))}
@@ -104,5 +96,4 @@ const KanbanColumn = forwardRef<
 });
 
 KanbanColumn.displayName = 'KanbanColumn';
-
 export default KanbanColumn;

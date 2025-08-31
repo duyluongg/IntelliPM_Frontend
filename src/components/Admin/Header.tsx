@@ -86,18 +86,18 @@ const handleLogout = () => {
       </div>
 
       <div className='flex items-center space-x-2'>
-        <button className='hidden md:flex border px-3 py-1.5 rounded-md text-sm items-center hover:bg-gray-100'>
+        {/* <button className='hidden md:flex border px-3 py-1.5 rounded-md text-sm items-center hover:bg-gray-100'>
           <span className='mr-1'>💬</span> Chat
-        </button>
+        </button> */}
 
         <NotificationBell accountId={accountId} />
 
         <button className='p-2 hover:bg-gray-100 rounded-full'>
           <HelpCircle className='w-5 h-5 text-gray-700' />
         </button>
-        <button className='p-2 hover:bg-gray-100 rounded-full'>
+        {/* <button className='p-2 hover:bg-gray-100 rounded-full'>
           <Settings className='w-5 h-5 text-gray-700' />
-        </button>
+        </button> */}
 
         {user ? (
           <div className='relative '>

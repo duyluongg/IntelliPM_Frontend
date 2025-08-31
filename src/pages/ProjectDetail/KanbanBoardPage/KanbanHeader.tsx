@@ -360,7 +360,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
             type='text'
             value={searchQuery}
             onChange={handleSearch}
-            placeholder='Search backlog...'
+            placeholder='Search board...'
             className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
             style={{ all: 'unset', width: '100%' }}
           />

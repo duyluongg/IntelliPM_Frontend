@@ -129,6 +129,7 @@ interface CostDashboardResponse {
     plannedCost: number;
     plannedTaskCost: number;
     plannedResourceCost: number;
+    earnedValue: number;
     budget: number;
   };
 }
@@ -195,7 +196,7 @@ export const projectMetricApi = createApi({
       }),
       transformResponse: (response: any) => {
         console.log('Raw API response:', response);
-        return response; // đừng map gì hết để chắc chắn
+        return response; 
       },
     }),
 

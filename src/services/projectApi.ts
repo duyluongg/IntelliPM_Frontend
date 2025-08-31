@@ -521,6 +521,17 @@ export const projectApi = createApi({
       ],
     }),
 
+    sendInvitationToTeamMember: builder.mutation<
+      SendInvitationsResponse,
+      { projectId: number; accountId: number }
+    >({
+      query: ({ projectId, accountId }) => ({
+        url: `project/${projectId}/send-invitation/${accountId}`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, { projectId }) => [{ type: 'Project', id: projectId }],
+    }),
+
   }),
 });
 
@@ -544,4 +555,5 @@ export const {
   useLazyCheckProjectKeyQuery,
   useUpdateProjectStatusMutation,
   useLazyGetWorkItemByKeyQuery,
+  useSendInvitationToTeamMemberMutation,
 } = projectApi;

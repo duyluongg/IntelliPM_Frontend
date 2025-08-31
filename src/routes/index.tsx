@@ -75,6 +75,7 @@ import ForgotPassword from '../components/ForgotPassword';
 import ResetPassword from '../components/ResetPassword';
 import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
 import InviteesMemberPage from '../pages/InviteesMember/InviteesMemberPage';
+import ActivityLogPage from '../pages/ActivityLog/ActivityLogPage';
 
 export const router = createBrowserRouter([
   {
@@ -311,6 +312,10 @@ export const router = createBrowserRouter([
       {
         path: 'projects/form/:formId',
         element: <Form />,
+      },
+      {
+        path: 'activity-logs',
+        element: <ActivityLogPage  />,
       },
 
       // {

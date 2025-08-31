@@ -170,10 +170,14 @@ const CostBarChart = ({
             width={100}
             tick={{ fontSize: 12, fill: '#374151' }}
           />
-          <Tooltip
+          {/* <Tooltip
             formatter={(value: number) => [formatCurrency(value), 'Cost']}
             contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
-          />
+          /> */}
+          <Tooltip 
+          formatter={(value: number) => formatCurrency(value)}
+          contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb' }}
+           />
           <Legend />
           <Bar dataKey="Actual" fill="#ef4444" barSize={20} radius={[4, 4, 0, 0]} /> {/* Red for actual cost, signals overspending */}
           <Bar dataKey="Planned" fill="#3b82f6" barSize={20} radius={[4, 4, 0, 0]} /> {/* Blue for planned cost, neutral baseline */}

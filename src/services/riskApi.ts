@@ -158,6 +158,11 @@ export const riskApi = createApi({
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
       headers.set('Content-Type', 'application/json');
+      const userJson = localStorage.getItem('user');
+      const token = userJson ? JSON.parse(userJson).accessToken : null;
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),

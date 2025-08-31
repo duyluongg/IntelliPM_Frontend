@@ -41,6 +41,12 @@ export const activityLogApi = createApi({
       providesTags: ['ActivityLogs'],
     }),
 
+    getActivityLogsByCreatedBy: builder.query<ActivityLogResponseDTO[], number>({
+      query: (createdBy) => `activitylog/createdby/${createdBy}`,
+      transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
+      providesTags: ['ActivityLogs'],
+    }),
+
     getActivityLogsByTaskId: builder.query<ActivityLogResponseDTO[], string>({
       query: (taskId) => `activitylog/task/${taskId}`,
       transformResponse: (response: ApiResponse<ActivityLogResponseDTO[]>) => response.data,
@@ -72,5 +78,6 @@ export const {
   useGetActivityLogsBySubtaskIdQuery,
   useGetActivityLogsByTaskIdQuery,
   useGetActivityLogsByRiskKeyQuery,
-  useGetActivityLogsByEpicIdQuery
+  useGetActivityLogsByEpicIdQuery,
+  useGetActivityLogsByCreatedByQuery,
 } = activityLogApi;

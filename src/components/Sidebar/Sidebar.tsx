@@ -22,6 +22,7 @@ import { useGetProjectsByAccountQuery } from '../../services/accountApi';
 import { useAuth } from '../../services/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import projectIcon from '../../assets/projectManagement.png';
+import { List } from 'lucide-react';
 import {
   useGetHealthDashboardQuery,
   useCalculateMetricsBySystemMutation,
@@ -49,6 +50,7 @@ const menuItems = [
     isDropdown: true,
     hasArrow: true,
   },
+  { icon: <List className="w-5 h-5" />, label: 'Activity Log', path: '/project/activity-logs' },
   // { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
 

@@ -150,7 +150,7 @@ export default function Sidebar() {
   };
 
   // client click → đi thẳng timeline bằng hash
-  const clientProjectHref = (key: string) => `/project?projectKey=${key}#timeline`;
+  const clientProjectHref = (key: string) => `/projectclient?projectKey=${key}#timeline`;
 
   const allowedLabelsForClient = ['Meeting', 'For you', 'Projects'];
   const visibleMenuItems = isClient

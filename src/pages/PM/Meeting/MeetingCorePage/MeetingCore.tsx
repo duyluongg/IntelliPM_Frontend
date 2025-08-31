@@ -50,7 +50,7 @@ const pendingCount = useMemo(() => {
         <div className='relative bg-purple-600 overflow-hidden rounded-3xl bg-white/20 backdrop-blur-md shadow-md mb-10'>
           <div className='flex h-48 items-center justify-center'>
             <h2 className='text-center text-3xl sm:text-4xl font-bold tracking-tight banner-heading'>
-              📅 Manage your meetings with ease
+              📅 Manage your meetings online with ease
             </h2>
           </div>
         </div>

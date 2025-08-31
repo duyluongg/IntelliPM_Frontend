@@ -41,18 +41,18 @@ import {
   useUpdateTaskCommentMutation,
   useDeleteTaskCommentMutation,
 } from '../../services/taskCommentApi';
-import {useGetTaskFilesByTaskIdQuery,useUploadTaskFileMutation,useDeleteTaskFileMutation} from '../../services/taskFileApi';
+import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
-import {useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
+import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
@@ -186,6 +186,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
       ? 10000000000
       : parseInt(actualCostConfig.data.maxValue, 10);
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const {
     data: attachments = [],
@@ -333,7 +339,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
-      await Promise.all([refetchActivityLogs(), refetchSubtasks()]); 
+      await Promise.all([refetchActivityLogs(), refetchSubtasks()]);
       console.log('Start date updated');
     } catch (err) {
       console.error('Failed to update start date', err);
@@ -696,6 +702,10 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
   });
 
   const {
@@ -710,7 +720,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
         if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
-          return prev; 
+          return prev;
         }
         return { ...prev, [taskId]: assignees };
       });
@@ -877,7 +887,6 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -886,7 +895,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
             <textarea
               value={editedContent[comment.id] || comment.content}
               onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+              maxLength={maxCommentLength}
+              className='w-full p-2 border border-gray-300 rounded'
             />
+            {commentContent.length > maxCommentLength && (
+              <span className='text-red-500 text-xs mt-1 block'>
+                Maximum {maxCommentLength} characters allowed
+              </span>
+            )}
             <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
             <button onClick={() => setEditCommentId(null)}>Cancel</button>
           </>
@@ -1097,11 +1113,12 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  setFileError(''); 
+                  setFileError('');
                   if (file) {
                     // Check file size (10MB = 10 * 1024 * 1024 bytes)
-                    if (file.size > 10 * 1024 * 1024) {
-                      setFileError('File size exceeds 10MB limit');
+                    if (file.size > maxFileSize) {
+                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2); 
+                      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
                       setIsAddDropdownOpen(false);
                       return;
                     }
@@ -1523,7 +1540,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('Failed to update summary:', err);
-                                        
+
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1618,7 +1635,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                                       await refetchActivityLogs();
                                     } catch (err) {
                                       console.error('Failed to update subtask:', err);
-                                     
+
                                     }
                                   }}
                                   style={{
@@ -1818,9 +1835,14 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className='border rounded p-2 w-full'
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -1912,13 +1934,19 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                       placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                           
                             return;
                           }
                           createTaskComment({
@@ -1932,7 +1960,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-                         
+
                         }
                       }}
                     >
@@ -2032,7 +2060,7 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                     <div className='dropdown-select-wrapper'>
                       <select
                         style={{ width: '150px' }}
-                        value={selectedAssigneeId} 
+                        value={selectedAssigneeId}
                         onChange={async (e) => {
                           const selectedId = parseInt(e.target.value);
                           if (!selectedId) return;

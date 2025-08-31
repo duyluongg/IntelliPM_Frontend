@@ -192,9 +192,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id,
   });
 
-  const isUserAssignee = (subtaskAssigneeId?: number) => {
-    const currentUserId = accountId.toString();
-    return subtaskAssigneeId?.toString() === currentUserId;
+  const isUserAssignee = () => {
+    const currentUserId = accountId;
+    return assignees.some((assignee) => assignee.accountId === currentUserId);
   };
 
   const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
@@ -956,7 +956,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
           <div className='details-panel'>
             <div className='panel-header'>
-              {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+              {isUserAssignee() || canEdit ? (
                 <select
                   value={subtaskDetail.status}
                   className={`status-dropdown-select status-${subtaskDetail.status
@@ -1001,7 +1001,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <div className='detail-item'>
                 <label>Assignee</label>
 
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     value={selectedAssignee ?? subtaskDetail?.assignedBy}
                     onChange={async (e) => {
@@ -1048,7 +1048,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Percent Complete</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <div className='flex items-center gap-1'>
                     <input
                       type='number'
@@ -1288,7 +1288,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <div className='detail-item'>
                 <label>Priority</label>
 
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     style={{ width: '150px' }}
                     value={newPriority ?? subtaskDetail?.priority}
@@ -1322,7 +1322,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Start Date</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <input
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
@@ -1393,7 +1393,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Due Date</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
@@ -1464,7 +1464,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Reporter</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}
                     onChange={async (e) => {

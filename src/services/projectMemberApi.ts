@@ -27,6 +27,7 @@ export interface ProjectMemberResponse {
   joinedAt: string | null;
   invitedAt: string;
   status: string | null;
+  accountRole: string | null;
 }
 
 export interface ProjectMemberWithPositionsResponse {
@@ -41,6 +42,7 @@ export interface ProjectMemberWithPositionsResponse {
   fullName: string;
   username: string;
   picture: string | null;
+  role: string | null;
   projectPositions: ProjectPositionResponse[];
 }
 

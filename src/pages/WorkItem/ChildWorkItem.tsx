@@ -11,8 +11,8 @@ import {
   useUpdateSubtaskActualCostMutation,
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
-import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
-import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
+import { useGetWorkItemLabelsBySubtaskQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation } from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -25,14 +25,13 @@ import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogAp
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
 import { useGetProjectByIdQuery } from '../../services/projectApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
 import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
-import aiIcon from '../../assets/icon/ai.png';
 
 interface SubtaskDetail {
   id: string;
@@ -164,6 +163,12 @@ const ChildWorkItem: React.FC = () => {
   const { data: assignees = [], isLoading: isAssigneeLoading } = useGetTaskAssignmentsByTaskIdQuery(
     subtaskDetail?.taskId ?? ''
   );
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const {
     data: comments = [],
@@ -763,9 +768,14 @@ const ChildWorkItem: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className='border rounded p-2 w-full'
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -857,7 +867,14 @@ const ChildWorkItem: React.FC = () => {
                       placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
@@ -878,7 +895,7 @@ const ChildWorkItem: React.FC = () => {
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-                          
+
                         }
                       }}
                     >

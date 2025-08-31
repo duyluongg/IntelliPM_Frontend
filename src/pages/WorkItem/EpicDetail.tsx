@@ -30,6 +30,7 @@ import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 import { Tooltip } from 'react-tooltip';
 import aiIcon from '../../assets/icon/ai.png';
 import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -143,7 +144,17 @@ const EpicDetail: React.FC = () => {
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(epic?.projectId!, {
     skip: !epic?.projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
   });
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
     skip: !epic?.id,
@@ -617,9 +628,11 @@ const EpicDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  setFileError('');
                   if (file) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      setFileError('File size exceeds 10MB limit');
+                    if (file.size > maxFileSize) {
+                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2);
+                      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
                       setIsAddDropdownOpen(false);
                       return;
                     }
@@ -1433,9 +1446,14 @@ const EpicDetail: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className="border rounded p-2 w-full"
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className="flex gap-2 mt-2">
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -1522,7 +1540,14 @@ const EpicDetail: React.FC = () => {
                       placeholder="Add a comment..."
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
@@ -1765,7 +1790,7 @@ const EpicDetail: React.FC = () => {
                           icon: 'error',
                           title: 'Invalid Due Date',
                           html: 'Due Date must be greater than Start Date!',
-                          width: '500px', 
+                          width: '500px',
                           confirmButtonColor: 'rgba(44, 104, 194, 1)',
                           customClass: {
                             title: 'small-title',
@@ -1788,7 +1813,7 @@ const EpicDetail: React.FC = () => {
                             html: `Due Date must be between project <strong>${projectData.data.name}</strong> 
                                                                    is <b>${projectData.data.startDate.slice(0, 10)}</b> and 
                                                                    <b>${projectData.data.endDate.slice(0, 10)}</b>!`,
-                            width: '500px', 
+                            width: '500px',
                             confirmButtonColor: 'rgba(44, 104, 194, 1)',
                             customClass: {
                               title: 'small-title',

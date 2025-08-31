@@ -238,7 +238,6 @@ const Status: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
-// DateWithIcon Component
 const DateWithIcon = ({
   date,
   status,
@@ -452,7 +451,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
 
   const members =
     membersData?.data
-      ?.filter((member) => member.status.toUpperCase() === 'ACTIVE')
+      ?.filter((member) => member.role !== 'CLIENT')
       ?.map((member) => ({
         id: member.accountId, // Use accountId to match assignee.id
         name: member.fullName || member.accountName || 'Unknown',
@@ -818,7 +817,9 @@ const ProjectTaskList: React.FC = () => {
     navigate(`/project/projects/form/document/${docId}`);
   };
 
-  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).map(
+  const projectMembers: ProjectMember[] = (projectMembersResponse?.data ?? []).filter(
+    (member: ProjectMemberWithPositionsResponse) => member.role !== 'CLIENT'
+  ).map(
     (member: ProjectMemberWithPositionsResponse) => ({
       id: member.id,
       accountId: member.accountId,
@@ -1783,7 +1784,7 @@ const ProjectTaskList: React.FC = () => {
                         showMemberDropdown?.field === 'assignees' ? (
                         <div
                           ref={dropdownRef}
-                          className='absolute z-50 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
+                          className='absolute z-30 bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto w-64 p-2 top-8 left-0'
                         >
                           {projectMembers.length ? (
                             projectMembers.map((member: ProjectMember) => {

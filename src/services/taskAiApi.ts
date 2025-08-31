@@ -21,7 +21,16 @@ interface ApiResponse<T> {
 
 export const taskAiApi = createApi({
     reducerPath: 'taskAiApi',
-    baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+    baseQuery: fetchBaseQuery({
+        baseUrl: API_BASE_URL,
+        prepareHeaders: (headers) => {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+                headers.set('Authorization', `Bearer ${token}`);
+            }
+            return headers;
+        },
+    }),
     endpoints: (builder) => ({
         generateTasksByAI: builder.mutation<AiSuggestedTask[], number>({
             query: (projectId) => ({

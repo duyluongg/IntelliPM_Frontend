@@ -12,8 +12,8 @@ import {
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
-import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
-import { useDeleteSubtaskFileMutation,useGetSubtaskFilesBySubtaskIdQuery,useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
+import { useGetWorkItemLabelsBySubtaskQuery, useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
+import { useDeleteSubtaskFileMutation, useGetSubtaskFilesBySubtaskIdQuery, useUploadSubtaskFileMutation } from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -26,7 +26,7 @@ import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useSearchParams } from 'react-router-dom';
-import { useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -186,6 +186,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     const currentUserId = accountId.toString();
     return subtaskAssigneeId?.toString() === currentUserId;
   };
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const {
     data: activityLogs = [],
@@ -462,11 +468,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !subtaskDetail) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setFileError('File size exceeds 10MB limit');
+
+    if (file.size > maxFileSize) {
+      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2); 
+      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
       setIsAddDropdownOpen(false);
       return;
     }
+
     try {
       await uploadSubtaskFile({
         subtaskId: subtaskDetail.id,
@@ -477,8 +486,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
       refetchAttachments();
       await refetchActivityLogs();
+      setFileError(''); // Clear error on successful upload
     } catch (error) {
       console.error('Upload failed:', error);
+      setFileError('Failed to upload file');
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -781,9 +792,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className='border rounded p-2 w-full'
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -875,7 +891,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
@@ -896,7 +919,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-                          
+
                         }
                       }}
                     >

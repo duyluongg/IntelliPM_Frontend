@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState, Fragment, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetSprintByIdQuery, useUpdateSprintDetailsMutation, useCheckActiveSprintStartDateMutation } from '../../../services/sprintApi';
-import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
+import { useGetProjectDetailsByKeyQuery, useGetProjectByIdQuery } from '../../../services/projectApi';
 import dayjs from 'dayjs';
 import { debounce } from 'lodash';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 
 interface StartSprintPopupProps {
   isOpen: boolean;
@@ -35,19 +35,31 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     data: sprint,
     isLoading: isSprintLoading,
     isError: isSprintError,
-  } = useGetSprintByIdQuery(sprintId, {
-    skip: !isOpen || !sprintId,
-  });
+  } = useGetSprintByIdQuery(sprintId, { skip: !isOpen || !sprintId });
   const {
     data: project,
     isLoading: isProjectLoading,
     isError: isProjectError,
-  } = useGetProjectDetailsByKeyQuery(projectKey, {
-    skip: !isOpen || !projectKey,
-  });
+  } = useGetProjectDetailsByKeyQuery(projectKey, { skip: !isOpen || !projectKey });
+  const {
+    data: projectById,
+    isLoading: isProjectByIdLoading,
+    isError: isProjectByIdError,
+  } = useGetProjectByIdQuery(project?.data?.id || 0, { skip: !isOpen || !project?.data?.id });
 
   const [updateSprintDetails] = useUpdateSprintDetailsMutation();
   const [checkSprintDates] = useCheckActiveSprintStartDateMutation();
+
+  const {
+    data: sprintNameConfig,
+    isLoading: isSprintNameConfigLoading,
+    isError: isSprintNameConfigError,
+  } = useGetByConfigKeyQuery('sprint_name_length', { skip: !isOpen });
+  const {
+    data: goalConfig,
+    isLoading: isGoalConfigLoading,
+    isError: isGoalConfigError,
+  } = useGetByConfigKeyQuery('description_length', { skip: !isOpen });
 
   const [sprintName, setSprintName] = useState('');
   const [duration, setDuration] = useState('1 week');
@@ -59,12 +71,15 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   const [startDateError, setStartDateError] = useState<string | null>(null);
   const [endDateError, setEndDateError] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [sprintNameError, setSprintNameError] = useState<string | null>(null);
+  const [goalError, setGoalError] = useState<string | null>(null);
   const [hasChangedStart, setHasChangedStart] = useState(false);
   const [hasChangedEnd, setHasChangedEnd] = useState(false);
   const [validWeeks, setValidWeeks] = useState<number[]>([1, 2, 3, 4]);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const isInitialized = useRef(false);
+  const popupRef = useRef<HTMLDivElement>(null);
 
   const debouncedCheckDates = useRef(
     debounce(async (projectKey: string, startDate: string, startTime: string, endDate: string, endTime: string, sprintId: number) => {
@@ -93,10 +108,10 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         setStartDateError(null);
         setEndDateError(null);
 
-        if (!project?.data || !sprint?.id) return;
+        if (!projectById?.data || !sprint?.id) return;
         const start = dayjs(`${startDate}T${startTime}`);
-        const projectStart = dayjs(project.data.startDate);
-        const projectEnd = dayjs(project.data.endDate);
+        const projectStart = dayjs(projectById.data.startDate);
+        const projectEnd = dayjs(projectById.data.endDate);
 
         if (!projectStart.isValid() || !projectEnd.isValid()) {
           setStartDateError('Invalid project dates');
@@ -184,6 +199,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
       setStartDateError(null);
       setEndDateError(null);
       setGeneralError(null);
+      setSprintNameError(null);
+      setGoalError(null);
       setHasChangedStart(false);
       setHasChangedEnd(false);
       setValidWeeks([1, 2, 3, 4]);
@@ -204,14 +221,52 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
   }, [duration, startDate, startTime, validWeeks]);
 
   useEffect(() => {
-    if (!hasChangedStart || !startDate || !startTime || !projectKey || !project || !sprint?.id) return;
+    if (!hasChangedStart || !startDate || !startTime || !projectKey || !projectById?.data || !sprint?.id) return;
     debouncedCheckDates(projectKey, startDate, startTime, endDate, endTime, sprint.id);
-  }, [startDate, startTime, hasChangedStart, projectKey, project, sprint, endDate, endTime]);
+  }, [startDate, startTime, hasChangedStart, projectKey, projectById, sprint, endDate, endTime]);
 
   useEffect(() => {
     if (!hasChangedEnd || !endDate || !endTime || duration !== 'custom' || !projectKey || !sprint?.id) return;
     debouncedCheckDates(projectKey, startDate, startTime, endDate, endTime, sprint.id);
   }, [endDate, endTime, hasChangedEnd, duration, projectKey, sprint, startDate, startTime]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen || isSprintNameConfigLoading || isSprintNameConfigError || !sprintNameConfig?.data) return;
+    const maxLength = parseInt(sprintNameConfig.data.valueConfig, 10);
+    if (!sprintName.trim()) {
+      setSprintNameError('Sprint name is required');
+    } else if (sprintName.length > maxLength || isNaN(maxLength)) {
+      setSprintNameError(`Sprint name must not exceed ${isNaN(maxLength) ? 100 : maxLength} characters.`);
+    } else {
+      setSprintNameError(null);
+    }
+  }, [sprintName, isOpen, isSprintNameConfigLoading, isSprintNameConfigError, sprintNameConfig]);
+
+  useEffect(() => {
+    if (!isOpen || isGoalConfigLoading || isGoalConfigError || !goalConfig?.data) return;
+    const maxLength = parseInt(goalConfig.data.valueConfig, 10);
+    if (goal && goal.length > maxLength) {
+      setGoalError(`Sprint goal must not exceed ${maxLength} characters.`);
+    } else {
+      setGoalError(null);
+    }
+  }, [goal, isOpen, isGoalConfigLoading, isGoalConfigError, goalConfig]);
 
   const handleConfirm = async () => {
     try {
@@ -222,12 +277,12 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         return;
       }
 
-      if (!project || !project.data) {
+      if (!projectById?.data) {
         setGeneralError('Project details not available');
         return;
       }
 
-      if (!project.data.id) {
+      if (!projectById.data.id) {
         setGeneralError('Project ID is missing');
         return;
       }
@@ -242,8 +297,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
         return;
       }
 
-      if (startDateError || endDateError) {
-        setGeneralError('Please fix date errors before starting the sprint.');
+      if (startDateError || endDateError || sprintNameError || goalError) {
+        setGeneralError('Please fix all errors before starting the sprint.');
         return;
       }
 
@@ -254,7 +309,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
 
       await updateSprintDetails({
         id: sprintId.toString(),
-        projectId: project.data.id,
+        projectId: projectById.data.id,
         name: sprintName || 'Unnamed Sprint',
         goal: goal || null,
         startDate: startDateTime,
@@ -276,7 +331,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
 
   if (!isOpen) return null;
 
-  if (isSprintLoading || isProjectLoading) {
+  if (isSprintLoading || isProjectLoading || isProjectByIdLoading || isSprintNameConfigLoading || isGoalConfigLoading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
         <div className="bg-white rounded-lg p-4">Loading...</div>
@@ -284,7 +339,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     );
   }
 
-  if (isSprintError || isProjectError) {
+  if (isSprintError || isProjectError || isProjectByIdError || isSprintNameConfigError || isGoalConfigError) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
         <div className="bg-white rounded-lg p-4 text-red-500">Error loading sprint or project details</div>
@@ -292,13 +347,18 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
     );
   }
 
+  const minDate = projectById?.data?.startDate && dayjs(projectById.data.startDate).isValid()
+    ? dayjs(projectById.data.startDate).format('YYYY-MM-DD')
+    : '';
+  const maxDate = projectById?.data?.endDate && dayjs(projectById.data.endDate).isValid()
+    ? dayjs(projectById.data.endDate).format('YYYY-MM-DD')
+    : '';
+
   return (
     <Fragment>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
-          {generalError && (
-            <div className="text-red-500 text-sm mb-4">{generalError}</div>
-          )}
+        <div ref={popupRef} className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
+          {generalError && <div className="text-red-500 text-sm mb-4">{generalError}</div>}
           <h2 className="text-xl font-semibold mb-4">Start another sprint</h2>
           <p className="text-sm text-gray-600 mb-4">
             <strong>{workItem}</strong> work item{workItem !== 1 ? 's' : ''} will be included in this sprint.
@@ -312,8 +372,9 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
               <input
                 value={sprintName}
                 onChange={(e) => setSprintName(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full p-2 border ${sprintNameError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               />
+              {sprintNameError && <p className="text-xs text-red-500 mt-1">{sprintNameError}</p>}
             </div>
 
             <div>
@@ -342,6 +403,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
                   <input
                     type="date"
                     value={startDate}
+                    min={minDate}
+                    max={maxDate}
                     onChange={(e) => {
                       setStartDate(e.target.value);
                       setHasChangedStart(true);
@@ -380,9 +443,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
                     <strong>{dayjs(`${startDate}T${startTime}`).format('MMM DD, YYYY, h:mm A')}</strong>
                   </p>
                 )}
-                {startDateError && (
-                  <p className="text-xs text-red-500 mt-1">{startDateError}</p>
-                )}
+                {startDateError && <p className="text-xs text-red-500 mt-1">{startDateError}</p>}
               </div>
             </div>
 
@@ -395,6 +456,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
                   <input
                     type="date"
                     value={endDate}
+                    min={minDate}
+                    max={maxDate}
                     onChange={(e) => {
                       if (duration === 'custom') {
                         setEndDate(e.target.value);
@@ -438,9 +501,7 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
                     <strong>{dayjs(`${endDate}T${endTime}`).format('MMM DD, YYYY, h:mm A')}</strong>
                   </p>
                 )}
-                {endDateError && (
-                  <p className="text-xs text-red-500 mt-1">{endDateError}</p>
-                )}
+                {endDateError && <p className="text-xs text-red-500 mt-1">{endDateError}</p>}
               </div>
             </div>
 
@@ -449,10 +510,9 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
               <textarea
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows={3}
-                placeholder="Add a goal for this sprint (optional)"
+                className={`w-full p-2 border ${goalError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
               />
+              {goalError && <p className="text-xs text-red-500 mt-1">{goalError}</p>}
             </div>
           </div>
 
@@ -465,8 +525,8 @@ const StartSprintPopup: React.FC<StartSprintPopupProps> = ({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={isUpdating || !!startDateError || !!endDateError}
-              className={`px-4 py-2 text-sm text-white rounded-md transition ${isUpdating || !!startDateError || !!endDateError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              disabled={isUpdating || !!startDateError || !!endDateError || !!sprintNameError || !!goalError}
+              className={`px-4 py-2 text-sm text-white rounded-md transition ${isUpdating || !!startDateError || !!endDateError || !!sprintNameError || !!goalError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isUpdating ? 'Starting...' : 'Start'}
             </button>

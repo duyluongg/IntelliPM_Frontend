@@ -1,13 +1,13 @@
 import { createContext, useContext, useState } from 'react';
-import type { ReactNode } from 'react'; 
+import type { ReactNode } from 'react';
 
-export type Role = 'PROJECT_MANAGER' | 'ADMIN' | 'TEAM_LEADER'| 'CLIENT' | 'TEAM_MEMBER';
+export type Role = 'PROJECT_MANAGER' | 'ADMIN' | 'TEAM_LEADER' | 'CLIENT' | 'TEAM_MEMBER';
 
 export type User = {
   id: number;
   username: string;
   email: string;
-  role: Role ;
+  role: Role;
   accessToken: string;
   refreshToken: string;
 };
@@ -26,32 +26,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return userData ? JSON.parse(userData) : null;
   });
 
-const login = (newUser: User) => {
-  const standardizedUser: User = {
-    ...newUser,
-    role: (newUser.role || '').toUpperCase() as Role,
+  const login = (newUser: User) => {
+    const standardizedUser: User = {
+      ...newUser,
+      role: (newUser.role || '').toUpperCase() as Role,
+    };
+
+    setUser(standardizedUser);
+    localStorage.setItem('user', JSON.stringify(standardizedUser));
   };
 
-  setUser(standardizedUser);
-  localStorage.setItem('user', JSON.stringify(standardizedUser));
-};
+  const logout = () => {
+    setUser(null);
+    // localStorage.removeItem('user');
+    // localStorage.removeItem('accessToken');
+    // localStorage.removeItem('refreshToken');
+    // localStorage.removeItem('persist:auth');
+    localStorage.clear();
+  };
 
-
-const logout = () => {
-  setUser(null);
-  // localStorage.removeItem('user');
-  // localStorage.removeItem('accessToken');
-  // localStorage.removeItem('refreshToken');
-  // localStorage.removeItem('persist:auth');
-  localStorage.clear(); 
-};
-
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

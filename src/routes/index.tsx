@@ -187,7 +187,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -329,6 +329,32 @@ export const router = createBrowserRouter([
       {
         path: ':projectKey/risk-statistics',
         element: <RiskStatistics />,
+      },
+    ],
+  },
+
+  //Role Client
+    {
+    path: '/projectclient',
+    element: (
+      <ProtectedRoute allowedRoles={['CLIENT']}>
+        <PMLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ProjectDetailPage />,
+      },
+
+      {
+        path: 'meeting-management/view-reject',
+        element: <MeetingRequestRejectPage />,
+      },
+
+      {
+        path: 'meeting-management/send-request',
+        element: <CreateDocumentRequestMeeting />,
       },
     ],
   },

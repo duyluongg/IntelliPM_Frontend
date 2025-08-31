@@ -42,6 +42,7 @@ export interface ProjectMemberWithPositionsResponse {
   fullName: string;
   username: string;
   picture: string | null;
+  role: string | null;
   projectPositions: ProjectPositionResponse[];
 }
 

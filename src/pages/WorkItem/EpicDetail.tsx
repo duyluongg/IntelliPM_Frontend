@@ -30,6 +30,7 @@ import DeleteConfirmModal from "../WorkItem/DeleteConfirmModal";
 import { Tooltip } from 'react-tooltip';
 import aiIcon from '../../assets/icon/ai.png';
 import AiResponseEvaluationPopup from '../../components/AiResponse/AiResponseEvaluationPopup';
+import { useGetByConfigKeyQuery } from '../../services/systemConfigurationApi';
 
 const EpicDetail: React.FC = () => {
   const { epicId: epicIdFromUrl } = useParams();
@@ -148,6 +149,12 @@ const EpicDetail: React.FC = () => {
       ...rest,
     }),
   });
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const { data: activityLogs = [], isLoading: isActivityLogsLoading, refetch: refetchActivityLogs } = useGetActivityLogsByEpicIdQuery(epic?.id!, {
     skip: !epic?.id,
@@ -621,9 +628,11 @@ const EpicDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  setFileError('');
                   if (file) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      setFileError('File size exceeds 10MB limit');
+                    if (file.size > maxFileSize) {
+                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2);
+                      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
                       setIsAddDropdownOpen(false);
                       return;
                     }
@@ -1437,9 +1446,14 @@ const EpicDetail: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className="border rounded p-2 w-full"
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className="flex gap-2 mt-2">
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -1526,7 +1540,14 @@ const EpicDetail: React.FC = () => {
                       placeholder="Add a comment..."
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {

@@ -4,6 +4,7 @@ import { DialogContent } from '@radix-ui/react-dialog';
 import { useGetCategoriesByGroupQuery } from '../../../../services/dynamicCategoryApi';
 import AddMembersModal from './AddMembersModal';
 import { useRemoveParticipantFromMeetingMutation } from '../../../../services/ProjectManagement/MeetingServices/MeetingParticipantServices';
+import { useAuth } from '../../../../services/AuthContext';
 
 type Participant = {
   id: number;
@@ -80,6 +81,8 @@ const AttendanceModal: React.FC<Props> = ({
 
   // ⬇️ THÊM hook trong component
 const [removeParticipant, { isLoading: isRemoving }] = useRemoveParticipantFromMeetingMutation();
+const { user } = useAuth();
+const currentAccountId = user?.id;
 
 
 
@@ -145,14 +148,7 @@ const confirmRemove = async () => {
     });
   }, [participants, statusOptions, setDraft]);
 
-  // const handleSelectAllPresent = () => {
-  //   if (!presentOpt) return;
-  //   setDraft((prev) => {
-  //     const next = { ...prev };
-  //     for (const p of participants) next[p.id] = presentOpt.value;
-  //     return next;
-  //   });
-  // };
+
 // 1) Kiểm tra xem hiện tại tất cả đã là Present chưa
 const isAllPresent = useMemo(() => {
   if (!presentOpt) return false;
@@ -229,6 +225,7 @@ const onDragMove = (e: React.MouseEvent | React.TouchEvent, p: Participant) => {
   const dx = getClientX(e) - dragRef.current.startX;
   if (dx > DRAG_TO_CONFIRM_PX) {
     dragRef.current.active = false;
+    if (p.accountId === currentAccountId) return;
     openConfirm(p); // mở modal confirm xóa
   }
 };
@@ -240,173 +237,6 @@ const onDragEnd = () => {
 
   return (
     <>
-      {/* <DialogContent className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-        <div style={headerBarStyle} />
-
-        
-<div className="mb-2 flex items-center justify-between">
-  <h3 className="text-xl font-bold tracking-tight">
-    📋 Attendance{meetingTopic ? `: ${meetingTopic}` : ''}
-  </h3>
-
-  <div className="flex items-center gap-2">
-    
-    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-      👥 {totalMembers} members
-    </span>
-
-    
-    {presentOpt && (
-      <span className="rounded-full px-3 py-1 text-xs font-semibold"
-        style={{
-          background: alpha(presentOpt.color, 0.12),
-          border: `1px solid ${alpha(presentOpt.color, 0.6)}`,
-          color: contrastText(alpha(presentOpt.color, 0.8)),
-        }}
-      >
-        ✅ {countsByStatus[presentOpt.value] ?? 0} {presentOpt.label}
-      </span>
-    )}
-
-    
-    {canAddMembers && (
-      <button
-        type="button"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
-        title="Add members"
-        onClick={() => setOpenAdd(true)}
-        disabled={!meetingId}
-      >
-        +
-      </button>
-    )}
-  </div>
-</div>
-
-
-        
-        {!isLoading && statusOptions.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            
-            <div className="flex flex-wrap gap-2">
-              {statusOptions.map((s) => (
-                <span
-                  key={s.value}
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium"
-                  style={{
-                    background: alpha(s.color, 0.12),
-                    border: `1px solid ${alpha(s.color, 0.6)}`,
-                    color: contrastText(alpha(s.color, 0.8)),
-                  }}
-                  title={s.value}
-                >
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ background: s.color ?? '#9ca3af' }}
-                  />
-                  {s.label}
-                </span>
-              ))}
-            </div>
-
-            
-            {presentOpt && (
-              <button
-                className="rounded-full px-4 py-2 text-sm font-semibold transition"
-                style={{
-                  background: presentOpt.color,
-                  color: contrastText(presentOpt.color),
-                  border: `1px solid ${presentOpt.color}`,
-                  boxShadow: `0 4px 14px ${alpha(presentOpt.color, 0.35)}`,
-                }}
-                onClick={handleSelectAllPresent}
-                title="Mark all as Present"
-              >
-                Select all {presentOpt.label}
-              </button>
-            )}
-          </div>
-        )}
-
-       
-        {presentOpt && (
-          <div className="mb-4 text-xs text-gray-500">
-            {presentCount}/{participants.length} marked as {presentOpt.label}
-          </div>
-        )}
-
-        {isLoading && <p className="text-sm text-gray-500">Loading participant statuses…</p>}
-        {isError && (
-          <p className="text-sm text-red-500">
-            Couldn’t load participant statuses. Please try again.
-          </p>
-        )}
-
-        {!isLoading &&
-          participants.map((p) => (
-            <div
-              key={p.id}
-              className="mb-3 rounded-2xl border p-4 shadow-sm"
-              style={{ borderColor: alpha('#e5e7eb', 1), background: '#ffffff' }}
-            >
-
-<div
-  className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-lg p-3 hover:bg-gray-50"
-  onMouseDown={(e) => onDragStart(e, p)}
-  onMouseMove={(e) => onDragMove(e, p)}
-  onMouseUp={onDragEnd}
-  onMouseLeave={onDragEnd}
-  onTouchStart={(e) => onDragStart(e, p)}
-  onTouchMove={(e) => onDragMove(e, p)}
-  onTouchEnd={onDragEnd}
->
-  <div className="text-xs leading-snug">
-    <p className="font-medium text-gray-700">👤 {p.fullName}</p>
-    <p className="text-gray-500">Role: {p.role || '—'}</p>
-  </div>
-
-  
-  <div className="flex gap-2" data-nodrag>
-    {statusOptions.map((opt) => {
-      const active = draft[p.id] === opt.value;
-      const bg = active ? opt.color : alpha(opt.color, 0.1);
-      const bd = active ? opt.color : alpha(opt.color, 0.5);
-      const fg = active ? contrastText(opt.color) : '#374151';
-      return (
-        <button
-          key={opt.value}
-          className="rounded-full px-4 py-2 text-sm font-medium transition"
-          style={{
-            background: bg,
-            border: `1px solid ${bd}`,
-            color: fg,
-            boxShadow: active ? `0 4px 14px ${alpha(opt.color, 0.35)}` : 'none',
-          }}
-          onClick={() => setDraft((prev) => ({ ...prev, [p.id]: opt.value }))}
-        >
-          {opt.label}
-        </button>
-      );
-    })}
-  </div>
-</div>
-
-            </div>
-          ))}
-
-        <button
-          className="mt-6 w-full rounded-xl px-4 py-3 text-center text-sm font-semibold text-white"
-          style={{
-            background: gradientFrom(accentColors.length ? accentColors : ['#2563eb']),
-            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          }}
-          onClick={async () => {
-            await onSave();
-          }}
-        >
-          💾 Save Attendance
-        </button>
-      </DialogContent> */}
       <Dialog.Portal>
   <Dialog.Overlay className="fixed inset-0 z-[99] bg-black/30" />
   <Dialog.Content
@@ -481,19 +311,6 @@ const onDragEnd = () => {
         </div>
 
         {presentOpt && (
-          // <button
-          //   className="rounded-full px-4 py-2 text-sm font-semibold transition"
-          //   style={{
-          //     background: presentOpt.color,
-          //     color: contrastText(presentOpt.color),
-          //     border: `1px solid ${presentOpt.color}`,
-          //     boxShadow: `0 4px 14px ${alpha(presentOpt.color, 0.35)}`,
-          //   }}
-          //   onClick={handleSelectAllPresent}
-          //   title="Mark all as Present"
-          // >
-          //   Select all {presentOpt.label}
-          // </button>
           <button
   className="rounded-full px-4 py-2 text-sm font-semibold transition"
   style={{
@@ -526,8 +343,9 @@ const onDragEnd = () => {
       </p>
     )}
 
-    {!isLoading &&
+    {/* {!isLoading &&
       participants.map((p) => (
+         
         <div
           key={p.id}
           className="mb-3 rounded-2xl border p-4 shadow-sm"
@@ -575,7 +393,72 @@ const onDragEnd = () => {
             </div>
           </div>
         </div>
-      ))}
+      ))} */}
+
+      {participants.map((p) => {
+  const isHost = p.accountId === currentAccountId;
+
+  return (
+    <div
+      key={p.id}
+      className={`mb-3 rounded-2xl border p-4 shadow-sm ${isHost ? 'bg-yellow-50/40' : ''}`}
+      style={{ borderColor: alpha('#e5e7eb', 1), background: isHost ? undefined : '#ffffff' }}
+    >
+      <div
+        className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between rounded-lg p-3 hover:bg-gray-50"
+        // 🔒 block drag-to-delete nếu là Host
+        onMouseDown={isHost ? undefined : (e) => onDragStart(e, p)}
+        onMouseMove={isHost ? undefined : (e) => onDragMove(e, p)}
+        onMouseUp={isHost ? undefined : onDragEnd}
+        onMouseLeave={isHost ? undefined : onDragEnd}
+        onTouchStart={isHost ? undefined : (e) => onDragStart(e, p)}
+        onTouchMove={isHost ? undefined : (e) => onDragMove(e, p)}
+        onTouchEnd={isHost ? undefined : onDragEnd}
+      >
+        <div className="text-xs leading-snug">
+          <p className="font-medium text-gray-700 flex items-center gap-2">
+            👤 {p.fullName}
+            {isHost && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-0.5 text-[10px] font-semibold">
+                {/* crown icon */}
+                <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+                  <path d="M3 7l4 3 5-6 5 6 4-3v11H3z" />
+                </svg>
+                Host
+              </span>
+            )}
+          </p>
+          <p className="text-gray-500">Role: {p.role || '—'}</p>
+        </div>
+
+        <div className="flex gap-2" data-nodrag>
+          {statusOptions.map((opt) => {
+            const active = draft[p.id] === opt.value;
+            const bg = active ? opt.color : alpha(opt.color, 0.1);
+            const bd = active ? opt.color : alpha(opt.color, 0.5);
+            const fg = active ? contrastText(opt.color) : '#374151';
+            return (
+              <button
+                key={opt.value}
+                className="rounded-full px-4 py-2 text-sm font-medium transition"
+                style={{
+                  background: bg,
+                  border: `1px solid ${bd}`,
+                  color: fg,
+                  boxShadow: active ? `0 4px 14px ${alpha(opt.color, 0.35)}` : 'none',
+                }}
+                onClick={() => setDraft((prev) => ({ ...prev, [p.id]: opt.value }))}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+})}
+
 
     <button
       className="mt-6 w-full rounded-xl px-4 py-3 text-center text-sm font-semibold text-white"
@@ -608,35 +491,65 @@ const onDragEnd = () => {
       </Dialog.Root>
 
       {/* ⬇️ THÊM modal confirm (đặt gần cuối component, song song với modal Add Members) */}
+{/* Confirm remove dialog (nhỏ gọn, đẹp, đúng cú pháp Radix) */}
 <Dialog.Root open={confirmOpen} onOpenChange={setConfirmOpen}>
   <Dialog.Portal>
-    <Dialog.Overlay className=" inset-0 z-[200] fixed inset-0 bg-black/30" />
-    <DialogContent className=" inset-0 z-[200] fixed left-1/2 top-1/2 w-[90vw] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl">
-      <h3 className="mb-2 text-lg font-semibold">Remove participant?</h3>
-      <p className="mb-4 text-sm text-gray-600">
-        Are you sure you want to remove{' '}
-        <span className="font-medium text-gray-900">{target?.fullName}</span>{' '}
-        from this meeting?
-      </p>
+    <Dialog.Overlay className="fixed inset-0 z-[200] bg-black/35" />
+    <Dialog.Content
+      aria-labelledby="remove-title"
+      aria-describedby="remove-desc"
+      className="fixed left-1/2 top-1/2 z-[210] w-[92vw] max-w-[360px]
+                 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white
+                 p-5 shadow-xl outline-none ring-1 ring-black/5"
+      onEscapeKeyDown={() => setConfirmOpen(false)}
+      onPointerDownOutside={() => setConfirmOpen(false)}
+    >
+      {/* Header compact với icon cảnh báo */}
+      <div className="mb-3 flex items-start gap-3">
+        <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center
+                        rounded-full bg-red-50 text-red-600">
+          {/* icon trash đơn giản */}
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <path d="M9 3h6a1 1 0 0 1 1 1v1h4v2H4V5h4V4a1 1 0 0 1 1-1zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM6 9h2v9H6V9z"/>
+          </svg>
+        </div>
+        <div>
+          <h3 id="remove-title" className="text-base font-semibold text-gray-900">
+            Remove participant?
+          </h3>
+          <p id="remove-desc" className="mt-1 text-sm leading-5 text-gray-600">
+            Are you sure you want to remove{' '}
+            <span className="font-medium text-gray-900">{target?.fullName}</span>
+            {' '}from this meeting?
+          </p>
+        </div>
+      </div>
 
+      {/* Buttons: trái Cancel, phải Delete (đỏ) */}
       <div className="mt-4 flex justify-end gap-2">
         <button
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          autoFocus
+          className="inline-flex items-center justify-center rounded-lg border
+                     border-gray-300 px-3.5 py-2 text-sm font-medium text-gray-700
+                     hover:bg-gray-50 active:scale-[0.98] transition"
           onClick={() => setConfirmOpen(false)}
         >
           Cancel
         </button>
         <button
-          className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+          className="inline-flex items-center justify-center rounded-lg bg-red-600
+                     px-3.5 py-2 text-sm font-semibold text-white shadow
+                     hover:bg-red-700 active:scale-[0.98] disabled:opacity-60 transition"
           onClick={confirmRemove}
           disabled={isRemoving}
         >
           {isRemoving ? 'Removing…' : 'Delete'}
         </button>
       </div>
-    </DialogContent>
+    </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
+
 
     </>
   );

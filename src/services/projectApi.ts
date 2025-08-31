@@ -508,12 +508,8 @@ export const projectApi = createApi({
     }),
     updateProjectStatus: builder.mutation<void, { id: number; status: string }>({
       query: ({ id, status }) => ({
-        url: `project/${id}/status`,
+        url: `project/${id}/status/${status}`,
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
       }),
       invalidatesTags: ['Project'],
     }),

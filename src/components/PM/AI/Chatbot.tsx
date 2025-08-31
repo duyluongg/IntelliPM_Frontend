@@ -173,6 +173,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
   const docId = Number(documentId);
   const busy = isLoading || isGenLoading || isProjectLoading;
 
+  const handleNewChat = () => {
+    setMessages([]); // Xóa tất cả tin nhắn để bắt đầu lại
+  };
+
   const handleSendMessage = async (messageText?: string) => {
     let textToSend = messageText || inputText;
 
@@ -262,7 +266,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
         ...prev,
         {
           id: Date.now() + 1,
-          text: '❌ Đã xảy ra lỗi khi gọi AI. Vui lòng thử lại.',
+          text: '❌ An error occurred while calling AI. Please try again.',
           sender: 'ai',
         },
       ]);
@@ -281,13 +285,16 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
           <span className='font-semibold text-gray-800 dark:text-white'>IntelliPM AI</span>
         </div>
         <div className='flex items-center gap-1'>
-          <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
+          <button
+            className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'
+            onClick={handleNewChat}
+          >
             <Pencil className='w-5 h-5' />
           </button>
           {/* Thay đổi: Thêm icon chat */}
-          <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
+          {/* <button className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'>
             <MessageSquare className='w-5 h-5' />
-          </button>
+          </button> */}
           <button
             onClick={onClose}
             className='p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400'

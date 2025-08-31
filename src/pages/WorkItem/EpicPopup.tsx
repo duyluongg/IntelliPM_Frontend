@@ -5,55 +5,22 @@ import Swal from 'sweetalert2';
 import WorkItem from './WorkItem';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, type Role } from '../../services/AuthContext';
-import {
-  useGetEpicByIdQuery,
-  useUpdateEpicStatusMutation,
-  useUpdateEpicMutation,
-} from '../../services/epicApi';
+import {useGetEpicByIdQuery,useUpdateEpicStatusMutation,useUpdateEpicMutation,} from '../../services/epicApi';
 import epicIcon from '../../assets/icon/type_epic.svg';
 import taskIcon from '../../assets/icon/type_task.svg';
 import bugIcon from '../../assets/icon/type_bug.svg';
 import storyIcon from '../../assets/icon/type_story.svg';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
-import {
-  useGetTasksByEpicIdQuery,
-  useUpdateTaskStatusMutation,
-  useCreateTaskMutation,
-  useUpdateTaskTitleMutation,
-  useUpdateTaskPriorityMutation,
-} from '../../services/taskApi';
-import {
-  useGetWorkItemLabelsByEpicQuery,
-  useDeleteWorkItemLabelMutation,
-} from '../../services/workItemLabelApi';
-import {
-  useGetEpicFilesByEpicIdQuery,
-  useUploadEpicFileMutation,
-  useDeleteEpicFileMutation,
-} from '../../services/epicFileApi';
-import {
-  useLazyGetTaskAssignmentsByTaskIdQuery,
-  useCreateTaskAssignmentQuickMutation,
-  useDeleteTaskAssignmentMutation,
-} from '../../services/taskAssignmentApi';
+import {useGetTasksByEpicIdQuery,useUpdateTaskStatusMutation,useCreateTaskMutation,useUpdateTaskTitleMutation,useUpdateTaskPriorityMutation,} from '../../services/taskApi';
+import {useGetWorkItemLabelsByEpicQuery,useDeleteWorkItemLabelMutation,} from '../../services/workItemLabelApi';
+import {useGetEpicFilesByEpicIdQuery,useUploadEpicFileMutation,useDeleteEpicFileMutation} from '../../services/epicFileApi';
+import { type TaskAssignmentDTO, useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
-import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
-import {
-  useGetCommentsByEpicIdQuery,
-  useCreateEpicCommentMutation,
-  useUpdateEpicCommentMutation,
-  useDeleteEpicCommentMutation,
-} from '../../services/epicCommentApi';
-import {
-  useGetActivityLogsByProjectIdQuery,
-  useGetActivityLogsByEpicIdQuery,
-} from '../../services/activityLogApi';
-import {
-  useCreateLabelAndAssignMutation,
-  useGetLabelsByProjectIdQuery,
-} from '../../services/labelApi';
+import {useGetCommentsByEpicIdQuery,useCreateEpicCommentMutation,useUpdateEpicCommentMutation,useDeleteEpicCommentMutation} from '../../services/epicCommentApi';
+import {useGetActivityLogsByEpicIdQuery} from '../../services/activityLogApi';
+import {useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGenerateTasksByEpicByAIMutation, type AiSuggestedTask } from '../../services/taskAiApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -68,8 +35,8 @@ interface EpicPopupProps {
 }
 
 const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
-  const { data: epic, isLoading, isError } = useGetEpicByIdQuery(id);
-  const { data: tasks = [], isLoading: loadingTasks, refetch } = useGetTasksByEpicIdQuery(id);
+  const { data: epic, isLoading, isError, refetch: refetchEpic } = useGetEpicByIdQuery(id);
+  const { data: tasks = [], isLoading: loadingTasks, refetch: refetchTasks } = useGetTasksByEpicIdQuery(id);
   const { user } = useAuth();
   const canEdit = user?.role === 'PROJECT_MANAGER' || user?.role === 'TEAM_LEADER';
   const [status, setStatus] = React.useState('');
@@ -207,7 +174,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
           const data = await getTaskAssignments(t.id).unwrap();
           result[t.id] = data;
         } catch (err) {
-          console.error(`❌ Failed to fetch assignees for ${t.id}:`, err);
+          console.error(`Failed to fetch assignees for ${t.id}:`, err);
         }
       }
       setTaskAssignmentMap(result);
@@ -232,38 +199,24 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
     if (!deleteInfo) return;
     try {
       await deleteEpicFile({ id: deleteInfo.fileId, createdBy: accountId }).unwrap();
-      //alert("✅ Delete file successfully!");
       await refetchAttachments();
       await refetchActivityLogs();
     } catch (error) {
-      console.error('❌ Error delete file:', error);
-      //alert("❌ Delete file failed");
+      console.error('Error delete file:', error);
     } finally {
       setIsDeleteModalOpen(false);
       setDeleteInfo(null);
     }
   };
 
-  // const handleDeleteFile = async (id: number, createdBy: number) => {
-  //     try {
-  //         await deleteEpicFile({ id, createdBy: accountId }).unwrap();
-  //         alert('✅ Delete file successfully!');
-  //         await refetchAttachments();
-  //         await refetchActivityLogs();
-  //     } catch (error) {
-  //         console.error('❌ Failed to delete file:', error);
-  //         alert('❌ Delete file failed');
-  //     }
-  // };
-
   const handleStatusChange = async (newStatus: string) => {
     try {
       await updateEpicStatus({ id, status: newStatus, createdBy: accountId }).unwrap();
       await refetchActivityLogs();
-      await refetch();
+      await refetchTasks();
       setStatus(newStatus);
     } catch (error) {
-      console.error('❌ Error update epic status', error);
+      console.error('Error update epic status', error);
     }
   };
 
@@ -315,32 +268,173 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
   };
 
   const handleUpdateEpic = async () => {
-    if (!epic) return;
+  if (!epic) return;
 
-    try {
-      await updateEpic({
-        id: epic.id,
-        data: {
-          projectId: epic.projectId,
-          name: newName ?? epic.name,
-          description: newDescription ?? epic.description,
-          assignedBy: newAssignedBy ?? epic.assignedBy,
-          reporterId: newReporterId ?? epic.reporterId,
-          startDate: newStartDate ?? epic.startDate,
-          endDate: newEndDate ?? epic.endDate,
-          status: epic.status,
-          createdBy: accountId,
+  if (newStartDate || newEndDate) {
+    const effectiveStartDate = newStartDate ?? epic.startDate;
+    const effectiveEndDate = newEndDate ?? epic.endDate;
+
+    if (effectiveStartDate && effectiveEndDate && new Date(effectiveStartDate) >= new Date(effectiveEndDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Dates',
+        html: 'Epic Start Date must be before Due Date!',
+        width: 350,
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
         },
-      }).unwrap();
-
-      //alert("✅ Epic updated");
-      console.error('✅ Epic updated');
-      await refetchActivityLogs();
-      await refetch();
-    } catch (err) {
-      console.error('❌ Failed to update epic', err);
-      //alert("❌ Update failed");
+      });
+      if (newStartDate) setNewStartDate(epic.startDate);
+      if (newEndDate) setNewEndDate(epic.endDate);
+      return;
     }
+
+    // compare date project
+    if (projectData?.data?.startDate && effectiveStartDate && new Date(effectiveStartDate) < new Date(projectData.data.startDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Start Date',
+        html: 'Epic Start Date cannot be before Project Start Date!',
+        width: 350,
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewStartDate(epic.startDate);
+      return;
+    }
+
+    if (projectData?.data?.endDate && effectiveEndDate && new Date(effectiveEndDate) > new Date(projectData.data.endDate)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Due Date',
+        html: 'Epic Due Date cannot be after Project End Date!',
+        width: 350,
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      setNewEndDate(epic.endDate);
+      return;
+    }
+
+    // compare task date
+    const dateValidation = await validateTaskDates(effectiveStartDate, effectiveEndDate);
+    if (!dateValidation.isValid) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Epic Dates',
+        text: dateValidation.message,
+        width: 350,
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      if (newStartDate) setNewStartDate(epic.startDate);
+      if (newEndDate) setNewEndDate(epic.endDate);
+      return;
+    }
+  }
+
+  try {
+    await updateEpic({
+      id: epic.id,
+      data: {
+        projectId: epic.projectId,
+        name: newName ?? epic.name,
+        description: newDescription ?? epic.description,
+        assignedBy: newAssignedBy ?? epic.assignedBy,
+        reporterId: newReporterId ?? epic.reporterId,
+        startDate: newStartDate ?? epic.startDate,
+        endDate: newEndDate ?? epic.endDate,
+        status: epic.status,
+        createdBy: accountId,
+      },
+    }).unwrap();
+
+    console.log('Epic updated');
+    await Promise.all([refetchActivityLogs(), refetchTasks(), refetchEpic()]);
+  } catch (err) {
+    console.error('Failed to update epic', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Update Failed',
+      text: 'Failed to update epic.',
+      width: 350,
+      confirmButtonColor: 'rgba(44, 104, 194, 1)',
+      customClass: {
+        title: 'small-title',
+        popup: 'small-popup',
+        icon: 'small-icon',
+        htmlContainer: 'small-html',
+      },
+    });
+    if (newStartDate) setNewStartDate(epic.startDate);
+    if (newEndDate) setNewEndDate(epic.endDate);
+  }
+};
+
+  const validateTaskDates = async (newStartDate: string, newEndDate: string) => {
+    if (!tasks || tasks.length === 0) return { isValid: true };
+
+    const epicStart = new Date(newStartDate);
+    const epicEnd = new Date(newEndDate);
+
+    for (const task of tasks) {
+      const taskStart = task.plannedStartDate ? new Date(task.plannedStartDate) : null;
+      const taskEnd = task.plannedEndDate ? new Date(task.plannedEndDate) : null;
+
+      if (taskStart) {
+        if (taskStart < epicStart) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has start date (${task.plannedStartDate.slice(0, 10)}) before epic start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (taskStart > epicEnd) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has start date (${task.plannedStartDate.slice(0, 10)}) after epic end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+
+      if (taskEnd) {
+        if (taskEnd < epicStart) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has end date (${task.plannedEndDate.slice(0, 10)}) before epic start date (${newStartDate.slice(0, 10)})!`,
+          };
+        }
+        if (taskEnd > epicEnd) {
+          return {
+            isValid: false,
+            invalidTaskId: task.id,
+            message: `Task with ID ${task.id} has end date (${task.plannedEndDate.slice(0, 10)}) after epic end date (${newEndDate.slice(0, 10)})!`,
+          };
+        }
+      }
+    }
+    return { isValid: true };
   };
 
   const {
@@ -386,13 +480,11 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         subtaskId: null,
       }).unwrap();
 
-      //alert('✅ Label assigned successfully!');
       setNewLabelName('');
       setIsEditingLabel(false);
       await Promise.all([refetchWorkItemLabels?.(), refetchProjectLabels?.()]);
     } catch (error) {
-      console.error('❌ Failed to create and assign label:', error);
-      //alert('❌ Failed to assign label');
+      console.error('Failed to create and assign label:', error);
     }
   };
 
@@ -410,14 +502,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
         await Promise.all([refetchComments(), refetchActivityLogs()]);
         setEditCommentId(null);
       } catch (err) {
-        console.error('❌ Failed to update comment', err);
+        console.error('Failed to update comment', err);
       }
     } else {
       setEditCommentId(null);
     }
   };
 
-  // Trong render comment
   {
     comments.map((comment) => (
       <div key={comment.id}>
@@ -509,15 +600,15 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
               placeholder='Enter epic name'
               defaultValue={epic.name}
               onChange={(e) => {
-                if (e.target.value.length <= 65) {
+                if (e.target.value.length <= 100) {
                   setNewName(e.target.value);
                 } else {
-                  alert('Max 65 characters!');
+                  alert('Max 100 characters!');
                 }
               }}
               onBlur={handleUpdateEpic}
               disabled={!canEdit}
-              style={{ width: 440 }}
+              style={{ width: 600 }}
             />
             <div className='modal-container'>
               <button className='close-btn' onClick={onClose}>
@@ -582,12 +673,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                         file,
                         createdBy: accountId,
                       }).unwrap();
-                      //alert(`✅ Uploaded: ${file.name}`);
                       await refetchAttachments();
                       await refetchActivityLogs();
                     } catch (err) {
-                      console.error('❌ Upload failed:', err);
-                      //alert('❌ Upload failed.');
+                      console.error('Upload failed:', err);
                     }
                   }
                 }}
@@ -834,11 +923,11 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                 }
                                 setShowSuggestionList(false);
                                 setSelectedSuggestions([]);
-                                await refetch();
+                                await refetchTasks();
                                 await refetchActivityLogs();
                                 setIsEvaluationPopupOpen(true);
                               } catch (err) {
-                                console.error('❌ Failed to create tasks', err);
+                                console.error('Failed to create tasks', err);
                               } finally {
                                 setLoadingCreate(false);
                               }
@@ -1004,10 +1093,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                             title: newTitle,
                                             createdBy: accountId,
                                           }).unwrap();
-                                          await refetch();
+                                          await refetchTasks();
                                           await refetchActivityLogs();
                                         } catch (err) {
-                                          console.error('❌ Failed to update title:', err);
+                                          console.error('Failed to update title:', err);
                                         }
                                       }
                                       setEditingTaskId(null);
@@ -1046,10 +1135,10 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         priority: newPriority,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      await refetch();
+                                      await refetchTasks();
                                       await refetchActivityLogs();
                                     } catch (err) {
-                                      console.error('❌ Error updating priority:', err);
+                                      console.error('Error updating priority:', err);
                                     }
                                   }}
                                   style={{
@@ -1079,7 +1168,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             <td>
                               {canEdit ? (
                                 <div className='multi-select-dropdown'>
-                                  {/* Hiển thị danh sách đã chọn */}
                                   <div
                                     className='selected-list'
                                     style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
@@ -1103,7 +1191,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                                 ),
                                               }));
                                             } catch (err) {
-                                              console.error('❌ Failed to delete assignee:', err);
+                                              console.error('Failed to delete assignee:', err);
                                             }
                                           }}
                                         >
@@ -1113,7 +1201,6 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                     ))}
                                   </div>
 
-                                  {/* Dropdown chọn thêm */}
                                   <div className='dropdown-select-wrapper'>
                                     <select
                                       onChange={async (e) => {
@@ -1137,8 +1224,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                               [task.id]: [...(prev[task.id] ?? []), selectedId],
                                             }));
                                           } catch (err) {
-                                            console.error('❌ Failed to create assignee:', err);
-                                            //alert('❌ Error adding assignee');
+                                            console.error('Failed to create assignee:', err);
                                           }
                                         }
                                       }}
@@ -1192,10 +1278,11 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         status: e.target.value,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      await refetch();
+                                      await refetchTasks();
                                       await refetchActivityLogs();
+                                      await refetchEpic();
                                     } catch (err) {
-                                      console.error('❌ Error updating status:', err);
+                                      console.error('Error updating status:', err);
                                     }
                                   }}
                                 >
@@ -1322,14 +1409,13 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             createdBy: accountId,
                           }).unwrap();
 
-                          console.log('✅ Task created');
+                          console.log('Task created');
                           setNewTaskTitle('');
                           setShowTaskInput(false);
-                          await refetch();
+                          await refetchTasks();
                           await refetchActivityLogs();
                         } catch (err) {
-                          console.error('❌ Failed to create task:', err);
-                          //alert('❌ Failed to create task');
+                          console.error('Failed to create task:', err);
                         }
                       }}
                       disabled={!newTaskTitle.trim()}
@@ -1489,7 +1575,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                                         }).unwrap();
                                         await refetchActivityLogs();
                                       } catch (err) {
-                                        console.error('❌ Failed to delete comment:', err);
+                                        console.error('Failed to delete comment:', err);
                                         Swal.fire({
                                           icon: 'error',
                                           title: 'Delete Failed',
@@ -1528,7 +1614,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            alert('❌ User not identified. Please log in again.');
+                            alert('User not identified. Please log in again.');
                             return;
                           }
                           createEpicComment({
@@ -1537,13 +1623,12 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                             content: commentContent.trim(),
                             createdBy: accountId,
                           }).unwrap();
-                          //alert("✅ Comment posted");
                           setCommentContent('');
                           await refetchComments();
                           await refetchActivityLogs();
                         } catch (err: any) {
-                          console.error('❌ Failed to post comment:', err);
-                          alert('❌ Failed to post comment: ' + JSON.stringify(err?.data || err));
+                          console.error('Failed to post comment:', err);
+                          alert('Failed to post comment: ' + JSON.stringify(err?.data || err));
                         }
                       }}
                     >
@@ -1704,6 +1789,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     }
                     value={newStartDate?.slice(0, 10) ?? epic?.startDate?.slice(0, 10) ?? ''}
                     onChange={(e) => {
+                      refetchTasks();
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
@@ -1748,6 +1834,7 @@ const EpicPopup: React.FC<EpicPopupProps> = ({ id, onClose }) => {
                     max={projectData?.data.endDate?.slice(0, 10)}
                     value={newEndDate?.slice(0, 10) ?? epic?.endDate?.slice(0, 10) ?? ''}
                     onChange={(e) => {
+                      refetchTasks();
                       const selectedDate = e.target.value;
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 

@@ -630,7 +630,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({
           </button>
           <button onClick={() => setIsMenuDropdownOpen(!isMenuDropdownOpen)}></button>
           {isMenuDropdownOpen && (
-            <div className='absolute z-10 mt-1 right-0 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
+            <div className='absolute z-20 right-0 top-full mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg'>
               <div
                 onClick={() => {
                   setIsCreateModalOpen(true); // ✅ mở modal
@@ -1438,12 +1438,12 @@ const ProjectTaskList: React.FC = () => {
         {/* Task List Column (Left) */}
         <div className="w-full md:w-1 p-2 overflow-auto border-r border-gray-200"></div>
 
-        <div className='overflow-x-auto bg-white w-full block max-h-[620px] overflow-y-auto'>
+        <div className='overflow-x-auto bg-white w-full block max-h-[420px] overflow-y-auto'>
           <table
             className='w-full border-separate border-spacing-0 min-w-[800px] table-fixed'
             ref={tableRef}
           >
-            <thead>
+            <thead className="sticky top-0 z-10 bg-gray-100">
               <tr>
                 <th
                   style={{ width: `${columnWidths.type}px` }}
@@ -2019,16 +2019,16 @@ const ProjectTaskList: React.FC = () => {
 
         {/* Chart Column (Right) - Visible only when isChartVisible is true */}
         {isChartVisible && (
-          <div className="w-1/3 p-2 overflow-auto border-l border-gray-200 min-w-[300px]">
+          <div className="w-1/2 p-2 overflow-auto border-l border-gray-200 min-w-[300px]">
             <div className="bg-white p-4 rounded-lg h-full">
-              <h2 className="text-lg font-semibold mb-2">View this list as a chart</h2>
-              <p className="text-sm text-gray-600 mb-4">
+              <h2 className="text-lg font-semibold mb-0">View this list as a chart</h2>
+              <p className="text-sm text-gray-600 mb-1">
                 Select the data you'd like to see in a chart.
               </p>
 
               <ChartComponent
                 projectId={projectId || 0}
-                onClose={() => setIsChartVisible(false)} 
+                onClose={() => setIsChartVisible(false)}
               />
             </div>
           </div>

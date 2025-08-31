@@ -3960,6 +3960,7 @@ import {
   useUpdateRiskDescriptionMutation,
   useUpdateRiskImpactLevelMutation,
   useUpdateRiskProbabilityMutation,
+  riskApi,
 } from '../../../services/riskApi';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
 import { useGetProjectDetailsByKeyQuery } from '../../../services/projectApi';
@@ -3990,29 +3991,6 @@ import { useGetActivityLogsByRiskKeyQuery } from '../../../services/activityLogA
 import { useGetCategoriesByGroupQuery } from '../../../services/dynamicCategoryApi';
 import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 import Swal from 'sweetalert2';
-
-// export interface Risk {
-//   id: number;
-//   riskKey: string;
-//   title: string;
-//   description?: string;
-//   impactLevel?: string;
-//   probability?: string;
-//   severityLevel?: string;
-//   status?: string;
-//   type?: string;
-//   createdAt?: string;
-//   updatedAt?: string;
-//   dueDate?: string;
-//   responsibleId?: number | null;
-//   responsibleFullName?: string;
-//   responsibleUserName?: string;
-//   responsiblePicture?: string;
-//   creatorFullName?: string;
-//   creatorUserName?: string;
-//   creatorPicture?: string;
-//   resolution?: string;
-// }
 
 export interface Risk {
   id: number;
@@ -4097,6 +4075,7 @@ const RiskDetail: React.FC<RiskDetailProps> = ({
   const { data: projectData, isLoading: isProjectLoading } =
     useGetProjectDetailsByKeyQuery(projectKey);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [fileError, setFileError] = useState('');
 
   const { data: configData, isLoading: isConfigLoading } =
     useGetByConfigKeyQuery('risk_title_length');
@@ -4472,6 +4451,24 @@ const RiskDetail: React.FC<RiskDetailProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !risk) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError('File size exceeds 10MB limit');
+      Swal.fire({
+        icon: 'error',
+        title: 'File Too Large',
+        text: 'File size exceeds 10MB limit. Please upload a smaller file.',
+        width: '500px',
+        confirmButtonColor: 'rgba(44, 104, 194, 1)',
+        customClass: {
+          title: 'small-title',
+          popup: 'small-popup',
+          icon: 'small-icon',
+          htmlContainer: 'small-html',
+        },
+      });
+      return;
+    }
 
     try {
       await uploadRiskFile({

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, LineChart, SlidersHorizontal, MoreHorizontal, User2 } from 'lucide-react';
 import { useGetProjectMembersWithPositionsQuery } from '../../../services/projectMemberApi';
+import { useGetEpicsByProjectIdQuery } from '../../../services/epicApi';
 import CompleteSprintPopup from './CompleteSprintPopup';
 import { useGetTasksBySprintIdQuery } from '../../../services/taskApi';
 import { useGetActiveSprintByProjectKeyQuery } from '../../../services/sprintApi';
-import { User2 } from 'lucide-react';
 
 const SprintIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -40,6 +40,30 @@ const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// Tooltip Component (copied from SprintColumn.tsx for consistency)
+const Tooltip: React.FC<{
+  children: React.ReactNode;
+  message: string;
+  show: boolean;
+}> = ({ children, message, show }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div
+      className="relative inline-flex"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
+      {children}
+      {show && isVisible && (
+        <div className="absolute z-20 top-full mt-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+          {message}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const formatDate = (isoDate: string | null | undefined): string => {
   if (!isoDate) return 'N/A';
   return new Date(isoDate).toLocaleDateString('en-US', {
@@ -49,11 +73,11 @@ const formatDate = (isoDate: string | null | undefined): string => {
   });
 };
 
-interface BacklogHeaderProps {
-  projectKey: string;
-  sprintName?: string;
-  projectId: number;
-  onSearch: (query: string) => void;
+// Define User type
+interface User {
+  id: number;
+  role: string;
+  [key: string]: any; // For additional properties
 }
 
 interface Member {
@@ -62,16 +86,35 @@ interface Member {
   avatar: string;
 }
 
+interface Epic {
+  id: string;
+  name: string;
+}
+
+interface BacklogHeaderProps {
+  projectKey: string;
+  sprintName?: string;
+  projectId: number;
+  onSearch: (query: string) => void;
+  onEpicSelect: (epicId: string | null) => void;
+}
+
 const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   projectKey,
   sprintName,
   projectId,
   onSearch,
+  onEpicSelect,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMembersExpanded, setIsMembersExpanded] = useState(false);
   const [isSprintDropdownOpen, setIsSprintDropdownOpen] = useState(false);
   const [isCompletePopupOpen, setIsCompletePopupOpen] = useState(false);
+  const [isEpicDropdownOpen, setIsEpicDropdownOpen] = useState(false);
+
+  // Check user role
+  const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+  const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
 
   const {
     data: membersData,
@@ -97,6 +140,14 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
     skip: !sprintData?.id,
   });
 
+  const {
+    data: epicsData,
+    isLoading: epicsLoading,
+    error: epicsError,
+  } = useGetEpicsByProjectIdQuery(projectId, {
+    skip: !projectId || projectId === 0,
+  });
+
   const members: Member[] =
     membersData?.data
       ?.filter((member) => member.status.toUpperCase() === 'ACTIVE')
@@ -105,6 +156,12 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
         name: member.fullName || member.accountName || 'Unknown',
         avatar: member.picture || 'https://via.placeholder.com/30',
       })) || [];
+
+  const epics: Epic[] =
+    epicsData?.map((epic) => ({
+      id: epic.id,
+      name: epic.name,
+    })) || [];
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -121,7 +178,17 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   };
 
   const toggleCompletePopup = () => {
+    if (!isLeaderOrManager) return;
     setIsCompletePopupOpen(!isCompletePopupOpen);
+  };
+
+  const toggleEpicDropdown = () => {
+    setIsEpicDropdownOpen(!isEpicDropdownOpen);
+  };
+
+  const handleEpicSelect = (epicId: string | null) => {
+    onEpicSelect(epicId);
+    setIsEpicDropdownOpen(false);
   };
 
   const sprint = {
@@ -157,11 +224,11 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
   const workItemCompleted = tasks.filter((task) => task.status === 'DONE').length;
   const workItemOpen = workItem - workItemCompleted;
 
-  if (membersLoading || tasksLoading || sprintLoading) {
+  if (membersLoading || tasksLoading || sprintLoading || epicsLoading) {
     return <div className='p-4 text-center text-gray-500'>Loading...</div>;
   }
 
-  if (membersError || tasksError || sprintError) {
+  if (membersError || tasksError || sprintError || epicsError) {
     if (sprintError && 'status' in sprintError && sprintError.status === 404) {
       return (
         <div className='flex items-center justify-between px-1 pb-5 bg-white'>
@@ -172,7 +239,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                 type='text'
                 value={searchQuery}
                 onChange={handleSearch}
-                placeholder='Search backlog...'
+                placeholder='Search boar...'
                 className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
                 style={{ all: 'unset', width: '100%' }}
               />
@@ -194,7 +261,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                           className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                           onClick={toggleMembers}
                         />
-                        <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                        <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'>
                           {member.name}
                         </span>
                       </div>
@@ -208,7 +275,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                       className='w-8 h-8 rounded-full object-cover border cursor-pointer'
                       onClick={toggleMembers}
                     />
-                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity'>
+                    <span className='absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'>
                       {members[0].name}
                     </span>
                     {members.length > 1 && (
@@ -228,9 +295,34 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
               )}
             </div>
 
-            <button className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'>
-              Epic <ChevronDown className='w-4 h-4 ml-1' />
-            </button>
+            <div className='relative'>
+              <button
+                onClick={toggleEpicDropdown}
+                className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
+              >
+                Epic <ChevronDown className='w-4 h-4 ml-1' />
+              </button>
+              {isEpicDropdownOpen && (
+                <div className='absolute left-0 mt-2 w-64 bg-white border rounded shadow-md p-4 z-10'>
+                  <h3 className='text-sm font-semibold text-gray-800 mb-2'>Filter by Epic</h3>
+                  <button
+                    onClick={() => handleEpicSelect(null)}
+                    className='w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded'
+                  >
+                    All Epics
+                  </button>
+                  {epics.map((epic) => (
+                    <button
+                      key={epic.id}
+                      onClick={() => handleEpicSelect(epic.id)}
+                      className='w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded'
+                    >
+                      {epic.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className='flex items-center gap-2'>
@@ -253,6 +345,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
         {(membersError as any)?.data?.message ||
           (tasksError as any)?.data?.message ||
           (sprintError as any)?.data?.message ||
+          (epicsError as any)?.data?.message ||
           'Unknown error'}
       </div>
     );
@@ -267,7 +360,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
             type='text'
             value={searchQuery}
             onChange={handleSearch}
-            placeholder='Search backlog...'
+            placeholder='Search board...'
             className='ml-2 flex-1 bg-white border-none outline-none appearance-none text-sm text-gray-700 placeholder-gray-400'
             style={{ all: 'unset', width: '100%' }}
           />
@@ -290,10 +383,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                       onClick={toggleMembers}
                     />
                     <span
-                      className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5
-                 text-xs bg-gray-800 text-white rounded 
-                 opacity-0 group-hover:opacity-100 transition-opacity 
-                 whitespace-nowrap'
+                      className='absolute top-full left-1/2 -translate-x-1/2 mt-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'
                     >
                       {member.name}
                     </span>
@@ -309,11 +399,8 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
                   onClick={toggleMembers}
                 />
                 <span
-                  className='absolute top-full left-1/2 mt-1 px-2 py-0.5
-               text-xs bg-gray-800 text-white rounded 
-               opacity-0 group-hover:opacity-100 transition-opacity 
-               whitespace-nowrap pointer-events-none z-10'
-                  style={{ transform: 'translateX(-50%)' }} // luôn căn giữa
+                  className='absolute top-full left-1/2 mt-1 px-2 py-0.5 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10'
+                  style={{ transform: 'translateX(-50%)' }}
                 >
                   {members[0].name}
                 </span>
@@ -334,20 +421,53 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
           )}
         </div>
 
-        <button className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'>
-          Epic <ChevronDown className='w-4 h-4 ml-1' />
-        </button>
+        <div className='relative'>
+          <button
+            onClick={toggleEpicDropdown}
+            className='flex items-center border border-gray-300 px-3 py-1.5 rounded text-sm hover:bg-gray-50'
+          >
+            Epic <ChevronDown className='w-4 h-4 ml-1' />
+          </button>
+          {isEpicDropdownOpen && (
+            <div className='absolute left-0 mt-2 w-64 bg-white border rounded shadow-md p-4 z-10'>
+              <h3 className='text-sm font-semibold text-gray-800 mb-2'>Filter by Epic</h3>
+              <button
+                onClick={() => handleEpicSelect(null)}
+                className='w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded'
+              >
+                All Epics
+              </button>
+              {epics.map((epic) => (
+                <button
+                  key={epic.id}
+                  onClick={() => handleEpicSelect(epic.id)}
+                  className='w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded'
+                >
+                  {epic.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className='flex items-center gap-2'>
         {sprintData && (
           <>
-            <button
-              onClick={toggleCompletePopup}
-              className='bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700'
+            <Tooltip
+              message="You are not authorized to use this feature."
+              show={!isLeaderOrManager}
             >
-              Complete sprint
-            </button>
+              <button
+                onClick={toggleCompletePopup}
+                className={`bg-blue-600 text-white px-4 py-1.5 rounded text-sm ${
+                  isLeaderOrManager ? 'hover:bg-blue-700' : 'opacity-50 cursor-not-allowed'
+                }`}
+                disabled={!isLeaderOrManager}
+              >
+                Complete sprint
+              </button>
+            </Tooltip>
 
             <CompleteSprintPopup
               isOpen={isCompletePopupOpen}
@@ -396,7 +516,7 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
           </>
         )}
 
-        <button className='p-2 rounded hover:bg-gray-100'>
+        {/* <button className='p-2 rounded hover:bg-gray-100'>
           <LineChart className='w-5 h-5 text-gray-700' />
         </button>
         <button className='p-2 rounded hover:bg-gray-100'>
@@ -404,8 +524,8 @@ const KanbanHeader: React.FC<BacklogHeaderProps> = ({
         </button>
         <button className='p-2 rounded hover:bg-gray-100'>
           <MoreHorizontal className='w-5 h-5 text-gray-700' />
-        </button>
-      </div>
+        </button>*/}
+      </div> 
     </div>
   );
 };

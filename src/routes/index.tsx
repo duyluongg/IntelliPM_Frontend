@@ -74,6 +74,7 @@ import ShareVerificationPage from '../pages/PM/YourProject/ShareVerificationPage
 import ForgotPassword from '../components/ForgotPassword';
 import ResetPassword from '../components/ResetPassword';
 import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
+import InviteesMemberPage from '../pages/InviteesMember/InviteesMemberPage';
 
 export const router = createBrowserRouter([
   {
@@ -284,8 +285,8 @@ export const router = createBrowserRouter([
       },
 
       {
-        path: `introduction`,
-        element: <ProjectIntroduction />,
+        path: `invitees-member`,
+        element: <InviteesMemberPage />,
       },
       {
         path: ':projectKey/work-item-detail',

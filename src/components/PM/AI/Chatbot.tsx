@@ -193,7 +193,8 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
         ]);
         return;
       }
-      textToSend = `Tóm tắt nội dung sau thành 3-5 gạch đầu dòng dễ hiểu:\n\n${docText}`;
+      // textToSend = `Tóm tắt nội dung sau thành 3-5 gạch đầu dòng dễ hiểu:\n\n${docText}`;
+      textToSend = `Summarize the following content in 3-5 easy-to-understand bullet points:\n\n${docText};`;
     }
 
     if (textToSend === 'Make this doc more clear and concise') {
@@ -444,12 +445,12 @@ const ChatMessage: React.FC<{ message: Message; editor: Editor | null }> = ({
           />
         </div>
         <div className='flex items-center gap-3 mt-2 text-gray-500 dark:text-gray-400'>
-          <button className='p-1 rounded-md hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600'>
+          {/* <button className='p-1 rounded-md hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600'>
             <ThumbsUp className='w-4 h-4' />
           </button>
           <button className='p-1 rounded-md hover:text-red-500 hover:bg-gray-200 dark:hover:bg-gray-600'>
             <ThumbsDown className='w-4 h-4' />
-          </button>
+          </button> */}
           <button
             className='p-1 rounded-md hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600'
             onClick={handleInsert}

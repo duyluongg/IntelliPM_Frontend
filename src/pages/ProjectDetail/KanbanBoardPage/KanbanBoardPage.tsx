@@ -19,6 +19,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import type { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import type { SerializedError } from '@reduxjs/toolkit';
 
+
 // Error Boundary Fallback Component
 const ErrorFallback = ({ error }: { error: Error }) => (
   <div className="p-4 text-red-600">
@@ -58,6 +59,8 @@ const KanbanBoardPage: React.FC = () => {
   const accountId = parseInt(localStorage.getItem('accountId') || '0');
 
   const [tasks, setTasks] = useState<Record<string, TaskBacklogResponseDTO[]>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEpicId, setSelectedEpicId] = useState<string | null>(null);
   const defaultStatuses = ['To Do', 'In Progress', 'Done'];
 
   const statuses = useMemo(() => {
@@ -81,6 +84,17 @@ const KanbanBoardPage: React.FC = () => {
       skip: sprintId === 0 || isCategoriesLoading || isCategoriesFetching,
     });
 
+  const filteredTasks = useMemo(() => {
+    return allTasks.filter((task) => {
+      const matchesEpic = selectedEpicId ? task.epicId === selectedEpicId : true;
+      const matchesSearch = searchQuery
+        ? task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        : true;
+      return matchesEpic && matchesSearch;
+    });
+  }, [allTasks, selectedEpicId, searchQuery]);
+
   const taskQueriesRecord = useMemo(() => {
     const queries: Record<
       string,
@@ -89,16 +103,16 @@ const KanbanBoardPage: React.FC = () => {
     statuses.forEach((status) => {
       const statusKey = status.replace(' ', '_').toUpperCase();
       queries[status] = {
-        data: allTasks.filter((task) => task.status === statusKey),
+        data: filteredTasks.filter((task) => task.status === statusKey),
         isLoading: isTasksLoading,
         isError: isTasksError,
       };
     });
     return queries;
-  }, [allTasks, statuses, isTasksLoading, isTasksError]);
+  }, [filteredTasks, statuses, isTasksLoading, isTasksError]);
 
   useEffect(() => {
-    console.log('KanbanBoardPage state:', { activeSprint, allTasks, sprintId, sprintError });
+    console.log('KanbanBoardPage state:', { activeSprint, filteredTasks, sprintId, sprintError, selectedEpicId, searchQuery });
     const mappedTasks: Record<string, TaskBacklogResponseDTO[]> = {};
 
     statuses.forEach((status) => {
@@ -158,6 +172,14 @@ const KanbanBoardPage: React.FC = () => {
     }
   };
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleEpicSelect = (epicId: string | null) => {
+    setSelectedEpicId(epicId);
+  };
+
   if (isSprintLoading || isCategoriesLoading) {
     return <div className="p-4 text-center text-gray-500">Loading...</div>;
   }
@@ -180,7 +202,8 @@ const KanbanBoardPage: React.FC = () => {
           projectKey={projectKey}
           sprintName={activeSprint?.name || 'No active sprint'}
           projectId={activeSprint?.projectId || 0}
-          onSearch={(query) => console.log('Search:', query)}
+          onSearch={handleSearch}
+          onEpicSelect={handleEpicSelect}
         />
         <DndProvider backend={HTML5Backend}>
           <div className="flex space-x-4 overflow-x-auto">

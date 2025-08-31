@@ -13,6 +13,8 @@ import {
   Plus,
   Settings,
   AlertTriangle,
+  UserPlus
+
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -33,11 +35,12 @@ interface RecentProject {
 }
 
 const menuItems = [
-  { icon: <UserCircle className='w-5 h-5' />, label: 'For you' },
+// { icon: <UserCircle className='w-5 h-5' />, label: 'For you' },
   // { icon: <Clock className='w-5 h-5' />, label: 'Recent', hasArrow: true },
   // { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   // { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
   // { icon: <LayoutPanelTop className='w-5 h-5' />, label: 'Plans' },
+  { icon: <UserPlus className='w-5 h-5' />, label: 'Invitees Member', path: '/project/invitees-member' },
   { icon: <CalendarCheck className='w-5 h-5' />, label: 'Meeting', path: '/meeting' },
   { icon: <Users className='w-5 h-5' />, label: 'Teams', path: '/account/teams-history' },
   {
@@ -46,7 +49,7 @@ const menuItems = [
     isDropdown: true,
     hasArrow: true,
   },
-  { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
+  // { icon: <MoreHorizontal className='w-5 h-5' />, label: 'More' },
 ];
 
 export default function Sidebar() {
@@ -157,6 +160,18 @@ export default function Sidebar() {
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>
       <div className='pt-4'>
+        {isRoleManager && (
+          <Link
+            to='/project/invitees-member'
+            className='flex items-center justify-between px-4 py-2 text-sm text-gray-800 hover:bg-gray-100 cursor-pointer transition-colors no-underline'
+          >
+            <div className='flex items-center space-x-2'>
+              <UserPlus className='w-5 h-5' />
+              <span>Invitees Member</span>
+            </div>
+          </Link>
+        )}
+
         {visibleMenuItems.map((item, index) => {
           if (item.label === 'Projects' && item.isDropdown) {
             return (

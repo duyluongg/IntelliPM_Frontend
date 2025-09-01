@@ -36,7 +36,7 @@ interface RecentProject {
 }
 
 const menuItems = [
-// { icon: <UserCircle className='w-5 h-5' />, label: 'For you' },
+{ icon: <UserCircle className='w-5 h-5' />, label: 'For you' },
   // { icon: <Clock className='w-5 h-5' />, label: 'Recent', hasArrow: true },
   // { icon: <Star className='w-5 h-5' />, label: 'Starred', hasArrow: true },
   // { icon: <AppWindow className='w-5 h-5' />, label: 'Apps' },
@@ -154,10 +154,10 @@ export default function Sidebar() {
   // client click → đi thẳng timeline bằng hash
   const clientProjectHref = (key: string) => `/projectclient?projectKey=${key}#timeline`;
 
-  const allowedLabelsForClient = ['Meeting', 'For you', 'Projects'];
-  const visibleMenuItems = isClient
-    ? menuItems.filter((item) => allowedLabelsForClient.includes(item.label))
-    : menuItems;
+const CLIENT_ALLOWED = new Set(['Meeting', 'Projects','For you']);
+const visibleMenuItems = isClient
+  ? menuItems.filter(i => CLIENT_ALLOWED.has(i.label.trim()))
+  : menuItems.filter(i => i.label !== 'For you');
 
   return (
     <aside className='w-56 h-screen border-r bg-white flex flex-col justify-between fixed top-0 left-0 z-10'>

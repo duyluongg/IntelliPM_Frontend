@@ -34,7 +34,7 @@ export interface CreateRiskSolutionRequest {
 export interface UpdateMitigationPlanRequest {
   id: number;
   mitigationPlan: string | null;
-  createdBy : number;
+  createdBy: number;
 }
 
 export interface UpdateContigencyPlanRequest {
@@ -50,6 +50,10 @@ export const riskSolutionApi = createApi({
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
       headers.set('Content-Type', 'application/json');
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),
@@ -93,14 +97,14 @@ export const riskSolutionApi = createApi({
     }),
 
     deleteRiskMitigationPlan: builder.mutation<void, { id: number; createdBy: number }>({
-      query: ({id, createdBy}) => ({
+      query: ({ id, createdBy }) => ({
         url: `risksolution/${id}/mitigation-plan?createdBy=${createdBy}`,
         method: 'DELETE',
       }),
     }),
 
     deleteRiskContingencyPlan: builder.mutation<void, { id: number; createdBy: number }>({
-      query: ({id, createdBy}) => ({
+      query: ({ id, createdBy }) => ({
         url: `risksolution/${id}/contingency-plan?createdBy=${createdBy}`,
         method: 'DELETE',
       }),
@@ -115,5 +119,5 @@ export const {
   useUpdateRiskContigencyPlanMutation,
   useDeleteRiskSolutionMutation,
   useDeleteRiskContingencyPlanMutation,
-  useDeleteRiskMitigationPlanMutation
+  useDeleteRiskMitigationPlanMutation,
 } = riskSolutionApi;

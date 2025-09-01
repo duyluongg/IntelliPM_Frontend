@@ -3378,7 +3378,14 @@ const TaskSubtaskSheet: React.FC = () => {
         metricData?.data?.budgetAtCompletion
       ) {
         // Use project-level EVM metrics for "All Sprints"
-        const ev = metricData.data.earnedValue;
+        //const ev = metricData.data.earnedValue;
+        const ev = tasks.reduce(
+          (sum, task) =>
+            sum +
+            ((task.plannedCost ?? 0) + (task.plannedResourceCost ?? 0)) *
+              ((editedCells[`${task.id}-percentComplete`] ?? task.percentComplete ?? 0) / 100),
+          0
+        );
         const bac = metricData.data.budgetAtCompletion;
         percentComplete = bac > 0 ? (ev / bac) * 100 : 0;
       } else {

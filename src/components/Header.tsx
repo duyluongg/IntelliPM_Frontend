@@ -146,12 +146,14 @@ export default function Header() {
       {/* Bên phải */}
       <div className='flex items-center space-x-4 relative'>
         <NotificationBell accountId={accountId} />
-        <button
-          className='p-2 hover:bg-gray-100 rounded-full'
-          onClick={() => setIsHelpPopupOpen(true)} // Toggle popup on click
-        >
-          <HelpCircle className='w-5 h-5 text-gray-700' />
-        </button>
+        {user?.role !== 'ADMIN' && (
+          <button
+            className='p-2 hover:bg-gray-100 rounded-full'
+            onClick={() => setIsHelpPopupOpen(true)} // Toggle popup on click
+          >
+            <HelpCircle className='w-5 h-5 text-gray-700' />
+          </button>
+        )}
         {user ? (
           <div className='relative'>
             <button onClick={() => setIsMenuOpen((prev) => !prev)} className='focus:outline-none'>
@@ -223,7 +225,8 @@ export default function Header() {
             </button>
           </Link>
         )}
-        <HelpCirclePopup isOpen={isHelpPopupOpen} onClose={() => setIsHelpPopupOpen(false)} /> {/* Render popup */}
+        <HelpCirclePopup isOpen={isHelpPopupOpen} onClose={() => setIsHelpPopupOpen(false)} />{' '}
+        {/* Render popup */}
       </div>
     </header>
   );

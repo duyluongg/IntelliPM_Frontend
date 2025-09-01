@@ -23,17 +23,31 @@ import { useSelector } from 'react-redux';
 import { Menu, Transition } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { ConfirmationModal } from '../../../components/Modal/ConfirmationModal';
+import { useAuth } from '../../../services/AuthContext';
+import { useGetProfileByAccountIdQuery } from '../../../services/accountApi';
 
 // MODIFIED: Cập nhật props cho DocumentCard
 const DocumentCard = ({
   doc,
   onDelete,
   onUpdateVisibility,
+  currentUserId,
 }: {
   doc: any;
   onDelete: (id: number) => void;
   onUpdateVisibility: (id: number, visibility: 'MAIN' | 'PRIVATE') => void;
+  currentUserId?: number;
 }) => {
+  const ownerRaw = doc.createdBy;
+  const isCreator = currentUserId !== undefined && Number(ownerRaw) === Number(currentUserId);
+  const {
+    data: dataProfile,
+    isLoading,
+    isError,
+  } = useGetProfileByAccountIdQuery(doc.createdBy!, {
+    skip: !doc.createdBy,
+  });
+
   return (
     <div className='relative group flex flex-col bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 hover:shadow-lg hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200'>
       <Link to={`/project/projects/form/document/${doc.id}`} className='flex-grow p-4 pb-0'>
@@ -44,71 +58,89 @@ const DocumentCard = ({
           {doc.title}
         </h3>
         <p className='text-xs text-slate-500 dark:text-slate-400 mt-1'>
-          Edited {new Date(doc.updatedAt).toLocaleDateString()}
+          By {dataProfile?.data.fullName} • Edited {new Date(doc.updatedAt).toLocaleDateString()}
         </p>
+        {/* <p className='text-xs text-slate-500 dark:text-slate-400 mt-1'>
+          Edited {new Date(doc.updatedAt).toLocaleDateString()}
+        </p> */}
       </Link>
       <div className='p-4 pt-2 flex items-center justify-between'>
         {/* MODIFIED: Thay thế span bằng Menu (dropdown) */}
-        <Menu as='div' className='relative'>
-          <Menu.Button
-            onClick={(e) => e.stopPropagation()}
-            className={`inline-flex items-center gap-1.5 text-xs font-medium pl-2 pr-1 py-1 rounded-full w-24 justify-center transition-colors ${
+        {isCreator ? (
+          <Menu as='div' className='relative'>
+            <Menu.Button
+              onClick={(e) => e.stopPropagation()}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium pl-2 pr-1 py-1 rounded-full w-24 justify-center transition-colors ${
+                doc.visibility === 'MAIN'
+                  ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900'
+                  : 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900'
+              }`}
+            >
+              {doc.visibility === 'PRIVATE' ? <Lock size={12} /> : <CheckSquare size={12} />}
+              <span className='flex-grow text-left'>{doc.visibility}</span>
+              <ChevronDown size={14} />
+            </Menu.Button>
+            <Transition
+              as={Fragment}
+              enter='transition ease-out duration-100'
+              enterFrom='transform opacity-0 scale-95'
+              enterTo='transform opacity-100 scale-100'
+              leave='transition ease-in duration-75'
+              leaveFrom='transform opacity-100 scale-100'
+              leaveTo='transform opacity-0 scale-95'
+            >
+              <Menu.Items className='absolute left-0 bottom-full mb-2 w-32 origin-bottom-left divide-y divide-slate-100 dark:divide-slate-700 rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black/5 focus:outline-none z-10'>
+                <div className='px-1 py-1'>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateVisibility(doc.id, 'MAIN');
+                        }}
+                        className={`${
+                          active ? 'bg-blue-500 text-white' : 'text-slate-700 dark:text-slate-200'
+                        } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
+                      >
+                        <CheckSquare size={14} />
+                        Main
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUpdateVisibility(doc.id, 'PRIVATE');
+                        }}
+                        className={`${
+                          active ? 'bg-red-500 text-white' : 'text-slate-700 dark:text-slate-200'
+                        } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
+                      >
+                        <Lock size={14} />
+                        Private
+                      </button>
+                    )}
+                  </Menu.Item>
+                </div>
+              </Menu.Items>
+            </Transition>
+          </Menu>
+        ) : (
+          // NEW: Giao diện tĩnh cho người không phải là creator
+          <span
+            className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-full w-24 justify-center ${
               doc.visibility === 'MAIN'
-                ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900'
-                : 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900'
+                ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300'
+                : 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300'
             }`}
           >
             {doc.visibility === 'PRIVATE' ? <Lock size={12} /> : <CheckSquare size={12} />}
-            <span className='flex-grow text-left'>{doc.visibility}</span>
-            <ChevronDown size={14} />
-          </Menu.Button>
-          <Transition
-            as={Fragment}
-            enter='transition ease-out duration-100'
-            enterFrom='transform opacity-0 scale-95'
-            enterTo='transform opacity-100 scale-100'
-            leave='transition ease-in duration-75'
-            leaveFrom='transform opacity-100 scale-100'
-            leaveTo='transform opacity-0 scale-95'
-          >
-            <Menu.Items className='absolute left-0 bottom-full mb-2 w-32 origin-bottom-left divide-y divide-slate-100 dark:divide-slate-700 rounded-md bg-white dark:bg-slate-800 shadow-lg ring-1 ring-black/5 focus:outline-none z-10'>
-              <div className='px-1 py-1'>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateVisibility(doc.id, 'MAIN');
-                      }}
-                      className={`${
-                        active ? 'bg-blue-500 text-white' : 'text-slate-700 dark:text-slate-200'
-                      } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
-                    >
-                      <CheckSquare size={14} />
-                      Main
-                    </button>
-                  )}
-                </Menu.Item>
-                <Menu.Item>
-                  {({ active }) => (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onUpdateVisibility(doc.id, 'PRIVATE');
-                      }}
-                      className={`${
-                        active ? 'bg-red-500 text-white' : 'text-slate-700 dark:text-slate-200'
-                      } group flex w-full items-center rounded-md px-2 py-2 text-sm gap-2`}
-                    >
-                      <Lock size={14} />
-                      Private
-                    </button>
-                  )}
-                </Menu.Item>
-              </div>
-            </Menu.Items>
-          </Transition>
-        </Menu>
+            <span className='flex-grow text-left ml-1'>{doc.visibility}</span>
+          </span>
+        )}
+
         <Menu as='div' className='relative'>
           <Menu.Button
             onClick={(e) => e.stopPropagation()}
@@ -157,6 +189,8 @@ export default function RecentForm() {
   const [visibilityFilter, setVisibilityFilter] = useState('ALL');
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [docToDelete, setDocToDelete] = useState<number | null>(null);
+  const user = useAuth();
+  console.log(user);
 
   const projectId = useSelector((state: RootState) => state.project.currentProjectId);
 
@@ -278,6 +312,7 @@ export default function RecentForm() {
                 onDelete={handleOpenConfirmModal}
                 // MODIFIED: Truyền hàm update vào card
                 onUpdateVisibility={handleUpdateVisibility}
+                currentUserId={user.user?.id}
               />
             ))}
           </div>

@@ -208,6 +208,7 @@ const InviteesMemberPage: React.FC = () => {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [emailError, setEmailError] = useState<string>('');
+  const [invitationLoadingStates, setInvitationLoadingStates] = useState<{ [key: number]: boolean }>({});
 
   const {
     data: projectsData,
@@ -229,8 +230,7 @@ const InviteesMemberPage: React.FC = () => {
     skip: !selectedProjectId,
   });
   const [createProjectMember, { isLoading: createLoading }] = useCreateProjectMemberMutation();
-  const [sendInvitationToTeamMember, { isLoading: invitationLoading }] =
-    useSendInvitationToTeamMemberMutation();
+  const [sendInvitationToTeamMember] = useSendInvitationToTeamMemberMutation();
   const [createProjectPosition, { isLoading: addPositionLoading }] =
     useCreateProjectPositionMutation();
   const [deleteProjectPosition, { isLoading: removePositionLoading }] =
@@ -255,6 +255,7 @@ const InviteesMemberPage: React.FC = () => {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
+
   const CustomSearchIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg
       fill='none'
@@ -273,6 +274,7 @@ const InviteesMemberPage: React.FC = () => {
   );
 
   const handleSendInvitation = async (projectId: number, accountId: number) => {
+    setInvitationLoadingStates((prev) => ({ ...prev, [accountId]: true }));
     try {
       const result = await sendInvitationToTeamMember({ projectId, accountId }).unwrap();
       Swal.fire({
@@ -290,6 +292,8 @@ const InviteesMemberPage: React.FC = () => {
         text: error.data?.message || 'Failed to send invitation. Please try again.',
         confirmButtonColor: '#ef4444',
       });
+    } finally {
+      setInvitationLoadingStates((prev) => ({ ...prev, [accountId]: false }));
     }
   };
 
@@ -576,11 +580,11 @@ const InviteesMemberPage: React.FC = () => {
                                 handleSendInvitation(selectedProjectId!, member.accountId)
                               }
                               className='inline-flex items-center bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm transition-colors'
-                              disabled={invitationLoading}
+                              disabled={invitationLoadingStates[member.accountId] || false}
                               aria-label={`Send invitation to ${member.email || 'member'}`}
                             >
                               <Send className='w-4 h-4 mr-1' />
-                              {invitationLoading ? 'Sending...' : 'Send Invite'}
+                              {invitationLoadingStates[member.accountId] ? 'Sending...' : 'Send Invite'}
                             </button>
                           )}
                         </div>

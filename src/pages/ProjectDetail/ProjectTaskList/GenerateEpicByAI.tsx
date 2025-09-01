@@ -112,7 +112,13 @@ const GenerateEpicByAI: React.FC<GenerateEpicByAIProps> = ({
   // const { data: membersResponse } = useGetProjectMembersQuery(projectId);
   // const members = membersResponse?.data ?? [];
 
-  const { data: membersResponse = [] } = useGetProjectMembersQuery(projectId);
+  const { data: membersResponse = [] } = useGetProjectMembersQuery(projectId, {
+    skip: !projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
+  });
 
   const members = membersResponse ?? [];
 

@@ -58,6 +58,10 @@ export const workLogApi = createApi({
     prepareHeaders: (headers) => {
       headers.set('accept', '*/*');
       headers.set('Content-Type', 'application/json');
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),

@@ -6,6 +6,7 @@ import taskIcon from '../../../assets/icon/type_task.svg';
 import bugIcon from '../../../assets/icon/type_bug.svg';
 import storyIcon from '../../../assets/icon/type_story.svg';
 import { User2 } from 'lucide-react';
+import WorkItem from '../../WorkItem/WorkItem';
 
 interface TaskCardProps {
   task: TaskBacklogResponseDTO;
@@ -34,8 +35,18 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
     }
   };
 
+  const [isWorkItemOpen, setIsWorkItemOpen] = useState(false);
+
+  const handleOpenWorkItem = () => {
+    setIsWorkItemOpen(true);
+  };
+
+  const handleCloseWorkItem = () => {
+    setIsWorkItemOpen(false);
+  };
+
   const getIconSrc = (type: string | null | undefined): string => {
-    const defaultIcon = taskIcon; // Fallback to taskIcon if no match
+    const defaultIcon = taskIcon;
     switch (type) {
       case 'TASK':
         return taskIcon;
@@ -43,8 +54,8 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
         return bugIcon;
       case 'STORY':
         return storyIcon;
-      case 'FEATURE': // Added new type as an example
-        return storyIcon; // Reuse storyIcon for features
+      case 'FEATURE':
+        return storyIcon;
       default:
         return defaultIcon;
     }
@@ -56,24 +67,28 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
       className={`bg-white rounded-md border shadow p-3 mb-2 cursor-move transition-opacity ${
         isDragging ? 'opacity-40' : ''
       }`}
-      onClick={() => alert(`Edit task ${task.id}`)}
     >
-      <div className='text-sm font-medium text-gray-900 mb-2'>{task.title || 'No title'}</div>
+      <div className="text-sm font-medium text-gray-900 mb-2">{task.title || 'No title'}</div>
       {task.epicName && (
-        <div className='inline-block text-xs font-bold uppercase text-purple-800 bg-purple-100 px-2 py-1 rounded mb-2 truncate max-w-full'>
+        <div className="inline-block text-xs font-bold uppercase text-purple-800 bg-purple-100 px-2 py-1 rounded mb-2 truncate max-w-full">
           {task.epicName}
         </div>
       )}
-      <div className='flex items-center justify-between mt-2'>
-        <div className='flex items-center gap-1 text-xs text-gray-600'>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-1 text-xs text-gray-600">
           {getIconSrc(task.type) && (
-            <img src={getIconSrc(task.type)} alt={`${task.type} icon`} className='w-5 h-5 ml-1' />
+            <img src={getIconSrc(task.type)} alt={`${task.type} icon`} className="w-5 h-5 ml-1" />
           )}
           <span
-            className={mapApiStatusToUI(task.status) === 'Done' ? 'line-through' : ''}
-          >{`${task.id}`}</span>
+            className={`${
+              mapApiStatusToUI(task.status) === 'Done' ? 'line-through' : ''
+            } cursor-pointer hover:text-blue-600 hover:underline`}
+            onClick={handleOpenWorkItem}
+          >
+            {`${task.id}`}
+          </span>
         </div>
-        <div className='flex items-center gap-1'>
+        <div className="flex items-center gap-1">
           {task.taskAssignments && task.taskAssignments.length > 0 ? (
             task.taskAssignments.map((assignment) => {
               const [showTooltip, setShowTooltip] = useState(false);
@@ -93,7 +108,7 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
               return (
                 <div
                   key={assignment.id}
-                  className='relative group'
+                  className="relative group"
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
                 >
@@ -101,14 +116,14 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
                     <img
                       src={assignment.accountPicture}
                       alt={assignment.accountFullname || 'Assignee'}
-                      className='w-6 h-6 rounded-full object-cover'
+                      className="w-6 h-6 rounded-full object-cover"
                     />
                   ) : (
-                    <User2 size={18} className='text-gray-400' />
+                    <User2 size={18} className="text-gray-400" />
                   )}
                   {showTooltip && assignment.accountFullname && (
                     <div
-                      className='absolute bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap'
+                      className="absolute bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap"
                       style={{
                         top: `${tooltipPosition.top}px`,
                         left: `${tooltipPosition.left}px`,
@@ -124,12 +139,15 @@ const TaskCard = forwardRef<HTMLDivElement, TaskCardProps>(({ task, sprintId }, 
               );
             })
           ) : (
-            <div className='w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center'>
-              <User2 size={18} className='text-gray-400' />
+            <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+              <User2 size={18} className="text-gray-400" />
             </div>
           )}
         </div>
       </div>
+      {isWorkItemOpen && (
+        <WorkItem isOpen={isWorkItemOpen} onClose={handleCloseWorkItem} taskId={task.id} />
+      )}
     </div>
   );
 });

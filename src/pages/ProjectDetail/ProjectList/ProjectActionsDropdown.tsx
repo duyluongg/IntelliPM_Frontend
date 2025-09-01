@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Project } from '../../../services/accountApi';
+import { useUpdateProjectStatusMutation } from '../../../services/projectApi';
 import { type User } from '../../../services/AuthContext';
 
 interface ProjectActionsDropdownProps {
@@ -12,9 +13,12 @@ interface ProjectActionsDropdownProps {
 const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project }) => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [updateProjectStatus, { isLoading: isUpdatingStatus }] = useUpdateProjectStatusMutation();
 
   const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
   const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
+  const isLeader = user?.role === 'TEAM_LEADER';
+  const isManager = user?.role === 'PROJECT_MANAGER';
 
   const handleSettings = () => {
     navigate(`/project/${project.projectKey}/settings`);
@@ -34,6 +38,19 @@ const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project
   const handleComplete = () => {
     navigate(`/project/${project.projectKey}/complete`);
     setIsOpen(false);
+  };
+
+  const handleChangeStatus = async () => {
+    if (!isManager || project.projectStatus !== 'PLANNING') return;
+    try {
+      console.log('Updating project status:', { id: project.projectId, status: 'IN_PROGRESS' }); 
+      await updateProjectStatus({ id: project.projectId, status: 'IN_PROGRESS' }).unwrap();
+      alert('Project status updated to IN PROGRESS');
+      setIsOpen(false);
+    } catch (err: any) {
+      console.error('Update project status error:', err);
+      alert(`Failed to update project status: ${err?.data?.message || 'Unknown error'}`);
+    }
   };
 
   return (
@@ -68,13 +85,30 @@ const ProjectActionsDropdown: React.FC<ProjectActionsDropdownProps> = ({ project
             >
               Project Details
             </button>
-            {project.projectStatus === 'PLANNING' && (
+            {project.projectStatus === 'PLANNING' && isLeader && (
               <button
                 onClick={handleSendEmailPM}
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 aria-label="Send email to PM"
               >
                 Send Email PM
+              </button>
+            )}
+            {project.projectStatus === 'PLANNING' && isManager && (
+              <button
+                onClick={handleChangeStatus}
+                className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center"
+                aria-label="Change project status"
+                disabled={isUpdatingStatus}
+              >
+                {isUpdatingStatus ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Changing Status...
+                  </>
+                ) : (
+                  'Start Project'
+                )}
               </button>
             )}
             {project.projectStatus === 'IN_PROGRESS' && isLeaderOrManager && (

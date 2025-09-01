@@ -737,6 +737,11 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
     navigate(`/project/${projectKey}/work-item-detail?taskId=${taskId}`);
   };
 
+  const formatBudget = (value: number | null) => {
+    if (value === null || value === 0 || isNaN(value)) return '';
+    return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
+
   if (!isOpen) return null;
   if (!taskId)
     return (
@@ -1846,11 +1851,25 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                         type='number'
                         min='0'
                         max='100'
-                        step='0.01'
+                        step='1'
                         value={newPercentComplete ?? ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) : null;
                           setNewPercentComplete(value);
+                        }}
+                        onKeyDown={(e) => {
+                          const allowedKeys = [
+                            'Backspace',
+                            'Delete',
+                            'ArrowLeft',
+                            'ArrowRight',
+                            'Tab',
+                            'Enter',
+                            '.',
+                          ];
+                          if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                            e.preventDefault();
+                          }
                         }}
                         onBlur={handlePercentCompleteChange}
                         style={{ width: '100px' }}
@@ -1870,28 +1889,76 @@ const WorkItem: React.FC<WorkItemProps> = ({ isOpen, onClose, taskId: propTaskId
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
                 {isUserAssignee(taskId) || canEdit ? (
                   subtaskData.length === 0 ? (
-                    <div className='flex items-center gap-1'>
-                      <input
-                        type='number'
-                        min='0'
-                        step='1'
-                        value={newActualCost ?? ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseFloat(e.target.value) : null;
-                          setNewActualCost(value);
-                        }}
-                        onBlur={handleActualCostChange}
-                        style={{ width: '100px' }}
-                        className='border rounded p-1'
-                        placeholder='Enter cost (e.g., equipment)'
-                      />
-                      <span>VND</span>
+                    <div className='flex flex-col gap-1'>
+                      <div className='flex items-center gap-1'>
+                        <input
+                          type='number'
+                          min='0'
+                          step='1'
+                          value={newActualCost ?? ''}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '' || /^[0-9]+$/.test(inputValue)) {
+                              const value = inputValue === '' ? null : parseFloat(inputValue);
+                              if (value !== null && (isNaN(value) || value < 0)) {
+                                Swal.fire({
+                                  icon: 'error',
+                                  title: 'Invalid Input',
+                                  text: 'Actual cost must be a valid number greater than or equal to 0.',
+                                  width: '500px',
+                                  confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                  customClass: {
+                                    title: 'small-title',
+                                    popup: 'small-popup',
+                                    icon: 'small-icon',
+                                    htmlContainer: 'small-html',
+                                  },
+                                });
+                                return;
+                              }
+                              setNewActualCost(value);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              'Backspace',
+                              'Delete',
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'Tab',
+                              'Enter',
+                            ];
+                            if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onBlur={handleActualCostChange}
+                          style={{ width: '100px' }}
+                          className='border rounded p-1'
+                          placeholder='Enter cost (e.g., equipment)'
+                        />
+                        <span>VND</span>
+                      </div>
+                      {newActualCost !== null &&
+                        newActualCost > 0 &&
+                        !isNaN(newActualCost) &&
+                        newActualCost <= maxActualCost && (
+                          <p className='text-sm text-gray-500'>{formatBudget(newActualCost)}</p>
+                        )}
+                      {actualCostConfigLoading && (
+                        <p className='text-sm text-gray-500'>Loading cost constraints...</p>
+                      )}
+                      {newActualCost !== null && newActualCost > maxActualCost && (
+                        <p className='text-sm text-red-500'>
+                          Actual cost must not exceed {formatBudget(maxActualCost)}.
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                    <span>{formatBudget(taskData?.actualCost ?? 0)} (Managed by subtasks)</span>
                   )
                 ) : (
-                  <span>{taskData?.actualCost ?? '0'} VND</span>
+                  <span>{formatBudget(taskData?.actualCost ?? 0)}</span>
                 )}
               </div>
 

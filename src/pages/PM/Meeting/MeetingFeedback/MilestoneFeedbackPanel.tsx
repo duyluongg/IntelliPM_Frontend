@@ -579,7 +579,7 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     if (!accountId) return;
     await approveMilestone({ meetingId: id, accountId });
     toast.success('Approved successfully.');
-    refetch();
+    await refetch();
   };
 
   // ====== Reject Submit (with payload preview) ======
@@ -636,85 +636,175 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
   };
 
   // ===== Upload transcript (file / url) =====
-  const onUpload = async () => {
-    if (!accountId) return;
-    setIsUploading(true);
-    setUploadProgress(null);
+  // const onUpload = async () => {
+  //   if (!accountId) return;
+  //   setIsUploading(true);
+  //   setUploadProgress(null);
 
-    try {
-      if (uploadMethod === 'file') {
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('meetingId', String(id));
-        formData.append('audioFile', file);
+  //   try {
+  //      const token = localStorage.getItem('accessToken');
+  //     if (uploadMethod === 'file') {
+  //       if (!file) return;
+  //       const formData = new FormData();
+  //       formData.append('meetingId', String(id));
+  //       formData.append('audioFile', file);
 
-        const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
-          headers: { accept: '*/*' },
-          onUploadProgress: (evt) => {
-            if (!evt.total) return;
-            const percent = Math.round((evt.loaded * 100) / evt.total);
-            setUploadProgress(percent);
-          },
-        });
+  //       const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
+  //         headers: { accept: '*/*' },
+  //         onUploadProgress: (evt) => {
+  //           if (!evt.total) return;
+  //           const percent = Math.round((evt.loaded * 100) / evt.total);
+  //           setUploadProgress(percent);
+  //         },
+  //       });
 
-        toast.success('File uploaded successfully!');
-        const newTranscript = res.data?.transcriptText ?? null;
-        setUploadedTranscript(newTranscript);
+  //       toast.success('File uploaded successfully!');
+  //       const newTranscript = res.data?.transcriptText ?? null;
+  //       setUploadedTranscript(newTranscript);
 
-        if (newTranscript) {
-          const payload = {
-            meetingId: id,
-            projectId: projectIdFromMeeting,
-            source: 'file',
-            uploaderAccountId: accountId,
-            uploadedAt: new Date().toISOString(),
-            transcriptPreview: newTranscript.slice(0, 1000),
-          };
-          setEvalPayload(JSON.stringify(payload));
-          setIsEvalOpen(true);
-          setTranscriptOverride(newTranscript);
-        }
-      } else {
-        if (!videoUrl.trim()) {
-          toast.error('Please enter video URL!');
-          return;
-        }
-        const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
-        const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
-          method: 'POST',
-          headers: { accept: '*/*', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
-        });
-        const data = await res.json();
-        toast.success('Uploaded from URL successfully!');
-        const newTranscript = data?.transcriptText ?? null;
-        setUploadedTranscript(newTranscript);
+  //       if (newTranscript) {
+  //         const payload = {
+  //           meetingId: id,
+  //           projectId: projectIdFromMeeting,
+  //           source: 'file',
+  //           uploaderAccountId: accountId,
+  //           uploadedAt: new Date().toISOString(),
+  //           transcriptPreview: newTranscript.slice(0, 1000),
+  //         };
+  //         setEvalPayload(JSON.stringify(payload));
+  //         setIsEvalOpen(true);
+  //         setTranscriptOverride(newTranscript);
+  //       }
+  //     } else {
+  //       if (!videoUrl.trim()) {
+  //         toast.error('Please enter video URL!');
+  //         return;
+  //       }
+  //       const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+  //       const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+  //         method: 'POST',
+  //         headers: { accept: '*/*', 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+  //       });
+  //       const data = await res.json();
+  //       toast.success('Uploaded from URL successfully!');
+  //       const newTranscript = data?.transcriptText ?? null;
+  //       setUploadedTranscript(newTranscript);
 
-        if (newTranscript) {
-          const payload = {
-            meetingId: id,
-            projectId: projectIdFromMeeting,
-            source: 'url',
-            uploaderAccountId: accountId,
-            originalUrl: videoUrl,
-            uploadedAt: new Date().toISOString(),
-            transcriptPreview: newTranscript.slice(0, 1000),
-          };
-          setEvalPayload(JSON.stringify(payload));
-          setIsEvalOpen(true);
-          setTranscriptOverride(newTranscript);
-        }
+  //       if (newTranscript) {
+  //         const payload = {
+  //           meetingId: id,
+  //           projectId: projectIdFromMeeting,
+  //           source: 'url',
+  //           uploaderAccountId: accountId,
+  //           originalUrl: videoUrl,
+  //           uploadedAt: new Date().toISOString(),
+  //           transcriptPreview: newTranscript.slice(0, 1000),
+  //         };
+  //         setEvalPayload(JSON.stringify(payload));
+  //         setIsEvalOpen(true);
+  //         setTranscriptOverride(newTranscript);
+  //       }
+  //     }
+
+  //     await Promise.all([refetch(), refetchRejected()]);
+
+  //   } catch (e) {
+  //     console.error(e);
+  //   } finally {
+  //     setIsUploading(false);
+  //     setUploadProgress(null);
+  //   }
+  // };
+const onUpload = async () => {
+  if (!accountId) return;
+  setIsUploading(true);
+  setUploadProgress(null);
+
+  try {
+    const token = localStorage.getItem('accessToken'); // 🔑 lấy token từ localStorage
+
+    if (uploadMethod === 'file') {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('meetingId', String(id));
+      formData.append('audioFile', file);
+
+      const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
+        headers: { 
+          accept: '*/*',
+          Authorization: `Bearer ${token}`, // thêm token vào header
+        },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          const percent = Math.round((evt.loaded * 100) / evt.total);
+          setUploadProgress(percent);
+        },
+      });
+
+      toast.success('File uploaded successfully!');
+      const newTranscript = res.data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
+
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting,
+          source: 'file',
+          uploaderAccountId: accountId,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
+        setTranscriptOverride(newTranscript);
       }
+    } else {
+      if (!videoUrl.trim()) {
+        toast.error('Please enter video URL!');
+        return;
+      }
+      const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+      const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+        method: 'POST',
+        headers: { 
+          accept: '*/*', 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // thêm token vào header
+        },
+        body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+      });
+      const data = await res.json();
+      toast.success('Uploaded from URL successfully!');
+      const newTranscript = data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
 
-      await Promise.all([refetch(), refetchRejected()]);
-
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(null);
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting,
+          source: 'url',
+          uploaderAccountId: accountId,
+          originalUrl: videoUrl,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
+        setTranscriptOverride(newTranscript);
+      }
     }
-  };
+
+    await Promise.all([refetch(), refetchRejected()]);
+
+  } catch (e) {
+    console.error(e);
+    toast.error('Upload failed!');
+  } finally {
+    setIsUploading(false);
+    setUploadProgress(null);
+  }
+};
 
   return (
     <div className="mx-auto max-w-5xl p-6">

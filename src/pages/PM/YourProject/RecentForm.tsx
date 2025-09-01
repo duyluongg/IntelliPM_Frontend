@@ -38,6 +38,7 @@ const DocumentCard = ({
   onUpdateVisibility: (id: number, visibility: 'MAIN' | 'PRIVATE') => void;
   currentUserId?: number;
 }) => {
+  const isGeneralDocument = doc.taskId == null && doc.epicId == null && doc.subtaskId == null;
   const ownerRaw = doc.createdBy;
   const isCreator = currentUserId !== undefined && Number(ownerRaw) === Number(currentUserId);
   const {
@@ -66,7 +67,8 @@ const DocumentCard = ({
       </Link>
       <div className='p-4 pt-2 flex items-center justify-between'>
         {/* MODIFIED: Thay thế span bằng Menu (dropdown) */}
-        {isCreator ? (
+
+        {isCreator && isGeneralDocument ? (
           <Menu as='div' className='relative'>
             <Menu.Button
               onClick={(e) => e.stopPropagation()}

@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { API_BASE_URL} from '../../../constants/api'
+import { API_BASE_URL } from '../../../constants/api';
 
 const COLORS = ['#40d454ff', '#007fd3ff', '#8d8c8dff'];
 
@@ -46,21 +45,39 @@ const ProjectDashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      const token = localStorage.getItem('accessToken');
+
       try {
-        const workItemsResponse = await axios.get(`${API_BASE_URL}project/${projectId}/workitems`, {
-          headers: { accept: '*/*' },
-        });
+        const workItemsResponse = await axios.get(
+          `${API_BASE_URL}project/${projectId}/workitems`,
+          {
+            headers: {
+              accept: '*/*',
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
         if (workItemsResponse.data.isSuccess) {
-          setWorkItems(workItemsResponse.data.data);
+          setWorkItems(workItemsResponse.data.data || []);
         } else {
           throw new Error('Failed to load work items');
         }
 
-        const projectResponse = await axios.get(`${API_BASE_URL}project/${projectId}`, {
-          headers: { accept: '*/*' },
-        });
+        const projectResponse = await axios.get(
+          `${API_BASE_URL}project/${projectId}`,
+          {
+            headers: {
+              accept: '*/*',
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          }
+        );
+
         if (projectResponse.data.isSuccess) {
-          setProject(projectResponse.data.data);
+          setProject(projectResponse.data.data || null);
         } else {
           throw new Error('Failed to load project details');
         }
@@ -70,10 +87,26 @@ const ProjectDashboard: React.FC = () => {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [projectId]);
 
   const processData = (): { pieData: PieData[]; barData: any[]; overallProgress: number } => {
+    if (!workItems || workItems.length === 0) {
+      const types = ['EPIC', 'TASK', 'STORY', 'BUG', 'SUBTASK'];
+      const pieData: PieData[] = types.map((type) => ({
+        type,
+        data: [
+          { name: 'DONE', value: 0, count: 0 },
+          { name: 'IN_PROGRESS', value: 0, count: 0 },
+          { name: 'TO_DO', value: 0, count: 0 },
+        ],
+        total: 0,
+      }));
+      const barData = types.map((type) => ({ type, DONE: 0, IN_PROGRESS: 0, TO_DO: 0 }));
+      return { pieData, barData, overallProgress: 0 };
+    }
+
     const types = ['EPIC', 'TASK', 'STORY', 'BUG', 'SUBTASK'];
     const grouped: { [key: string]: { [status: string]: number } } = {};
 
@@ -119,7 +152,6 @@ const ProjectDashboard: React.FC = () => {
       )
     : [];
 
-  // Custom legend data
   const legendData = [
     { name: 'DONE', color: COLORS[0] },
     { name: 'IN_PROGRESS', color: COLORS[1] },
@@ -171,7 +203,6 @@ const ProjectDashboard: React.FC = () => {
       </div>
 
       <h2 className="text-lg font-semibold mb-2">Status by Work Item Type</h2>
-      {/* Shared Legend */}
       <div className="flex justify-center mb-4">
         {legendData.map((item) => (
           <div key={item.name} className="flex items-center mx-4">
@@ -192,7 +223,7 @@ const ProjectDashboard: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <h3 className="text-center font-medium">{type} (Total: {total})</h3>
+            <h3 className="text-center font-medium">{type}</h3>
             {total === 0 ? (
               <p className="text-center text-gray-500">No items</p>
             ) : (
@@ -206,7 +237,26 @@ const ProjectDashboard: React.FC = () => {
                     cy="50%"
                     outerRadius={80}
                     innerRadius={40}
-                    label={({ value }: { value?: number }) => (value !== undefined ? `${value.toFixed(1)}%` : '0%')}
+                    labelLine={false}
+                    label={({ cx, cy, midAngle, innerRadius, outerRadius, value, index, payload }) => {
+                      if (!midAngle) return null;
+                      const RADIAN = Math.PI / 180;
+                      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text
+                          x={x}
+                          y={y}
+                          fill="#000"
+                          textAnchor={x > cx ? 'start' : 'end'}
+                          dominantBaseline="central"
+                          style={{ fontSize: '14px' }}
+                        >
+                          {payload.count}
+                        </text>
+                      );
+                    }}
                     onClick={(entry: ChartData) => setSelectedFilter({ type, status: entry.name })}
                   >
                     {data.map((entry, index) => (
@@ -219,7 +269,24 @@ const ProjectDashboard: React.FC = () => {
                       name,
                     ]}
                   />
-                  {/* Removed individual Legend */}
+                  <text
+                    x="50%"
+                    y="50%"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    style={{ fontSize: '24px', fontWeight: 'bold' }}
+                  >
+                    {total}
+                  </text>
+                  <text
+                    x="50%"
+                    y="60%"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    style={{ fontSize: '12px' }}
+                  >
+                    Total
+                  </text>
                 </PieChart>
               </ResponsiveContainer>
             )}

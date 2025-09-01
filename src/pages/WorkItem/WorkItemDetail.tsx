@@ -10,7 +10,12 @@ import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGetSubtasksByTaskIdQuery, useUpdateSubtaskStatusMutation, useCreateSubtaskMutation, useUpdateSubtaskMutation } from '../../services/subtaskApi';
+import {
+  useGetSubtasksByTaskIdQuery,
+  useUpdateSubtaskStatusMutation,
+  useCreateSubtaskMutation,
+  useUpdateSubtaskMutation,
+} from '../../services/subtaskApi';
 import {
   useGetTaskByIdQuery,
   useUpdateTaskStatusMutation,
@@ -25,7 +30,11 @@ import {
   useUpdatePercentCompleteMutation,
   useUpdateActualCostMutation,
 } from '../../services/taskApi';
-import { useGetTaskFilesByTaskIdQuery, useUploadTaskFileMutation, useDeleteTaskFileMutation } from '../../services/taskFileApi';
+import {
+  useGetTaskFilesByTaskIdQuery,
+  useUploadTaskFileMutation,
+  useDeleteTaskFileMutation,
+} from '../../services/taskFileApi';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -38,12 +47,19 @@ import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmen
 import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
-import { useLazyGetTaskAssignmentsByTaskIdQuery, useCreateTaskAssignmentQuickMutation, useDeleteTaskAssignmentMutation } from '../../services/taskAssignmentApi';
+import {
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  useCreateTaskAssignmentQuickMutation,
+  useDeleteTaskAssignmentMutation,
+} from '../../services/taskAssignmentApi';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useParams, Link } from 'react-router-dom';
-import { useCreateLabelAndAssignMutation, useGetLabelsByProjectIdQuery } from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
@@ -111,7 +127,9 @@ const WorkItemDetail: React.FC = () => {
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
+    Record<string, TaskAssignmentDTO[]>
+  >({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
@@ -188,8 +206,8 @@ const WorkItemDetail: React.FC = () => {
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-      ? 10000000000
-      : parseInt(actualCostConfig.data.maxValue, 10);
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -198,7 +216,12 @@ const WorkItemDetail: React.FC = () => {
 
   const handlePlannedStartDateTaskChange = async () => {
     await refetchSubtask();
-    if (!taskData || !plannedStartDate || plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    if (
+      !taskData ||
+      !plannedStartDate ||
+      plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)
+    )
+      return;
 
     // Validate against epic's startDate
     if (epicData?.startDate && new Date(plannedStartDate) < new Date(epicData.startDate)) {
@@ -311,7 +334,8 @@ const WorkItemDetail: React.FC = () => {
 
   const handlePlannedEndDateTaskChange = async () => {
     await refetchSubtask();
-    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16))
+      return;
 
     // Validate against epic's endDate
     if (epicData?.endDate && new Date(plannedEndDate) > new Date(epicData.endDate)) {
@@ -375,7 +399,8 @@ const WorkItemDetail: React.FC = () => {
     }
 
     // compare subtask
-    const effectiveStartDate = plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
+    const effectiveStartDate =
+      plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
     const dateValidation = await validateSubtaskDates(effectiveStartDate, plannedEndDate);
     if (!dateValidation.isValid) {
       Swal.fire({
@@ -657,14 +682,20 @@ const WorkItemDetail: React.FC = () => {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(
+              0,
+              10
+            )}) before task start date (${newStartDate.slice(0, 10)})!`,
           };
         }
         if (subtaskStart > taskEnd) {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(
+              0,
+              10
+            )}) after task end date (${newEndDate.slice(0, 10)})!`,
           };
         }
       }
@@ -675,14 +706,20 @@ const WorkItemDetail: React.FC = () => {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(
+              0,
+              10
+            )}) before task start date (${newStartDate.slice(0, 10)})!`,
           };
         }
         if (subtaskEnd > taskEnd) {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(
+              0,
+              10
+            )}) after task end date (${newEndDate.slice(0, 10)})!`,
           };
         }
       }
@@ -967,6 +1004,11 @@ const WorkItemDetail: React.FC = () => {
     return subtaskAssigneeId.toString() === currentUserId;
   };
 
+  const formatBudget = (value: number | null) => {
+    if (value === null || value === 0 || isNaN(value)) return '';
+    return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
+
   return (
     <div className='work-item-detail-page'>
       <div className='work-item-detail-container'>
@@ -1069,11 +1111,11 @@ const WorkItemDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  setFileError(''); 
+                  setFileError('');
                   if (file) {
                     // Check file size (10MB = 10 * 1024 * 1024 bytes)
                     if (file.size > maxFileSize) {
-                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2); 
+                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2);
                       setFileError(`File size exceeds ${maxSizeMB}MB limit`);
                       setIsAddDropdownOpen(false);
                       return;
@@ -1238,7 +1280,7 @@ const WorkItemDetail: React.FC = () => {
                       className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
+                      <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3'>
                         <div className='flex items-center gap-3'>
                           <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
                           <h2 className='text-2xl font-bold text-white'>AI-Suggested Subtasks</h2>
@@ -1273,8 +1315,9 @@ const WorkItemDetail: React.FC = () => {
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                      } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${
+                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                    } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -1333,10 +1376,11 @@ const WorkItemDetail: React.FC = () => {
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
-                              ? 'bg-gray-400 cursor-not-allowed'
-                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                              }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
+                              selectedSuggestions.length === 0 || loadingCreate
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                            }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1493,7 +1537,6 @@ const WorkItemDetail: React.FC = () => {
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('Failed to update summary:', err);
-
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1536,7 +1579,6 @@ const WorkItemDetail: React.FC = () => {
                                     await refetchActivityLogs();
                                   } catch (err) {
                                     console.error('Failed to update priority:', err);
-
                                   }
                                 }}
                                 style={{
@@ -1588,7 +1630,6 @@ const WorkItemDetail: React.FC = () => {
                                       await refetchSubtask();
                                     } catch (err) {
                                       console.error('Failed to update subtask:', err);
-
                                     }
                                   }}
                                   style={{
@@ -1790,7 +1831,8 @@ const WorkItemDetail: React.FC = () => {
                               maxLength={maxCommentLength}
                               className='w-full p-2 border border-gray-300 rounded'
                             />
-                            {(editedContent[comment.id]?.length || comment.content.length) > maxCommentLength && (
+                            {(editedContent[comment.id]?.length || comment.content.length) >
+                              maxCommentLength && (
                               <span className='text-red-500 text-xs mt-1 block'>
                                 Maximum {maxCommentLength} characters allowed
                               </span>
@@ -1899,7 +1941,6 @@ const WorkItemDetail: React.FC = () => {
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-
                             return;
                           }
                           await createTaskComment({
@@ -1914,7 +1955,6 @@ const WorkItemDetail: React.FC = () => {
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-
                         }
                       }}
                     >
@@ -2050,8 +2090,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                        ? 'None'
-                        : assignees.map((assignee) => (
+                      ? 'None'
+                      : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -2069,11 +2109,25 @@ const WorkItemDetail: React.FC = () => {
                         type='number'
                         min='0'
                         max='100'
-                        step='0.01'
+                        step='1'
                         value={newPercentComplete ?? ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) : null;
                           setNewPercentComplete(value);
+                        }}
+                        onKeyDown={(e) => {
+                          const allowedKeys = [
+                            'Backspace',
+                            'Delete',
+                            'ArrowLeft',
+                            'ArrowRight',
+                            'Tab',
+                            'Enter',
+                            '.',
+                          ];
+                          if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                            e.preventDefault();
+                          }
                         }}
                         onBlur={handlePercentCompleteChange}
                         style={{ width: '100px' }}
@@ -2093,28 +2147,76 @@ const WorkItemDetail: React.FC = () => {
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
                 {isUserAssignee(taskId) || canEdit ? (
                   subtaskData.length === 0 ? (
-                    <div className='flex items-center gap-1'>
-                      <input
-                        type='number'
-                        min='0'
-                        step='1'
-                        value={newActualCost ?? ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseFloat(e.target.value) : null;
-                          setNewActualCost(value);
-                        }}
-                        onBlur={handleActualCostChange}
-                        style={{ width: '100px' }}
-                        className='border rounded p-1'
-                        placeholder='Enter cost (e.g., equipment)'
-                      />
-                      <span>VND</span>
+                    <div className='flex flex-col gap-1'>
+                      <div className='flex items-center gap-1'>
+                        <input
+                          type='number'
+                          min='0'
+                          step='1'
+                          value={newActualCost ?? ''}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '' || /^[0-9]+$/.test(inputValue)) {
+                              const value = inputValue === '' ? null : parseFloat(inputValue);
+                              if (value !== null && (isNaN(value) || value < 0)) {
+                                Swal.fire({
+                                  icon: 'error',
+                                  title: 'Invalid Input',
+                                  text: 'Actual cost must be a valid number greater than or equal to 0.',
+                                  width: '500px',
+                                  confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                  customClass: {
+                                    title: 'small-title',
+                                    popup: 'small-popup',
+                                    icon: 'small-icon',
+                                    htmlContainer: 'small-html',
+                                  },
+                                });
+                                return;
+                              }
+                              setNewActualCost(value);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              'Backspace',
+                              'Delete',
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'Tab',
+                              'Enter',
+                            ];
+                            if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onBlur={handleActualCostChange}
+                          style={{ width: '100px' }}
+                          className='border rounded p-1'
+                          placeholder='Enter cost (e.g., equipment)'
+                        />
+                        <span>VND</span>
+                      </div>
+                      {newActualCost !== null &&
+                        newActualCost > 0 &&
+                        !isNaN(newActualCost) &&
+                        newActualCost <= maxActualCost && (
+                          <p className='text-sm text-gray-500'>{formatBudget(newActualCost)}</p>
+                        )}
+                      {actualCostConfigLoading && (
+                        <p className='text-sm text-gray-500'>Loading cost constraints...</p>
+                      )}
+                      {newActualCost !== null && newActualCost > maxActualCost && (
+                        <p className='text-sm text-red-500'>
+                          Actual cost must not exceed {formatBudget(maxActualCost)}.
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                    <span>{formatBudget(taskData?.actualCost ?? 0)} (Managed by subtasks)</span>
                   )
                 ) : (
-                  <span>{taskData?.actualCost ?? '0'} VND</span>
+                  <span>{formatBudget(taskData?.actualCost ?? 0)}</span>
                 )}
               </div>
 
@@ -2183,8 +2285,8 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2281,11 +2383,17 @@ const WorkItemDetail: React.FC = () => {
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
-                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
+                    min={
+                      epicData?.startDate?.slice(0, 10) ??
+                      projectData?.data?.startDate?.slice(0, 10) ??
+                      undefined
+                    }
                     max={
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
-                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                        : epicData?.endDate?.slice(0, 10) ??
+                          projectData?.data?.endDate?.slice(0, 10) ??
+                          undefined
                     }
                     onChange={(e) => {
                       refetchSubtask();
@@ -2297,7 +2405,10 @@ const WorkItemDetail: React.FC = () => {
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
                       // Validate against epic's startDate
-                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                      if (
+                        epicData?.startDate &&
+                        new Date(fullDate) < new Date(epicData.startDate)
+                      ) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
@@ -2374,9 +2485,15 @@ const WorkItemDetail: React.FC = () => {
                     min={
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
-                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
+                        : epicData?.startDate?.slice(0, 10) ??
+                          projectData?.data?.startDate?.slice(0, 10) ??
+                          undefined
                     }
-                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
+                    max={
+                      epicData?.endDate?.slice(0, 10) ??
+                      projectData?.data?.endDate?.slice(0, 10) ??
+                      undefined
+                    }
                     onChange={(e) => {
                       refetchSubtask();
                       const selectedDate = e.target.value;

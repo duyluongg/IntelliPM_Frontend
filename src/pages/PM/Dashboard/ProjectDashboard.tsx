@@ -1282,6 +1282,7 @@ const ProjectDashboard: React.FC = () => {
   useGetWorkloadDashboardQuery(projectKey, { pollingInterval: 5000 });
   useGetCostDashboardQuery(projectKey, { pollingInterval: 5000 });
   useGetProjectMetricAIByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
+  useGetProjectMetricByProjectKeyQuery(projectKey, { pollingInterval: 5000 });
 
   const location = useLocation();
 
@@ -1298,7 +1299,13 @@ const ProjectDashboard: React.FC = () => {
     };
     setIsCalculateDone(false);
     doCalculateThenRefetch();
-  }, [location.key, calculate, refetch]);
+
+    const intervalId = setInterval(() => {
+      setIsCalculateDone(false);
+      doCalculateThenRefetch();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, [location.key, calculate, refetch, projectKey]);
 
   useEffect(() => {
     if (!isCalculateDone) return;

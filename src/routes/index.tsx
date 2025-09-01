@@ -356,6 +356,10 @@ export const router = createBrowserRouter([
         path: 'meeting-management/send-request',
         element: <CreateDocumentRequestMeeting />,
       },
+            {
+        path: `list`,
+        element: <ProjectList />,
+      },
     ],
   },
 

@@ -131,10 +131,15 @@ export default function Sidebar() {
     navigate('/project/manage');
   };
 
-  const handleViewAllProjects = () => {
-    setShowManageProjects(false);
+const handleViewAllProjects = () => {
+  setShowManageProjects(false);
+  if (isClient) {
+    navigate('/projectclient/list');
+  } else {
     navigate('/project/list');
-  };
+  }
+};
+
 
   const shortenProjectName = (name: string, maxLength: number = 18) => {
     if (name.length <= maxLength) return name;

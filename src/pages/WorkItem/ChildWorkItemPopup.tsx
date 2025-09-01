@@ -1088,7 +1088,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <div className='flex flex-col gap-1'>
                     <div className='flex items-center gap-1'>
                       <input

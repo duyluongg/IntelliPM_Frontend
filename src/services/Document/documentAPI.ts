@@ -8,7 +8,7 @@ import type {
 } from '../../types/ShareDocumentType';
 
 interface ShareDocumentViaEmailRequest {
-  userIds: number[];
+  emails: string[];
   customMessage: string;
   file: File;
 }
@@ -186,9 +186,9 @@ export const documentApi = createApi({
     }),
 
     shareDocumentViaEmail: builder.mutation<any, ShareDocumentViaEmailRequest>({
-      query: ({ userIds, customMessage, file }) => {
+      query: ({ emails, customMessage, file }) => {
         const formData = new FormData();
-        userIds.forEach((id) => formData.append('userIds', id.toString()));
+        emails.forEach((email) => formData.append('emails', email));
         formData.append('customMessage', customMessage);
         formData.append('file', file);
 

@@ -347,10 +347,18 @@ const visibleMembers = useMemo(() => {
         queryParams.append('startTime', start);
         queryParams.append('endTime', end);
 
-        const { data } = await axios.get(
-          `${API_BASE_URL}meetings/check-conflict?${queryParams.toString()}`,
-          { signal: controller.signal }
-        );
+const token = localStorage.getItem('accessToken');
+
+const { data } = await axios.get(
+  `${API_BASE_URL}meetings/check-conflict?${queryParams.toString()}`,
+  {
+    signal: controller.signal,
+    headers: {
+      Authorization: token ? `Bearer ${token}` : '',
+    },
+  }
+);
+
 
         if (data?.conflictingAccountIds?.length > 0) {
           const conflictedNames = data.conflictingAccountIds.map((id: number) => {
@@ -689,9 +697,9 @@ const visibleMembers = useMemo(() => {
               <div>
                 <label className='block text-sm font-medium text-gray-700'>
                   Meeting Title{' '}
-                  <span className='text-gray-400 text-xs'>
+                  {/* <span className='text-gray-400 text-xs'>
                     ({meetingTopic.trim().length}/{cfg.TOPIC_LEN_MAX})
-                  </span>
+                  </span> */}
                 </label>
                 <input
                   type='text'

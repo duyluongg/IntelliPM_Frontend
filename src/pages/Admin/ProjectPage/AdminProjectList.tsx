@@ -96,7 +96,7 @@ const AdminProjectList: React.FC<ProjectListProps> = ({ projects, isLoading, err
                 <td className="py-3 px-4 text-sm text-gray-700 max-w-xs truncate" title={project.description}>
                   {project.description}
                 </td>
-                <td className="py-3 px-4 text-sm text-gray-700">${project.budget.toLocaleString()}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">{project.budget.toLocaleString()}</td>
                 <td className="py-3 px-4 text-sm text-gray-700">{formatText(project.projectType)}</td>
                 <td className="py-3 px-4 text-sm text-gray-700">{formatDate(project.startDate)}</td>
                 <td className="py-3 px-4 text-sm text-gray-700">{formatDate(project.endDate)}</td>

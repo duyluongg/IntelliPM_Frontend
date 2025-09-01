@@ -17,6 +17,7 @@ export interface ProjectMember {
   accountId: number;
   username: string;
   picture: string;
+  email: string;
 }
 
 interface CreateMeetingRequest {

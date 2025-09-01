@@ -76,6 +76,7 @@ import ResetPassword from '../components/ResetPassword';
 import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
 import InviteesMemberPage from '../pages/InviteesMember/InviteesMemberPage';
 import ActivityLogPage from '../pages/ActivityLog/ActivityLogPage';
+import AdminActivityLog from '../pages/Admin/ActivityPage/AdminActivityLog';
 
 export const router = createBrowserRouter([
   {
@@ -356,6 +357,10 @@ export const router = createBrowserRouter([
         path: 'meeting-management/send-request',
         element: <CreateDocumentRequestMeeting />,
       },
+            {
+        path: `list`,
+        element: <ProjectList />,
+      },
     ],
   },
 
@@ -407,6 +412,10 @@ export const router = createBrowserRouter([
       {
         path: 'register-members',
         element: <DynamicBulkRegister />,
+      },
+      {
+        path: 'activity-log',
+        element: <AdminActivityLog />,
       },
       {
         path: 'projects',

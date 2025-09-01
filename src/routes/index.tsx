@@ -95,7 +95,7 @@ export const router = createBrowserRouter([
     element: <VerifyFail />,
   },
   {
-    path: '/share/verify',
+    path: '/share/accept',
     element: <ShareVerificationPage />,
   },
   {

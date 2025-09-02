@@ -954,6 +954,9 @@ const MenuBar: React.FC<Props> = ({
                               ? 'Can edit this document (except client).'
                               : 'Can view this document.'}
                           </p>
+                          <p className='text-xs text-gray-400 dark:text-gray-500 mt-1'>
+                            Note: Members in the same project can edit.
+                          </p>
                         </div>
                       </div>
 

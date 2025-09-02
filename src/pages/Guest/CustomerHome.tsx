@@ -83,9 +83,9 @@ export default function CustomerHome() {
             >
               AI-Powered
               <br />
-              Project Management
+              Project Management Software
               <br />
-              Assistant Platform
+              for Enterprise Project Managers
             </motion.h2>
             <motion.p
               className='text-lg text-white/80'
@@ -178,9 +178,10 @@ export default function CustomerHome() {
             </div>
             <h4 className='text-xl font-bold'>Project Name</h4>
             <p className='text-base text-white/90'>
-              <strong>English:</strong> IntelliPM – AI-Powered Project Management Assistant Platform
+              <strong>English:</strong> IntelliPM – AI-Powered Project Management Software for
+              Enterprise Project Manager
               <br />
-              <strong>Vietnamese:</strong> Nền Tảng Trợ Lý Quản Lý Dự Án Thông Minh
+              {/* <strong>Vietnamese:</strong> Nền Tảng Trợ Lý Quản Lý Dự Án Thông Minh */}
             </p>
           </div>
 

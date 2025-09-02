@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import qrImage from '../assets/App_IntelliPM.png';
+import qrImage from '../assets/qrcode.png';
 import { ChartBarIcon, ClipboardDocumentListIcon, UsersIcon } from '@heroicons/react/24/outline';
 
 // const AppStoreBadge = () => (

@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import './CustomerHome.css';
-import qrImage from '../../assets/App_IntelliPM.png';
+import qrImage from '../../assets/qrcode.png';
 
 const navLinks = [
   // { title: "Intro", path: "/intro" },

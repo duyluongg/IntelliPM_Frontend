@@ -45,12 +45,10 @@ export const systemConfigurationApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
-      headers.set('accept', '*/*');
-      // Nếu cần auth, thêm token ở đây
-      // const token = localStorage.getItem('token');
-      // if (token) {
-      //   headers.set('Authorization', `Bearer ${token}`);
-      // }
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),

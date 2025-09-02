@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ArrowLeft } from "lucide-react";
 import { useAuth } from '../../../../services/AuthContext';
 import axios from 'axios';
 import {
@@ -46,7 +47,9 @@ const TranscriptEditorPanel: React.FC<{
   meetingId: number;
   initialText: string;
   canEdit: boolean;
-}> = ({ meetingId, initialText, canEdit }) => {
+  onChanged?: (newText: string) => void;  
+  onRestored?: () => void; 
+}> = ({ meetingId, initialText, canEdit, onChanged, onRestored }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(initialText ?? '');
   const [saving, setSaving] = useState(false);
@@ -87,6 +90,7 @@ const history = React.useMemo(
       }).unwrap();
       toast.success('Transcript updated (snapshot saved).');
       setIsEditing(false);
+      onChanged?.(text);          // ✅ cập nhật UI ngay lập tức
       await refetchHistory();
     } catch (e: any) {
       console.error(e);
@@ -101,6 +105,7 @@ const history = React.useMemo(
     try {
       await restoreTranscript({ meetingId, fileName, reason: 'manual restore' }).unwrap();
       toast.success('Restored from snapshot.');
+      onRestored?.();
       await refetchHistory();
       // NOTE: Trang đang dùng dữ liệu từ query feedback, dev có thể trigger refetch ở parent nếu cần
     } catch (e: any) {
@@ -194,7 +199,9 @@ const SummaryEditorPanel: React.FC<{
   meetingTranscriptId: number;
   initialText: string;
   canEdit: boolean;
-}> = ({ meetingTranscriptId, initialText, canEdit }) => {
+   onChanged?: (newText: string) => void;  // ✅ NEW
+  onRestored?: () => void;    
+}> = ({ meetingTranscriptId, initialText, canEdit, onChanged, onRestored }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(initialText ?? '');
   const [saving, setSaving] = useState(false);
@@ -231,6 +238,7 @@ const SummaryEditorPanel: React.FC<{
       }).unwrap();
       toast.success('Summary updated (snapshot saved).');
       setIsEditing(false);
+      onChanged?.(text);
       await refetchHistory();
     } catch (e: any) {
       console.error(e);
@@ -245,6 +253,7 @@ const SummaryEditorPanel: React.FC<{
     try {
       await restoreSummary({ meetingTranscriptId, fileName, reason: 'manual restore' }).unwrap();
       toast.success('Restored from snapshot.');
+      onRestored?.(); 
       await refetchHistory();
       // NOTE: Parent component sẽ tự động refetch qua useGetMeetingFeedbackByTranscriptIdQuery
     } catch (e: any) {
@@ -349,7 +358,8 @@ const MilestoneFeedbackPanel: React.FC = () => {
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [payloadPreview, setPayloadPreview] = useState<string>(''); // debug payload khi Reject
-
+  const [summaryOverride, setSummaryOverride] = useState<string | null>(null);
+  const [transcriptOverride, setTranscriptOverride] = useState<string | null>(null);
   // Upload transcript
   const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('file');
   const [file, setFile] = useState<File | null>(null);
@@ -399,6 +409,11 @@ const MilestoneFeedbackPanel: React.FC = () => {
     refetch();
     refetchRejected();
   }, [id, refetch, refetchRejected]);
+
+  useEffect(() => {
+  setSummaryOverride(null);
+  setTranscriptOverride(null);
+}, [id]);
 
   // Dynamic categories for milestone_feedback_status
   const { data: statusResp } = useGetCategoriesByGroupQuery('milestone_feedback_status');
@@ -564,7 +579,7 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     if (!accountId) return;
     await approveMilestone({ meetingId: id, accountId });
     toast.success('Approved successfully.');
-    refetch();
+    await refetch();
   };
 
   // ====== Reject Submit (with payload preview) ======
@@ -616,96 +631,194 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     if (!window.confirm('Are you sure you want to delete this meeting summary?')) return;
     await deleteMeetingSummary(id);
     toast.success('Meeting summary deleted successfully.');
+    setSummaryOverride('Wait for update');
     await refetch();
   };
 
   // ===== Upload transcript (file / url) =====
-  const onUpload = async () => {
-    if (!accountId) return;
-    setIsUploading(true);
-    setUploadProgress(null);
+  // const onUpload = async () => {
+  //   if (!accountId) return;
+  //   setIsUploading(true);
+  //   setUploadProgress(null);
 
-    try {
-      if (uploadMethod === 'file') {
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('meetingId', String(id));
-        formData.append('audioFile', file);
+  //   try {
+  //      const token = localStorage.getItem('accessToken');
+  //     if (uploadMethod === 'file') {
+  //       if (!file) return;
+  //       const formData = new FormData();
+  //       formData.append('meetingId', String(id));
+  //       formData.append('audioFile', file);
 
-        const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
-          headers: { accept: '*/*' },
-          onUploadProgress: (evt) => {
-            if (!evt.total) return;
-            const percent = Math.round((evt.loaded * 100) / evt.total);
-            setUploadProgress(percent);
-          },
-        });
+  //       const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
+  //         headers: { accept: '*/*' },
+  //         onUploadProgress: (evt) => {
+  //           if (!evt.total) return;
+  //           const percent = Math.round((evt.loaded * 100) / evt.total);
+  //           setUploadProgress(percent);
+  //         },
+  //       });
 
-        toast.success('File uploaded successfully!');
-        const newTranscript = res.data?.transcriptText ?? null;
-        setUploadedTranscript(newTranscript);
+  //       toast.success('File uploaded successfully!');
+  //       const newTranscript = res.data?.transcriptText ?? null;
+  //       setUploadedTranscript(newTranscript);
 
-        if (newTranscript) {
-          const payload = {
-            meetingId: id,
-            projectId: projectIdFromMeeting,
-            source: 'file',
-            uploaderAccountId: accountId,
-            uploadedAt: new Date().toISOString(),
-            transcriptPreview: newTranscript.slice(0, 1000),
-          };
-          setEvalPayload(JSON.stringify(payload));
-          setIsEvalOpen(true);
-        }
-      } else {
-        if (!videoUrl.trim()) {
-          toast.error('Please enter video URL!');
-          return;
-        }
-        const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
-        const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
-          method: 'POST',
-          headers: { accept: '*/*', 'Content-Type': 'application/json' },
-          body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
-        });
-        const data = await res.json();
-        toast.success('Uploaded from URL successfully!');
-        const newTranscript = data?.transcriptText ?? null;
-        setUploadedTranscript(newTranscript);
+  //       if (newTranscript) {
+  //         const payload = {
+  //           meetingId: id,
+  //           projectId: projectIdFromMeeting,
+  //           source: 'file',
+  //           uploaderAccountId: accountId,
+  //           uploadedAt: new Date().toISOString(),
+  //           transcriptPreview: newTranscript.slice(0, 1000),
+  //         };
+  //         setEvalPayload(JSON.stringify(payload));
+  //         setIsEvalOpen(true);
+  //         setTranscriptOverride(newTranscript);
+  //       }
+  //     } else {
+  //       if (!videoUrl.trim()) {
+  //         toast.error('Please enter video URL!');
+  //         return;
+  //       }
+  //       const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+  //       const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+  //         method: 'POST',
+  //         headers: { accept: '*/*', 'Content-Type': 'application/json' },
+  //         body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+  //       });
+  //       const data = await res.json();
+  //       toast.success('Uploaded from URL successfully!');
+  //       const newTranscript = data?.transcriptText ?? null;
+  //       setUploadedTranscript(newTranscript);
 
-        if (newTranscript) {
-          const payload = {
-            meetingId: id,
-            projectId: projectIdFromMeeting,
-            source: 'url',
-            uploaderAccountId: accountId,
-            originalUrl: videoUrl,
-            uploadedAt: new Date().toISOString(),
-            transcriptPreview: newTranscript.slice(0, 1000),
-          };
-          setEvalPayload(JSON.stringify(payload));
-          setIsEvalOpen(true);
-        }
+  //       if (newTranscript) {
+  //         const payload = {
+  //           meetingId: id,
+  //           projectId: projectIdFromMeeting,
+  //           source: 'url',
+  //           uploaderAccountId: accountId,
+  //           originalUrl: videoUrl,
+  //           uploadedAt: new Date().toISOString(),
+  //           transcriptPreview: newTranscript.slice(0, 1000),
+  //         };
+  //         setEvalPayload(JSON.stringify(payload));
+  //         setIsEvalOpen(true);
+  //         setTranscriptOverride(newTranscript);
+  //       }
+  //     }
+
+  //     await Promise.all([refetch(), refetchRejected()]);
+
+  //   } catch (e) {
+  //     console.error(e);
+  //   } finally {
+  //     setIsUploading(false);
+  //     setUploadProgress(null);
+  //   }
+  // };
+const onUpload = async () => {
+  if (!accountId) return;
+  setIsUploading(true);
+  setUploadProgress(null);
+
+  try {
+    const token = localStorage.getItem('accessToken'); // 🔑 lấy token từ localStorage
+
+    if (uploadMethod === 'file') {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('meetingId', String(id));
+      formData.append('audioFile', file);
+
+      const res = await axios.post(`${API_BASE_URL}meeting-transcripts`, formData, {
+        headers: { 
+          accept: '*/*',
+          Authorization: `Bearer ${token}`, // thêm token vào header
+        },
+        onUploadProgress: (evt) => {
+          if (!evt.total) return;
+          const percent = Math.round((evt.loaded * 100) / evt.total);
+          setUploadProgress(percent);
+        },
+      });
+
+      toast.success('File uploaded successfully!');
+      const newTranscript = res.data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
+
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting,
+          source: 'file',
+          uploaderAccountId: accountId,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
+        setTranscriptOverride(newTranscript);
       }
+    } else {
+      if (!videoUrl.trim()) {
+        toast.error('Please enter video URL!');
+        return;
+      }
+      const adjustedUrl = videoUrl.replace(/dl=0/, 'raw=1');
+      const res = await fetch(`${API_BASE_URL}meeting-transcripts/from-url`, {
+        method: 'POST',
+        headers: { 
+          accept: '*/*', 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // thêm token vào header
+        },
+        body: JSON.stringify({ meetingId: id, videoUrl: adjustedUrl }),
+      });
+      const data = await res.json();
+      toast.success('Uploaded from URL successfully!');
+      const newTranscript = data?.transcriptText ?? null;
+      setUploadedTranscript(newTranscript);
 
-      await Promise.all([refetch(), refetchRejected()]);
-
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(null);
+      if (newTranscript) {
+        const payload = {
+          meetingId: id,
+          projectId: projectIdFromMeeting,
+          source: 'url',
+          uploaderAccountId: accountId,
+          originalUrl: videoUrl,
+          uploadedAt: new Date().toISOString(),
+          transcriptPreview: newTranscript.slice(0, 1000),
+        };
+        setEvalPayload(JSON.stringify(payload));
+        setIsEvalOpen(true);
+        setTranscriptOverride(newTranscript);
+      }
     }
-  };
+
+    await Promise.all([refetch(), refetchRejected()]);
+
+  } catch (e) {
+    console.error(e);
+    toast.error('Upload failed!');
+  } finally {
+    setIsUploading(false);
+    setUploadProgress(null);
+  }
+};
 
   return (
     <div className="mx-auto max-w-5xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-800">📌 {meetingTopic}</h1>
-        <Link to="/meeting-feedback" className="rounded bg-gray-800 text-white px-4 py-2 text-sm hover:bg-gray-700">
-          ← Back
-        </Link>
-      </div>
+<div className="flex items-center justify-between mb-4">
+  <h1 className="text-xl font-bold text-gray-800">📌 {meetingTopic}</h1>
+
+  <Link
+    to="/meeting-feedback"
+    className="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-gray-700 active:scale-[0.97]"
+  >
+    <ArrowLeft className="h-4 w-4" />
+    Back
+  </Link>
+</div>
 
       <p className="text-xs text-gray-500 mb-4">
         🕒 {feedback.createdAt === '0001-01-01T00:00:00' ? 'pending' : new Date(feedback.createdAt).toLocaleString()}
@@ -719,6 +832,8 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     meetingTranscriptId={id}
     initialText={feedback.summaryText}
  canEdit={canPMControl && !feedback.isApproved}
+ onChanged={(newText) => { setSummaryOverride(newText); refetch(); }}
+    onRestored={() => { setSummaryOverride(null); refetch(); }}
   />
       </div>
 
@@ -730,7 +845,8 @@ const canEditTranscript = Boolean(isCreator || canPMControl);
     meetingId={id}
     initialText={feedback.transcriptText}
      canEdit={canEditTranscript && !feedback.isApproved}
-    
+     onChanged={(newText) => { setTranscriptOverride(newText); refetch(); }}
+    onRestored={() => { setTranscriptOverride(null); refetch(); }}
   />
         {isWaiting && canPMControl && (
           <div className="mt-4 rounded-lg bg-gray-50 p-4">

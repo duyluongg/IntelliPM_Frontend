@@ -1,4 +1,3 @@
-// D:\GitHub\IntelliPM\IntelliPM_Frontend\src\services\projectApi.ts
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { API_BASE_URL } from '../constants/api';
 
@@ -77,7 +76,6 @@ export interface ProjectDetailsById {
   projectMembers: ProjectMember[];
 }
 
-// Work Item-related interfaces
 export interface Assignee {
   accountId: number;
   fullname: string;
@@ -233,7 +231,6 @@ interface ProjectDetailsFull {
   milestones: MilestoneItem[];
 }
 
-// Response interfaces
 export interface CreateProjectResponse {
   isSuccess: boolean;
   code: number;
@@ -359,6 +356,16 @@ export interface GetWorkItemByKeyResponse {
   error?: string;
 }
 
+export interface UploadIconData {
+  fileUrl: string;
+}
+
+export interface UploadIconResponse {
+  isSuccess: boolean;
+  code: number;
+  data: UploadIconData;
+  message: string;
+}
 
 export const projectApi = createApi({
   reducerPath: 'projectApi',
@@ -366,11 +373,9 @@ export const projectApi = createApi({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
       const token = localStorage.getItem('accessToken');
-      headers.set('accept', '*/*');
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);
       }
-      headers.set('Content-Type', 'application/json');
       return headers;
     },
   }),
@@ -409,8 +414,9 @@ export const projectApi = createApi({
       { projectKey: string; projectId?: number }
     >({
       query: ({ projectKey, projectId }) => ({
-        url: `project/check-project-key?projectKey=${projectKey}${projectId ? `&projectId=${projectId}` : ''
-          }`,
+        url: `project/check-project-key?projectKey=${projectKey}${
+          projectId ? `&projectId=${projectId}` : ''
+        }`,
         method: 'GET',
       }),
     }),
@@ -419,8 +425,9 @@ export const projectApi = createApi({
       { projectName: string; projectId?: number }
     >({
       query: ({ projectName, projectId }) => ({
-        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${projectId ? `&projectId=${projectId}` : ''
-          }`,
+        url: `project/check-project-name?projectName=${encodeURIComponent(projectName)}${
+          projectId ? `&projectId=${projectId}` : ''
+        }`,
         method: 'GET',
       }),
     }),
@@ -499,15 +506,10 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, projectKey) => [{ type: 'Project', id: projectKey }],
     }),
-
     updateProjectStatus: builder.mutation<void, { id: number; status: string }>({
       query: ({ id, status }) => ({
-        url: `project/${id}/status`,
+        url: `project/${id}/status/${status}`,
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
       }),
       invalidatesTags: ['Project'],
     }),
@@ -516,11 +518,32 @@ export const projectApi = createApi({
         url: `project/${projectKey}/allworkitems`,
         method: 'GET',
       }),
-      providesTags: (result, error, projectKey) => [
-        { type: 'WorkItem', id: projectKey },
-      ],
+      providesTags: (result, error, projectKey) => [{ type: 'WorkItem', id: projectKey }],
     }),
-
+    sendInvitationToTeamMember: builder.mutation<
+      SendInvitationsResponse,
+      { projectId: number; accountId: number }
+    >({
+      query: ({ projectId, accountId }) => ({
+        url: `project/${projectId}/send-invitation/${accountId}`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, { projectId }) => [{ type: 'Project', id: projectId }],
+    }),
+    // Sửa lại uploadIcon endpoint trong projectApi
+    uploadIcon: builder.mutation<UploadIconResponse, { file: File; projectId: string }>({
+      query: ({ file, projectId }) => {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        return {
+          url: `project/${projectId}/upload-icon`,
+          method: 'POST',
+          body: formData,
+          // Không sử dụng prepareHeaders ở đây để tránh conflict
+        };
+      },
+      invalidatesTags: (result, error, { projectId }) => [{ type: 'Project', id: projectId }],
+    }),
   }),
 });
 
@@ -544,4 +567,6 @@ export const {
   useLazyCheckProjectKeyQuery,
   useUpdateProjectStatusMutation,
   useLazyGetWorkItemByKeyQuery,
+  useSendInvitationToTeamMemberMutation,
+  useUploadIconMutation,
 } = projectApi;

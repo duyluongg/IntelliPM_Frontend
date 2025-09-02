@@ -1,8 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-// Để sử dụng icon, bạn cần cài đặt thư viện heroicons
-// npm install @heroicons/react
+import qrImage from '../assets/qrcode.png';
 import { ChartBarIcon, ClipboardDocumentListIcon, UsersIcon } from '@heroicons/react/24/outline';
+
+// const AppStoreBadge = () => (
+//   <a href='#' target='_blank' rel='noopener noreferrer'>
+//     <img src='https://tools.apple.com/assets/badges/download-on-the-app-store/black/en-us.svg' alt='Download on the App Store' className='h-12 w-auto' />
+//   </a>
+// );
+
+// // Official-looking Google Play Badge
+// const GooglePlayBadge = () => (
+//   <a href='#' target='_blank' rel='noopener noreferrer'>
+//     <img src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' alt='Get it on Google Play' className='h-12 w-auto' />
+//   </a>
+// );
 
 const Homepage: React.FC = () => {
   return (
@@ -86,6 +98,54 @@ const Homepage: React.FC = () => {
           </div>
         </div>
       </div>
+      <div className='container mx-auto px-6 py-16 md:py-24'>
+        <div className='bg-indigo-600 text-white rounded-3xl shadow-2xl p-8 md:p-12 lg:p-16 flex flex-col md:flex-row items-center justify-around gap-12 relative overflow-hidden'>
+          {/* Decorative background elements */}
+          <div className='absolute -top-10 -left-10 w-48 h-48 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob'></div>
+          <div className='absolute -bottom-10 -right-10 w-48 h-48 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000'></div>
+
+          {/* Text content */}
+          <div className='text-center md:text-left relative z-10'>
+            <h2 className='text-4xl md:text-5xl font-bold mb-4 leading-tight'>
+              Get IntelliPM on the Go! 🚀
+            </h2>
+            <p className='text-indigo-100 mb-8 text-lg max-w-md mx-auto md:mx-0'>
+              {/* Thay đổi ở đây */}
+              Manage your projects from anywhere with our native Android app. Scan the QR code or
+              tap the badge to download from Googe Drive.
+            </p>
+          </div>
+
+          {/* QR Code */}
+          <div className='flex justify-center items-center relative z-10'>
+            <div className='bg-white p-6 rounded-3xl shadow-2xl border-4 border-white transform rotate-3 hover:rotate-0 transition-transform duration-500'>
+              <img
+                src={qrImage}
+                alt='QR code to download the mobile app'
+                className='w-48 h-48 md:w-56 md:h-56 object-contain rounded-xl'
+              />
+              <p className='text-center text-gray-700 text-sm mt-3 font-semibold'>
+                Scan to Download!
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Footer ===== */}
+      <footer className='container mx-auto px-6 py-8 mt-16 text-center text-gray-500'>
+        <div className='border-t border-gray-200 pt-8'>
+          <p>&copy; {new Date().getFullYear()} IntelliPM. All rights reserved.</p>
+          <div className='mt-4 flex justify-center gap-6'>
+            <Link to='/privacy' className='hover:text-indigo-600 transition-colors'>
+              Privacy Policy
+            </Link>
+            <Link to='/terms' className='hover:text-indigo-600 transition-colors'>
+              Terms of Service
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

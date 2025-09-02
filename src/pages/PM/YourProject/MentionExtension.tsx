@@ -15,9 +15,9 @@ export const MentionExtension = (itemsRef: React.RefObject<MentionItem[]>) =>
     suggestion: {
       char: '@',
       items: ({ query }) =>
-        (itemsRef.current || [])
-          .filter((item) => item.label.toLowerCase().includes(query.toLowerCase()))
-          .slice(0, 5),
+        (itemsRef.current || []).filter((item) =>
+          item.label.toLowerCase().includes(query.toLowerCase())
+        ),
 
       render: () => {
         let component: ReactRenderer;

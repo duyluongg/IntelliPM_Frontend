@@ -16,7 +16,7 @@ interface CommentItem {
 }
 
 interface Props {
-  comments: DocumentComment[]; 
+  comments: DocumentComment[];
   activeCommentId: string | null;
   currentUserId: number;
   onCommentClick: (comment: DocumentComment) => void;
@@ -120,7 +120,7 @@ export default function CommentSidebar({
                   <blockquote className='border-l-4 border-gray-200 dark:border-gray-600 pl-3'>
                     <p className='text-sm italic text-gray-500 dark:text-gray-400'>"{c.content}"</p>
                   </blockquote>
-                  <p className='text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap'>
+                  <p className='text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words'>
                     {c.comment}
                   </p>
                 </div>

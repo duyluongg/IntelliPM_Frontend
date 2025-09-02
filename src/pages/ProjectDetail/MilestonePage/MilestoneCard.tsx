@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Trash2, Edit } from 'lucide-react';
 import {
   useUpdateMilestoneSprintMutation,
   useUpdateMilestoneStatusMutation,
+  useSendMilestoneEmailMutation,
   type MilestoneResponseDTO,
 } from '../../../services/milestoneApi';
 import {
@@ -14,6 +15,7 @@ import {
 } from '../../../services/milestoneCommentApi';
 import { type SprintWithTaskListResponseDTO } from '../../../services/sprintApi';
 import UpdateMilestonePopup from './UpdateMilestonePopup';
+import { toast } from 'react-toastify';
 
 interface User {
   role: string;
@@ -33,7 +35,8 @@ const getStatusColor = (status: string | null, endDate: string): string => {
   const end = new Date(endDate);
   const daysUntilDue = (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
-  if (status === 'DONE') return 'bg-green-50 border-green-200';
+  if (status === 'DONE' || status === 'APPROVED') return 'bg-green-50 border-green-200';
+  if (status === 'REJECTED') return 'bg-red-50 border-red-200';
   if (daysUntilDue < 0) return 'bg-red-50 border-red-200';
   if (daysUntilDue <= 3) return 'bg-yellow-50 border-yellow-200';
   if (status === 'IN_PROGRESS') return 'bg-blue-50 border-blue-200';
@@ -50,6 +53,12 @@ const getProgressColor = (status: string | null, endDate: string): string => {
   }
   if (status === 'AWAITING_REVIEW') {
     return 'bg-gradient-to-r from-green-500 to-green-400';
+  }
+  if (status === 'APPROVED') {
+    return 'bg-gradient-to-r from-green-600 to-green-500';
+  }
+  if (status === 'REJECTED') {
+    return 'bg-gradient-to-r from-red-600 to-red-500';
   }
   return 'bg-gradient-to-r from-blue-500 to-blue-400';
 };
@@ -75,6 +84,10 @@ const getStatusBadge = (status: string | null) => {
       return { color: 'bg-blue-100 text-blue-800' };
     case 'AWAITING_REVIEW':
       return { color: 'bg-green-100 text-green-800' };
+    case 'APPROVED':
+      return { color: 'bg-green-100 text-green-800' };
+    case 'REJECTED':
+      return { color: 'bg-red-100 text-red-800' };
     default:
       return { color: 'bg-gray-100 text-gray-800' };
   }
@@ -94,6 +107,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
   const [editContent, setEditContent] = useState('');
   const [updateMilestoneSprint, { isLoading: isSprintUpdating }] = useUpdateMilestoneSprintMutation();
   const [updateMilestoneStatus, { isLoading: isStatusUpdating }] = useUpdateMilestoneStatusMutation();
+  const [sendMilestoneEmail, { isLoading: isEmailSending }] = useSendMilestoneEmailMutation();
   const [createMilestoneComment] = useCreateMilestoneCommentMutation();
   const [updateMilestoneComment] = useUpdateMilestoneCommentMutation();
   const [deleteMilestoneComment] = useDeleteMilestoneCommentMutation();
@@ -102,6 +116,8 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
   });
 
   const user: User | null = JSON.parse(localStorage.getItem('user') || 'null');
+  const isLeaderOrManager = user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER';
+  const isClient = user?.role === 'CLIENT';
 
   const handleSprintChange = async (sprintId: number) => {
     try {
@@ -115,8 +131,10 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
   const handleStatusChange = async (newStatus: string) => {
     try {
       await updateMilestoneStatus({ id: milestone.id, status: newStatus }).unwrap();
+      toast.success(`Milestone status updated to ${newStatus}`);
       refetchMilestones();
-    } catch (error) {
+    } catch (error: any) {
+      toast.error(error.data?.message || 'Failed to update milestone status');
       console.error('Failed to update status:', error);
     }
   };
@@ -130,7 +148,9 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
         content: commentContent,
       }).unwrap();
       setCommentContent('');
+      toast.success('Comment added successfully');
     } catch (error) {
+      toast.error('Failed to add comment');
       console.error('Failed to add comment:', error);
     }
   };
@@ -153,7 +173,9 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
       }).unwrap();
       setEditingCommentId(null);
       setEditContent('');
+      toast.success('Comment updated successfully');
     } catch (error) {
+      toast.error('Failed to update comment');
       console.error('Failed to update comment:', error);
     }
   };
@@ -161,18 +183,33 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
   const handleDeleteComment = async (commentId: number) => {
     try {
       await deleteMilestoneComment(commentId).unwrap();
+      toast.success('Comment deleted successfully');
     } catch (error) {
+      toast.error('Failed to delete comment');
       console.error('Failed to delete comment:', error);
     }
   };
 
   const handleSendToClient = async () => {
     try {
-      console.log('Send to client:', milestone.id);
+      const result = await sendMilestoneEmail({
+        projectId: milestone.projectId,
+        milestoneId: milestone.id,
+      }).unwrap();
+      toast.success(result);
       refetchMilestones();
-    } catch (error) {
+    } catch (error: any) {
+      toast.error(error.data?.message || 'Failed to send milestone email to clients');
       console.error('Failed to send to client:', error);
     }
+  };
+
+  const handleApproveMilestone = async () => {
+    await handleStatusChange('APPROVED');
+  };
+
+  const handleRejectMilestone = async () => {
+    await handleStatusChange('REJECTED');
   };
 
   const progress = getProgress(milestone.startDate, milestone.endDate);
@@ -180,32 +217,62 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
 
   const renderStatusButtons = () => {
     const currentStatus = milestone.status || 'PLANNING';
-    switch (currentStatus) {
-      case 'PLANNING':
-        return (
+    if (isLeaderOrManager) {
+      switch (currentStatus) {
+        case 'PLANNING':
+          return (
+            <button
+              onClick={() => handleStatusChange('IN_PROGRESS')}
+              disabled={isStatusUpdating}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50"
+            >
+              {isStatusUpdating ? 'Updating...' : 'Start Milestone'}
+            </button>
+          );
+        case 'IN_PROGRESS':
+          return (
+            <button
+              onClick={() => handleStatusChange('AWAITING_REVIEW')}
+              disabled={isStatusUpdating}
+              className="w-full bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-teal-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
+            >
+              {isStatusUpdating ? 'Updating...' : 'Complete Milestone'}
+            </button>
+          );
+        case 'AWAITING_REVIEW':
+          return (
+            <button
+              onClick={handleSendToClient}
+              disabled={isEmailSending}
+              className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200 disabled:opacity-50"
+            >
+              {isEmailSending ? 'Sending...' : 'Send to Client'}
+            </button>
+          );
+        default:
+          return null;
+      }
+    } else if (isClient && currentStatus === 'AWAITING_REVIEW') {
+      return (
+        <div className="flex gap-2">
           <button
-            onClick={() => handleStatusChange('IN_PROGRESS')}
+            onClick={handleApproveMilestone}
             disabled={isStatusUpdating}
-            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 disabled:opacity-50"
+            className="flex-1 bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200 disabled:opacity-50"
           >
-            {isStatusUpdating ? 'Updating...' : 'Start Milestone'}
+            {isStatusUpdating ? 'Updating...' : 'Approve'}
           </button>
-        );
-      case 'IN_PROGRESS':
-        return (
           <button
-            onClick={() => handleStatusChange('AWAITING_REVIEW')}
+            onClick={handleRejectMilestone}
             disabled={isStatusUpdating}
-            className="w-full bg-gradient-to-r from-teal-600 to-teal-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-teal-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50"
+            className="flex-1 bg-gradient-to-r from-red-600 to-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-red-700 hover:to-red-600 transition-all duration-200 disabled:opacity-50"
           >
-            {isStatusUpdating ? 'Updating...' : 'Complete Milestone'}
+            {isStatusUpdating ? 'Updating...' : 'Reject'}
           </button>
-        );
-      case 'AWAITING_REVIEW':
-        return null;
-      default:
-        return null;
+        </div>
+      );
     }
+    return null;
   };
 
   return (
@@ -219,7 +286,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full uppercase self-start">
             {milestone.key}
           </span>
-          {(user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER') && (
+          {isLeaderOrManager && (
             <button
               onClick={() => setIsUpdatePopupOpen(true)}
               className="text-gray-500 hover:text-blue-600 transition-colors duration-200"
@@ -254,7 +321,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           <select
             value={milestone.sprintId || ''}
             onChange={(e) => handleSprintChange(Number(e.target.value))}
-            disabled={isSprintUpdating}
+            disabled={isSprintUpdating || !isLeaderOrManager}
             className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 flex-1"
           >
             <option value="">No Sprint</option>
@@ -266,19 +333,7 @@ const MilestoneCard: React.FC<MilestoneCardProps> = ({ milestone, sprints, refet
           </select>
         </div>
         <div className="min-h-[40px]">
-          {user?.role === 'TEAM_LEADER' || user?.role === 'PROJECT_MANAGER' ? (
-            <>
-              {milestone.status === 'AWAITING_REVIEW' && (
-                <button
-                  onClick={handleSendToClient}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all duration-200"
-                >
-                  Send to Client
-                </button>
-              )}
-              {renderStatusButtons()}
-            </>
-          ) : null}
+          {renderStatusButtons()}
         </div>
       </div>
       <div className="mt-6">

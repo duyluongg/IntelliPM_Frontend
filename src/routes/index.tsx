@@ -74,6 +74,9 @@ import ShareVerificationPage from '../pages/PM/YourProject/ShareVerificationPage
 import ForgotPassword from '../components/ForgotPassword';
 import ResetPassword from '../components/ResetPassword';
 import AiResponseHistoryDetail from '../pages/Admin/AiResponseHistoryPage/AiResponseHistoryDetail';
+import InviteesMemberPage from '../pages/InviteesMember/InviteesMemberPage';
+import ActivityLogPage from '../pages/ActivityLog/ActivityLogPage';
+import AdminActivityLog from '../pages/Admin/ActivityPage/AdminActivityLog';
 
 export const router = createBrowserRouter([
   {
@@ -93,7 +96,7 @@ export const router = createBrowserRouter([
     element: <VerifyFail />,
   },
   {
-    path: '/share/verify',
+    path: '/share/accept',
     element: <ShareVerificationPage />,
   },
   {
@@ -185,7 +188,7 @@ export const router = createBrowserRouter([
   {
     path: '/project',
     element: (
-      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER', 'CLIENT']}>
+      <ProtectedRoute allowedRoles={['PROJECT_MANAGER', 'TEAM_MEMBER', 'TEAM_LEADER']}>
         <PMLayout />
       </ProtectedRoute>
     ),
@@ -284,8 +287,8 @@ export const router = createBrowserRouter([
       },
 
       {
-        path: `introduction`,
-        element: <ProjectIntroduction />,
+        path: `invitees-member`,
+        element: <InviteesMemberPage />,
       },
       {
         path: ':projectKey/work-item-detail',
@@ -311,6 +314,10 @@ export const router = createBrowserRouter([
         path: 'projects/form/:formId',
         element: <Form />,
       },
+      {
+        path: 'activity-logs',
+        element: <ActivityLogPage  />,
+      },
 
       // {
       //   path: 'projects/form/:type/:id',
@@ -323,6 +330,36 @@ export const router = createBrowserRouter([
       {
         path: ':projectKey/risk-statistics',
         element: <RiskStatistics />,
+      },
+    ],
+  },
+
+  //Role Client
+    {
+    path: '/projectclient',
+    element: (
+      <ProtectedRoute allowedRoles={['CLIENT']}>
+        <PMLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <ProjectDetailPage />,
+      },
+
+      {
+        path: 'meeting-management/view-reject',
+        element: <MeetingRequestRejectPage />,
+      },
+
+      {
+        path: 'meeting-management/send-request',
+        element: <CreateDocumentRequestMeeting />,
+      },
+          {
+        path: `list`,
+        element: <ProjectList />,
       },
     ],
   },
@@ -375,6 +412,10 @@ export const router = createBrowserRouter([
       {
         path: 'register-members',
         element: <DynamicBulkRegister />,
+      },
+      {
+        path: 'activity-log',
+        element: <AdminActivityLog />,
       },
       {
         path: 'projects',

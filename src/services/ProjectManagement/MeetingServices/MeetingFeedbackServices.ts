@@ -51,8 +51,10 @@ export const meetingFeedbackApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
-      headers.set('accept', '*/*');
-      headers.set('Content-Type', 'application/json');
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),

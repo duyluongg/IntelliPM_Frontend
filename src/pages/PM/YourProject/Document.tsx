@@ -14,6 +14,8 @@ import TaskItem from '@tiptap/extension-task-item';
 import BulletList from '@tiptap/extension-bullet-list';
 import OrderedList from '@tiptap/extension-ordered-list';
 import ListItem from '@tiptap/extension-list-item';
+import { Extension } from '@tiptap/core';
+import { Plugin } from 'prosemirror-state';
 
 import debounce from 'lodash.debounce';
 
@@ -51,6 +53,7 @@ import { useGetPermissionTypeByDocumentQuery } from '../../../services/Document/
 import type { DocumentVisibility } from '../../../types/DocumentType';
 import Swal from 'sweetalert2';
 import { useGetProfileByAccountIdQuery } from '../../../services/accountApi';
+import { useGetByConfigKeyQuery } from '../../../services/systemConfigurationApi';
 
 interface CommentItem {
   id: number | string;
@@ -67,8 +70,76 @@ interface MentionItem {
   name: string;
 }
 
+function collectCommentIds(doc: any): Set<string> {
+  const ids = new Set<string>();
+  doc.descendants((node: any) => {
+    if (!node.marks) return;
+    node.marks.forEach((m: any) => {
+      if (m.type?.name === 'commentMark' && m.attrs?.commentId) {
+        ids.add(String(m.attrs.commentId));
+      }
+    });
+  });
+  return ids;
+}
+
 export const Document: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const pendingDeleteTimersRef = useRef<Map<string, number>>(new Map());
+  const COMMENT_DELETE_DELAY_MS = 3000; // 3s (bạn chỉnh 2000–5000 tuỳ ý)
+
+  const { data: commentLengthConfig } = useGetByConfigKeyQuery('comment_length');
+  const minLen = Number(commentLengthConfig?.data?.minValue ?? 5);
+  const maxLen = Number(commentLengthConfig?.data?.maxValue ?? 2000);
+
+  function scheduleDelete(commentId: string) {
+    if (pendingDeleteTimersRef.current.has(commentId)) return;
+    const timer = window.setTimeout(async () => {
+      pendingDeleteTimersRef.current.delete(commentId);
+      try {
+        await deleteComment({ id: Number(commentId), documentId: Number(documentId) }).unwrap();
+        // tuỳ chọn: toast.success('Comment deleted');
+      } catch (e) {
+        console.error('Delayed delete failed', e);
+        // tuỳ chọn: toast.error('Delete failed');
+      }
+    }, COMMENT_DELETE_DELAY_MS);
+    pendingDeleteTimersRef.current.set(commentId, timer);
+  }
+
+  const CommentWatcher = Extension.create({
+    name: 'commentWatcher',
+    addProseMirrorPlugins() {
+      return [
+        new Plugin({
+          appendTransaction: (_trs, oldState, newState) => {
+            if (oldState.doc.eq(newState.doc)) return null;
+
+            const oldIds = collectCommentIds(oldState.doc);
+            const newIds = collectCommentIds(newState.doc);
+
+            oldIds.forEach((id) => {
+              if (!newIds.has(id)) scheduleDelete(id);
+            });
+
+            newIds.forEach((id) => {
+              if (!oldIds.has(id)) cancelScheduledDelete(id);
+            });
+
+            return null; // luôn phải return Transaction | null | undefined
+          },
+        }),
+      ];
+    },
+  });
+
+  function cancelScheduledDelete(commentId: string) {
+    const t = pendingDeleteTimersRef.current.get(commentId);
+    if (t) {
+      clearTimeout(t);
+      pendingDeleteTimersRef.current.delete(commentId);
+    }
+  }
 
   const [updateComment] = useUpdateCommentMutation();
   const [deleteComment] = useDeleteCommentMutation();
@@ -136,11 +207,16 @@ export const Document: React.FC = () => {
     projectKeyRef.current = projectKey;
   }, [projectKey]);
 
-  console.log('Document data:', projectId);
+  console.log(user);
+
   const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId as number, {
     skip: !projectId,
   });
-  const filterAccount = projectMembers?.filter((m) => m.id !== user?.id);
+  console.log('Project members:', projectMembers);
+
+  const filterAccount = projectMembers?.filter((m) => m.accountId !== user?.id);
+  console.log('Filtered accounts:', filterAccount);
+
   const mentionItemsRef = useRef<MentionItem[]>([]);
 
   useEffect(() => {
@@ -195,7 +271,6 @@ export const Document: React.FC = () => {
   );
 
   const handleTitleSave = async () => {
-    // Nếu không có quyền chỉnh sửa, chỉ cần thoát khỏi chế độ chỉnh sửa
     if (!canEdit) {
       setIsEditingTitle(false);
       return;
@@ -218,10 +293,10 @@ export const Document: React.FC = () => {
           id: Number(documentId),
           data: { title: trimmedTitle, visibility }, // Lưu tiêu đề đã được trim
         }).unwrap(); // Sử dụng unwrap để bắt lỗi từ RTK Query
-        toast.success('Cập nhật tiêu đề thành công!');
+        // toast.success('Cập nhật tiêu đề thành công!');
       } catch (err) {
         console.error('Cập nhật tiêu đề thất bại', err);
-        toast.error('Không thể cập nhật tiêu đề.');
+        // toast.error('Không thể cập nhật tiêu đề.');
         setCurrentTitle(title ?? ''); // Hoàn nguyên tiêu đề nếu có lỗi
       }
     }
@@ -236,6 +311,7 @@ export const Document: React.FC = () => {
       StarterKit,
       CommentMark,
       GanttNode,
+      CommentWatcher,
       SlashCommand.configure({
         items: () => [
           {
@@ -395,13 +471,13 @@ export const Document: React.FC = () => {
   if (!documentId) {
     return (
       <div className='p-6 text-center text-red-500'>
-        ❌ Thiếu thông tin tài liệu. Quay lại trang trước.
+        ❌ Missing document information. Please go back to the previous page.
         <br />
         <button
           className='mt-4 px-4 py-2 bg-blue-600 text-white rounded'
           onClick={() => navigate(-1)}
         >
-          Quay lại
+          Go Back
         </button>
       </div>
     );
@@ -438,9 +514,15 @@ export const Document: React.FC = () => {
         if (!value || !value.trim()) {
           return 'You need to write something!';
         }
+        if (value.trim().length < minLen) {
+          return `Comment must be at least ${minLen} characters.`;
+        }
+        if (value.trim().length > maxLen) {
+          return `Comment cannot exceed ${maxLen} characters.`;
+        }
+        return null;
       },
     });
-
     // If the user entered text and clicked "Comment"
     if (commentContent) {
       try {
@@ -474,30 +556,40 @@ export const Document: React.FC = () => {
   // Document.tsx
 
   const handleUpdateComment = async (commentToUpdate: CommentItem, newCommentText: string) => {
-    if (!documentId) {
-      alert('Không tìm thấy ID của tài liệu.');
-      return;
-    }
+    if (!documentId) return;
 
     try {
-      // Gửi partial update: chỉ field cần đổi
+      const safeMin = Number.isFinite(minLen) ? minLen : 5;
+      const safeMax = Number.isFinite(maxLen) ? maxLen : 2000;
+
+      const trimmed = (newCommentText ?? '').trim();
+
+      if (trimmed === (commentToUpdate.comment ?? '').trim()) {
+        toast('No changes to update.');
+        return;
+      }
+
+      if (trimmed.length < safeMin || trimmed.length > safeMax) {
+        toast.error(`Comment length must be between ${safeMin} and ${safeMax} characters.`);
+        return;
+      }
+
       await updateComment({
         id: Number(commentToUpdate.id),
         body: {
-          // Nếu chỉ sửa text comment:
-          comment: newCommentText,
-
-          // Nếu bạn cũng muốn cập nhật lại vùng highlight và content:
-          // fromPos: commentToUpdate.from,
-          // toPos: commentToUpdate.to,
+          comment: trimmed,
+          // Nếu cần cập nhật lại vùng highlight + text đã chọn:
+          // fromPos: commentToUpdate.fromPos,
+          // toPos: commentToUpdate.toPos,
           // content: commentToUpdate.content,
         },
       }).unwrap();
 
       await refetchComments();
+      toast.success('Comment updated.');
     } catch (error) {
       console.error('Cập nhật bình luận thất bại:', error);
-      alert('Đã xảy ra lỗi khi cập nhật bình luận.');
+      toast.error('Failed to update comment.');
     }
   };
 
@@ -560,7 +652,7 @@ export const Document: React.FC = () => {
         <DocumentRealtimeBridge
           documentId={numericDocId}
           onPermissionChanged={() => {
-            toast.success('Quyền tài liệu đã được cập nhật!');
+            toast.success('Document permissions have been updated!');
             refetchPermission();
           }}
           onDocumentUpdated={() => {

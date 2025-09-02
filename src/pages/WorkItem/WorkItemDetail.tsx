@@ -10,7 +10,12 @@ import flagIcon from '../../assets/icon/type_story.svg';
 import accountIcon from '../../assets/account.png';
 import deleteIcon from '../../assets/delete.png';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useGetSubtasksByTaskIdQuery,useUpdateSubtaskStatusMutation,useCreateSubtaskMutation,useUpdateSubtaskMutation} from '../../services/subtaskApi';
+import {
+  useGetSubtasksByTaskIdQuery,
+  useUpdateSubtaskStatusMutation,
+  useCreateSubtaskMutation,
+  useUpdateSubtaskMutation,
+} from '../../services/subtaskApi';
 import {
   useGetTaskByIdQuery,
   useUpdateTaskStatusMutation,
@@ -25,7 +30,11 @@ import {
   useUpdatePercentCompleteMutation,
   useUpdateActualCostMutation,
 } from '../../services/taskApi';
-import { useGetTaskFilesByTaskIdQuery,useUploadTaskFileMutation,useDeleteTaskFileMutation} from '../../services/taskFileApi';
+import {
+  useGetTaskFilesByTaskIdQuery,
+  useUploadTaskFileMutation,
+  useDeleteTaskFileMutation,
+} from '../../services/taskFileApi';
 import {
   useGetCommentsByTaskIdQuery,
   useCreateTaskCommentMutation,
@@ -35,15 +44,22 @@ import {
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
 import { useGetWorkItemLabelsByTaskQuery } from '../../services/workItemLabelApi';
 import { useGetTaskAssignmentsByTaskIdQuery } from '../../services/taskAssignmentApi';
-import type { AiSuggestedSubtask } from '../../services/subtaskAiApi'; 
+import type { AiSuggestedSubtask } from '../../services/subtaskAiApi';
 import { useGenerateSubtasksByAIMutation } from '../../services/subtaskAiApi';
 import type { TaskAssignmentDTO } from '../../services/taskAssignmentApi';
-import { useLazyGetTaskAssignmentsByTaskIdQuery,useCreateTaskAssignmentQuickMutation,useDeleteTaskAssignmentMutation} from '../../services/taskAssignmentApi';
+import {
+  useLazyGetTaskAssignmentsByTaskIdQuery,
+  useCreateTaskAssignmentQuickMutation,
+  useDeleteTaskAssignmentMutation,
+} from '../../services/taskAssignmentApi';
 import { useGetActivityLogsByTaskIdQuery } from '../../services/activityLogApi';
 import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useParams, Link } from 'react-router-dom';
-import { useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useDeleteWorkItemLabelMutation } from '../../services/workItemLabelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
@@ -111,7 +127,9 @@ const WorkItemDetail: React.FC = () => {
   const [aiSuggestions, setAiSuggestions] = React.useState<AiSuggestedSubtask[]>([]);
   const [newPercentComplete, setNewPercentComplete] = useState<number | null>(null);
   const [generateSubtasksByAI, { isLoading: loadingSuggestt }] = useGenerateSubtasksByAIMutation();
-  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<Record<string, TaskAssignmentDTO[]>>({});
+  const [taskAssignmentMap, setTaskAssignmentMap] = React.useState<
+    Record<string, TaskAssignmentDTO[]>
+  >({});
   const [createTaskAssignment] = useCreateTaskAssignmentQuickMutation();
   const [deleteTaskAssignment] = useDeleteTaskAssignmentMutation();
   const [getTaskAssignments] = useLazyGetTaskAssignmentsByTaskIdQuery();
@@ -198,7 +216,12 @@ const WorkItemDetail: React.FC = () => {
 
   const handlePlannedStartDateTaskChange = async () => {
     await refetchSubtask();
-    if (!taskData || !plannedStartDate || plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)) return;
+    if (
+      !taskData ||
+      !plannedStartDate ||
+      plannedStartDate === taskData?.plannedStartDate?.slice(0, 16)
+    )
+      return;
 
     // Validate against epic's startDate
     if (epicData?.startDate && new Date(plannedStartDate) < new Date(epicData.startDate)) {
@@ -288,7 +311,7 @@ const WorkItemDetail: React.FC = () => {
         plannedStartDate: toISO(plannedStartDate),
         createdBy: accountId,
       }).unwrap();
-      await Promise.all([refetchActivityLogs(), refetchSubtask()]); 
+      await Promise.all([refetchActivityLogs(), refetchSubtask()]);
       console.log('Start date updated');
     } catch (err) {
       console.error('Failed to update start date', err);
@@ -311,7 +334,8 @@ const WorkItemDetail: React.FC = () => {
 
   const handlePlannedEndDateTaskChange = async () => {
     await refetchSubtask();
-    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16)) return;
+    if (!taskData || !plannedEndDate || plannedEndDate === taskData?.plannedEndDate?.slice(0, 16))
+      return;
 
     // Validate against epic's endDate
     if (epicData?.endDate && new Date(plannedEndDate) > new Date(epicData.endDate)) {
@@ -375,7 +399,8 @@ const WorkItemDetail: React.FC = () => {
     }
 
     // compare subtask
-    const effectiveStartDate = plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
+    const effectiveStartDate =
+      plannedStartDate || taskData.plannedStartDate || new Date().toISOString();
     const dateValidation = await validateSubtaskDates(effectiveStartDate, plannedEndDate);
     if (!dateValidation.isValid) {
       Swal.fire({
@@ -534,7 +559,7 @@ const WorkItemDetail: React.FC = () => {
 
   const handleTitleTaskChange = async () => {
     try {
-      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap(); 
+      await updateTaskTitle({ id: taskId, title, createdBy: accountId }).unwrap();
       await refetchActivityLogs();
       console.log('Update title task successfully');
     } catch (err) {
@@ -607,13 +632,17 @@ const WorkItemDetail: React.FC = () => {
 
   const { data: projectMembers = [] } = useGetProjectMembersQuery(taskData?.projectId!, {
     skip: !taskData?.projectId,
+    selectFromResult: ({ data, ...rest }) => ({
+      data: data?.filter((member) => member.accountRole !== 'CLIENT') || [],
+      ...rest,
+    }),
   });
 
   React.useEffect(() => {
     if (assignees && taskId) {
       setTaskAssignmentMap((prev) => {
         if (JSON.stringify(prev[taskId]) === JSON.stringify(assignees)) {
-          return prev; 
+          return prev;
         }
         return { ...prev, [taskId]: assignees };
       });
@@ -653,14 +682,20 @@ const WorkItemDetail: React.FC = () => {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(
+              0,
+              10
+            )}) before task start date (${newStartDate.slice(0, 10)})!`,
           };
         }
         if (subtaskStart > taskEnd) {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has start date (${subtask.startDate.slice(
+              0,
+              10
+            )}) after task end date (${newEndDate.slice(0, 10)})!`,
           };
         }
       }
@@ -671,14 +706,20 @@ const WorkItemDetail: React.FC = () => {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) before task start date (${newStartDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(
+              0,
+              10
+            )}) before task start date (${newStartDate.slice(0, 10)})!`,
           };
         }
         if (subtaskEnd > taskEnd) {
           return {
             isValid: false,
             invalidSubtaskId: subtask.id,
-            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(0, 10)}) after task end date (${newEndDate.slice(0, 10)})!`,
+            message: `Subtask with ID ${subtask.id} has end date (${subtask.endDate.slice(
+              0,
+              10
+            )}) after task end date (${newEndDate.slice(0, 10)})!`,
           };
         }
       }
@@ -824,6 +865,12 @@ const WorkItemDetail: React.FC = () => {
     skip: !taskData?.projectId,
   });
 
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
+
   const filteredLabels = projectLabels.filter((label) => {
     const notAlreadyAdded = !workItemLabels.some((l) => l.labelName === label.name);
 
@@ -872,7 +919,14 @@ const WorkItemDetail: React.FC = () => {
             <textarea
               value={editedContent[comment.id] || comment.content}
               onChange={(e) => setEditedContent({ ...editedContent, [comment.id]: e.target.value })}
+              maxLength={maxCommentLength}
+              className='w-full p-2 border border-gray-300 rounded'
             />
+            {commentContent.length > maxCommentLength && (
+              <span className='text-red-500 text-xs mt-1 block'>
+                Maximum {maxCommentLength} characters allowed
+              </span>
+            )}
             <button onClick={() => handleSave(comment.id, comment.content)}>Save</button>
             <button onClick={() => setEditCommentId(null)}>Cancel</button>
           </>
@@ -948,6 +1002,11 @@ const WorkItemDetail: React.FC = () => {
 
     // For subtask: Check if the user matches the subtask's assignee
     return subtaskAssigneeId.toString() === currentUserId;
+  };
+
+  const formatBudget = (value: number | null) => {
+    if (value === null || value === 0 || isNaN(value)) return '';
+    return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
   };
 
   return (
@@ -1052,11 +1111,12 @@ const WorkItemDetail: React.FC = () => {
                 style={{ display: 'none' }}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  setFileError(''); // Reset error message
+                  setFileError('');
                   if (file) {
                     // Check file size (10MB = 10 * 1024 * 1024 bytes)
-                    if (file.size > 10 * 1024 * 1024) {
-                      setFileError('File size exceeds 10MB limit');
+                    if (file.size > maxFileSize) {
+                      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2);
+                      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
                       setIsAddDropdownOpen(false);
                       return;
                     }
@@ -1220,7 +1280,7 @@ const WorkItemDetail: React.FC = () => {
                       className='bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden transform transition-all duration-300 animate-slide-up'
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3">
+                      <div className='bg-gradient-to-r from-purple-600 to-blue-500 p-6 flex items-center justify-between gap-3'>
                         <div className='flex items-center gap-3'>
                           <img src={aiIcon} alt='AI Icon' className='w-8 h-8 object-contain' />
                           <h2 className='text-2xl font-bold text-white'>AI-Suggested Subtasks</h2>
@@ -1475,7 +1535,6 @@ const WorkItemDetail: React.FC = () => {
                                         await refetchActivityLogs();
                                       } catch (err) {
                                         console.error('Failed to update summary:', err);
-                                        
                                       }
                                     }
                                     setEditingSummaryId(null);
@@ -1494,105 +1553,125 @@ const WorkItemDetail: React.FC = () => {
                             </td>
 
                             <td>
-                              <select
-                                value={item.priority}
-                                onChange={async (e) => {
-                                  const newPriority = e.target.value;
-                                  try {
-                                    await updateSubtask({
-                                      id: item.key,
-                                      assignedBy: parseInt(
-                                        selectedAssignees[item.key] ?? item.assigneeId
-                                      ),
-                                      title: editableSummaries[item.key] ?? item.summary,
-                                      description: item?.description ?? '',
-                                      sprintId: item.sprintId ?? null,
-                                      priority: newPriority,
-                                      startDate: item.startDate,
-                                      endDate: item.endDate,
-                                      reporterId: item.reporterId,
-                                      createdBy: accountId,
-                                    }).unwrap();
-                                    console.log('Updated priority');
-                                    await refetchSubtask();
-                                    await refetchActivityLogs();
-                                  } catch (err) {
-                                    console.error('Failed to update priority:', err);
-                                   
-                                  }
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid #ccc',
-                                  backgroundColor: 'white',
-                                }}
-                              >
-                                {isPriorityLoading ? (
-                                  <option>Loading...</option>
-                                ) : isPriorityError ? (
-                                  <option>Error loading priorities</option>
-                                ) : (
-                                  priorityOptions?.data.map((priority) => (
-                                    <option key={priority.id} value={priority.name}>
-                                      {priority.label}
-                                    </option>
-                                  ))
-                                )}
-                              </select>
-                            </td>
-
-                            <td>
-                              <div className='dropdown-wrapper'>
+                              {isUserAssignee(taskId) || canEdit ? (
                                 <select
-                                  value={selectedAssignees[item.key] || item.assigneeId}
+                                  value={item.priority}
                                   onChange={async (e) => {
-                                    const newAssigneeId = parseInt(e.target.value);
-                                    setSelectedAssignees((prev) => ({
-                                      ...prev,
-                                      [item.key]: newAssigneeId.toString(),
-                                    }));
-
+                                    const newPriority = e.target.value;
                                     try {
                                       await updateSubtask({
                                         id: item.key,
-                                        assignedBy: newAssigneeId,
-                                        priority: item.priority,
-                                        title: item.summary,
+                                        assignedBy: parseInt(
+                                          selectedAssignees[item.key] ?? item.assigneeId
+                                        ),
+                                        title: editableSummaries[item.key] ?? item.summary,
                                         description: item?.description ?? '',
                                         sprintId: item.sprintId ?? null,
+                                        priority: newPriority,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      console.log('Updated subtask assignee');
+                                      console.log('Updated priority');
                                       await refetchSubtask();
+                                      await refetchActivityLogs();
                                     } catch (err) {
-                                      console.error('Failed to update subtask:', err);
-                                      
+                                      console.error('Failed to update priority:', err);
                                     }
                                   }}
                                   style={{
-                                    width: '170px',
                                     padding: '4px 8px',
                                     borderRadius: '4px',
                                     border: '1px solid #ccc',
                                     backgroundColor: 'white',
                                   }}
                                 >
-                                  <option value='0'>Unassigned</option>
-                                  {assignees.map((assignees) => (
-                                    <option key={assignees.accountId} value={assignees.accountId}>
-                                      {assignees.accountFullname}
-                                    </option>
-                                  ))}
+                                  {isPriorityLoading ? (
+                                    <option>Loading...</option>
+                                  ) : isPriorityError ? (
+                                    <option>Error loading priorities</option>
+                                  ) : (
+                                    priorityOptions?.data.map((priority) => (
+                                      <option key={priority.id} value={priority.name}>
+                                        {priority.label}
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
-                              </div>
+                              ) : (
+                                <span>
+                                  {isPriorityLoading
+                                    ? 'Loading...'
+                                    : isPriorityError
+                                      ? 'Error loading priorities'
+                                      : priorityOptions?.data.find((p) => p.name === item.priority)?.label ??
+                                      item.priority}
+                                </span>
+                              )}
                             </td>
 
                             <td>
-                              {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
+                              <div className='dropdown-wrapper'>
+                                {isUserAssignee(taskId) || canEdit ? (
+                                  <select
+                                    value={selectedAssignees[item.key] || item.assigneeId}
+                                    onChange={async (e) => {
+                                      const newAssigneeId = parseInt(e.target.value);
+                                      setSelectedAssignees((prev) => ({
+                                        ...prev,
+                                        [item.key]: newAssigneeId.toString(),
+                                      }));
+
+                                      try {
+                                        await updateSubtask({
+                                          id: item.key,
+                                          assignedBy: newAssigneeId,
+                                          priority: item.priority,
+                                          title: item.summary,
+                                          description: item?.description ?? '',
+                                          sprintId: item.sprintId ?? null,
+                                          startDate: item.startDate,
+                                          endDate: item.endDate,
+                                          reporterId: item.reporterId,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        console.log('Updated subtask assignee');
+                                        await refetchSubtask();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('Failed to update subtask:', err);
+                                      }
+                                    }}
+                                    style={{
+                                      width: '170px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      border: '1px solid #ccc',
+                                      backgroundColor: 'white',
+                                    }}
+                                  >
+                                    <option value='0'>Unassigned</option>
+                                    {assignees.map((assignee) => (
+                                      <option key={assignee.accountId} value={assignee.accountId}>
+                                        {assignee.accountFullname}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                ) : (
+                                  <span>
+                                    {item.assigneeId
+                                      ? assignees.find((a) => a.accountId === item.assigneeId)?.accountFullname
+                                      : 'Unassigned'}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+
+                            <td>
+                              {isUserAssignee(taskId) || canEdit ? (
                                 <select
                                   value={item.status}
                                   onChange={(e) =>
@@ -1769,9 +1848,15 @@ const WorkItemDetail: React.FC = () => {
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className='border rounded p-2 w-full'
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) >
+                              maxCommentLength && (
+                                <span className='text-red-500 text-xs mt-1 block'>
+                                  Maximum {maxCommentLength} characters allowed
+                                </span>
+                              )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -1863,13 +1948,19 @@ const WorkItemDetail: React.FC = () => {
                       placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
                         try {
                           if (!accountId || isNaN(accountId)) {
-                            
                             return;
                           }
                           await createTaskComment({
@@ -1884,7 +1975,6 @@ const WorkItemDetail: React.FC = () => {
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-                          
                         }
                       }}
                     >
@@ -2039,11 +2129,25 @@ const WorkItemDetail: React.FC = () => {
                         type='number'
                         min='0'
                         max='100'
-                        step='0.01'
+                        step='1'
                         value={newPercentComplete ?? ''}
                         onChange={(e) => {
                           const value = e.target.value ? parseFloat(e.target.value) : null;
                           setNewPercentComplete(value);
+                        }}
+                        onKeyDown={(e) => {
+                          const allowedKeys = [
+                            'Backspace',
+                            'Delete',
+                            'ArrowLeft',
+                            'ArrowRight',
+                            'Tab',
+                            'Enter',
+                            '.',
+                          ];
+                          if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                            e.preventDefault();
+                          }
                         }}
                         onBlur={handlePercentCompleteChange}
                         style={{ width: '100px' }}
@@ -2063,28 +2167,76 @@ const WorkItemDetail: React.FC = () => {
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
                 {isUserAssignee(taskId) || canEdit ? (
                   subtaskData.length === 0 ? (
-                    <div className='flex items-center gap-1'>
-                      <input
-                        type='number'
-                        min='0'
-                        step='1'
-                        value={newActualCost ?? ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseFloat(e.target.value) : null;
-                          setNewActualCost(value);
-                        }}
-                        onBlur={handleActualCostChange}
-                        style={{ width: '100px' }}
-                        className='border rounded p-1'
-                        placeholder='Enter cost (e.g., equipment)'
-                      />
-                      <span>VND</span>
+                    <div className='flex flex-col gap-1'>
+                      <div className='flex items-center gap-1'>
+                        <input
+                          type='number'
+                          min='0'
+                          step='1'
+                          value={newActualCost ?? ''}
+                          onChange={(e) => {
+                            const inputValue = e.target.value;
+                            if (inputValue === '' || /^[0-9]+$/.test(inputValue)) {
+                              const value = inputValue === '' ? null : parseFloat(inputValue);
+                              if (value !== null && (isNaN(value) || value < 0)) {
+                                Swal.fire({
+                                  icon: 'error',
+                                  title: 'Invalid Input',
+                                  text: 'Actual cost must be a valid number greater than or equal to 0.',
+                                  width: '500px',
+                                  confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                  customClass: {
+                                    title: 'small-title',
+                                    popup: 'small-popup',
+                                    icon: 'small-icon',
+                                    htmlContainer: 'small-html',
+                                  },
+                                });
+                                return;
+                              }
+                              setNewActualCost(value);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            const allowedKeys = [
+                              'Backspace',
+                              'Delete',
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'Tab',
+                              'Enter',
+                            ];
+                            if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onBlur={handleActualCostChange}
+                          style={{ width: '100px' }}
+                          className='border rounded p-1'
+                          placeholder='Enter cost (e.g., equipment)'
+                        />
+                        <span>VND</span>
+                      </div>
+                      {newActualCost !== null &&
+                        newActualCost > 0 &&
+                        !isNaN(newActualCost) &&
+                        newActualCost <= maxActualCost && (
+                          <p className='text-sm text-gray-500'>{formatBudget(newActualCost)}</p>
+                        )}
+                      {actualCostConfigLoading && (
+                        <p className='text-sm text-gray-500'>Loading cost constraints...</p>
+                      )}
+                      {newActualCost !== null && newActualCost > maxActualCost && (
+                        <p className='text-sm text-red-500'>
+                          Actual cost must not exceed {formatBudget(maxActualCost)}.
+                        </p>
+                      )}
                     </div>
                   ) : (
-                    <span>{taskData?.actualCost ?? '0'} VND (Managed by subtasks)</span>
+                    <span>{formatBudget(taskData?.actualCost ?? 0)} (Managed by subtasks)</span>
                   )
                 ) : (
-                  <span>{taskData?.actualCost ?? '0'} VND</span>
+                  <span>{formatBudget(taskData?.actualCost ?? 0)}</span>
                 )}
               </div>
 
@@ -2251,11 +2403,17 @@ const WorkItemDetail: React.FC = () => {
                   <input
                     type='date'
                     value={plannedStartDate?.slice(0, 10) ?? ''}
-                    min={epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined}
+                    min={
+                      epicData?.startDate?.slice(0, 10) ??
+                      projectData?.data?.startDate?.slice(0, 10) ??
+                      undefined
+                    }
                     max={
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
-                        : epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined
+                        : epicData?.endDate?.slice(0, 10) ??
+                        projectData?.data?.endDate?.slice(0, 10) ??
+                        undefined
                     }
                     onChange={(e) => {
                       refetchSubtask();
@@ -2267,7 +2425,10 @@ const WorkItemDetail: React.FC = () => {
                       const fullDate = `${selectedDate}T00:00:00.000Z`;
 
                       // Validate against epic's startDate
-                      if (epicData?.startDate && new Date(fullDate) < new Date(epicData.startDate)) {
+                      if (
+                        epicData?.startDate &&
+                        new Date(fullDate) < new Date(epicData.startDate)
+                      ) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
@@ -2344,9 +2505,15 @@ const WorkItemDetail: React.FC = () => {
                     min={
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
-                        : epicData?.startDate?.slice(0, 10) ?? projectData?.data?.startDate?.slice(0, 10) ?? undefined
+                        : epicData?.startDate?.slice(0, 10) ??
+                        projectData?.data?.startDate?.slice(0, 10) ??
+                        undefined
                     }
-                    max={epicData?.endDate?.slice(0, 10) ?? projectData?.data?.endDate?.slice(0, 10) ?? undefined}
+                    max={
+                      epicData?.endDate?.slice(0, 10) ??
+                      projectData?.data?.endDate?.slice(0, 10) ??
+                      undefined
+                    }
                     onChange={(e) => {
                       refetchSubtask();
                       const selectedDate = e.target.value;

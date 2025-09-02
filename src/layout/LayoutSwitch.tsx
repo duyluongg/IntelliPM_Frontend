@@ -9,7 +9,11 @@ const LayoutSwitch = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (user.role === 'CLIENT') {
-    return <Outlet />; // CLIENT không có layout
+    return (
+      <PMLayout>
+        <Outlet />
+      </PMLayout>
+    );
   }
   if (user.role === 'ADMIN') {
     return (

@@ -12,8 +12,15 @@ import {
 } from '../../services/subtaskApi';
 import { useGetTaskByIdQuery } from '../../services/taskApi';
 import { useGetProjectMembersQuery } from '../../services/projectMemberApi';
-import { useGetWorkItemLabelsBySubtaskQuery,useDeleteWorkItemLabelMutation} from '../../services/workItemLabelApi';
-import { useDeleteSubtaskFileMutation,useGetSubtaskFilesBySubtaskIdQuery,useUploadSubtaskFileMutation} from '../../services/subtaskFileApi';
+import {
+  useGetWorkItemLabelsBySubtaskQuery,
+  useDeleteWorkItemLabelMutation,
+} from '../../services/workItemLabelApi';
+import {
+  useDeleteSubtaskFileMutation,
+  useGetSubtaskFilesBySubtaskIdQuery,
+  useUploadSubtaskFileMutation,
+} from '../../services/subtaskFileApi';
 import deleteIcon from '../../assets/delete.png';
 import accountIcon from '../../assets/account.png';
 import {
@@ -26,7 +33,10 @@ import { WorkLogModal } from './WorkLogModal';
 import TaskDependency from './TaskDependency';
 import { useGetActivityLogsBySubtaskIdQuery } from '../../services/activityLogApi';
 import { useSearchParams } from 'react-router-dom';
-import { useCreateLabelAndAssignMutation,useGetLabelsByProjectIdQuery} from '../../services/labelApi';
+import {
+  useCreateLabelAndAssignMutation,
+  useGetLabelsByProjectIdQuery,
+} from '../../services/labelApi';
 import { useGetCategoriesByGroupQuery } from '../../services/dynamicCategoryApi';
 import { useGetSprintsByProjectIdQuery } from '../../services/sprintApi';
 import DeleteConfirmModal from '../WorkItem/DeleteConfirmModal';
@@ -150,8 +160,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-      ? 10000000000
-      : parseInt(actualCostConfig.data.maxValue, 10);
+    ? 10000000000
+    : parseInt(actualCostConfig.data.maxValue, 10);
 
   React.useEffect(() => {
     if (subtaskDetail) {
@@ -182,10 +192,16 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
     skip: !subtaskDetail?.id,
   });
 
-  const isUserAssignee = (subtaskAssigneeId?: number) => {
-    const currentUserId = accountId.toString();
-    return subtaskAssigneeId?.toString() === currentUserId;
+  const isUserAssignee = () => {
+    const currentUserId = accountId;
+    return assignees.some((assignee) => assignee.accountId === currentUserId);
   };
+
+  const { data: contentCommentConfig } = useGetByConfigKeyQuery('content_comment');
+  const maxCommentLength = Number(contentCommentConfig?.data?.maxValue) || 500;
+
+  const { data: fileConfig } = useGetByConfigKeyQuery('file_size');
+  const maxFileSize = Number(fileConfig?.data?.maxValue) || 10485760;
 
   const {
     data: activityLogs = [],
@@ -400,11 +416,17 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const handleActualCostChange = async () => {
     if (!subtaskDetail || newActualCost === subtaskDetail.actualCost) return;
 
-    if (newActualCost !== null && (newActualCost < 0 || newActualCost > maxActualCost)) {
+    if (
+      newActualCost !== null &&
+      (newActualCost < 0 || newActualCost > maxActualCost || isNaN(newActualCost))
+    ) {
       Swal.fire({
         icon: 'error',
         title: 'Invalid Actual Cost',
-        text: `Actual cost must be between 0 and ${maxActualCost.toLocaleString()}.`,
+        text: `Actual cost must be a number between 0 and ${maxActualCost.toLocaleString('vi-VN', {
+          style: 'currency',
+          currency: 'VND',
+        })}.`,
         width: '500px',
         confirmButtonColor: 'rgba(44, 104, 194, 1)',
         customClass: {
@@ -428,19 +450,19 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
       console.log(`Updated subtask ${subtaskDetail.id} actual cost to ${newActualCost}`);
       await refetchSubtask();
       await refetchActivityLogs();
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: 'Actual cost updated successfully!',
-        width: '500px',
-        confirmButtonColor: 'rgba(44, 104, 194, 1)',
-        customClass: {
-          title: 'small-title',
-          popup: 'small-popup',
-          icon: 'small-icon',
-          htmlContainer: 'small-html',
-        },
-      });
+      // Swal.fire({
+      //   icon: 'success',
+      //   title: 'Success',
+      //   text: 'Actual cost updated successfully!',
+      //   width: '500px',
+      //   confirmButtonColor: 'rgba(44, 104, 194, 1)',
+      //   customClass: {
+      //     title: 'small-title',
+      //     popup: 'small-popup',
+      //     icon: 'small-icon',
+      //     htmlContainer: 'small-html',
+      //   },
+      // });
     } catch (err) {
       console.error('Failed to update subtask actual cost', err);
       Swal.fire({
@@ -462,11 +484,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !subtaskDetail) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setFileError('File size exceeds 10MB limit');
+
+    if (file.size > maxFileSize) {
+      const maxSizeMB = (maxFileSize / (1024 * 1024)).toFixed(2);
+      setFileError(`File size exceeds ${maxSizeMB}MB limit`);
       setIsAddDropdownOpen(false);
       return;
     }
+
     try {
       await uploadSubtaskFile({
         subtaskId: subtaskDetail.id,
@@ -477,8 +502,10 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
       refetchAttachments();
       await refetchActivityLogs();
+      setFileError(''); 
     } catch (error) {
       console.error('Upload failed:', error);
+      setFileError('Failed to upload file');
     } finally {
       setIsAddDropdownOpen(false);
     }
@@ -572,6 +599,11 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
   const { data: parentTask } = useGetTaskByIdQuery(subtaskDetail?.taskId || '', {
     skip: !subtaskDetail?.taskId,
   });
+
+  const formatBudget = (value: number | null) => {
+    if (value === null || value === 0 || isNaN(value)) return '';
+    return value.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
+  };
 
   if (!subtaskDetail)
     return (
@@ -781,9 +813,15 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                               onChange={(e) =>
                                 setEditedContent({ ...editedContent, [comment.id]: e.target.value })
                               }
-                              className='border rounded p-2 w-full'
-                              autoFocus
+                              maxLength={maxCommentLength}
+                              className='w-full p-2 border border-gray-300 rounded'
                             />
+                            {(editedContent[comment.id]?.length || comment.content.length) >
+                              maxCommentLength && (
+                              <span className='text-red-500 text-xs mt-1 block'>
+                                Maximum {maxCommentLength} characters allowed
+                              </span>
+                            )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -875,7 +913,14 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       placeholder='Add a comment...'
                       value={commentContent}
                       onChange={(e) => setCommentContent(e.target.value)}
+                      maxLength={maxCommentLength}
+                      className='w-full p-2 border border-gray-300 rounded'
                     />
+                    {commentContent.length > maxCommentLength && (
+                      <span className='text-red-500 text-xs mt-1 block'>
+                        Maximum {maxCommentLength} characters allowed
+                      </span>
+                    )}
                     <button
                       disabled={!commentContent.trim()}
                       onClick={async () => {
@@ -896,7 +941,6 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           await refetchActivityLogs();
                         } catch (err: any) {
                           console.error('Failed to post comment:', err);
-                          
                         }
                       }}
                     >
@@ -912,7 +956,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
           <div className='details-panel'>
             <div className='panel-header'>
-              {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+              {isUserAssignee() || canEdit ? (
                 <select
                   value={subtaskDetail.status}
                   className={`status-dropdown-select status-${subtaskDetail.status
@@ -957,7 +1001,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <div className='detail-item'>
                 <label>Assignee</label>
 
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     value={selectedAssignee ?? subtaskDetail?.assignedBy}
                     onChange={async (e) => {
@@ -1004,7 +1048,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Percent Complete</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <div className='flex items-center gap-1'>
                     <input
                       type='number'
@@ -1015,6 +1059,21 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       onChange={(e) => {
                         const value = e.target.value ? parseFloat(e.target.value) : null;
                         setNewPercentComplete(value);
+                      }}
+                      onKeyDown={(e) => {
+                        // Allow control keys: Backspace, Delete, Arrow keys, Tab, Enter
+                        const allowedKeys = [
+                          'Backspace',
+                          'Delete',
+                          'ArrowLeft',
+                          'ArrowRight',
+                          'Tab',
+                          'Enter',
+                          '.',
+                        ];
+                        if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                          e.preventDefault();
+                        }
                       }}
                       onBlur={handlePercentCompleteChange}
                       style={{ width: '100px' }}
@@ -1029,26 +1088,74 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
-                  <div className='flex items-center gap-1'>
-                    <input
-                      type='number'
-                      min='0'
-                      step='1'
-                      value={newActualCost ?? ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : null;
-                        setNewActualCost(value);
-                      }}
-                      onBlur={handleActualCostChange}
-                      style={{ width: '150px' }}
-                      className='border rounded p-1'
-                      placeholder='Enter cost (e.g., equipment)'
-                    />
-                    <span>VND</span>
+                {isUserAssignee() || canEdit ? (
+                  <div className='flex flex-col gap-1'>
+                    <div className='flex items-center gap-1'>
+                      <input
+                        type='number'
+                        min='0'
+                        step='1'
+                        value={newActualCost ?? ''}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '' || /^[0-9]+$/.test(inputValue)) {
+                            const value = inputValue === '' ? null : parseFloat(inputValue);
+                            if (value !== null && (isNaN(value) || value < 0)) {
+                              Swal.fire({
+                                icon: 'error',
+                                title: 'Invalid Input',
+                                text: 'Actual cost must be a valid number greater than or equal to 0.',
+                                width: '500px',
+                                confirmButtonColor: 'rgba(44, 104, 194, 1)',
+                                customClass: {
+                                  title: 'small-title',
+                                  popup: 'small-popup',
+                                  icon: 'small-icon',
+                                  htmlContainer: 'small-html',
+                                },
+                              });
+                              return;
+                            }
+                            setNewActualCost(value);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          const allowedKeys = [
+                            'Backspace',
+                            'Delete',
+                            'ArrowLeft',
+                            'ArrowRight',
+                            'Tab',
+                            'Enter',
+                          ];
+                          if (!allowedKeys.includes(e.key) && !/^[0-9]$/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onBlur={handleActualCostChange}
+                        style={{ width: '150px' }}
+                        className='border rounded p-1'
+                        placeholder='Enter cost (e.g., equipment)'
+                      />
+                      <span>VND</span>
+                    </div>
+                    {newActualCost !== null &&
+                      newActualCost > 0 &&
+                      !isNaN(newActualCost) &&
+                      newActualCost <= maxActualCost && (
+                        <p className='text-sm text-gray-500'>{formatBudget(newActualCost)}</p>
+                      )}
+                    {actualCostConfigLoading && (
+                      <p className='text-sm text-gray-500'>Loading cost constraints...</p>
+                    )}
+                    {newActualCost !== null && newActualCost > maxActualCost && (
+                      <p className='text-sm text-red-500'>
+                        Actual cost must not exceed {formatBudget(maxActualCost)}.
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  <span>{subtaskDetail.actualCost ?? '0'} $</span>
+                  <span>{formatBudget(subtaskDetail.actualCost ?? 0)}</span>
                 )}
               </div>
 
@@ -1117,8 +1224,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                        ? 'None'
-                        : workItemLabels.map((label) => label.labelName).join(', ')}
+                      ? 'None'
+                      : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -1181,7 +1288,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
               <div className='detail-item'>
                 <label>Priority</label>
 
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     style={{ width: '150px' }}
                     value={newPriority ?? subtaskDetail?.priority}
@@ -1205,8 +1312,8 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     {isPriorityLoading
                       ? 'Loading...'
                       : isPriorityError
-                        ? 'Error loading priorities'
-                        : priorityOptions?.data.find(
+                      ? 'Error loading priorities'
+                      : priorityOptions?.data.find(
                           (p) => p.name === (newPriority ?? subtaskDetail?.priority)
                         )?.label || 'NONE'}
                   </span>
@@ -1215,7 +1322,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Start Date</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <input
                     type='date'
                     value={newStartDate ?? subtaskDetail?.startDate?.slice(0, 10) ?? ''}
@@ -1224,8 +1331,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     onChange={(e) => {
                       const value = e.target.value;
                       const selectedDate = new Date(value);
-                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
-                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
+                      const parentStartDate = parentTask?.plannedStartDate
+                        ? new Date(parentTask.plannedStartDate)
+                        : null;
+                      const parentEndDate = parentTask?.plannedEndDate
+                        ? new Date(parentTask.plannedEndDate)
+                        : null;
 
                       // Validate against parent task dates
                       if (parentStartDate && parentEndDate) {
@@ -1233,7 +1344,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Start Date',
-                            html: `Start Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                            html: `Start Date must be between parent task <strong>${
+                              parentTask?.title
+                            }</strong> dates: <b>${parentTask?.plannedStartDate.slice(
                               0,
                               10
                             )}</b> and <b>${parentTask?.plannedStartDate.slice(0, 10)}</b>!`,
@@ -1251,7 +1364,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       }
 
                       // Validate against due date
-                      if (newEndDate && selectedDate >= new Date(newEndDate)) {
+                      if (newEndDate && selectedDate > new Date(newEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
@@ -1280,7 +1393,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Due Date</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
@@ -1289,8 +1402,12 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                     onChange={(e) => {
                       const value = e.target.value;
                       const selectedDate = new Date(value);
-                      const parentStartDate = parentTask?.plannedStartDate ? new Date(parentTask.plannedStartDate) : null;
-                      const parentEndDate = parentTask?.plannedEndDate ? new Date(parentTask.plannedEndDate) : null;
+                      const parentStartDate = parentTask?.plannedStartDate
+                        ? new Date(parentTask.plannedStartDate)
+                        : null;
+                      const parentEndDate = parentTask?.plannedEndDate
+                        ? new Date(parentTask.plannedEndDate)
+                        : null;
 
                       // Validate against parent task dates
                       if (parentStartDate && parentEndDate) {
@@ -1298,7 +1415,9 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                           Swal.fire({
                             icon: 'error',
                             title: 'Invalid Due Date',
-                            html: `Due Date must be between parent task <strong>${parentTask?.title}</strong> dates: <b>${parentTask?.plannedStartDate.slice(
+                            html: `Due Date must be between parent task <strong>${
+                              parentTask?.title
+                            }</strong> dates: <b>${parentTask?.plannedStartDate.slice(
                               0,
                               10
                             )}</b> and <b>${parentTask?.plannedEndDate.slice(0, 10)}</b>!`,
@@ -1316,7 +1435,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       }
 
                       // Validate against start date
-                      if (newStartDate && selectedDate <= new Date(newStartDate)) {
+                      if (newStartDate && selectedDate < new Date(newStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',
@@ -1345,7 +1464,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
               <div className='detail-item'>
                 <label>Reporter</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <select
                     value={selectedReporter ?? subtaskDetail?.reporterId}
                     onChange={async (e) => {

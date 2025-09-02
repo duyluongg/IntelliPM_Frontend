@@ -35,7 +35,7 @@ const DEFAULTS = {
 
   // Work hours (bạn có thể nâng cấp bằng system config riêng)
   WORK_START: '08:00',
-  WORK_END: '23:00',
+  WORK_END: '22:00',
   SLOT_STEP_MIN: 15,
 
   MAX_FILE_MB: 30,
@@ -932,16 +932,24 @@ const CreateMeetingPage: React.FC = () => {
               d='M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z'
             />
           </svg>
-          Rule
+          Meeting Regulations
         </h2>
-        <p className='text-sm text-yellow-700 mt-2'>
-          A <strong>Project Manager</strong> can only create{' '}
-          <strong>one meeting per project</strong> for <strong>each working day</strong>. Please
-          ensure you haven’t already scheduled a meeting today for this project. <br />
-          👉 Only <strong>Project Managers</strong> are allowed to directly communicate with
-          <strong> clients</strong>.
-        </p>
-        🕒 Meetings can only be scheduled between <strong>08:00</strong> and <strong>22:00</strong>.
+<p className='text-sm text-yellow-700 mt-2'>
+  A <strong>Project Manager</strong> can only create{' '}
+  <strong>one meeting per project</strong> for <strong>each working day</strong>. Please
+  ensure you haven’t already scheduled a meeting today for this project. <br />
+  👉 Only <strong>Project Managers</strong> are allowed to directly communicate with
+  <strong> clients</strong>.<br/>
+  
+  🕒 Meetings can only be scheduled between <strong>08:00</strong> and <strong>22:00</strong>.<br/>
+
+  ❌ <strong>Team Leaders</strong> and <strong>Team Members</strong> are <u>not allowed</u> 
+  to conduct meetings with <strong>clients</strong>.<br/>
+
+  ✅ Unlike Project Managers, <strong>Team Leaders</strong> and <strong>Team Members</strong> 
+  are <u>not restricted</u> to only one meeting per project per day.
+</p>
+
       </div>
     </div>
   );

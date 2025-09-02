@@ -206,8 +206,8 @@ const WorkItemDetail: React.FC = () => {
   const maxActualCost = actualCostConfigLoading
     ? 1000000
     : actualCostConfigError || !actualCostConfig?.data?.maxValue
-    ? 10000000000
-    : parseInt(actualCostConfig.data.maxValue, 10);
+      ? 10000000000
+      : parseInt(actualCostConfig.data.maxValue, 10);
 
   const toISO = (localDate: string) => {
     const date = new Date(localDate);
@@ -1315,9 +1315,8 @@ const WorkItemDetail: React.FC = () => {
                                 {aiSuggestions.map((item, index) => (
                                   <tr
                                     key={index}
-                                    className={`${
-                                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                    } hover:bg-purple-50 transition-colors duration-200`}
+                                    className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                      } hover:bg-purple-50 transition-colors duration-200`}
                                   >
                                     <td className='p-4 border-b border-gray-200'>
                                       <input
@@ -1376,11 +1375,10 @@ const WorkItemDetail: React.FC = () => {
                               }
                             }}
                             disabled={selectedSuggestions.length === 0 || loadingCreate}
-                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${
-                              selectedSuggestions.length === 0 || loadingCreate
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
-                            }`}
+                            className={`px-6 py-2 rounded-lg text-white font-semibold shadow-md transition-all duration-200 transform hover:scale-105 ${selectedSuggestions.length === 0 || loadingCreate
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 hover:shadow-lg'
+                              }`}
                           >
                             {loadingCreate ? (
                               <div className='flex items-center gap-2'>
@@ -1555,103 +1553,125 @@ const WorkItemDetail: React.FC = () => {
                             </td>
 
                             <td>
-                              <select
-                                value={item.priority}
-                                onChange={async (e) => {
-                                  const newPriority = e.target.value;
-                                  try {
-                                    await updateSubtask({
-                                      id: item.key,
-                                      assignedBy: parseInt(
-                                        selectedAssignees[item.key] ?? item.assigneeId
-                                      ),
-                                      title: editableSummaries[item.key] ?? item.summary,
-                                      description: item?.description ?? '',
-                                      sprintId: item.sprintId ?? null,
-                                      priority: newPriority,
-                                      startDate: item.startDate,
-                                      endDate: item.endDate,
-                                      reporterId: item.reporterId,
-                                      createdBy: accountId,
-                                    }).unwrap();
-                                    console.log('Updated priority');
-                                    await refetchSubtask();
-                                    await refetchActivityLogs();
-                                  } catch (err) {
-                                    console.error('Failed to update priority:', err);
-                                  }
-                                }}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  border: '1px solid #ccc',
-                                  backgroundColor: 'white',
-                                }}
-                              >
-                                {isPriorityLoading ? (
-                                  <option>Loading...</option>
-                                ) : isPriorityError ? (
-                                  <option>Error loading priorities</option>
-                                ) : (
-                                  priorityOptions?.data.map((priority) => (
-                                    <option key={priority.id} value={priority.name}>
-                                      {priority.label}
-                                    </option>
-                                  ))
-                                )}
-                              </select>
-                            </td>
-
-                            <td>
-                              <div className='dropdown-wrapper'>
+                              {isUserAssignee(taskId) || canEdit ? (
                                 <select
-                                  value={selectedAssignees[item.key] || item.assigneeId}
+                                  value={item.priority}
                                   onChange={async (e) => {
-                                    const newAssigneeId = parseInt(e.target.value);
-                                    setSelectedAssignees((prev) => ({
-                                      ...prev,
-                                      [item.key]: newAssigneeId.toString(),
-                                    }));
-
+                                    const newPriority = e.target.value;
                                     try {
                                       await updateSubtask({
                                         id: item.key,
-                                        assignedBy: newAssigneeId,
-                                        priority: item.priority,
-                                        title: item.summary,
+                                        assignedBy: parseInt(
+                                          selectedAssignees[item.key] ?? item.assigneeId
+                                        ),
+                                        title: editableSummaries[item.key] ?? item.summary,
                                         description: item?.description ?? '',
                                         sprintId: item.sprintId ?? null,
+                                        priority: newPriority,
                                         startDate: item.startDate,
                                         endDate: item.endDate,
                                         reporterId: item.reporterId,
                                         createdBy: accountId,
                                       }).unwrap();
-                                      console.log('Updated subtask assignee');
+                                      console.log('Updated priority');
                                       await refetchSubtask();
+                                      await refetchActivityLogs();
                                     } catch (err) {
-                                      console.error('Failed to update subtask:', err);
+                                      console.error('Failed to update priority:', err);
                                     }
                                   }}
                                   style={{
-                                    width: '170px',
                                     padding: '4px 8px',
                                     borderRadius: '4px',
                                     border: '1px solid #ccc',
                                     backgroundColor: 'white',
                                   }}
                                 >
-                                  <option value='0'>Unassigned</option>
-                                  {assignees.map((assignees) => (
-                                    <option key={assignees.accountId} value={assignees.accountId}>
-                                      {assignees.accountFullname}
-                                    </option>
-                                  ))}
+                                  {isPriorityLoading ? (
+                                    <option>Loading...</option>
+                                  ) : isPriorityError ? (
+                                    <option>Error loading priorities</option>
+                                  ) : (
+                                    priorityOptions?.data.map((priority) => (
+                                      <option key={priority.id} value={priority.name}>
+                                        {priority.label}
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
-                              </div>
+                              ) : (
+                                <span>
+                                  {isPriorityLoading
+                                    ? 'Loading...'
+                                    : isPriorityError
+                                      ? 'Error loading priorities'
+                                      : priorityOptions?.data.find((p) => p.name === item.priority)?.label ??
+                                      item.priority}
+                                </span>
+                              )}
                             </td>
 
                             <td>
-                              {isUserAssignee(taskId, item.assigneeId) || canEdit ? (
+                              <div className='dropdown-wrapper'>
+                                {isUserAssignee(taskId) || canEdit ? (
+                                  <select
+                                    value={selectedAssignees[item.key] || item.assigneeId}
+                                    onChange={async (e) => {
+                                      const newAssigneeId = parseInt(e.target.value);
+                                      setSelectedAssignees((prev) => ({
+                                        ...prev,
+                                        [item.key]: newAssigneeId.toString(),
+                                      }));
+
+                                      try {
+                                        await updateSubtask({
+                                          id: item.key,
+                                          assignedBy: newAssigneeId,
+                                          priority: item.priority,
+                                          title: item.summary,
+                                          description: item?.description ?? '',
+                                          sprintId: item.sprintId ?? null,
+                                          startDate: item.startDate,
+                                          endDate: item.endDate,
+                                          reporterId: item.reporterId,
+                                          createdBy: accountId,
+                                        }).unwrap();
+                                        console.log('Updated subtask assignee');
+                                        await refetchSubtask();
+                                        await refetchActivityLogs();
+                                      } catch (err) {
+                                        console.error('Failed to update subtask:', err);
+                                      }
+                                    }}
+                                    style={{
+                                      width: '170px',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      border: '1px solid #ccc',
+                                      backgroundColor: 'white',
+                                    }}
+                                  >
+                                    <option value='0'>Unassigned</option>
+                                    {assignees.map((assignee) => (
+                                      <option key={assignee.accountId} value={assignee.accountId}>
+                                        {assignee.accountFullname}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                ) : (
+                                  <span>
+                                    {item.assigneeId
+                                      ? assignees.find((a) => a.accountId === item.assigneeId)?.accountFullname
+                                      : 'Unassigned'}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+
+                            <td>
+                              {isUserAssignee(taskId) || canEdit ? (
                                 <select
                                   value={item.status}
                                   onChange={(e) =>
@@ -1833,10 +1853,10 @@ const WorkItemDetail: React.FC = () => {
                             />
                             {(editedContent[comment.id]?.length || comment.content.length) >
                               maxCommentLength && (
-                              <span className='text-red-500 text-xs mt-1 block'>
-                                Maximum {maxCommentLength} characters allowed
-                              </span>
-                            )}
+                                <span className='text-red-500 text-xs mt-1 block'>
+                                  Maximum {maxCommentLength} characters allowed
+                                </span>
+                              )}
                             <div className='flex gap-2 mt-2'>
                               <button
                                 onClick={() => handleSave(comment.id, comment.content)}
@@ -2090,8 +2110,8 @@ const WorkItemDetail: React.FC = () => {
                     {isAssigneeLoading
                       ? 'Loading...'
                       : assignees.length === 0
-                      ? 'None'
-                      : assignees.map((assignee) => (
+                        ? 'None'
+                        : assignees.map((assignee) => (
                           <span key={assignee.id} style={{ display: 'block' }}>
                             {assignee.accountFullname}
                           </span>
@@ -2285,8 +2305,8 @@ const WorkItemDetail: React.FC = () => {
                     {isLabelLoading
                       ? 'Loading...'
                       : workItemLabels.length === 0
-                      ? 'None'
-                      : workItemLabels.map((label) => label.labelName).join(', ')}
+                        ? 'None'
+                        : workItemLabels.map((label) => label.labelName).join(', ')}
                   </span>
                 </div>
               )}
@@ -2392,8 +2412,8 @@ const WorkItemDetail: React.FC = () => {
                       plannedEndDate
                         ? plannedEndDate.slice(0, 10)
                         : epicData?.endDate?.slice(0, 10) ??
-                          projectData?.data?.endDate?.slice(0, 10) ??
-                          undefined
+                        projectData?.data?.endDate?.slice(0, 10) ??
+                        undefined
                     }
                     onChange={(e) => {
                       refetchSubtask();
@@ -2486,8 +2506,8 @@ const WorkItemDetail: React.FC = () => {
                       plannedStartDate
                         ? plannedStartDate.slice(0, 10)
                         : epicData?.startDate?.slice(0, 10) ??
-                          projectData?.data?.startDate?.slice(0, 10) ??
-                          undefined
+                        projectData?.data?.startDate?.slice(0, 10) ??
+                        undefined
                     }
                     max={
                       epicData?.endDate?.slice(0, 10) ??

@@ -7,6 +7,7 @@ import {
 import { useGetAllNotificationsQuery } from '../services/notificationApi';
 import { connection } from '../services/SignalR/signalRConnection';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../services/AuthContext';
 
 interface NotificationBellProps {
   accountId: number;
@@ -79,10 +80,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ accountId }) => {
       return;
     }
 
-if ((extra?.relatedEntityType ?? '').toUpperCase() === 'MEETING') {
-  navigate('/meeting-room');
-  return;
-}
+    if ((extra?.relatedEntityType ?? '').toUpperCase() === 'MEETING') {
+      navigate('/meeting-room');
+      return;
+    }
 
     console.log('Notification message:', message);
 
@@ -154,19 +155,23 @@ if ((extra?.relatedEntityType ?? '').toUpperCase() === 'MEETING') {
 
   console.log(recipientNotis);
 
+  const user = useAuth();
+
   return (
     <div className='relative' ref={dropdownRef}>
-      <button
-        onClick={toggleDropdown}
-        className='relative p-2 hover:bg-gray-100 rounded-full transition duration-150'
-      >
-        <Bell className='w-5 h-5 text-gray-700' />
-        {unreadCount > 0 && (
-          <span className='absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium w-5 h-5 rounded-full flex items-center justify-center shadow'>
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      {user.user?.role !== 'ADMIN' && (
+        <button
+          onClick={toggleDropdown}
+          className='relative p-2 hover:bg-gray-100 rounded-full transition duration-150'
+        >
+          <Bell className='w-5 h-5 text-gray-700' />
+          {unreadCount > 0 && (
+            <span className='absolute -top-1 -right-1 bg-red-500 text-white text-xs font-medium w-5 h-5 rounded-full flex items-center justify-center shadow'>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {isOpen && (
         <div className='absolute right-0 mt-2 w-96 bg-white shadow-xl rounded-xl border z-50 max-h-96 overflow-auto animate-fade-in'>

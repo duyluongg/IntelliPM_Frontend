@@ -207,11 +207,16 @@ export const Document: React.FC = () => {
     projectKeyRef.current = projectKey;
   }, [projectKey]);
 
-  console.log('Document data:', projectId);
+  console.log(user);
+
   const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId as number, {
     skip: !projectId,
   });
-  const filterAccount = projectMembers?.filter((m) => m.id !== user?.id);
+  console.log('Project members:', projectMembers);
+
+  const filterAccount = projectMembers?.filter((m) => m.accountId !== user?.id);
+  console.log('Filtered accounts:', filterAccount);
+
   const mentionItemsRef = useRef<MentionItem[]>([]);
 
   useEffect(() => {
@@ -266,7 +271,6 @@ export const Document: React.FC = () => {
   );
 
   const handleTitleSave = async () => {
-    // Nếu không có quyền chỉnh sửa, chỉ cần thoát khỏi chế độ chỉnh sửa
     if (!canEdit) {
       setIsEditingTitle(false);
       return;
@@ -289,10 +293,10 @@ export const Document: React.FC = () => {
           id: Number(documentId),
           data: { title: trimmedTitle, visibility }, // Lưu tiêu đề đã được trim
         }).unwrap(); // Sử dụng unwrap để bắt lỗi từ RTK Query
-        toast.success('Cập nhật tiêu đề thành công!');
+        // toast.success('Cập nhật tiêu đề thành công!');
       } catch (err) {
         console.error('Cập nhật tiêu đề thất bại', err);
-        toast.error('Không thể cập nhật tiêu đề.');
+        // toast.error('Không thể cập nhật tiêu đề.');
         setCurrentTitle(title ?? ''); // Hoàn nguyên tiêu đề nếu có lỗi
       }
     }
@@ -467,13 +471,13 @@ export const Document: React.FC = () => {
   if (!documentId) {
     return (
       <div className='p-6 text-center text-red-500'>
-        ❌ Thiếu thông tin tài liệu. Quay lại trang trước.
+        ❌ Missing document information. Please go back to the previous page.
         <br />
         <button
           className='mt-4 px-4 py-2 bg-blue-600 text-white rounded'
           onClick={() => navigate(-1)}
         >
-          Quay lại
+          Go Back
         </button>
       </div>
     );

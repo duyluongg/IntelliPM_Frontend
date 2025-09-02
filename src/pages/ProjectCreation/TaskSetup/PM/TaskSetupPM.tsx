@@ -345,57 +345,59 @@ const TaskSetupPM: React.FC<TaskSetupPMProps> = ({ projectId, projectKey, handle
       setErrorMessage('Project ID is not available.');
       return;
     }
-    if (epics.length === 0) {
-      setErrorMessage('No epics to save.');
-      return;
-    }
 
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsSaving(true);
 
     try {
-      const error = validateEpics(epics);
-      if (error) {
-        setErrorMessage(error);
-        return;
-      }
+      if (epics.length > 0) {
+        const error = validateEpics(epics);
+        if (error) {
+          setErrorMessage(error);
+          return;
+        }
 
-      const requestPayload: EpicWithTaskRequestDTO[] = epics
-        .filter((epic) => !epic.backendEpicId)
-        .map((epic) => ({
-          title: epic.title,
-          type: 'EPIC',
-          description: epic.description,
-          startDate: new Date(epic.startDate).toISOString(),
-          endDate: new Date(epic.endDate).toISOString(),
-          tasks: epic.tasks.map((task) => ({
-            title: task.title,
-            type: task.type || 'TASK',
-            description: task.description,
-            startDate: new Date(task.startDate).toISOString(),
-            endDate: new Date(task.endDate).toISOString(),
-            suggestedRole: task.suggestedRole,
-            assignedMembers: task.assignedMembers,
-          })),
-        }));
+        const requestPayload: EpicWithTaskRequestDTO[] = epics
+          .filter((epic) => !epic.backendEpicId)
+          .map((epic) => ({
+            title: epic.title,
+            type: 'EPIC',
+            description: epic.description,
+            startDate: new Date(epic.startDate).toISOString(),
+            endDate: new Date(epic.endDate).toISOString(),
+            tasks: epic.tasks.map((task) => ({
+              title: task.title,
+              type: task.type || 'TASK',
+              description: task.description,
+              startDate: new Date(task.startDate).toISOString(),
+              endDate: new Date(task.endDate).toISOString(),
+              suggestedRole: task.suggestedRole,
+              assignedMembers: task.assignedMembers,
+            })),
+          }));
 
-      if (requestPayload.length > 0) {
-        const response = await createEpics({ projectId, data: requestPayload }).unwrap();
-        console.log('Epics created:', response);
-        setEpics((prev) =>
-          prev.map((epic) => {
-            const backendEpicId = response.data.find(
-              (id) => !prev.some((e) => e.backendEpicId === id)
-            );
-            return backendEpicId && !epic.backendEpicId ? { ...epic, backendEpicId } : epic;
-          })
-        );
-        setSuccessMessage('Epics and tasks saved successfully!');
+        if (requestPayload.length > 0) {
+          const response = await createEpics({ projectId, data: requestPayload }).unwrap();
+          console.log('Epics created:', response);
+          setEpics((prev) =>
+            prev.map((epic) => {
+              const backendEpicId = response.data.find(
+                (id) => !prev.some((e) => e.backendEpicId === id)
+              );
+              return backendEpicId && !epic.backendEpicId ? { ...epic, backendEpicId } : epic;
+            })
+          );
+          setSuccessMessage('Epics and tasks saved successfully!');
+          setIsEvaluationPopupOpen(true);
+        } else {
+          setSuccessMessage('No new epics to save.');
+          handleNext({ epics });
+        }
       } else {
-        setSuccessMessage('No new epics to save.');
+        // Allow proceeding to the next page even if no epics exist
+        handleNext({ epics: [] });
       }
-      setIsEvaluationPopupOpen(true);
     } catch (error: any) {
       console.error('Error saving epics:', error);
       setErrorMessage(error.data?.message || 'Failed to save epics and tasks. Please try again.');

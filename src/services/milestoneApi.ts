@@ -15,6 +15,10 @@ export interface MilestoneResponseDTO {
   updatedAt: string;
 }
 
+export interface SendMilestoneEmailRequestDTO {
+  projectId: number;
+  milestoneId: number;
+}
 interface ApiResponse<T> {
   isSuccess: boolean;
   code: number;
@@ -85,7 +89,10 @@ export const milestoneApi = createApi({
       transformResponse: (response: ApiResponse<MilestoneResponseDTO>) => response.data,
     }),
 
-    updateMilestone: builder.mutation<MilestoneResponseDTO, { id: number; payload: UpdateMilestoneRequestDTO }>({
+    updateMilestone: builder.mutation<
+      MilestoneResponseDTO,
+      { id: number; payload: UpdateMilestoneRequestDTO }
+    >({
       query: ({ id, payload }) => ({
         url: `milestone/${id}`,
         method: 'PUT',
@@ -123,6 +130,19 @@ export const milestoneApi = createApi({
         body: JSON.stringify(status),
       }),
     }),
+
+    sendMilestoneEmail: builder.mutation<string, SendMilestoneEmailRequestDTO>({
+      query: (payload) => ({
+        url: 'milestone/send-milestone-email',
+        method: 'POST',
+        body: payload,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: '*/*',
+        },
+      }),
+      transformResponse: (response: ApiResponse<string>) => response.message,
+    }),
   }),
 });
 
@@ -133,4 +153,5 @@ export const {
   useUpdateMilestoneMutation,
   useUpdateMilestoneSprintMutation,
   useUpdateMilestoneStatusMutation,
+  useSendMilestoneEmailMutation,
 } = milestoneApi;

@@ -14,7 +14,7 @@ type Props = SuggestionProps<MentionItem> & { selectedIndex?: number };
 export default function SuggestionList({ items, command, selectedIndex }: Props) {
   return (
     <div className='overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800'>
-      <div className='relative max-h-72 w-64 overflow-y-auto p-2'>
+      <div className='relative max-h-56 w-64 overflow-y-auto p-2'>
         {items.length === 0 ? (
           <div className='p-2 text-sm text-gray-500 dark:text-gray-400'>No users found.</div>
         ) : (

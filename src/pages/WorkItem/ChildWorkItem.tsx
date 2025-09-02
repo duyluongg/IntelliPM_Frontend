@@ -1043,7 +1043,7 @@ const ChildWorkItem: React.FC = () => {
 
               <div className='detail-item'>
                 <label>Actual Cost (Equipment, Licenses, etc.)</label>
-                {isUserAssignee(subtaskDetail.assignedBy) || canEdit ? (
+                {isUserAssignee() || canEdit ? (
                   <div className='flex flex-col gap-1'>
                     <div className='flex items-center gap-1'>
                       <input
@@ -1321,7 +1321,7 @@ const ChildWorkItem: React.FC = () => {
                       }
 
                       // Validate against due date
-                      if (newEndDate && selectedDate >= new Date(newEndDate)) {
+                      if (newEndDate && selectedDate > new Date(newEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
@@ -1354,8 +1354,8 @@ const ChildWorkItem: React.FC = () => {
                   <input
                     type='date'
                     value={newEndDate ?? subtaskDetail?.endDate?.slice(0, 10) ?? ''}
-                    min={newStartDate ?? parentTask?.plannedStartDate?.slice(0, 10)} // Use newStartDate or parent task start date
-                    max={parentTask?.plannedEndDate?.slice(0, 10)} // Restrict to parent task end date
+                    min={newStartDate ?? parentTask?.plannedStartDate?.slice(0, 10)} 
+                    max={parentTask?.plannedEndDate?.slice(0, 10)} 
                     onChange={(e) => {
                       const value = e.target.value;
                       const selectedDate = new Date(value);
@@ -1392,7 +1392,7 @@ const ChildWorkItem: React.FC = () => {
                       }
 
                       // Validate against start date
-                      if (newStartDate && selectedDate <= new Date(newStartDate)) {
+                      if (newStartDate && selectedDate < new Date(newStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',

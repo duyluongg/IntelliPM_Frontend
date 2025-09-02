@@ -223,7 +223,8 @@ export default function Header() {
             </button>
           </Link>
         )}
-        <HelpCirclePopup isOpen={isHelpPopupOpen} onClose={() => setIsHelpPopupOpen(false)} /> {/* Render popup */}
+        <HelpCirclePopup isOpen={isHelpPopupOpen} onClose={() => setIsHelpPopupOpen(false)} />{' '}
+        {/* Render popup */}
       </div>
     </header>
   );

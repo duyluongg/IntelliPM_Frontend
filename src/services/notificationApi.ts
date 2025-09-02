@@ -23,7 +23,16 @@ interface ApiResponse<T> {
 
 export const notificationApi = createApi({
     reducerPath: 'notificationApi',
-    baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+    baseQuery: fetchBaseQuery({
+        baseUrl: API_BASE_URL,
+        prepareHeaders: (headers) => {
+            const token = localStorage.getItem('accessToken');
+            if (token) {
+                headers.set('Authorization', `Bearer ${token}`);
+            }
+            return headers;
+        },
+    }),
     endpoints: (builder) => ({
         getNotificationsByAccountId: builder.query<NotificationDTO[], number>({
             query: (accountId) => `Notification/account/${accountId}`,

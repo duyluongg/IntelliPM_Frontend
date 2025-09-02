@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCreateMutation } from '../../../services/dynamicCategoryApi';
 import { type DynamicCategoryRequest } from '../../../services/dynamicCategoryApi';
+import { toast } from 'react-toastify';
 
 interface CreateCategoryModalProps {
   isOpen: boolean;
@@ -20,12 +21,54 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({ isOpen, onClo
     iconLink: null,
     color: null,
   });
+  const [errors, setErrors] = useState<{ categoryGroup?: string; name?: string }>({});
+
+  // Validation regex
+  const validateCategoryGroup = (value: string): boolean => {
+    const regex = /^[a-z_]+$/;
+    if (!value) {
+      setErrors((prev) => ({ ...prev, categoryGroup: 'Category Group is required' }));
+      return false;
+    }
+    if (!regex.test(value)) {
+      setErrors((prev) => ({
+        ...prev,
+        categoryGroup: 'Category Group must contain only lowercase letters (a-z) and underscores (_), no numbers.',
+      }));
+      return false;
+    }
+    setErrors((prev) => ({ ...prev, categoryGroup: undefined }));
+    return true;
+  };
+
+  const validateName = (value: string): boolean => {
+    const regex = /^[A-Z_]+$/;
+    if (!value) {
+      setErrors((prev) => ({ ...prev, name: 'Name is required' }));
+      return false;
+    }
+    if (!regex.test(value)) {
+      setErrors((prev) => ({
+        ...prev,
+        name: 'Name must contain only uppercase letters (A-Z) and underscores (_), no numbers.',
+      }));
+      return false;
+    }
+    setErrors((prev) => ({ ...prev, name: undefined }));
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isCategoryGroupValid = validateCategoryGroup(formData.categoryGroup || '');
+    const isNameValid = validateName(formData.name || '');
+    if (!isCategoryGroupValid || !isNameValid) {
+      toast.error('Please fix the errors before submitting.');
+      return;
+    }
     try {
       await createCategory(formData).unwrap();
-      alert('Category created successfully');
+      toast.success('Category created successfully');
       setFormData({
         categoryGroup: '',
         name: '',
@@ -36,18 +79,33 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({ isOpen, onClo
         iconLink: null,
         color: null,
       });
+      setErrors({});
       onClose();
-    } catch (err) {
-      alert('Failed to create category');
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to create category');
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    const newValue =
+      name === 'name' && type === 'text'
+        ? value.toUpperCase() // Chuyển name thành chữ hoa
+        : type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+        : value === ''
+        ? null
+        : value;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value === '' ? null : value,
+      [name]: newValue,
     }));
+    if (name === 'categoryGroup') {
+      validateCategoryGroup(value);
+    }
+    if (name === 'name') {
+      validateName(value.toUpperCase());
+    }
   };
 
   if (!isOpen) return null;
@@ -77,9 +135,14 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({ isOpen, onClo
                 name="categoryGroup"
                 value={formData.categoryGroup || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 py-2 border ${
+                  errors.categoryGroup ? 'border-red-500' : 'border-gray-300'
+                } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
                 required
               />
+              {errors.categoryGroup && (
+                <p className="text-red-500 text-xs mt-1">{errors.categoryGroup}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -88,9 +151,12 @@ const CreateCategoryModal: React.FC<CreateCategoryModalProps> = ({ isOpen, onClo
                 name="name"
                 value={formData.name || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 py-2 border ${
+                  errors.name ? 'border-red-500' : 'border-gray-300'
+                } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
                 required
               />
+              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

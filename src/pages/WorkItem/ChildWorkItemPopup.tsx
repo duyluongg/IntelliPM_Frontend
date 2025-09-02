@@ -502,7 +502,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
 
       refetchAttachments();
       await refetchActivityLogs();
-      setFileError(''); // Clear error on successful upload
+      setFileError(''); 
     } catch (error) {
       console.error('Upload failed:', error);
       setFileError('Failed to upload file');
@@ -1364,7 +1364,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       }
 
                       // Validate against due date
-                      if (newEndDate && selectedDate >= new Date(newEndDate)) {
+                      if (newEndDate && selectedDate > new Date(newEndDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Start Date',
@@ -1435,7 +1435,7 @@ const ChildWorkItemPopup: React.FC<ChildWorkItemPopupProps> = ({ item, onClose }
                       }
 
                       // Validate against start date
-                      if (newStartDate && selectedDate <= new Date(newStartDate)) {
+                      if (newStartDate && selectedDate < new Date(newStartDate)) {
                         Swal.fire({
                           icon: 'error',
                           title: 'Invalid Due Date',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCreateMutation } from '../../../services/systemConfigurationApi';
 import { type SystemConfigurationRequest } from '../../../services/systemConfigurationApi';
+import { toast } from 'react-toastify';
 
 interface CreateConfigModalProps {
   isOpen: boolean;
@@ -21,9 +22,25 @@ const CreateConfigModal: React.FC<CreateConfigModalProps> = ({ isOpen, onClose }
     note: null,
     effectedTo: null,
   });
+  const [configKeyError, setConfigKeyError] = useState<string | null>(null);
+
+  // Validation regex: chỉ cho phép chữ thường (a-z) và dấu gạch dưới (_)
+  const validateConfigKey = (value: string): boolean => {
+    const regex = /^[a-z_]+$/;
+    if (!regex.test(value)) {
+      setConfigKeyError('Config Key must contain only lowercase letters (a-z) and underscores (_), no numbers.');
+      return false;
+    }
+    setConfigKeyError(null);
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateConfigKey(formData.configKey || '')) {
+      toast.error('Please fix the Config Key errors before submitting.');
+      return;
+    }
     try {
       // Format dates to UTC ISO string for backend
       const formattedFormData = {
@@ -32,7 +49,7 @@ const CreateConfigModal: React.FC<CreateConfigModalProps> = ({ isOpen, onClose }
         effectedTo: formData.effectedTo ? new Date(formData.effectedTo).toISOString() : null,
       };
       await createConfig(formattedFormData).unwrap();
-      alert('Configuration created successfully');
+      toast.success('Configuration created successfully');
       setFormData({
         configKey: '',
         valueConfig: '',
@@ -44,9 +61,10 @@ const CreateConfigModal: React.FC<CreateConfigModalProps> = ({ isOpen, onClose }
         note: null,
         effectedTo: null,
       });
+      setConfigKeyError(null);
       onClose();
-    } catch (err) {
-      alert('Failed to create configuration');
+    } catch (err: any) {
+      toast.error(err.data?.message || 'Failed to create configuration');
     }
   };
 
@@ -56,6 +74,9 @@ const CreateConfigModal: React.FC<CreateConfigModalProps> = ({ isOpen, onClose }
       ...prev,
       [name]: value === '' ? null : value,
     }));
+    if (name === 'configKey') {
+      validateConfigKey(value);
+    }
   };
 
   if (!isOpen) return null;
@@ -87,9 +108,14 @@ const CreateConfigModal: React.FC<CreateConfigModalProps> = ({ isOpen, onClose }
                 name="configKey"
                 value={formData.configKey || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`w-full px-3 py-2 border ${
+                  configKeyError ? 'border-red-500' : 'border-gray-300'
+                } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm`}
                 required
               />
+              {configKeyError && (
+                <p className="text-red-500 text-xs mt-1">{configKeyError}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>

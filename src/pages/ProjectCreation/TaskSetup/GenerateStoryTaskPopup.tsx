@@ -55,6 +55,10 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
   epics,
   membersData,
 }) => {
+  const today = new Date();
+  const defaultEndDate = new Date(today.setDate(today.getDate() + 30)).toISOString().split('T')[0];
+  const defaultStartDate = new Date().toISOString().split('T')[0];
+
   const [createType, setCreateType] = useState<'TASK' | 'STORY'>('TASK');
   const [manualMode, setManualMode] = useState<boolean>(false);
   const [selectedEpic, setSelectedEpic] = useState<EpicState | null>(null);
@@ -67,8 +71,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [itemTitle, setItemTitle] = useState<string>('');
   const [itemDescription, setItemDescription] = useState<string>('');
-  const [itemStartDate, setItemStartDate] = useState<string>('2025-08-13');
-  const [itemEndDate, setItemEndDate] = useState<string>('2025-08-13');
+  const [itemStartDate, setItemStartDate] = useState<string>(defaultStartDate);
+  const [itemEndDate, setItemEndDate] = useState<string>(defaultEndDate);
   const [itemSuggestedRole, setItemSuggestedRole] = useState<string>('Developer');
   const [itemAssignedMembers, setItemAssignedMembers] = useState<Member[]>([]);
   const [isMemberDropdownOpen, setIsMemberDropdownOpen] = useState(false);
@@ -78,8 +82,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     epicId: '',
     title: '',
     description: '',
-    startDate: '2025-08-13',
-    endDate: '2025-08-13',
+    startDate: defaultStartDate,
+    endDate: defaultEndDate,
     suggestedRole: 'Developer',
     assignedMembers: [] as Member[],
     storyTitle: '',
@@ -94,7 +98,12 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     if (isOpen && epics.length > 0 && !selectedEpic) {
       const initialEpic = epics.find((e) => e.title === epicTitle) || epics[0];
       setSelectedEpic(initialEpic);
-      setNewTask({ ...newTask, epicId: initialEpic.epicId });
+      setNewTask({
+        ...newTask,
+        epicId: initialEpic.epicId,
+        startDate: initialEpic.startDate,
+        endDate: initialEpic.endDate,
+      });
       const firstStory = initialEpic.tasks.find((task) => task.type === 'STORY');
       if (firstStory) {
         setSelectedStoryTitle(firstStory.title);
@@ -112,7 +121,13 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     const epicId = e.target.value;
     const epic = epics.find((e) => e.epicId === epicId);
     setSelectedEpic(epic || null);
-    setNewTask({ ...newTask, epicId, storyTitle: '' });
+    setNewTask({
+      ...newTask,
+      epicId,
+      storyTitle: '',
+      startDate: epic ? epic.startDate : defaultStartDate,
+      endDate: epic ? epic.endDate : defaultEndDate,
+    });
     setSelectedStoryTitle('');
     setStoryTasks([]);
     setSelectedStoryTasks([]);
@@ -173,6 +188,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
         epicId: selectedEpic.epicId,
         data: {
           ...item.data,
+          startDate: selectedEpic.startDate,
+          endDate: selectedEpic.endDate,
           storyTitle: createType === 'TASK' ? selectedStoryTitle : undefined,
         },
       }));
@@ -205,8 +222,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     setEditingItemId(itemId);
     setItemTitle(currentTitle);
     setItemDescription(currentDescription);
-    setItemStartDate(currentStartDate ? new Date(currentStartDate).toISOString().split('T')[0] : '');
-    setItemEndDate(currentEndDate ? new Date(currentEndDate).toISOString().split('T')[0] : '');
+    setItemStartDate(currentStartDate ? new Date(currentStartDate).toISOString().split('T')[0] : selectedEpic?.startDate || defaultStartDate);
+    setItemEndDate(currentEndDate ? new Date(currentEndDate).toISOString().split('T')[0] : selectedEpic?.endDate || defaultEndDate);
     setItemSuggestedRole(currentSuggestedRole);
     setItemAssignedMembers(currentAssignedMembers);
     if (currentStoryTitle) {
@@ -244,8 +261,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
               ...item.data,
               title: itemTitle.trim(),
               description: itemDescription.trim() || item.data.description,
-              startDate: itemStartDate || item.data.startDate,
-              endDate: itemEndDate || item.data.endDate,
+              startDate: itemStartDate || selectedEpic?.startDate || defaultStartDate,
+              endDate: itemEndDate || selectedEpic?.endDate || defaultEndDate,
               suggestedRole: itemSuggestedRole,
               assignedMembers: itemAssignedMembers,
               storyTitle: createType === 'TASK' ? selectedStoryTitle : undefined,
@@ -341,15 +358,15 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
         itemId: `${createType.toLowerCase()}-${Date.now()}`,
         title: newTask.title.trim(),
         description: newTask.description.trim() || 'No description',
-        startDate: newTask.startDate,
-        endDate: newTask.endDate,
+        startDate: newTask.startDate || selectedEpic!.startDate,
+        endDate: newTask.endDate || selectedEpic!.endDate,
         suggestedRole: newTask.suggestedRole,
         assignedMembers: newTask.assignedMembers,
         storyTitle: createType === 'TASK' ? newTask.storyTitle : undefined,
       },
     };
 
-    // Pass the new task to the parent to update TaskList
+    // Add the new task to TaskList
     onStoryTasksGenerated([item]);
 
     // Set evaluation payload and show popup for manual creation
@@ -361,8 +378,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
       epicId: selectedEpic?.epicId || '',
       title: '',
       description: '',
-      startDate: '2025-08-13',
-      endDate: '2025-08-13',
+      startDate: selectedEpic?.startDate || defaultStartDate,
+      endDate: selectedEpic?.endDate || defaultEndDate,
       suggestedRole: 'Developer',
       assignedMembers: [],
       storyTitle: createType === 'TASK' ? selectedStoryTitle : '',
@@ -406,7 +423,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
         epicId: selectedEpic!.epicId,
       }));
 
-      // Pass the selected tasks to the parent to update TaskList
+      // Add the selected tasks to TaskList
       onStoryTasksGenerated(tasksWithEpicId);
 
       // Set evaluation payload and show popup
@@ -425,7 +442,6 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     setEvaluationPayload('');
     setStoryTasks([]); // Clear storyTasks to reset the generated tasks section
     setSelectedStoryTasks([]); // Clear selected tasks
-    // Do not call onClose to keep the popup open
     setIsEpicTasksVisible(true); // Show the updated task list
   };
 
@@ -435,7 +451,6 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
     setEvaluationPayload('');
     setStoryTasks([]); // Clear storyTasks to reset the generated tasks section
     setSelectedStoryTasks([]); // Clear selected tasks
-    // Do not call onClose to keep the popup open
     setIsEpicTasksVisible(true); // Show the updated task list
   };
 
@@ -813,7 +828,7 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                                 {item.data.assignedMembers.map((member) => (
                                   <div
                                     key={member.accountId}
-                                    className='flex items-center gap-2 text-sm bg-gray-100 px-3 py-1 rounded-full'
+                                    className='flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full text-sm'
                                   >
                                     <img src={member.picture} alt={member.fullName} className='w-5 h-5 rounded-full' />
                                     <span>{member.fullName}</span>
@@ -871,6 +886,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                                     type='date'
                                     value={itemStartDate}
                                     onChange={(e) => setItemStartDate(e.target.value)}
+                                    min={selectedEpic?.startDate}
+                                    max={selectedEpic?.endDate}
                                     className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
                                   />
                                 </div>
@@ -880,6 +897,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                                     type='date'
                                     value={itemEndDate}
                                     onChange={(e) => setItemEndDate(e.target.value)}
+                                    min={itemStartDate || selectedEpic?.startDate}
+                                    max={selectedEpic?.endDate}
                                     className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
                                   />
                                 </div>
@@ -1026,6 +1045,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                       type='date'
                       value={newTask.startDate}
                       onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                      min={selectedEpic?.startDate}
+                      max={selectedEpic?.endDate}
                       className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
                     />
                   </div>
@@ -1035,6 +1056,8 @@ const GenerateStoryTaskPopup: React.FC<GenerateStoryTaskPopupProps> = ({
                       type='date'
                       value={newTask.endDate}
                       onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
+                      min={newTask.startDate || selectedEpic?.startDate}
+                      max={selectedEpic?.endDate}
                       className='w-full text-sm border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#1c73fd]'
                     />
                   </div>

@@ -33,6 +33,88 @@ interface ChatbotProps {
   editor: Editor | null;
 }
 
+function unwrapCodeFencesLoose(input: string): string {
+  if (typeof input !== 'string') return '';
+
+  let out = input;
+
+  // 1) Cặp ```lang ... ```
+  out = out.replace(/```[\t ]*([a-z0-9_-]+)?[\t ]*\r?\n([\s\S]*?)\r?\n```/gi, '$2');
+
+  // 2) Cặp ~~~lang ... ~~~
+  out = out.replace(/~~~[\t ]*([a-z0-9_-]+)?[\t ]*\r?\n([\s\S]*?)\r?\n~~~/gi, '$2');
+
+  // 3) Trường hợp CHỈ có mở mà không có đóng (hoặc còn sót mở/đóng rác)
+  //    - Bỏ fence mở ở đầu (có/không ngôn ngữ)
+  out = out.replace(/^\s*```[\t ]*[a-z0-9_-]*[\t ]*\r?\n?/i, '');
+  out = out.replace(/^\s*~~~[\t ]*[a-z0-9_-]*[\t ]*\r?\n?/i, '');
+
+  //    - Bỏ fence đóng ở cuối nếu có
+  out = out.replace(/\r?\n?```\s*$/i, '');
+  out = out.replace(/\r?\n?~~~\s*$/i, '');
+
+  // 4) (Tuỳ chọn) nếu server encode backtick thành &#96;
+  out = out.replace(/&#96;&#96;&#96;[a-z0-9_-]*\s*/gi, '');
+  out = out.replace(/&#96;&#96;&#96;/gi, '');
+
+  return out.trim();
+}
+
+function transformTaskSummaryHtml(html: string, opts?: { locale?: string; timeZone?: string }) {
+  const { locale = 'vi-VN', timeZone = 'Asia/Ho_Chi_Minh' } = opts || {};
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const dateFields = new Set([
+    'Planned Start Date',
+    'Planned End Date',
+    'Actual Start Date',
+    'Actual End Date',
+    'Created At',
+    'Updated At',
+  ]);
+
+  const df = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    timeZone,
+  });
+
+  const isIsoLike = (s: string) => {
+    if (!s) return false;
+    const cleaned = s.trim().replace(/\.$/, ''); // xoá dấu chấm đuôi
+    return cleaned.includes('T') && !isNaN(new Date(cleaned).getTime());
+  };
+
+  doc.querySelectorAll('tr').forEach((tr) => {
+    // Ưu tiên (th, td)
+    let labelEl = tr.querySelector('th');
+    let valueEl = tr.querySelector('td');
+
+    // Nếu không có <th>, thử lấy (td1, td2)
+    if (!labelEl) {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length >= 2) {
+        labelEl = tds[0];
+        valueEl = tds[1];
+      }
+    }
+    if (!labelEl || !valueEl) return;
+
+    const label = (labelEl.textContent || '').trim();
+    const raw = (valueEl.textContent || '').trim();
+    if (!dateFields.has(label) || !raw) return;
+
+    if (isIsoLike(raw)) {
+      const cleaned = raw.replace(/\.$/, '');
+      const d = new Date(cleaned);
+      valueEl.textContent = df.format(d);
+    }
+  });
+
+  return doc.body.innerHTML;
+}
+
 function transformProjectSummaryHtml(
   html: string,
   opts?: {
@@ -138,16 +220,6 @@ const suggestions = [
     text: 'Summarize this doc',
     color: 'text-purple-600 dark:text-purple-400',
   },
-  // {
-  //   icon: Pencil,
-  //   text: 'Make this doc more clear and concise',
-  //   color: 'text-green-600 dark:text-green-400',
-  // },
-  // {
-  //   icon: CheckCircle,
-  //   text: 'Extract action items from this doc',
-  //   color: 'text-blue-600 dark:text-blue-400',
-  // },
   {
     icon: CheckCircle,
     text: 'Project summary',
@@ -243,7 +315,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ onClose, editor }) => {
     try {
       if (messageText === 'Task summary') {
         const result = await generateFromTasks(docId).unwrap();
-        setMessages((prev) => [...prev, { id: Date.now() + 1, text: result, sender: 'ai' }]);
+        const clean = unwrapCodeFencesLoose(result);
+        const transformed = transformTaskSummaryHtml(clean, {
+          locale: 'vi-VN',
+          timeZone: 'Asia/Ho_Chi_Minh',
+        });
+        setMessages((prev) => [...prev, { id: Date.now() + 1, text: transformed, sender: 'ai' }]);
         return;
       }
 
@@ -425,7 +502,7 @@ const ChatMessage: React.FC<{ message: Message; editor: Editor | null }> = ({
   const handleInsert = () => {
     if (!editor || !message.text) return;
 
-    const cleanHtml = stripMarkdownCodeBlock(message.text);
+    const cleanHtml = unwrapCodeFencesLoose(message.text);
     const contentNode = htmlToTiptapNode(cleanHtml, editor);
 
     editor.commands.focus();
@@ -441,16 +518,10 @@ const ChatMessage: React.FC<{ message: Message; editor: Editor | null }> = ({
         <div className='bg-gray-100 dark:bg-gray-700 p-3 rounded-xl rounded-bl-none'>
           <div
             className='prose dark:prose-invert max-w-none text-sm'
-            dangerouslySetInnerHTML={{ __html: stripMarkdownCodeBlock(message.text) }}
+            dangerouslySetInnerHTML={{ __html: unwrapCodeFencesLoose(message.text) }}
           />
         </div>
         <div className='flex items-center gap-3 mt-2 text-gray-500 dark:text-gray-400'>
-          {/* <button className='p-1 rounded-md hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600'>
-            <ThumbsUp className='w-4 h-4' />
-          </button>
-          <button className='p-1 rounded-md hover:text-red-500 hover:bg-gray-200 dark:hover:bg-gray-600'>
-            <ThumbsDown className='w-4 h-4' />
-          </button> */}
           <button
             className='p-1 rounded-md hover:text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600'
             onClick={handleInsert}

@@ -116,7 +116,7 @@ const CreateTaskPopup: React.FC<CreateTaskPopupProps> = ({
                 <option value=''>Select an Epic</option>
                 {epics.map((epic) => (
                   <option key={epic.epicId} value={epic.epicId}>
-                    {epic.title} ({epic.backendEpicId || epic.epicId})
+                    {epic.title}
                   </option>
                 ))}
               </select>

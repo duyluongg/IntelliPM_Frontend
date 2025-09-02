@@ -472,7 +472,7 @@ const MenuBar: React.FC<Props> = ({
       }
     } catch (error) {
       console.error('Error sharing document:', error);
-      toast.error('❌ Something went wrong while sharing.');
+      toast.error('❌ Email is in wrong format');
     }
   };
 
@@ -950,7 +950,9 @@ const MenuBar: React.FC<Props> = ({
                             Anyone with the link
                           </p>
                           <p className='text-sm text-gray-500 dark:text-gray-400'>
-                            {permission === 'EDIT' ? 'Can edit' : 'Can view'} this document.
+                            {permission === 'EDIT'
+                              ? 'Can edit this document (except client).'
+                              : 'Can view this document.'}
                           </p>
                         </div>
                       </div>

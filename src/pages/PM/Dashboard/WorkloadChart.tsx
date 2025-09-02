@@ -65,3 +65,4 @@ const WorkloadChart = ({
 };
 
 export default WorkloadChart;
+

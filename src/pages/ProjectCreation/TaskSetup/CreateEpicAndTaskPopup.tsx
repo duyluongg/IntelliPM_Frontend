@@ -59,26 +59,33 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const today = new Date();
+  const defaultEndDate = new Date(today.setDate(today.getDate() + 30))
+    .toISOString()
+    .split('T')[0];
+  const defaultStartDate = new Date().toISOString().split('T')[0];
+
   const resetNewTask = () => {
     setNewTask({
       epicId: epics.length > 0 ? epics[0].epicId : '',
       title: '',
       type: 'TASK',
       description: '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+      startDate: defaultStartDate,
+      endDate: defaultEndDate,
       suggestedRole: 'Developer',
       assignedMembers: [],
       newEpicTitle: '',
       newEpicDescription: 'No description',
-      newEpicStartDate: new Date().toISOString().split('T')[0],
-      newEpicEndDate: new Date(new Date().setDate(new Date().getDate() + 7))
-        .toISOString()
-        .split('T')[0],
+      newEpicStartDate: defaultStartDate,
+      newEpicEndDate: defaultEndDate,
     });
   };
 
   const creationMode = epics.length > 0 ? newTask.epicId === 'new-epic' ? 'new-epic' : 'task' : 'new-epic';
+
+  // Find the selected epic to constrain task dates
+  const selectedEpic = epics.find((epic) => epic.epicId === newTask.epicId);
 
   return (
     <div className='fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50'>
@@ -106,7 +113,16 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
               </label>
               <select
                 value={newTask.epicId}
-                onChange={(e) => setNewTask({ ...newTask, epicId: e.target.value })}
+                onChange={(e) => {
+                  const selectedEpicId = e.target.value;
+                  const epic = epics.find((epic) => epic.epicId === selectedEpicId);
+                  setNewTask({
+                    ...newTask,
+                    epicId: selectedEpicId,
+                    startDate: epic ? epic.startDate : defaultStartDate,
+                    endDate: epic ? epic.endDate : defaultEndDate,
+                  });
+                }}
                 className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
               >
                 <option value=''>Select an Epic</option>
@@ -152,7 +168,17 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
                 <input
                   type='date'
                   value={newTask.newEpicStartDate}
-                  onChange={(e) => setNewTask({ ...newTask, newEpicStartDate: e.target.value })}
+                  onChange={(e) => {
+                    const newStartDate = e.target.value;
+                    setNewTask({
+                      ...newTask,
+                      newEpicStartDate: newStartDate,
+                      startDate: newStartDate, // Update task start date to match epic
+                      endDate: new Date(new Date(newStartDate).setDate(new Date(newStartDate).getDate() + 30))
+                        .toISOString()
+                        .split('T')[0], // Ensure task end date is updated
+                    });
+                  }}
                   className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                 />
               </div>
@@ -164,6 +190,7 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
                   type='date'
                   value={newTask.newEpicEndDate}
                   onChange={(e) => setNewTask({ ...newTask, newEpicEndDate: e.target.value })}
+                  min={newTask.newEpicStartDate}
                   className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                 />
               </div>
@@ -228,6 +255,8 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
                   type='date'
                   value={newTask.startDate}
                   onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                  min={creationMode === 'task' ? selectedEpic?.startDate : newTask.newEpicStartDate}
+                  max={creationMode === 'task' ? selectedEpic?.endDate : newTask.newEpicEndDate}
                   className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                 />
               </div>
@@ -239,6 +268,8 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
                   type='date'
                   value={newTask.endDate}
                   onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
+                  min={newTask.startDate}
+                  max={creationMode === 'task' ? selectedEpic?.endDate : newTask.newEpicEndDate}
                   className='w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1c73fd] focus:border-[#1c73fd] transition-colors duration-200'
                 />
               </div>
@@ -276,7 +307,7 @@ const CreateEpicAndTaskPopup: React.FC<CreateEpicAndTaskPopupProps> = ({
                             onClick={() => !isAssigned && handleAddNewTaskMember(member.accountId)}
                           >
                             <img
-                              src={member.picture || 'httpsgitlab.com/i.pravatar.cc/40'}
+                              src={member.picture || 'https://i.pravatar.cc/40'}
                               alt={member.fullName}
                               className='w-6 h-6 rounded-full object-cover'
                               onError={(e) => {

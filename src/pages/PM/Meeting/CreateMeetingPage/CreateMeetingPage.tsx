@@ -15,9 +15,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../../../../constants/api';
 
 // >>> NEW: system configuration API
-import {
-  useGetAllQuery as useGetAllSystemConfigsQuery,
-} from '../../../../services/systemConfigurationApi';
+import { useGetAllQuery as useGetAllSystemConfigsQuery } from '../../../../services/systemConfigurationApi';
 
 /** ===================== Fallback defaults (nếu BE chưa có config) ===================== */
 const DEFAULTS = {
@@ -44,20 +42,18 @@ const DEFAULTS = {
   ACCEPT_EXTS: ['pdf', 'doc', 'docx'],
 };
 
-
 // đặt trên cùng file
 const positionColors: Record<string, string> = {
-  PROJECT_MANAGER: "text-blue-600",
-  TEAM_LEADER: "text-green-600",
-  TEAM_MEMBER: "text-emerald-600",
-  FRONTEND_DEVELOPER: "text-purple-600",
-  BACKEND_DEVELOPER: "text-pink-600",
-  TESTER: "text-orange-600",
-  DESIGNER: "text-teal-600",
-  BUSINESS_ANALYST: "text-indigo-600",
-  CLIENT: "text-red-600",
+  PROJECT_MANAGER: 'text-blue-600',
+  TEAM_LEADER: 'text-green-600',
+  TEAM_MEMBER: 'text-emerald-600',
+  FRONTEND_DEVELOPER: 'text-purple-600',
+  BACKEND_DEVELOPER: 'text-pink-600',
+  TESTER: 'text-orange-600',
+  DESIGNER: 'text-teal-600',
+  BUSINESS_ANALYST: 'text-indigo-600',
+  CLIENT: 'text-red-600',
 };
-
 
 /** ===================== Helpers ===================== */
 const toInt = (v: any, fb: number) => {
@@ -65,7 +61,12 @@ const toInt = (v: any, fb: number) => {
   return Number.isFinite(n) ? n : fb;
 };
 const splitPipe = (v: any, fb: string[]) =>
-  typeof v === 'string' ? v.split('|').map(s => s.trim()).filter(Boolean) : fb;
+  typeof v === 'string'
+    ? v
+        .split('|')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : fb;
 
 const toMinutes = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -121,10 +122,9 @@ const CreateMeetingPage: React.FC = () => {
     skip: !selectedProjectId,
   });
 
-  const { data: singleProject } = useGetProjectByIdQuery(
-    selectedProjectId!,
-    { skip: !selectedProjectId }
-  );
+  const { data: singleProject } = useGetProjectByIdQuery(selectedProjectId!, {
+    skip: !selectedProjectId,
+  });
 
   // >>> Load system configs (one-shot)
   const { data: cfgResp, isLoading: cfgLoading } = useGetAllSystemConfigsQuery();
@@ -138,7 +138,6 @@ const CreateMeetingPage: React.FC = () => {
     const duration = byKey.get('meeting_duration_minutes');
     const attendees = byKey.get('meeting_attendees');
     const status = byKey.get('meeting_status');
-
 
     return {
       // title length
@@ -167,61 +166,84 @@ const CreateMeetingPage: React.FC = () => {
       ACCEPT_EXTS: DEFAULTS.ACCEPT_EXTS,
     };
   }, [cfgResp]);
-const topicLen = useMemo(() => meetingTopic.trim().length, [meetingTopic]);
-const topicTooShort = topicLen > 0 && topicLen < cfg.TOPIC_LEN_MIN;
-const topicTooLong  = topicLen > cfg.TOPIC_LEN_MAX;
-useEffect(() => {
-  if (topicTooShort) {
-    // setErrors(prev => ({ ...prev, topic: `Title must be ≥ ${cfg.TOPIC_LEN_MIN} chars.` }));
-  } else if (topicTooLong) {
-    // setErrors(prev => ({ ...prev, topic: `Title must be ≤ ${cfg.TOPIC_LEN_MAX} chars.` }));
-  } else {
-    setErrors(prev => {
-      const { topic, ...rest } = prev;
-      return rest;
-    });
-  }
-}, [topicTooShort, topicTooLong, cfg.TOPIC_LEN_MIN, cfg.TOPIC_LEN_MAX]);
+  const topicLen = useMemo(() => meetingTopic.trim().length, [meetingTopic]);
+  const topicTooShort = topicLen > 0 && topicLen < cfg.TOPIC_LEN_MIN;
+  const topicTooLong = topicLen > cfg.TOPIC_LEN_MAX;
+  useEffect(() => {
+    if (topicTooShort) {
+      // setErrors(prev => ({ ...prev, topic: `Title must be ≥ ${cfg.TOPIC_LEN_MIN} chars.` }));
+    } else if (topicTooLong) {
+      // setErrors(prev => ({ ...prev, topic: `Title must be ≤ ${cfg.TOPIC_LEN_MAX} chars.` }));
+    } else {
+      setErrors((prev) => {
+        const { topic, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [topicTooShort, topicTooLong, cfg.TOPIC_LEN_MIN, cfg.TOPIC_LEN_MAX]);
   // set default duration theo estimate ngay khi cfg có
   useEffect(() => {
     if (!cfgLoading) setMeetingDuration(cfg.DURATION_EST);
   }, [cfgLoading, cfg.DURATION_EST]);
 
-
   // helper: check position theo dữ liệu BE trả về
-const hasPosition = (member: any, pos: string) =>
-  Array.isArray(member?.projectPositions) &&
-  member.projectPositions.some((p: any) => p?.position === pos);
+  const hasPosition = (member: any, pos: string) =>
+    Array.isArray(member?.projectPositions) &&
+    member.projectPositions.some((p: any) => p?.position === pos);
 
-// danh sách member hiển thị theo rule
-const visibleMembers = useMemo(() => {
-  const role = (user?.role as string) || '';
-  const list = projectDetails?.data?.projectMembers ?? [];
+  // danh sách member hiển thị theo rule
+  const visibleMembers = useMemo(() => {
+    const role = (user?.role as string) || '';
+    const list = projectDetails?.data?.projectMembers ?? [];
 
-  // base: không hiện chính mình
-  let filtered = list.filter((m: any) => m.accountId !== user?.id);
+    // base: không hiện chính mình
+    let filtered = list.filter((m: any) => m.accountId !== user?.id);
 
-  // nếu người tạo là TL/TM => ẩn CLIENT
-  if (role === 'TEAM_LEADER' || role === 'TEAM_MEMBER') {
-    filtered = filtered.filter((m: any) => !hasPosition(m, 'CLIENT'));
-  }
+    // nếu người tạo là TL/TM => ẩn CLIENT
+    if (role === 'TEAM_LEADER' || role === 'TEAM_MEMBER') {
+      filtered = filtered.filter((m: any) => !hasPosition(m, 'CLIENT'));
+    }
 
-  return filtered;
-}, [projectDetails, user]);
+    return filtered;
+  }, [projectDetails, user]);
 
+  const memberEmailById = useMemo(() => {
+    const map = new Map<number, string>();
+    const members = projectDetails?.data?.projectMembers ?? [];
+    for (const m of members) {
+      if (m?.accountId && m?.email) {
+        map.set(m.accountId, m.email);
+      }
+    }
+    return map;
+  }, [projectDetails]);
+
+  const selectedParticipantEmails = useMemo(() => {
+    // ❌ KHÔNG thêm user.id ở đây
+    const ids = participantIds;
+
+    const emails = ids
+      .map((id) => memberEmailById.get(id)) // lấy từ map accountId -> email
+      .filter((e): e is string => !!e);
+
+    return Array.from(new Set(emails.map((e) => e.toLowerCase())));
+  }, [participantIds, memberEmailById]);
+
+  console.log(selectedParticipantEmails);
 
   // ===================== Project end date =====================
   const projectEndDateObj = singleProject?.data?.endDate
     ? new Date(singleProject.data.endDate)
     : null;
   const projectEndDateYMD = projectEndDateObj ? toYMD(projectEndDateObj) : undefined;
-  
+
   // Lấy ngày hiện tại ở định dạng YYYY-MM-DD
   const todayYMD = new Date().toISOString().split('T')[0];
 
   // ===================== Mutations =====================
   const [createMeeting, { isLoading: isCreating }] = useCreateMeetingMutation();
-  const [createInternalMeeting, { isLoading: isCreatingInternal }] = useCreateInternalMeetingMutation();
+  const [createInternalMeeting, { isLoading: isCreatingInternal }] =
+    useCreateInternalMeetingMutation();
   const [shareDocumentViaEmail, { isLoading: isSharing }] = useShareDocumentViaEmailMutation();
 
   // ===================== Effects =====================
@@ -278,7 +300,7 @@ const visibleMembers = useMemo(() => {
 
     const workStart = toMinutes(cfg.WORK_START);
     const workEnd = toMinutes(cfg.WORK_END);
-    const nowMin = isToday ? (today.getHours() * 60 + today.getMinutes()) : workStart;
+    const nowMin = isToday ? today.getHours() * 60 + today.getMinutes() : workStart;
 
     const options: string[] = [];
     for (let t = workStart; t + meetingDuration <= workEnd; t += cfg.SLOT_STEP_MIN) {
@@ -341,15 +363,24 @@ const visibleMembers = useMemo(() => {
         const dateIso = toLocalIso(meetingDate, '00:00');
 
         const queryParams = new URLSearchParams();
-        participantIds.concat(user!.id).forEach((id) => queryParams.append('participantIds', id.toString()));
+        participantIds
+          .concat(user!.id)
+          .forEach((id) => queryParams.append('participantIds', id.toString()));
         queryParams.append('projectId', String(selectedProjectId));
         queryParams.append('date', dateIso);
         queryParams.append('startTime', start);
         queryParams.append('endTime', end);
 
+        const token = localStorage.getItem('accessToken');
+
         const { data } = await axios.get(
           `${API_BASE_URL}meetings/check-conflict?${queryParams.toString()}`,
-          { signal: controller.signal }
+          {
+            signal: controller.signal,
+            headers: {
+              Authorization: token ? `Bearer ${token}` : '',
+            },
+          }
         );
 
         if (data?.conflictingAccountIds?.length > 0) {
@@ -358,7 +389,9 @@ const visibleMembers = useMemo(() => {
             const member = projectDetails?.data.projectMembers.find((m: any) => m.accountId === id);
             return member?.fullName || `User ${id}`;
           });
-          setConflictMessage(`⚠️ These members are busy during this time: ${conflictedNames.join(', ')}`);
+          setConflictMessage(
+            `⚠️ These members are busy during this time: ${conflictedNames.join(', ')}`
+          );
         } else {
           setConflictMessage(null);
         }
@@ -393,8 +426,7 @@ const visibleMembers = useMemo(() => {
     if (!selectedProjectId) e.project = 'Please select a project.';
 
     const topic = meetingTopic.trim();
-    if (topic.length < cfg.TOPIC_LEN_MIN)
-      e.topic = `Title must be ≥ ${cfg.TOPIC_LEN_MIN} chars.`;
+    if (topic.length < cfg.TOPIC_LEN_MIN) e.topic = `Title must be ≥ ${cfg.TOPIC_LEN_MIN} chars.`;
     else if (topic.length > cfg.TOPIC_LEN_MAX)
       e.topic = `Title must be ≤ ${cfg.TOPIC_LEN_MAX} chars.`;
 
@@ -406,7 +438,9 @@ const visibleMembers = useMemo(() => {
     else if (projectEndDateObj) {
       const picked = new Date(meetingDate);
       if (picked > projectEndDateObj) {
-        e.date = `Meeting date must be on or before project end date (${toYMD(projectEndDateObj)}).`;
+        e.date = `Meeting date must be on or before project end date (${toYMD(
+          projectEndDateObj
+        )}).`;
       }
     }
 
@@ -426,7 +460,7 @@ const visibleMembers = useMemo(() => {
     }
 
     // attendees = yourself + selected participants (unique)
-    const attendeesCount = [user!.id, ...participantIds.filter(id => id !== user!.id)].length;
+    const attendeesCount = [user!.id, ...participantIds.filter((id) => id !== user!.id)].length;
     if (attendeesCount < cfg.ATTENDEES_MIN || attendeesCount > cfg.ATTENDEES_MAX) {
       e.participants = `Attendees must be between ${cfg.ATTENDEES_MIN}–${cfg.ATTENDEES_MAX}.`;
     } else if (participantIds.length === 0) {
@@ -438,10 +472,12 @@ const visibleMembers = useMemo(() => {
       const sizeMb = uploadedFile.size / (1024 * 1024);
       if (sizeMb > cfg.MAX_FILE_MB) e.file = `File must be ≤ ${cfg.MAX_FILE_MB}MB.`;
       const ext = uploadedFile.name.split('.').pop()?.toLowerCase() || '';
-      if (!cfg.ACCEPT_EXTS.includes(ext)) e.file = `Only ${cfg.ACCEPT_EXTS.join(', ').toUpperCase()} are allowed.`;
+      if (!cfg.ACCEPT_EXTS.includes(ext))
+        e.file = `Only ${cfg.ACCEPT_EXTS.join(', ').toUpperCase()} are allowed.`;
     }
 
-    if (conflictMessage) e.conflict = 'There is a scheduling conflict. Please adjust time/participants.';
+    if (conflictMessage)
+      e.conflict = 'There is a scheduling conflict. Please adjust time/participants.';
 
     setErrors(e);
     return e;
@@ -451,8 +487,8 @@ const visibleMembers = useMemo(() => {
   const isReady =
     !!selectedProjectId &&
     meetingTopic.trim().length > 0 &&
-      !topicTooShort &&
-  !topicTooLong &&  
+    !topicTooShort &&
+    !topicTooLong &&
     !!meetingUrl &&
     !!meetingDate &&
     !!startTime &&
@@ -487,7 +523,9 @@ const visibleMembers = useMemo(() => {
     const startDateTime = toLocalIso(meetingDate, startTime);
     const endDateTime = toLocalIso(meetingDate, endTime);
     const selectedProject = projectsData?.data.find((p: any) => p.projectId === selectedProjectId);
-    const fullMeetingTopic = `${meetingTopic.trim()} - ${selectedProject?.projectName ?? 'Unknown Project'}`;
+    const fullMeetingTopic = `${meetingTopic.trim()} - ${
+      selectedProject?.projectName ?? 'Unknown Project'
+    }`;
 
     const meetingPayload = {
       projectId: selectedProjectId,
@@ -519,7 +557,7 @@ const visibleMembers = useMemo(() => {
 
       if (uploadedFile) {
         await shareDocumentViaEmail({
-          userIds: finalParticipantIds,
+          emails: selectedParticipantEmails,
           customMessage: customMessage,
           file: uploadedFile,
         }).unwrap();
@@ -552,16 +590,14 @@ const visibleMembers = useMemo(() => {
       }
 
       setErrorMessage(message);
-      console.error("❌ API error:", error);
-
+      console.error('❌ API error:', error);
     }
   };
 
   const selectedProject = projectsData?.data?.find((p: any) => p.projectId === selectedProjectId);
   const fullMeetingTopicPreview = selectedProject?.projectName
-      ? `${meetingTopic.trim()} - ${selectedProject.projectName}`
-      : null;
-
+    ? `${meetingTopic.trim()} - ${selectedProject.projectName}`
+    : null;
 
   if (!accountId) {
     return (
@@ -600,11 +636,13 @@ const visibleMembers = useMemo(() => {
         {selectedProjectId && projectDetails && (
           <>
             <div>
-              <label className="block mb-3 text-lg font-semibold text-gray-800">Select participants</label>
-              <div className="flex justify-end mb-4">
+              <label className='block mb-3 text-lg font-semibold text-gray-800'>
+                Select participants
+              </label>
+              <div className='flex justify-end mb-4'>
                 <button
                   onClick={handleSelectAll}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300"
+                  className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300'
                 >
                   Select All
                 </button>
@@ -642,56 +680,59 @@ const visibleMembers = useMemo(() => {
                     );
                   })}
               </div> */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-    {visibleMembers.map((member: any) => {
-      const isSelected = participantIds.includes(member.accountId);
-      return (
-        <label
-          key={member.accountId}
-          className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-300 ease-in-out 
-            ${isSelected ? 'bg-blue-100 border-2 border-blue-500 shadow-lg' : 'bg-white border-2 border-gray-300 hover:border-blue-300 hover:shadow-md'}`}
-          onClick={() => handleParticipantToggle(member.accountId)}
-        >
-          <input
-            type="checkbox"
-            checked={isSelected}
-            readOnly
-            className="mr-3 h-5 w-5 text-blue-600"
-          />
-<div className="flex flex-col">
-  <span className="text-sm font-medium text-gray-800">{member.fullName}</span>
-  {Array.isArray(member.projectPositions) && member.projectPositions.length > 0 ? (
-    member.projectPositions.map((p: any, idx: number) => {
-      const colorClass = positionColors[p.position] || "text-gray-500";
-      return (
-        <span
-          key={idx}
-          className={`text-xs font-semibold ${colorClass}`}
-        >
-          {p.position.replace(/_/g, " ")} 
-        </span>
-      );
-    })
-  ) : (
-    <span className="text-xs text-gray-500">—</span>
-  )}
-</div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'>
+                {visibleMembers.map((member: any) => {
+                  const isSelected = participantIds.includes(member.accountId);
+                  return (
+                    <label
+                      key={member.accountId}
+                      className={`flex items-center p-3 rounded-lg cursor-pointer transition-all duration-300 ease-in-out 
+            ${
+              isSelected
+                ? 'bg-blue-100 border-2 border-blue-500 shadow-lg'
+                : 'bg-white border-2 border-gray-300 hover:border-blue-300 hover:shadow-md'
+            }`}
+                      onClick={() => handleParticipantToggle(member.accountId)}
+                    >
+                      <input
+                        type='checkbox'
+                        checked={isSelected}
+                        readOnly
+                        className='mr-3 h-5 w-5 text-blue-600'
+                      />
+                      <div className='flex flex-col'>
+                        <span className='text-sm font-medium text-gray-800'>{member.fullName}</span>
+                        {Array.isArray(member.projectPositions) &&
+                        member.projectPositions.length > 0 ? (
+                          member.projectPositions.map((p: any, idx: number) => {
+                            const colorClass = positionColors[p.position] || 'text-gray-500';
+                            return (
+                              <span key={idx} className={`text-xs font-semibold ${colorClass}`}>
+                                {p.position.replace(/_/g, ' ')}
+                              </span>
+                            );
+                          })
+                        ) : (
+                          <span className='text-xs text-gray-500'>—</span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
 
-        </label>
-      );
-    })}
-  </div>
-
-              {errors.participants && <p className='mt-2 text-sm text-red-600'>{errors.participants}</p>}
+              {errors.participants && (
+                <p className='mt-2 text-sm text-red-600'>{errors.participants}</p>
+              )}
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <label className='block text-sm font-medium text-gray-700'>
                   Meeting Title{' '}
-                  <span className='text-gray-400 text-xs'>
+                  {/* <span className='text-gray-400 text-xs'>
                     ({meetingTopic.trim().length}/{cfg.TOPIC_LEN_MAX})
-                  </span>
+                  </span> */}
                 </label>
                 <input
                   type='text'
@@ -702,21 +743,21 @@ const visibleMembers = useMemo(() => {
                   placeholder='VD: Meeting Sprint Planning'
                 />
                 {topicTooShort && (
-  <p className='mt-1 text-sm text-red-600'>
-    Title must be ≥ {cfg.TOPIC_LEN_MIN} chars.
-  </p>
-)}
-{topicTooLong && (
-  <p className='mt-1 text-sm text-red-600'>
-    Title must be ≤ {cfg.TOPIC_LEN_MAX} chars.
-  </p>
-)}
+                  <p className='mt-1 text-sm text-red-600'>
+                    Title must be ≥ {cfg.TOPIC_LEN_MIN} chars.
+                  </p>
+                )}
+                {topicTooLong && (
+                  <p className='mt-1 text-sm text-red-600'>
+                    Title must be ≤ {cfg.TOPIC_LEN_MAX} chars.
+                  </p>
+                )}
                 {errors.topic && <p className='mt-1 text-sm text-red-600'>{errors.topic}</p>}
-              {fullMeetingTopicPreview && (
+                {fullMeetingTopicPreview && (
                   <p className='mt-2 text-sm text-gray-500'>
                     Final title: <strong>{fullMeetingTopicPreview}</strong>
                   </p>
-              )}
+                )}
               </div>
 
               <div>
@@ -757,9 +798,13 @@ const visibleMembers = useMemo(() => {
                       onChange={(e) => onStartChange(e.target.value)}
                       disabled={!meetingDate}
                     >
-                      <option value='' disabled>-- Select Start --</option>
+                      <option value='' disabled>
+                        -- Select Start --
+                      </option>
                       {getStartTimeOptions().map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -781,7 +826,9 @@ const visibleMembers = useMemo(() => {
                         </option>
                       ))}
                     </select>
-                    {errors.duration && <p className='mt-1 text-sm text-red-600'>{errors.duration}</p>}
+                    {errors.duration && (
+                      <p className='mt-1 text-sm text-red-600'>{errors.duration}</p>
+                    )}
                   </div>
 
                   {/* End Time (auto) */}
@@ -831,25 +878,25 @@ const visibleMembers = useMemo(() => {
             )}
 
             {conflictMessage && (
-              <div className="mt-6 flex items-start p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md">
-                <div className="flex-shrink-0">
+              <div className='mt-6 flex items-start p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-md'>
+                <div className='flex-shrink-0'>
                   <svg
-                    className="h-6 w-6 text-red-500 mt-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                    className='h-6 w-6 text-red-500 mt-1'
+                    xmlns='http://www.w3.org/2000/svg'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    stroke='currentColor'
                     strokeWidth={2}
                   >
                     <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z'
                     />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <div className="mt-1 text-sm text-red-700">{conflictMessage}</div>
+                <div className='ml-3'>
+                  <div className='mt-1 text-sm text-red-700'>{conflictMessage}</div>
                 </div>
               </div>
             )}
@@ -858,9 +905,10 @@ const visibleMembers = useMemo(() => {
               onClick={handleCreateMeeting}
               disabled={isSubmitting || !isReady}
               className={`w-full flex justify-center items-center py-2 px-4 rounded-lg font-medium transition 
-                ${isSubmitting || !isReady
-                  ? 'bg-blue-400 cursor-not-allowed opacity-50'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                ${
+                  isSubmitting || !isReady
+                    ? 'bg-blue-400 cursor-not-allowed opacity-50'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
             >
               {isSubmitting ? <div className='loadermeeting scale-75' /> : 'Create Meeting'}
@@ -884,16 +932,16 @@ const visibleMembers = useMemo(() => {
               d='M13 16h-1v-4h-1m0-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z'
             />
           </svg>
-         Rule
+          Rule
         </h2>
         <p className='text-sm text-yellow-700 mt-2'>
-  A <strong>Project Manager</strong> can only create{' '}
-  <strong>one meeting per project</strong> for <strong>each working day</strong>. Please
-  ensure you haven’t already scheduled a meeting today for this project. <br />
-  👉 Only <strong>Project Managers</strong> are allowed to directly communicate with
-  <strong> clients</strong>.
-</p>
-🕒 Meetings can only be scheduled between <strong>08:00</strong> and <strong>22:00</strong>.
+          A <strong>Project Manager</strong> can only create{' '}
+          <strong>one meeting per project</strong> for <strong>each working day</strong>. Please
+          ensure you haven’t already scheduled a meeting today for this project. <br />
+          👉 Only <strong>Project Managers</strong> are allowed to directly communicate with
+          <strong> clients</strong>.
+        </p>
+        🕒 Meetings can only be scheduled between <strong>08:00</strong> and <strong>22:00</strong>.
       </div>
     </div>
   );

@@ -17,6 +17,7 @@ export interface ProjectMember {
   accountId: number;
   username: string;
   picture: string;
+  email: string;
 }
 
 interface CreateMeetingRequest {
@@ -119,7 +120,10 @@ export const meetingApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers) => {
-      headers.set('accept', '*/*');
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
       return headers;
     },
   }),

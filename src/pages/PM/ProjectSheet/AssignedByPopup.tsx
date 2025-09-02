@@ -356,7 +356,7 @@ const AssignedByPopup: React.FC<Props> = ({ open, onClose, workItemId, type, onR
                         disabled={isReadOnly || isUpdating}
                         className='w-20 p-1 border rounded'
                         min='0'
-                        step='0.1'
+                        step='1'
                       />
                     </td>
                   </tr>

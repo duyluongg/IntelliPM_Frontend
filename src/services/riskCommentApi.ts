@@ -14,7 +14,16 @@ export interface RiskComment {
 
 export const riskCommentApi = createApi({
   reducerPath: 'riskCommentApi',
-  baseQuery: fetchBaseQuery({ baseUrl: API_BASE_URL }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: API_BASE_URL,
+    prepareHeaders: (headers) => {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   endpoints: (builder) => ({
     getCommentsByRiskId: builder.query<RiskComment[], number>({
       query: (riskId) => `riskcomment/by-risk/${riskId}`,
@@ -46,7 +55,7 @@ export const riskCommentApi = createApi({
     }),
 
     deleteRiskComment: builder.mutation<void, { id: number; createdBy: number }>({
-      query: ({id, createdBy}) => ({
+      query: ({ id, createdBy }) => ({
         url: `riskcomment/${id}?createdBy=${createdBy}`,
         method: 'DELETE',
       }),

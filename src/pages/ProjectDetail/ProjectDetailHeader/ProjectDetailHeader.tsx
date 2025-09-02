@@ -46,7 +46,7 @@ const navItems = [
   //{ label: 'Shortcuts', icon: <LucideLink className='w-4 h-4' />, path: 'shortcuts' },
   //{ label: 'Releases', icon: <PackagePlus className='w-4 h-4' />, path: 'releases' },
   //{ label: 'Tests', icon: <PackagePlus className='w-4 h-4' />, path: 'tests' },
-  //{ label: 'Document Report', icon: <Proportions className='w-4 h-4' />, path: 'document-report' },
+  { label: 'Document Report', icon: <Proportions className='w-4 h-4' />, path: 'document-report' },
 ];
 
 const CLIENT_ALLOWED = ['timeline', 'document-report'];

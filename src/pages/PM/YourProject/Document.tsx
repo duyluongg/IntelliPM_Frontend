@@ -207,11 +207,16 @@ export const Document: React.FC = () => {
     projectKeyRef.current = projectKey;
   }, [projectKey]);
 
-  console.log('Document data:', projectId);
+  console.log(user);
+
   const { data: projectMembers } = useGetProjectMembersNoStatusQuery(projectId as number, {
     skip: !projectId,
   });
-  const filterAccount = projectMembers?.filter((m) => m.id !== user?.id);
+  console.log('Project members:', projectMembers);
+
+  const filterAccount = projectMembers?.filter((m) => m.accountId !== user?.id);
+  console.log('Filtered accounts:', filterAccount);
+
   const mentionItemsRef = useRef<MentionItem[]>([]);
 
   useEffect(() => {
